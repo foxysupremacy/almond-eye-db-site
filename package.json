@@ -25,6 +25,8 @@
 	},
 	"type": "module",
 	"scripts": {
+		"build:data": "node --experimental-strip-types scripts/generate-data.ts",
+		"prebuild": "node --experimental-strip-types scripts/generate-data.ts",
 		"dev": "vinext dev",
 		"build": "vinext build",
 		"start": "wrangler dev --config dist/server/wrangler.json",

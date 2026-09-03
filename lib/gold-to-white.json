@@ -1,0 +1,2326 @@
+{
+  "200014": {
+    "whiteId": 200011,
+    "whiteNameEn": "Right Turns ◎",
+    "whiteNameJp": "右回り◎",
+    "goldNameEn": "Clockwise Demon",
+    "goldNameJp": "右回りの鬼"
+  },
+  "200024": {
+    "whiteId": 200021,
+    "whiteNameEn": "Left Turns ◎",
+    "whiteNameJp": "左回り◎",
+    "goldNameEn": "Counterclockwise Demon",
+    "goldNameJp": "左回りの鬼"
+  },
+  "200034": {
+    "whiteId": 200031,
+    "whiteNameEn": "Tokyo Racetrack ◎",
+    "whiteNameJp": "東京レース場◎",
+    "goldNameEn": "Child of Fuchu",
+    "goldNameJp": "府中の申し子"
+  },
+  "200064": {
+    "whiteId": 200061,
+    "whiteNameEn": "Kyoto Racetrack ◎",
+    "whiteNameJp": "京都レース場◎",
+    "goldNameEn": "Child of Yodo",
+    "goldNameJp": "淀の申し子"
+  },
+  "200154": {
+    "whiteId": 200151,
+    "whiteNameEn": "Good Track Condition ◎",
+    "whiteNameJp": "良バ場◎",
+    "goldNameEn": "Good Track Demon",
+    "goldNameJp": "良バ場の鬼"
+  },
+  "200164": {
+    "whiteId": 200161,
+    "whiteNameEn": "Bad Track Condition ◎",
+    "whiteNameJp": "道悪◎",
+    "goldNameEn": "Bad Track Demon",
+    "goldNameJp": "道悪の鬼"
+  },
+  "200174": {
+    "whiteId": 200171,
+    "whiteNameEn": "Spring Girl ◎",
+    "whiteNameJp": "春ウマ娘◎",
+    "goldNameEn": "First Breeze of Spring",
+    "goldNameJp": "春一番"
+  },
+  "200184": {
+    "whiteId": 200181,
+    "whiteNameEn": "Summer Girl ◎",
+    "whiteNameJp": "夏ウマ娘◎",
+    "goldNameEn": "Summer Gale",
+    "goldNameJp": "青嵐"
+  },
+  "200194": {
+    "whiteId": 200191,
+    "whiteNameEn": "Autumn Girl ◎",
+    "whiteNameJp": "秋ウマ娘◎",
+    "goldNameEn": "The First Storm",
+    "goldNameJp": "初嵐"
+  },
+  "200204": {
+    "whiteId": 200201,
+    "whiteNameEn": "Winter Girl ◎",
+    "whiteNameJp": "冬ウマ娘◎",
+    "goldNameEn": "Chilling Wind",
+    "goldNameJp": "凍て風"
+  },
+  "200331": {
+    "whiteId": 200332,
+    "whiteNameEn": "Clever Cornerer ○",
+    "whiteNameJp": "コーナー巧者○",
+    "goldNameEn": "Archline Professor",
+    "goldNameJp": "弧線のプロフェッサー"
+  },
+  "200341": {
+    "whiteId": 200342,
+    "whiteNameEn": "Corner Accel ○",
+    "whiteNameJp": "コーナー加速○",
+    "goldNameEn": "Curve Sommelier",
+    "goldNameJp": "曲線のソムリエ"
+  },
+  "200351": {
+    "whiteId": 200352,
+    "whiteNameEn": "Corner Recovery ○",
+    "whiteNameJp": "コーナー回復○",
+    "goldNameEn": "Arc Maestro",
+    "goldNameJp": "円弧のマエストロ"
+  },
+  "200361": {
+    "whiteId": 200362,
+    "whiteNameEn": "Straight Skill",
+    "whiteNameJp": "直線巧者",
+    "goldNameEn": "Like The Wind",
+    "goldNameJp": "ハヤテ一文字"
+  },
+  "200371": {
+    "whiteId": 200372,
+    "whiteNameEn": "Straight Accel",
+    "whiteNameJp": "直線加速",
+    "goldNameEn": "Gust of Wind",
+    "goldNameJp": "一陣の風"
+  },
+  "200381": {
+    "whiteId": 200382,
+    "whiteNameEn": "Straight Recovery",
+    "whiteNameJp": "直線回復",
+    "goldNameEn": "Breath of Fresh Air",
+    "goldNameJp": "好転一息"
+  },
+  "200431": {
+    "whiteId": 200432,
+    "whiteNameEn": "Focus",
+    "whiteNameJp": "集中力",
+    "goldNameEn": "Concentration",
+    "goldNameJp": "コンセントレーション"
+  },
+  "200441": {
+    "whiteId": 200442,
+    "whiteNameEn": "Undercover",
+    "whiteNameJp": "隠れ蓑",
+    "goldNameEn": "Will of Steel",
+    "goldNameJp": "鋼の意志"
+  },
+  "200451": {
+    "whiteId": 200452,
+    "whiteNameEn": "Position Sense",
+    "whiteNameJp": "ポジションセンス",
+    "goldNameEn": "Star of the Show",
+    "goldNameJp": "注目の踊り子"
+  },
+  "200461": {
+    "whiteId": 200462,
+    "whiteNameEn": "Up The Pace",
+    "whiteNameJp": "ペースアップ",
+    "goldNameEn": "Now I'm Pumped!",
+    "goldNameJp": "アガッてきた！"
+  },
+  "200471": {
+    "whiteId": 200472,
+    "whiteNameEn": "Keep the Pace",
+    "whiteNameJp": "ペースキープ",
+    "goldNameEn": "Indomitable Heart",
+    "goldNameJp": "不屈の心"
+  },
+  "200481": {
+    "whiteId": 200482,
+    "whiteNameEn": "Crowded Calm",
+    "whiteNameJp": "ウマ込み冷静",
+    "goldNameEn": "Where the Wind Blows",
+    "goldNameJp": "どこ吹く風"
+  },
+  "200491": {
+    "whiteId": 200492,
+    "whiteNameEn": "Slight Detour",
+    "whiteNameJp": "垂れウマ回避",
+    "goldNameEn": "Non-stop Girl",
+    "goldNameJp": "ノンストップガール"
+  },
+  "200501": {
+    "whiteId": 200502,
+    "whiteNameEn": "Improvise",
+    "whiteNameJp": "臨機応変",
+    "goldNameEn": "Magician of the Lane",
+    "goldNameJp": "レーンの魔術師"
+  },
+  "200511": {
+    "whiteId": 200512,
+    "whiteNameEn": "Last Leg",
+    "whiteNameJp": "末脚",
+    "goldNameEn": "Heart and Soul",
+    "goldNameJp": "全身全霊"
+  },
+  "200531": {
+    "whiteId": 200532,
+    "whiteNameEn": "Frontrunner",
+    "whiteNameJp": "先駆け",
+    "goldNameEn": "Fortune Favors the Fast",
+    "goldNameJp": "先手必勝"
+  },
+  "200541": {
+    "whiteId": 200542,
+    "whiteNameEn": "Fast Paced",
+    "whiteNameJp": "急ぎ足",
+    "goldNameEn": "Escape Artist",
+    "goldNameJp": "脱出術"
+  },
+  "200551": {
+    "whiteId": 200552,
+    "whiteNameEn": "Press Forward, Ready!",
+    "whiteNameJp": "押し切り準備",
+    "goldNameEn": "Runaway",
+    "goldNameJp": "逃亡者"
+  },
+  "200561": {
+    "whiteId": 200562,
+    "whiteNameEn": "Stamina Keep",
+    "whiteNameJp": "スタミナキープ",
+    "goldNameEn": "Calm and Composed",
+    "goldNameJp": "余裕綽々"
+  },
+  "200571": {
+    "whiteId": 200572,
+    "whiteNameEn": "Favorite Place",
+    "whiteNameJp": "好位追走",
+    "goldNameEn": "Race Planner",
+    "goldNameJp": "レースプランナー"
+  },
+  "200581": {
+    "whiteId": 200582,
+    "whiteNameEn": "Passing Preparations",
+    "whiteNameJp": "抜け出し準備",
+    "goldNameEn": "Speed Star",
+    "goldNameJp": "スピードスター"
+  },
+  "200591": {
+    "whiteId": 200592,
+    "whiteNameEn": "Position Swiper",
+    "whiteNameJp": "位置取り押し上げ",
+    "goldNameEn": "Quick and Decisive",
+    "goldNameJp": "迅速果断"
+  },
+  "200601": {
+    "whiteId": 200602,
+    "whiteNameEn": "Between the Lines",
+    "whiteNameJp": "差し切り体勢",
+    "goldNameEn": "Switch-up Pro",
+    "goldNameJp": "乗り換え上手"
+  },
+  "200611": {
+    "whiteId": 200612,
+    "whiteNameEn": "Outside Pass, Ready!",
+    "whiteNameJp": "外差し準備",
+    "goldNameEn": "Rising Dragon",
+    "goldNameJp": "昇り龍"
+  },
+  "200621": {
+    "whiteId": 200622,
+    "whiteNameEn": "On Standby",
+    "whiteNameJp": "後方待機",
+    "goldNameEn": "Sleeping Lion",
+    "goldNameJp": "眠れる獅子"
+  },
+  "200631": {
+    "whiteId": 200632,
+    "whiteNameEn": "Outstanding Stratagem",
+    "whiteNameJp": "仕掛け抜群",
+    "goldNameEn": "Storm and Stress",
+    "goldNameJp": "疾風怒濤"
+  },
+  "200641": {
+    "whiteId": 200642,
+    "whiteNameEn": "Straight Shot",
+    "whiteNameJp": "直線一気",
+    "goldNameEn": "Imminent Shadow",
+    "goldNameJp": "迫る影"
+  },
+  "200651": {
+    "whiteId": 200652,
+    "whiteNameEn": "Sprinting Gear",
+    "whiteNameJp": "スプリントギア",
+    "goldNameEn": "Sprint Turbo",
+    "goldNameJp": "スプリントターボ"
+  },
+  "200671": {
+    "whiteId": 200672,
+    "whiteNameEn": "Draw Forward",
+    "whiteNameJp": "詰め寄り",
+    "goldNameEn": "Jolt of Energy",
+    "goldNameJp": "電撃の煌めき"
+  },
+  "200681": {
+    "whiteId": 200682,
+    "whiteNameEn": "Positive Planning",
+    "whiteNameJp": "積極策",
+    "goldNameEn": "Ruler of Mile",
+    "goldNameJp": "マイルの支配者"
+  },
+  "200691": {
+    "whiteId": 200692,
+    "whiteNameEn": "Progress Peek",
+    "whiteNameJp": "展開窺い",
+    "goldNameEn": "Keen Insight",
+    "goldNameJp": "慧眼"
+  },
+  "200701": {
+    "whiteId": 200702,
+    "whiteNameEn": "Updraft",
+    "whiteNameJp": "上昇気流",
+    "goldNameEn": "Big Strides",
+    "goldNameJp": "豪脚"
+  },
+  "200711": {
+    "whiteId": 200712,
+    "whiteNameEn": "Bright Future",
+    "whiteNameJp": "前途洋々",
+    "goldNameEn": "Trailblazer",
+    "goldNameJp": "切り開く者"
+  },
+  "200721": {
+    "whiteId": 200722,
+    "whiteNameEn": "Uptempo",
+    "whiteNameJp": "テンポアップ",
+    "goldNameEn": "Killer Tune",
+    "goldNameJp": "キラーチューン"
+  },
+  "200731": {
+    "whiteId": 200732,
+    "whiteNameEn": "Stand Your Ground",
+    "whiteNameJp": "食い下がり",
+    "goldNameEn": "To Victory!",
+    "goldNameJp": "勝利への執念"
+  },
+  "200741": {
+    "whiteId": 200742,
+    "whiteNameEn": "Deep Breaths",
+    "whiteNameJp": "深呼吸",
+    "goldNameEn": "Cooldown",
+    "goldNameJp": "クールダウン"
+  },
+  "200751": {
+    "whiteId": 200752,
+    "whiteNameEn": "King of the Castle",
+    "whiteNameJp": "内弁慶",
+    "goldNameEn": "Intrinsic Experience",
+    "goldNameJp": "内的体験"
+  },
+  "200761": {
+    "whiteId": 200762,
+    "whiteNameEn": "Backup Belly",
+    "whiteNameJp": "別腹タンク",
+    "goldNameEn": "Fight or Flight",
+    "goldNameJp": "火事場のバ鹿力"
+  },
+  "200772": {
+    "whiteId": 200771,
+    "whiteNameEn": "Trick (Front)",
+    "whiteNameJp": "トリック（前）",
+    "goldNameEn": "Captivating Trick",
+    "goldNameJp": "見惚れるトリック"
+  },
+  "200963": {
+    "whiteId": 200961,
+    "whiteNameEn": "Short Distance Straights ◎",
+    "whiteNameJp": "短距離直線◎",
+    "goldNameEn": "Lightning Flash",
+    "goldNameJp": "紫電一閃"
+  },
+  "200973": {
+    "whiteId": 200971,
+    "whiteNameEn": "Short Distance Corners ◎",
+    "whiteNameJp": "短距離コーナー◎",
+    "goldNameEn": "Lightning Slash",
+    "goldNameJp": "紫電円刃"
+  },
+  "200981": {
+    "whiteId": 200982,
+    "whiteNameEn": "Big Lead",
+    "whiteNameJp": "大きなリード",
+    "goldNameEn": "Overwhelming Lead",
+    "goldNameJp": "圧倒的リード"
+  },
+  "200991": {
+    "whiteId": 200992,
+    "whiteNameEn": "Countermeasures",
+    "whiteNameJp": "善後策",
+    "goldNameEn": "Plan X",
+    "goldNameJp": "プランX"
+  },
+  "201001": {
+    "whiteId": 201002,
+    "whiteNameEn": "Calculated Preparations",
+    "whiteNameJp": "仕掛け準備",
+    "goldNameEn": "Flawless Preparation!",
+    "goldNameJp": "準備万全！"
+  },
+  "201011": {
+    "whiteId": 201012,
+    "whiteNameEn": "Final Nail",
+    "whiteNameJp": "後方釘付",
+    "goldNameEn": "Bewitching",
+    "goldNameJp": "悩殺術"
+  },
+  "201021": {
+    "whiteId": 201022,
+    "whiteNameEn": "No Running Allowed",
+    "whiteNameJp": "抜け駆け禁止",
+    "goldNameEn": "Escape Prohibition",
+    "goldNameJp": "逃亡禁止令"
+  },
+  "201033": {
+    "whiteId": 201031,
+    "whiteNameEn": "Mile Straights ◎",
+    "whiteNameJp": "マイル直線◎",
+    "goldNameEn": "Cyclone Flash",
+    "goldNameJp": "豪風一閃"
+  },
+  "201043": {
+    "whiteId": 201041,
+    "whiteNameEn": "Mile Corners ◎",
+    "whiteNameJp": "マイルコーナー◎",
+    "goldNameEn": "Cyclone Slash",
+    "goldNameJp": "豪風円刃"
+  },
+  "201051": {
+    "whiteId": 201052,
+    "whiteNameEn": "Shift Gears",
+    "whiteNameJp": "ギアシフト",
+    "goldNameEn": "Gear Change",
+    "goldNameJp": "ギアチェンジ"
+  },
+  "201061": {
+    "whiteId": 201062,
+    "whiteNameEn": "Acceleration",
+    "whiteNameJp": "アクセラレーション",
+    "goldNameEn": "Accel Full Throttle!",
+    "goldNameJp": "アクセル全開！"
+  },
+  "201071": {
+    "whiteId": 201072,
+    "whiteNameEn": "Rival Spirit",
+    "whiteNameJp": "負けん気",
+    "goldNameEn": "Big Sister Disposition",
+    "goldNameJp": "姉御肌"
+  },
+  "201081": {
+    "whiteId": 201082,
+    "whiteNameEn": "Speed Eater",
+    "whiteNameJp": "スピードイーター",
+    "goldNameEn": "Speed Greed",
+    "goldNameJp": "スピードグリード"
+  },
+  "201091": {
+    "whiteId": 201092,
+    "whiteNameEn": "Opener",
+    "whiteNameJp": "布石",
+    "goldNameEn": "Battle Formation",
+    "goldNameJp": "布陣"
+  },
+  "201103": {
+    "whiteId": 201101,
+    "whiteNameEn": "Medium Distance Straights ◎",
+    "whiteNameJp": "中距離直線◎",
+    "goldNameEn": "Photon Flash",
+    "goldNameJp": "光芒一閃"
+  },
+  "201113": {
+    "whiteId": 201111,
+    "whiteNameEn": "Medium Distance Corners ◎",
+    "whiteNameJp": "中距離コーナー◎",
+    "goldNameEn": "Photon Slash",
+    "goldNameJp": "光芒円刃"
+  },
+  "201121": {
+    "whiteId": 201122,
+    "whiteNameEn": "Hawkeye",
+    "whiteNameJp": "ホークアイ",
+    "goldNameEn": "Clairvoyance",
+    "goldNameJp": "千里眼"
+  },
+  "201131": {
+    "whiteId": 201132,
+    "whiteNameEn": "Inazuma Step",
+    "whiteNameJp": "イナズマステップ",
+    "goldNameEn": "Lightning Step",
+    "goldNameJp": "ライトニングステップ"
+  },
+  "201141": {
+    "whiteId": 201142,
+    "whiteNameEn": "Light Step",
+    "whiteNameJp": "軽やかステップ",
+    "goldNameEn": "Miracle Step",
+    "goldNameJp": "神業ステップ"
+  },
+  "201151": {
+    "whiteId": 201152,
+    "whiteNameEn": "Binding Chains",
+    "whiteNameJp": "束縛",
+    "goldNameEn": "Monopolizer",
+    "goldNameJp": "独占力"
+  },
+  "201161": {
+    "whiteId": 201162,
+    "whiteNameEn": "Gentle Whisper",
+    "whiteNameJp": "ささやき",
+    "goldNameEn": "Charming Whisper",
+    "goldNameJp": "魅惑のささやき"
+  },
+  "201173": {
+    "whiteId": 201171,
+    "whiteNameEn": "Long Distance Straights ◎",
+    "whiteNameJp": "長距離直線◎",
+    "goldNameEn": "Flash of Wind",
+    "goldNameJp": "烈風一閃"
+  },
+  "201183": {
+    "whiteId": 201181,
+    "whiteNameEn": "Long Distance Corners ◎",
+    "whiteNameJp": "長距離コーナー◎",
+    "goldNameEn": "Wind Slash",
+    "goldNameJp": "烈風円刃"
+  },
+  "201191": {
+    "whiteId": 201192,
+    "whiteNameEn": "Keep the Lead",
+    "whiteNameJp": "リードキープ",
+    "goldNameEn": "Vanguard's Wisdom",
+    "goldNameJp": "先陣の心得"
+  },
+  "201201": {
+    "whiteId": 201202,
+    "whiteNameEn": "Pass Expert",
+    "whiteNameJp": "パス上手",
+    "goldNameEn": "VIP Pass",
+    "goldNameJp": "VIP顔パス"
+  },
+  "201211": {
+    "whiteId": 201212,
+    "whiteNameEn": "Press the Attack",
+    "whiteNameJp": "追い上げ",
+    "goldNameEn": "Tempestuous Pressure",
+    "goldNameJp": "怒涛の追い上げ"
+  },
+  "201221": {
+    "whiteId": 201222,
+    "whiteNameEn": "Stamina Eater",
+    "whiteNameJp": "スタミナイーター",
+    "goldNameEn": "Stamina Greed",
+    "goldNameJp": "スタミナグリード"
+  },
+  "201231": {
+    "whiteId": 201232,
+    "whiteNameEn": "Smoke Screen",
+    "whiteNameJp": "目くらまし",
+    "goldNameEn": "Conjurer",
+    "goldNameJp": "奇術師"
+  },
+  "201243": {
+    "whiteId": 201241,
+    "whiteNameEn": "Runner's Straights ◎",
+    "whiteNameJp": "逃げ直線◎",
+    "goldNameEn": "Gale Flash",
+    "goldNameJp": "陣風一閃"
+  },
+  "201253": {
+    "whiteId": 201251,
+    "whiteNameEn": "Runner's Corners ◎",
+    "whiteNameJp": "逃げコーナー◎",
+    "goldNameEn": "Gale Slash",
+    "goldNameJp": "陣風円刃"
+  },
+  "201261": {
+    "whiteId": 201262,
+    "whiteNameEn": "Danger Avoidance",
+    "whiteNameJp": "危険回避",
+    "goldNameEn": "Sixth Sense",
+    "goldNameJp": "シックスセンス"
+  },
+  "201271": {
+    "whiteId": 201272,
+    "whiteNameEn": "Lead Pride",
+    "whiteNameJp": "先頭プライド",
+    "goldNameEn": "Top Runner",
+    "goldNameJp": "トップランナー"
+  },
+  "201281": {
+    "whiteId": 201282,
+    "whiteNameEn": "Leave It to Vigor!",
+    "whiteNameJp": "勢い任せ",
+    "goldNameEn": "Wild Girl",
+    "goldNameJp": "じゃじゃウマ娘"
+  },
+  "201291": {
+    "whiteId": 201292,
+    "whiteNameEn": "Next Steps",
+    "whiteNameJp": "二の矢",
+    "goldNameEn": "Recombustion",
+    "goldNameJp": "再燃焼"
+  },
+  "201313": {
+    "whiteId": 201311,
+    "whiteNameEn": "Leader's Straights ◎",
+    "whiteNameJp": "先行直線◎",
+    "goldNameEn": "Valiant Flash",
+    "goldNameJp": "勇迅一閃"
+  },
+  "201323": {
+    "whiteId": 201321,
+    "whiteNameEn": "Leader's Corners ◎",
+    "whiteNameJp": "先行コーナー◎",
+    "goldNameEn": "Bravery Slash",
+    "goldNameJp": "勇迅円刃"
+  },
+  "201331": {
+    "whiteId": 201332,
+    "whiteNameEn": "Clever Step",
+    "whiteNameJp": "巧みなステップ",
+    "goldNameEn": "Technician",
+    "goldNameJp": "技巧派"
+  },
+  "201341": {
+    "whiteId": 201342,
+    "whiteNameEn": "Straight Down",
+    "whiteNameJp": "直滑降",
+    "goldNameEn": "Straight Down Resolution",
+    "goldNameJp": "決意の直滑降"
+  },
+  "201351": {
+    "whiteId": 201352,
+    "whiteNameEn": "Nutritional Supplements",
+    "whiteNameJp": "栄養補給",
+    "goldNameEn": "Big Eater",
+    "goldNameJp": "食いしん坊"
+  },
+  "201361": {
+    "whiteId": 201362,
+    "whiteNameEn": "Redo",
+    "whiteNameJp": "まき直し",
+    "goldNameEn": "Unbreakable Spirit",
+    "goldNameJp": "くじけぬ精神"
+  },
+  "201371": {
+    "whiteId": 201372,
+    "whiteNameEn": "Perturbation",
+    "whiteNameJp": "かく乱",
+    "goldNameEn": "Glamorous Perturbation",
+    "goldNameJp": "幻惑のかく乱"
+  },
+  "201383": {
+    "whiteId": 201381,
+    "whiteNameEn": "Betweener's Straights ◎",
+    "whiteNameJp": "差し直線◎",
+    "goldNameEn": "Incisive Flash",
+    "goldNameJp": "鋭脚一閃"
+  },
+  "201393": {
+    "whiteId": 201391,
+    "whiteNameEn": "Betweener's Corners ◎",
+    "whiteNameJp": "差しコーナー◎",
+    "goldNameEn": "Incisive Slash",
+    "goldNameJp": "鋭脚円刃"
+  },
+  "201401": {
+    "whiteId": 201402,
+    "whiteNameEn": "Hard Worker",
+    "whiteNameJp": "がんばり屋",
+    "goldNameEn": "Laborious",
+    "goldNameJp": "努力家"
+  },
+  "201411": {
+    "whiteId": 201412,
+    "whiteNameEn": "100K Horsepower",
+    "whiteNameJp": "十万バリキ",
+    "goldNameEn": "1M Horsepower",
+    "goldNameJp": "百万バリキ"
+  },
+  "201421": {
+    "whiteId": 201422,
+    "whiteNameEn": "A Little Break",
+    "whiteNameJp": "小休憩",
+    "goldNameEn": "Relax",
+    "goldNameJp": "リラックス"
+  },
+  "201431": {
+    "whiteId": 201432,
+    "whiteNameEn": "Reading Comprehension",
+    "whiteNameJp": "読解力",
+    "goldNameEn": "Seeing the Big Picture",
+    "goldNameJp": "大局観"
+  },
+  "201441": {
+    "whiteId": 201442,
+    "whiteNameEn": "Sharp Gaze",
+    "whiteNameJp": "鋭い眼光",
+    "goldNameEn": "Watching All Directions",
+    "goldNameJp": "八方にらみ"
+  },
+  "201453": {
+    "whiteId": 201451,
+    "whiteNameEn": "Chaser's Straights ◎",
+    "whiteNameJp": "追込直線◎",
+    "goldNameEn": "Moonlight Flash",
+    "goldNameJp": "月影一閃"
+  },
+  "201463": {
+    "whiteId": 201461,
+    "whiteNameEn": "Chaser's Corners ◎",
+    "whiteNameJp": "追込コーナー◎",
+    "goldNameEn": "Moonlight Slash",
+    "goldNameJp": "月影円刃"
+  },
+  "201471": {
+    "whiteId": 201472,
+    "whiteNameEn": "See Right Through",
+    "whiteNameJp": "お見通し",
+    "goldNameEn": "Good Visibility! All Clear!",
+    "goldNameJp": "視界良好！異常なし！"
+  },
+  "201481": {
+    "whiteId": 201482,
+    "whiteNameEn": "Winding Down",
+    "whiteNameJp": "下校の楽しみ",
+    "goldNameEn": "After School Specialist",
+    "goldNameJp": "下校後のスペシャリスト"
+  },
+  "201491": {
+    "whiteId": 201492,
+    "whiteNameEn": "Serene",
+    "whiteNameJp": "冷静",
+    "goldNameEn": "Calm and Collected",
+    "goldNameJp": "冷静沈着"
+  },
+  "201501": {
+    "whiteId": 201502,
+    "whiteNameEn": "Tactician",
+    "whiteNameJp": "策士",
+    "goldNameEn": "Heavenly Warrior",
+    "goldNameJp": "天命士"
+  },
+  "201511": {
+    "whiteId": 201512,
+    "whiteNameEn": "Sightlines",
+    "whiteNameJp": "まなざし",
+    "goldNameEn": "Passionate Gaze",
+    "goldNameJp": "熱いまなざし"
+  },
+  "201561": {
+    "whiteId": 201562,
+    "whiteNameEn": "Lucky Seven",
+    "whiteNameJp": "ラッキーセブン",
+    "goldNameEn": "Super Lucky Seven",
+    "goldNameJp": "スーパーラッキーセブン"
+  },
+  "201582": {
+    "whiteId": 201581,
+    "whiteNameEn": "Mountain Climber",
+    "whiteNameJp": "登山家",
+    "goldNameEn": "Ultimate Hill Climber",
+    "goldNameJp": "究極のヒルクライマー"
+  },
+  "201592": {
+    "whiteId": 201591,
+    "whiteNameEn": "Big Fan",
+    "whiteNameJp": "ウマ好み",
+    "goldNameEn": "Uma Mania",
+    "goldNameJp": "ウママニア"
+  },
+  "201602": {
+    "whiteId": 201601,
+    "whiteNameEn": "Groundwork",
+    "whiteNameJp": "地固め",
+    "goldNameEn": "Unshakable Stance",
+    "goldNameJp": "盤石の構え"
+  },
+  "201612": {
+    "whiteId": 201611,
+    "whiteNameEn": "Hold Your Tail High",
+    "whiteNameJp": "尻尾上がり",
+    "goldNameEn": "Tail of Victory",
+    "goldNameJp": "尻尾の滝登り"
+  },
+  "201632": {
+    "whiteId": 201631,
+    "whiteNameEn": "Sympathy",
+    "whiteNameJp": "シンパシー",
+    "goldNameEn": "Connection",
+    "goldNameJp": "コネクト"
+  },
+  "201652": {
+    "whiteId": 201651,
+    "whiteNameEn": "Slipstream",
+    "whiteNameJp": "スリップストリーム",
+    "goldNameEn": "In the Right Place!",
+    "goldNameJp": "いいとこ入った！"
+  },
+  "201662": {
+    "whiteId": 201661,
+    "whiteNameEn": "Playtime's Over!",
+    "whiteNameJp": "遊びはおしまいっ！",
+    "goldNameEn": "Sorry, Gotta Go!",
+    "goldNameJp": "お先に失礼っ！"
+  },
+  "201671": {
+    "whiteId": 201672,
+    "whiteNameEn": "Recommendation",
+    "whiteNameJp": "レコメンド",
+    "goldNameEn": "Trending Charts!",
+    "goldNameJp": "チャート急上昇！"
+  },
+  "201681": {
+    "whiteId": 201682,
+    "whiteNameEn": "Front Row Aim",
+    "whiteNameJp": "前列狙い",
+    "goldNameEn": "Aim for the Front Row!",
+    "goldNameJp": "狙うは最前列！"
+  },
+  "201691": {
+    "whiteId": 201692,
+    "whiteNameEn": "Quiet Breathing",
+    "whiteNameJp": "静かな呼吸",
+    "goldNameEn": "Concealed Readiness",
+    "goldNameJp": "潜伏態勢"
+  },
+  "201701": {
+    "whiteId": 201702,
+    "whiteNameEn": "All That There Is",
+    "whiteNameJp": "ありったけ",
+    "goldNameEn": "Prepared to Die",
+    "goldNameJp": "決死の覚悟"
+  },
+  "201901": {
+    "whiteId": 201902,
+    "whiteNameEn": "Head-To-Head",
+    "whiteNameJp": "真っ向勝負",
+    "goldNameEn": "Fierce Competition",
+    "goldNameJp": "鍔迫り合い"
+  },
+  "202001": {
+    "whiteId": 202002,
+    "whiteNameEn": "Sandstorm Practice",
+    "whiteNameJp": "砂塵慣れ",
+    "goldNameEn": "Sand Expert",
+    "goldNameJp": "砂の玄人"
+  },
+  "202011": {
+    "whiteId": 202012,
+    "whiteNameEn": "Kageuchi",
+    "whiteNameJp": "影打",
+    "goldNameEn": "Shinuchi",
+    "goldNameJp": "真打"
+  },
+  "202021": {
+    "whiteId": 202022,
+    "whiteNameEn": "Early Gambit",
+    "whiteNameJp": "早仕掛け",
+    "goldNameEn": "Daring Attack",
+    "goldNameJp": "強攻策"
+  },
+  "202031": {
+    "whiteId": 202032,
+    "whiteNameEn": "Questionable Strategy",
+    "whiteNameJp": "あやしげな作戦",
+    "goldNameEn": "Gamester",
+    "goldNameJp": "博打うち"
+  },
+  "202041": {
+    "whiteId": 202042,
+    "whiteNameEn": "Nimble Step",
+    "whiteNameJp": "軽い足取り",
+    "goldNameEn": "In High Spirits",
+    "goldNameJp": "意気衝天"
+  },
+  "202071": {
+    "whiteId": 202072,
+    "whiteNameEn": "My Own Pace",
+    "whiteNameJp": "マイペース",
+    "goldNameEn": "Self-Possessed",
+    "goldNameJp": "泰然自若"
+  },
+  "202081": {
+    "whiteId": 202082,
+    "whiteNameEn": "One Chance",
+    "whiteNameJp": "ワンチャンス",
+    "goldNameEn": "Rise From the Ashes",
+    "goldNameJp": "起死回生"
+  },
+  "202091": {
+    "whiteId": 202092,
+    "whiteNameEn": "Fighting Spirit",
+    "whiteNameJp": "闘争心",
+    "goldNameEn": "Burning Spirit",
+    "goldNameJp": "気炎万丈"
+  },
+  "202101": {
+    "whiteId": 202102,
+    "whiteNameEn": "Tumbling Forward",
+    "whiteNameJp": "前のめり",
+    "goldNameEn": "Elation",
+    "goldNameJp": "高揚感"
+  },
+  "202111": {
+    "whiteId": 202112,
+    "whiteNameEn": "Sufficient Spirit",
+    "whiteNameJp": "気合十分",
+    "goldNameEn": "Unstoppable Force",
+    "goldNameJp": "破竹の勢い"
+  },
+  "202121": {
+    "whiteId": 202122,
+    "whiteNameEn": "Fearless Heart",
+    "whiteNameJp": "恐れぬ心",
+    "goldNameEn": "Daredevil",
+    "goldNameJp": "大胆不敵"
+  },
+  "202131": {
+    "whiteId": 202132,
+    "whiteNameEn": "With Verve",
+    "whiteNameJp": "気迫を込めて",
+    "goldNameEn": "Wild Whirlwind",
+    "goldNameJp": "荒ぶる旋風"
+  },
+  "202151": {
+    "whiteId": 202152,
+    "whiteNameEn": "Full Throttle",
+    "whiteNameJp": "フルスロットル",
+    "goldNameEn": "Pushing Forward",
+    "goldNameJp": "勇往邁進"
+  },
+  "202171": {
+    "whiteId": 202172,
+    "whiteNameEn": "Downhill Adept",
+    "whiteNameJp": "下り坂巧者",
+    "goldNameEn": "Supreme Downhiller",
+    "goldNameJp": "至高のダウンヒラー"
+  },
+  "202191": {
+    "whiteId": 202192,
+    "whiteNameEn": "Faultless",
+    "whiteNameJp": "抜かりなし",
+    "goldNameEn": "Single-Minded",
+    "goldNameJp": "一意専心"
+  },
+  "202254": {
+    "whiteId": 202251,
+    "whiteNameEn": "Exchange Races ◎",
+    "whiteNameJp": "交流重賞◎",
+    "goldNameEn": "Exchange Races Demon",
+    "goldNameJp": "交流重賞の鬼"
+  },
+  "202261": {
+    "whiteId": 202262,
+    "whiteNameEn": "Promising Omen",
+    "whiteNameJp": "明るい兆し",
+    "goldNameEn": "Victory Opportunity",
+    "goldNameJp": "勝利の機運"
+  },
+  "202271": {
+    "whiteId": 202272,
+    "whiteNameEn": "Turnaround",
+    "whiteNameJp": "盛り返し",
+    "goldNameEn": "Redoubled Efforts",
+    "goldNameJp": "捲土重来"
+  },
+  "202281": {
+    "whiteId": 202282,
+    "whiteNameEn": "At Full Speed",
+    "whiteNameJp": "まっしぐら",
+    "goldNameEn": "Full Speed Ahead!",
+    "goldNameJp": "全速前進！"
+  },
+  "202291": {
+    "whiteId": 202292,
+    "whiteNameEn": "Clear Head",
+    "whiteNameJp": "冴える思考",
+    "goldNameEn": "Clear and Serene",
+    "goldNameJp": "明鏡止水"
+  },
+  "202301": {
+    "whiteId": 202302,
+    "whiteNameEn": "Dust Bath ○",
+    "whiteNameJp": "砂浴び○",
+    "goldNameEn": "Leisurely Dust Bath",
+    "goldNameJp": "優雅な砂浴び"
+  },
+  "202311": {
+    "whiteId": 202312,
+    "whiteNameEn": "Full of Zeal",
+    "whiteNameJp": "意気込み十分",
+    "goldNameEn": "Aim for the Center!",
+    "goldNameJp": "目指せセンター！"
+  },
+  "202321": {
+    "whiteId": 202322,
+    "whiteNameEn": "Rapid Ascent",
+    "whiteNameJp": "急浮上",
+    "goldNameEn": "Blast Mode!",
+    "goldNameJp": "爆走モード！"
+  },
+  "202331": {
+    "whiteId": 202332,
+    "whiteNameEn": "Skillful Step",
+    "whiteNameJp": "踏み込み上手",
+    "goldNameEn": "Outstanding Step",
+    "goldNameJp": "抜群の踏み込み"
+  },
+  "202341": {
+    "whiteId": 202342,
+    "whiteNameEn": "Mud Play ◎",
+    "whiteNameJp": "泥遊び◎",
+    "goldNameEn": "Mud Master",
+    "goldNameJp": "泥んこマイスター"
+  },
+  "202351": {
+    "whiteId": 202352,
+    "whiteNameEn": "Cloud of Dust",
+    "whiteNameJp": "土煙",
+    "goldNameEn": "Dancer of the Sands",
+    "goldNameJp": "砂上の舞姫"
+  },
+  "202361": {
+    "whiteId": 202362,
+    "whiteNameEn": "Pressing Feeling",
+    "whiteNameJp": "圧迫感",
+    "goldNameEn": "Don't Let Your Guard Down",
+    "goldNameJp": "油断大敵"
+  },
+  "202371": {
+    "whiteId": 202372,
+    "whiteNameEn": "Attack Stance",
+    "whiteNameJp": "攻めの姿勢",
+    "goldNameEn": "Unstoppable",
+    "goldNameJp": "アンストッパブル"
+  },
+  "202381": {
+    "whiteId": 202382,
+    "whiteNameEn": "Breakthrough Plan",
+    "whiteNameJp": "打開策",
+    "goldNameEn": "Breakthrough",
+    "goldNameJp": "ブレイクスルー"
+  },
+  "202391": {
+    "whiteId": 202392,
+    "whiteNameEn": "Frantic State",
+    "whiteNameJp": "しゃかりき",
+    "goldNameEn": "1000% Output!",
+    "goldNameJp": "出力1000％！"
+  },
+  "202401": {
+    "whiteId": 202402,
+    "whiteNameEn": "Mighty Leap",
+    "whiteNameJp": "一足飛び",
+    "goldNameEn": "Lightning Speed",
+    "goldNameJp": "電光石火"
+  },
+  "202411": {
+    "whiteId": 202412,
+    "whiteNameEn": "Ambitions",
+    "whiteNameJp": "向上心",
+    "goldNameEn": "Winds of Change",
+    "goldNameJp": "風雲の志"
+  },
+  "202421": {
+    "whiteId": 202422,
+    "whiteNameEn": "Devil-May-Care",
+    "whiteNameJp": "がむしゃら",
+    "goldNameEn": "Lose Yourself",
+    "goldNameJp": "無我夢中"
+  },
+  "202431": {
+    "whiteId": 202432,
+    "whiteNameEn": "Firm Step",
+    "whiteNameJp": "確かな足取り",
+    "goldNameEn": "Steady Advance",
+    "goldNameJp": "快進撃"
+  },
+  "202441": {
+    "whiteId": 202442,
+    "whiteNameEn": "Gambling Spirit",
+    "whiteNameJp": "やまっけ",
+    "goldNameEn": "Gambler",
+    "goldNameJp": "勝負師"
+  },
+  "202451": {
+    "whiteId": 202452,
+    "whiteNameEn": "Razor-Sharp Stride",
+    "whiteNameJp": "キレる脚",
+    "goldNameEn": "Top Gear",
+    "goldNameJp": "トップギア"
+  },
+  "202461": {
+    "whiteId": 202462,
+    "whiteNameEn": "Steadfast",
+    "whiteNameJp": "粘り腰",
+    "goldNameEn": "Untouchable Shadow",
+    "goldNameJp": "踏ませぬ影"
+  },
+  "202471": {
+    "whiteId": 202472,
+    "whiteNameEn": "Tooth and Tail",
+    "whiteNameJp": "食らいつき",
+    "goldNameEn": "Hot Pursuit",
+    "goldNameJp": "猛追"
+  },
+  "202481": {
+    "whiteId": 202482,
+    "whiteNameEn": "True Worth",
+    "whiteNameJp": "本領発揮",
+    "goldNameEn": "Monster",
+    "goldNameJp": "怪物"
+  },
+  "202491": {
+    "whiteId": 202492,
+    "whiteNameEn": "Witful",
+    "whiteNameJp": "切れ味",
+    "goldNameEn": "Unrivaled Wits",
+    "goldNameJp": "抜群の切れ味"
+  },
+  "202501": {
+    "whiteId": 202502,
+    "whiteNameEn": "Rushing in Blind",
+    "whiteNameJp": "向こう見ず",
+    "goldNameEn": "Reckless",
+    "goldNameJp": "遮二無二"
+  },
+  "202521": {
+    "whiteId": 202522,
+    "whiteNameEn": "Mold Breaker",
+    "whiteNameJp": "型破り",
+    "goldNameEn": "Seamless",
+    "goldNameJp": "天衣無縫"
+  },
+  "202531": {
+    "whiteId": 202532,
+    "whiteNameEn": "Graceful Step",
+    "whiteNameJp": "しとやかな足取り",
+    "goldNameEn": "Ascendance",
+    "goldNameJp": "優位形成"
+  },
+  "202541": {
+    "whiteId": 202542,
+    "whiteNameEn": "Pressure",
+    "whiteNameJp": "プレッシャー",
+    "goldNameEn": "Dignified",
+    "goldNameJp": "威風堂々"
+  },
+  "202551": {
+    "whiteId": 202552,
+    "whiteNameEn": "Rapid",
+    "whiteNameJp": "快速",
+    "goldNameEn": "Divine Speed",
+    "goldNameJp": "神速"
+  },
+  "202561": {
+    "whiteId": 202562,
+    "whiteNameEn": "Lock On",
+    "whiteNameJp": "ロックオン",
+    "goldNameEn": "One-shot",
+    "goldNameJp": "一発必中"
+  },
+  "202581": {
+    "whiteId": 202582,
+    "whiteNameEn": "Stay the Course",
+    "whiteNameJp": "脇目も振らず",
+    "goldNameEn": "Ahead of the Game",
+    "goldNameJp": "脱兎の先へ"
+  },
+  "202591": {
+    "whiteId": 202592,
+    "whiteNameEn": "Great Haste",
+    "whiteNameJp": "大急ぎ",
+    "goldNameEn": "In One Fell Swoop",
+    "goldNameJp": "一気呵成"
+  },
+  "202601": {
+    "whiteId": 202602,
+    "whiteNameEn": "Ignition",
+    "whiteNameJp": "イグニッション",
+    "goldNameEn": "Luminescence",
+    "goldNameJp": "ルミネセンス"
+  },
+  "202611": {
+    "whiteId": 202612,
+    "whiteNameEn": "Overflowing Passion",
+    "whiteNameJp": "溢れる情熱",
+    "goldNameEn": "Inspiration",
+    "goldNameJp": "インスピレーション"
+  },
+  "202621": {
+    "whiteId": 202622,
+    "whiteNameEn": "On the Move",
+    "whiteNameJp": "進出開始",
+    "goldNameEn": "Blitzing Spirit",
+    "goldNameJp": "突撃魂"
+  },
+  "202641": {
+    "whiteId": 202642,
+    "whiteNameEn": "From the First Step",
+    "whiteNameJp": "一歩から",
+    "goldNameEn": "Thousand-Mile Journey",
+    "goldNameJp": "千里の道"
+  },
+  "202651": {
+    "whiteId": 202652,
+    "whiteNameEn": "Self-Assured",
+    "whiteNameJp": "自信家",
+    "goldNameEn": "Cloud Dragon's Metamorphosis",
+    "goldNameJp": "雲蒸竜変"
+  },
+  "202661": {
+    "whiteId": 202662,
+    "whiteNameEn": "Rising Passion",
+    "whiteNameJp": "込み上げる熱",
+    "goldNameEn": "Surging Beat",
+    "goldNameJp": "昂る鼓動"
+  },
+  "202671": {
+    "whiteId": 202672,
+    "whiteNameEn": "High Hopes",
+    "whiteNameJp": "心弾んで",
+    "goldNameEn": "High Voltage",
+    "goldNameJp": "ハイボルテージ"
+  },
+  "202681": {
+    "whiteId": 202682,
+    "whiteNameEn": "Up the Vibes",
+    "whiteNameJp": "バイブス上昇",
+    "goldNameEn": "Seriously☆Good↑Vibes",
+    "goldNameJp": "ブチ☆アゲ↑バイブス"
+  },
+  "202691": {
+    "whiteId": 202692,
+    "whiteNameEn": "Early Bird",
+    "whiteNameJp": "一番乗り",
+    "goldNameEn": "Further Than Anyone",
+    "goldNameJp": "誰より前へ！"
+  },
+  "202701": {
+    "whiteId": 202702,
+    "whiteNameEn": "Inquisitive Mind",
+    "whiteNameJp": "探求心",
+    "goldNameEn": "Singularity",
+    "goldNameJp": "シンギュラリティ"
+  },
+  "202711": {
+    "whiteId": 202712,
+    "whiteNameEn": "Satisfying Pace",
+    "whiteNameJp": "会心の一歩",
+    "goldNameEn": "Check",
+    "goldNameJp": "王手"
+  },
+  "202721": {
+    "whiteId": 202722,
+    "whiteNameEn": "Unbreakable Mind",
+    "whiteNameJp": "折れない心",
+    "goldNameEn": "Never Give Up",
+    "goldNameJp": "ネバーギブアップ"
+  },
+  "202734": {
+    "whiteId": 202731,
+    "whiteNameEn": "Longchamp Racetrack ◎",
+    "whiteNameJp": "ロンシャンレース場◎",
+    "goldNameEn": "Child of Longchamp",
+    "goldNameJp": "ロンシャンの申し子"
+  },
+  "202741": {
+    "whiteId": 202742,
+    "whiteNameEn": "Refined Conduct",
+    "whiteNameJp": "品行方正",
+    "goldNameEn": "Pure Perfection",
+    "goldNameJp": "十全十美"
+  },
+  "202751": {
+    "whiteId": 202752,
+    "whiteNameEn": "Single-Minded Advance",
+    "whiteNameJp": "ひたむき前進",
+    "goldNameEn": "Unyielding Tenacity",
+    "goldNameJp": "気骨稜稜"
+  },
+  "202761": {
+    "whiteId": 202762,
+    "whiteNameEn": "Toward Victory",
+    "whiteNameJp": "勝利に向かって",
+    "goldNameEn": "Send It Flying!",
+    "goldNameJp": "かっとばせ！"
+  },
+  "202771": {
+    "whiteId": 202772,
+    "whiteNameEn": "Honing In",
+    "whiteNameJp": "狙いを定めて",
+    "goldNameEn": "Laser-Focused",
+    "goldNameJp": "一点集中"
+  },
+  "202791": {
+    "whiteId": 202792,
+    "whiteNameEn": "Middle Leg Adept",
+    "whiteNameJp": "中盤巧者",
+    "goldNameEn": "Exquisite Timing",
+    "goldNameJp": "時中の妙"
+  },
+  "202801": {
+    "whiteId": 202802,
+    "whiteNameEn": "Opening Leg Adept",
+    "whiteNameJp": "序盤巧者",
+    "goldNameEn": "Battle for Initiative",
+    "goldNameJp": "機先の勝負"
+  },
+  "202811": {
+    "whiteId": 202812,
+    "whiteNameEn": "Finale",
+    "whiteNameJp": "大詰め",
+    "goldNameEn": "Finishing Touch",
+    "goldNameJp": "画竜点睛"
+  },
+  "202821": {
+    "whiteId": 202822,
+    "whiteNameEn": "No Hesitation",
+    "whiteNameJp": "迷いなし",
+    "goldNameEn": "One Sky, One Goal",
+    "goldNameJp": "万里一空"
+  },
+  "202831": {
+    "whiteId": 202832,
+    "whiteNameEn": "Backup Planning",
+    "whiteNameJp": "二段構え",
+    "goldNameEn": "Call & Response",
+    "goldNameJp": "コール&レスポンス"
+  },
+  "202841": {
+    "whiteId": 202842,
+    "whiteNameEn": "Dust Off",
+    "whiteNameJp": "砂払い",
+    "goldNameEn": "Sand Virtuoso",
+    "goldNameJp": "砂の妙手"
+  },
+  "202851": {
+    "whiteId": 202852,
+    "whiteNameEn": "Rapid Overtakes",
+    "whiteNameJp": "ごぼう抜き",
+    "goldNameEn": "Clean Sweep",
+    "goldNameJp": "一網打尽"
+  },
+  "202861": {
+    "whiteId": 202862,
+    "whiteNameEn": "Swift Takeoff",
+    "whiteNameJp": "急発進",
+    "goldNameEn": "Rocket Start",
+    "goldNameJp": "ロケットスタート"
+  },
+  "202871": {
+    "whiteId": 202872,
+    "whiteNameEn": "Mighty Step",
+    "whiteNameJp": "渾身の足取り",
+    "goldNameEn": "Reign",
+    "goldNameJp": "君臨"
+  },
+  "202881": {
+    "whiteId": 202882,
+    "whiteNameEn": "Boiling Blood",
+    "whiteNameJp": "たぎる血潮",
+    "goldNameEn": "Complete Combustion",
+    "goldNameJp": "完全燃焼"
+  },
+  "202891": {
+    "whiteId": 202892,
+    "whiteNameEn": "Immovable Spirit",
+    "whiteNameJp": "不動の心",
+    "goldNameEn": "Clear Mind",
+    "goldNameJp": "心頭滅却"
+  },
+  "202901": {
+    "whiteId": 202902,
+    "whiteNameEn": "Sufficient Thrust",
+    "whiteNameJp": "推力十分",
+    "goldNameEn": "Soaring Stride",
+    "goldNameJp": "飛翔脚"
+  },
+  "202921": {
+    "whiteId": 202922,
+    "whiteNameEn": "No Reluctance",
+    "whiteNameJp": "惜しみなし",
+    "goldNameEn": "Undivided Focus",
+    "goldNameJp": "一心不乱"
+  },
+  "202931": {
+    "whiteId": 202932,
+    "whiteNameEn": "Shadowstepper",
+    "whiteNameJp": "影踏み",
+    "goldNameEn": "Relentless Approach",
+    "goldNameJp": "肉薄"
+  },
+  "202951": {
+    "whiteId": 202952,
+    "whiteNameEn": "Pioneer",
+    "whiteNameJp": "パイオニア",
+    "goldNameEn": "Pioneer of the Sands",
+    "goldNameJp": "砂の開拓者"
+  },
+  "202961": {
+    "whiteId": 202962,
+    "whiteNameEn": "Boiling Emotions",
+    "whiteNameJp": "滾る想い",
+    "goldNameEn": "Ardour",
+    "goldNameJp": "熱情"
+  },
+  "202971": {
+    "whiteId": 202972,
+    "whiteNameEn": "Seize the Chance",
+    "whiteNameJp": "好機を捉えて",
+    "goldNameEn": "Golden Opportunity",
+    "goldNameJp": "千載一遇"
+  },
+  "202981": {
+    "whiteId": 202982,
+    "whiteNameEn": "Leap Premonition",
+    "whiteNameJp": "飛躍の予感",
+    "goldNameEn": "Gamma Ray Burst",
+    "goldNameJp": "流星光底"
+  },
+  "203001": {
+    "whiteId": 203002,
+    "whiteNameEn": "Art of Coaxing",
+    "whiteNameJp": "手練手管",
+    "goldNameEn": "Manipulation",
+    "goldNameJp": "掌握"
+  },
+  "203011": {
+    "whiteId": 203012,
+    "whiteNameEn": "Explosive Force",
+    "whiteNameJp": "瞬発力",
+    "goldNameEn": "Lightning Blitz",
+    "goldNameJp": "電迅速攻"
+  },
+  "203021": {
+    "whiteId": 203022,
+    "whiteNameEn": "Wind Vane",
+    "whiteNameJp": "風切り",
+    "goldNameEn": "Wind Rider",
+    "goldNameJp": "風翔"
+  },
+  "203031": {
+    "whiteId": 203032,
+    "whiteNameEn": "An Honest Step",
+    "whiteNameJp": "素直な一歩",
+    "goldNameEn": "Frontal Attack",
+    "goldNameJp": "正攻法"
+  },
+  "203041": {
+    "whiteId": 203042,
+    "whiteNameEn": "Pounding Chest",
+    "whiteNameJp": "胸の高鳴り",
+    "goldNameEn": "Fluttering Heart",
+    "goldNameJp": "トキメキハート"
+  },
+  "203051": {
+    "whiteId": 203052,
+    "whiteNameEn": "Unshakeable Faith",
+    "whiteNameJp": "揺るがぬ信念",
+    "goldNameEn": "Unwavering Ambition",
+    "goldNameJp": "初志貫徹"
+  },
+  "203081": {
+    "whiteId": 203082,
+    "whiteNameEn": "With All My Might",
+    "whiteNameJp": "力の限り",
+    "goldNameEn": "Stamp on the Ground",
+    "goldNameJp": "踏みしめる大地"
+  },
+  "203091": {
+    "whiteId": 203092,
+    "whiteNameEn": "Dirt Straights ◎",
+    "whiteNameJp": "ダート直線◎",
+    "goldNameEn": "Sandstorm Flash",
+    "goldNameJp": "砂塵一閃"
+  },
+  "203101": {
+    "whiteId": 203102,
+    "whiteNameEn": "Dirt Corners ◎",
+    "whiteNameJp": "ダートコーナー◎",
+    "goldNameEn": "Sandstorm Slash",
+    "goldNameJp": "砂塵円刃"
+  },
+  "203111": {
+    "whiteId": 203112,
+    "whiteNameEn": "Frontal Breakthrough",
+    "whiteNameJp": "正面突破",
+    "goldNameEn": "Just Rule",
+    "goldNameJp": "王道一途"
+  },
+  "203121": {
+    "whiteId": 203122,
+    "whiteNameEn": "To Greater Heights",
+    "whiteNameJp": "さらなる高みへ",
+    "goldNameEn": "Proof of Strength",
+    "goldNameJp": "強者の証"
+  },
+  "203131": {
+    "whiteId": 203132,
+    "whiteNameEn": "Decisive Blow",
+    "whiteNameJp": "決定打",
+    "goldNameEn": "Curtain Closer",
+    "goldNameJp": "幕引き"
+  },
+  "203141": {
+    "whiteId": 203142,
+    "whiteNameEn": "Self-Restraint",
+    "whiteNameJp": "克己心",
+    "goldNameEn": "Sharp-Witted Composure",
+    "goldNameJp": "怜悧清澄"
+  },
+  "203151": {
+    "whiteId": 203152,
+    "whiteNameEn": "Bare Passion",
+    "whiteNameJp": "むきだしの情熱",
+    "goldNameEn": "Pure Instincts",
+    "goldNameJp": "本能の解放"
+  },
+  "203161": {
+    "whiteId": 203162,
+    "whiteNameEn": "Fearless Advance",
+    "whiteNameJp": "後先恐れず",
+    "goldNameEn": "Peerless Boldness",
+    "goldNameJp": "豪胆無比"
+  },
+  "203171": {
+    "whiteId": 203172,
+    "whiteNameEn": "Switch Over Pro",
+    "whiteNameJp": "切り替え上手",
+    "goldNameEn": "Tension and Release",
+    "goldNameJp": "一張一弛"
+  },
+  "203181": {
+    "whiteId": 203182,
+    "whiteNameEn": "Contradicting Emotions",
+    "whiteNameJp": "裏腹なキモチ",
+    "goldNameEn": "Embracing Virtue and Vice",
+    "goldNameJp": "清濁併呑"
+  },
+  "203201": {
+    "whiteId": 203202,
+    "whiteNameEn": "Not Even a Glimpse",
+    "whiteNameJp": "目にも留まらず",
+    "goldNameEn": "Quick Work",
+    "goldNameJp": "早業"
+  },
+  "203221": {
+    "whiteId": 203222,
+    "whiteNameEn": "Aggressive",
+    "whiteNameJp": "アグレッシブ",
+    "goldNameEn": "Breaking Free",
+    "goldNameJp": "影従打破"
+  },
+  "203231": {
+    "whiteId": 203232,
+    "whiteNameEn": "Restless Step",
+    "whiteNameJp": "逸る足取り",
+    "goldNameEn": "Explosive Fighting Spirit",
+    "goldNameJp": "ハジける闘志"
+  },
+  "203241": {
+    "whiteId": 203242,
+    "whiteNameEn": "Fuse",
+    "whiteNameJp": "端緒",
+    "goldNameEn": "Chain Reaction",
+    "goldNameJp": "連鎖反応"
+  },
+  "203251": {
+    "whiteId": 203252,
+    "whiteNameEn": "Surprise Attack",
+    "whiteNameJp": "急襲",
+    "goldNameEn": "Like a Blaze",
+    "goldNameJp": "烈火の如く"
+  },
+  "203301": {
+    "whiteId": 203302,
+    "whiteNameEn": "Fervor",
+    "whiteNameJp": "熱狂的",
+    "goldNameEn": "Peak Ferocity",
+    "goldNameJp": "熾烈の極み"
+  },
+  "203311": {
+    "whiteId": 203312,
+    "whiteNameEn": "Towards the Light",
+    "whiteNameJp": "光差す方へ",
+    "goldNameEn": "Flash",
+    "goldNameJp": "閃光"
+  },
+  "203321": {
+    "whiteId": 203322,
+    "whiteNameEn": "Descent",
+    "whiteNameJp": "駆け降り",
+    "goldNameEn": "Descending Wings",
+    "goldNameJp": "舞い降りる翼"
+  },
+  "203331": {
+    "whiteId": 203332,
+    "whiteNameEn": "Preliminary Preparation",
+    "whiteNameJp": "下準備",
+    "goldNameEn": "Thorough Preparation",
+    "goldNameJp": "用意周到"
+  },
+  "203341": {
+    "whiteId": 203342,
+    "whiteNameEn": "Creeping Footsteps",
+    "whiteNameJp": "這い寄る足音",
+    "goldNameEn": "Pursuer",
+    "goldNameJp": "追跡者"
+  },
+  "203351": {
+    "whiteId": 203352,
+    "whiteNameEn": "High Pitch",
+    "whiteNameJp": "ハイピッチ",
+    "goldNameEn": "Brave and Bold",
+    "goldNameJp": "勇猛果敢"
+  },
+  "203361": {
+    "whiteId": 203362,
+    "whiteNameEn": "Forward Step by Step",
+    "whiteNameJp": "一歩ずつ前へ",
+    "goldNameEn": "Proven Mettle",
+    "goldNameJp": "真骨頂"
+  },
+  "203371": {
+    "whiteId": 203372,
+    "whiteNameEn": "Striking Back",
+    "whiteNameJp": "切り返し",
+    "goldNameEn": "Seize the Initiative",
+    "goldNameJp": "後の先"
+  },
+  "203381": {
+    "whiteId": 203382,
+    "whiteNameEn": "Pulling Away",
+    "whiteNameJp": "逃げ切り体勢",
+    "goldNameEn": "The Fight's Not Over Yet!",
+    "goldNameJp": "勝負はここから！"
+  },
+  "203391": {
+    "whiteId": 203392,
+    "whiteNameEn": "Unprecedented",
+    "whiteNameJp": "破天荒",
+    "goldNameEn": "Gallant Figure",
+    "goldNameJp": "英姿颯爽"
+  },
+  "203401": {
+    "whiteId": 203402,
+    "whiteNameEn": "Riding the Tailwind",
+    "whiteNameJp": "追い風に乗って",
+    "goldNameEn": "Cloud-Riding Dragon",
+    "goldNameJp": "飛竜乗雲"
+  },
+  "203411": {
+    "whiteId": 203412,
+    "whiteNameEn": "Steady Effort",
+    "whiteNameJp": "地道に重ねて",
+    "goldNameEn": "Fruits of Labor",
+    "goldNameJp": "努力の結実"
+  },
+  "203421": {
+    "whiteId": 203422,
+    "whiteNameEn": "Believe in Yourself",
+    "whiteNameJp": "己を信じて",
+    "goldNameEn": "Forthright",
+    "goldNameJp": "正々堂々"
+  },
+  "203431": {
+    "whiteId": 203432,
+    "whiteNameEn": "Dynamic Motion",
+    "whiteNameJp": "躍動",
+    "goldNameEn": "Brilliant Mind",
+    "goldNameJp": "才気煥発"
+  },
+  "203441": {
+    "whiteId": 203442,
+    "whiteNameEn": "Surpassing Ambitions",
+    "whiteNameJp": "憧れを越えて",
+    "goldNameEn": "To the Stage of Dreams",
+    "goldNameJp": "夢の舞台へ"
+  },
+  "203461": {
+    "whiteId": 203462,
+    "whiteNameEn": "Outstanding Step",
+    "whiteNameJp": "抜きん出る一歩",
+    "goldNameEn": "Preeminent",
+    "goldNameJp": "傑出"
+  },
+  "203471": {
+    "whiteId": 203472,
+    "whiteNameEn": "Overflowing Fighting Spirit",
+    "whiteNameJp": "みなぎる闘志",
+    "goldNameEn": "Furious Sprint",
+    "goldNameJp": "猛烈激走"
+  },
+  "203481": {
+    "whiteId": 203482,
+    "whiteNameEn": "Unyielding Step",
+    "whiteNameJp": "譲れぬ一歩",
+    "goldNameEn": "Initiative",
+    "goldNameJp": "イニシアチブ"
+  },
+  "203491": {
+    "whiteId": 203492,
+    "whiteNameEn": "Flying Sparks",
+    "whiteNameJp": "火花散らして",
+    "goldNameEn": "Fierce Clash",
+    "goldNameJp": "丁々発止"
+  },
+  "203501": {
+    "whiteId": 203502,
+    "whiteNameEn": "Peerless",
+    "whiteNameJp": "比類なき",
+    "goldNameEn": "Unpredecented Prodigy",
+    "goldNameJp": "英俊豪傑"
+  },
+  "203511": {
+    "whiteId": 203512,
+    "whiteNameEn": "High Ambitions",
+    "whiteNameJp": "覇気十分",
+    "goldNameEn": "Domineering Glare",
+    "goldNameJp": "睥睨"
+  },
+  "203541": {
+    "whiteId": 203542,
+    "whiteNameEn": "Footloose",
+    "whiteNameJp": "足任せ",
+    "goldNameEn": "Carefree Stride",
+    "goldNameJp": "天真爛漫"
+  },
+  "203561": {
+    "whiteId": 203562,
+    "whiteNameEn": "Fierce Struggle",
+    "whiteNameJp": "奮闘",
+    "goldNameEn": "With All My Might",
+    "goldNameJp": "一所懸命"
+  },
+  "203571": {
+    "whiteId": 203572,
+    "whiteNameEn": "Foothold",
+    "whiteNameJp": "足がかり",
+    "goldNameEn": "Breach",
+    "goldNameJp": "突破口"
+  },
+  "203591": {
+    "whiteId": 203592,
+    "whiteNameEn": "Pushing Through!",
+    "whiteNameJp": "押し通る！",
+    "goldNameEn": "Independence",
+    "goldNameJp": "独立独歩"
+  },
+  "203601": {
+    "whiteId": 203602,
+    "whiteNameEn": "Sand Stride",
+    "whiteNameJp": "砂蹴り",
+    "goldNameEn": "Magnificent Sand Stride",
+    "goldNameJp": "見事な砂蹴り"
+  },
+  "203611": {
+    "whiteId": 203612,
+    "whiteNameEn": "Diligence",
+    "whiteNameJp": "精進",
+    "goldNameEn": "Sum of Small Efforts",
+    "goldNameJp": "点滴穿石"
+  },
+  "203621": {
+    "whiteId": 203622,
+    "whiteNameEn": "Straight Steps",
+    "whiteNameJp": "真っ直ぐな走り",
+    "goldNameEn": "Straight Heart",
+    "goldNameJp": "ストレートハート"
+  },
+  "203631": {
+    "whiteId": 203632,
+    "whiteNameEn": "Dream-Fulfilling Challenge",
+    "whiteNameJp": "夢への挑戦",
+    "goldNameEn": "One and Only",
+    "goldNameJp": "唯一無二"
+  },
+  "203641": {
+    "whiteId": 203642,
+    "whiteNameEn": "Luminance",
+    "whiteNameJp": "光明",
+    "goldNameEn": "Dawnlight",
+    "goldNameJp": "曙光"
+  },
+  "203651": {
+    "whiteId": 203652,
+    "whiteNameEn": "Find a Way!",
+    "whiteNameJp": "活路を拓く！",
+    "goldNameEn": "Pathfinder",
+    "goldNameJp": "パスファインダー"
+  },
+  "203661": {
+    "whiteId": 203662,
+    "whiteNameEn": "Trekker",
+    "whiteNameJp": "健脚",
+    "goldNameEn": "Long Haul",
+    "goldNameJp": "悠久走破"
+  },
+  "203671": {
+    "whiteId": 203672,
+    "whiteNameEn": "Simmering Heat",
+    "whiteNameJp": "静かな熱",
+    "goldNameEn": "Heat Haze",
+    "goldNameJp": "陽炎"
+  },
+  "203681": {
+    "whiteId": 203682,
+    "whiteNameEn": "Ceaseless Training",
+    "whiteNameJp": "不断の鍛錬",
+    "goldNameEn": "Latent Fighting Spirit",
+    "goldNameJp": "秘めた闘魂"
+  },
+  "203701": {
+    "whiteId": 203702,
+    "whiteNameEn": "Take the Plunge",
+    "whiteNameJp": "思い切り",
+    "goldNameEn": "Gordian Cut",
+    "goldNameJp": "快刀乱麻"
+  },
+  "203711": {
+    "whiteId": 203712,
+    "whiteNameEn": "One Brave Step",
+    "whiteNameJp": "勇気の一歩",
+    "goldNameEn": "Showdown",
+    "goldNameJp": "ショーダウン"
+  },
+  "203731": {
+    "whiteId": 203732,
+    "whiteNameEn": "Enthusiastic",
+    "whiteNameJp": "張り切り",
+    "goldNameEn": "Energetic",
+    "goldNameJp": "エネルギッシュ"
+  },
+  "203741": {
+    "whiteId": 203742,
+    "whiteNameEn": "Exploit the Gap",
+    "whiteNameJp": "間隙を突いて",
+    "goldNameEn": "Moment of Opportunity",
+    "goldNameJp": "刹那の勝機"
+  },
+  "203751": {
+    "whiteId": 203752,
+    "whiteNameEn": "Chasing the Shadow",
+    "whiteNameJp": "影を追って",
+    "goldNameEn": "Afterimage",
+    "goldNameJp": "残影"
+  },
+  "203761": {
+    "whiteId": 203762,
+    "whiteNameEn": "Give Chase",
+    "whiteNameJp": "追駆",
+    "goldNameEn": "Swift Decision",
+    "goldNameJp": "即断即決"
+  },
+  "203791": {
+    "whiteId": 203792,
+    "whiteNameEn": "Belligerent",
+    "whiteNameJp": "好戦的",
+    "goldNameEn": "Killer Instict",
+    "goldNameJp": "闘争本能"
+  },
+  "203801": {
+    "whiteId": 203802,
+    "whiteNameEn": "Unquenched Longing",
+    "whiteNameJp": "想い焦がれて",
+    "goldNameEn": "Unshackled Passion",
+    "goldNameJp": "解き放つ情念"
+  },
+  "203831": {
+    "whiteId": 203832,
+    "whiteNameEn": "Aim for the Summit",
+    "whiteNameJp": "頂を目指して",
+    "goldNameEn": "Natural Talent",
+    "goldNameJp": "天賦の才"
+  },
+  "203841": {
+    "whiteId": 203842,
+    "whiteNameEn": "Model Student",
+    "whiteNameJp": "優等生",
+    "goldNameEn": "Brains and Beauty",
+    "goldNameJp": "才色兼備"
+  },
+  "203851": {
+    "whiteId": 203852,
+    "whiteNameEn": "Intrigued",
+    "whiteNameJp": "心惹かれて",
+    "goldNameEn": "Curiosity",
+    "goldNameJp": "好奇心"
+  },
+  "203861": {
+    "whiteId": 203862,
+    "whiteNameEn": "Carefree Step",
+    "whiteNameJp": "気ままな足取り",
+    "goldNameEn": "Freewheeling",
+    "goldNameJp": "自由奔放"
+  },
+  "203871": {
+    "whiteId": 203872,
+    "whiteNameEn": "Bouncy Step",
+    "whiteNameJp": "弾ける足取り",
+    "goldNameEn": "Thunderflash",
+    "goldNameJp": "閃く雷光"
+  },
+  "203881": {
+    "whiteId": 203882,
+    "whiteNameEn": "In No Time",
+    "whiteNameJp": "待ったなし",
+    "goldNameEn": "Foregone Conclusion",
+    "goldNameJp": "問答無用"
+  },
+  "203911": {
+    "whiteId": 203912,
+    "whiteNameEn": "With Pride",
+    "whiteNameJp": "誇りを抱いて",
+    "goldNameEn": "Radiant Treasure",
+    "goldNameJp": "至宝の輝き"
+  },
+  "203931": {
+    "whiteId": 203932,
+    "whiteNameEn": "Step Toward Mastery",
+    "whiteNameJp": "練達の一歩",
+    "goldNameEn": "Battle-Hardened",
+    "goldNameJp": "百戦錬磨"
+  },
+  "203941": {
+    "whiteId": 203942,
+    "whiteNameEn": "Electrifying Run",
+    "whiteNameJp": "シビれる走り",
+    "goldNameEn": "Don't Blink!",
+    "goldNameJp": "まばたき厳禁！"
+  },
+  "203951": {
+    "whiteId": 203952,
+    "whiteNameEn": "Natural Genius",
+    "whiteNameJp": "天才肌",
+    "goldNameEn": "Wonderkid",
+    "goldNameJp": "麒麟児"
+  },
+  "203961": {
+    "whiteId": 203962,
+    "whiteNameEn": "Resolute Stance",
+    "whiteNameJp": "気丈な姿勢",
+    "goldNameEn": "Steadfast Spirit",
+    "goldNameJp": "不抜の気概"
+  },
+  "203981": {
+    "whiteId": 203982,
+    "whiteNameEn": "Vitality",
+    "whiteNameJp": "バイタリティ",
+    "goldNameEn": "Heroic Energy",
+    "goldNameJp": "勇壮活発"
+  },
+  "203991": {
+    "whiteId": 203992,
+    "whiteNameEn": "Time to Awaken",
+    "whiteNameJp": "目覚めの時",
+    "goldNameEn": "Blooming",
+    "goldNameJp": "開花"
+  },
+  "204001": {
+    "whiteId": 204002,
+    "whiteNameEn": "Stubborn",
+    "whiteNameJp": "意地っ張り",
+    "goldNameEn": "Surging Spirit",
+    "goldNameJp": "迸る気迫"
+  },
+  "204021": {
+    "whiteId": 204022,
+    "whiteNameEn": "Crucial Stage",
+    "whiteNameJp": "ここ一番",
+    "goldNameEn": "Once in a Lifetime",
+    "goldNameJp": "一世一代"
+  },
+  "204031": {
+    "whiteId": 204032,
+    "whiteNameEn": "Spare No Effort",
+    "whiteNameJp": "労を惜しまず",
+    "goldNameEn": "10000 Days of Practice",
+    "goldNameJp": "千鍛万錬"
+  },
+  "204041": {
+    "whiteId": 204042,
+    "whiteNameEn": "Gorgeous Step",
+    "whiteNameJp": "華麗な足取り",
+    "goldNameEn": "Crowning Beauty",
+    "goldNameJp": "錦上添花"
+  },
+  "204051": {
+    "whiteId": 204052,
+    "whiteNameEn": "With a Light in My Heart",
+    "whiteNameJp": "灯を胸に",
+    "goldNameEn": "Soul Ablaze",
+    "goldNameJp": "燃ゆる魂"
+  },
+  "204061": {
+    "whiteId": 204062,
+    "whiteNameEn": "With Dignity",
+    "whiteNameJp": "凛然と",
+    "goldNameEn": "Mettlesome",
+    "goldNameJp": "勇気凛々"
+  },
+  "204071": {
+    "whiteId": 204072,
+    "whiteNameEn": "With Feelings Aboard",
+    "whiteNameJp": "気持ちを乗せて",
+    "goldNameEn": "Smooth Sailing",
+    "goldNameJp": "順風満帆"
+  },
+  "204081": {
+    "whiteId": 204082,
+    "whiteNameEn": "Ride the Momentum",
+    "whiteNameJp": "余勢を駆って",
+    "goldNameEn": "All-Out Effort",
+    "goldNameJp": "大車輪"
+  },
+  "204101": {
+    "whiteId": 204102,
+    "whiteNameEn": "Thunderous Footfall",
+    "whiteNameJp": "轟く足音",
+    "goldNameEn": "Earthshaker",
+    "goldNameJp": "震天動地"
+  },
+  "204111": {
+    "whiteId": 204112,
+    "whiteNameEn": "No Stagnation",
+    "whiteNameJp": "淀みなし",
+    "goldNameEn": "Floating with the Tide",
+    "goldNameJp": "行雲流水"
+  },
+  "204121": {
+    "whiteId": 204122,
+    "whiteNameEn": "Putting All on the Line",
+    "whiteNameJp": "勝負を懸けて",
+    "goldNameEn": "To the Far Beyond",
+    "goldNameJp": "遥か先へ"
+  },
+  "204131": {
+    "whiteId": 204132,
+    "whiteNameEn": "Be Ambitious",
+    "whiteNameJp": "大志を抱いて",
+    "goldNameEn": "Determination Brings Success",
+    "goldNameJp": "有志竟成"
+  },
+  "204141": {
+    "whiteId": 204142,
+    "whiteNameEn": "Overflowing Vitality",
+    "whiteNameJp": "あふれる活力",
+    "goldNameEn": "Stout-Hearted",
+    "goldNameJp": "気丈夫"
+  },
+  "204151": {
+    "whiteId": 204152,
+    "whiteNameEn": "The Only Way is Forward",
+    "whiteNameJp": "前進あるのみ",
+    "goldNameEn": "Breakaway!",
+    "goldNameJp": "ぶっちぎり！"
+  },
+  "204161": {
+    "whiteId": 204162,
+    "whiteNameEn": "Committed Push",
+    "whiteNameJp": "押しの一手",
+    "goldNameEn": "Headlong Charge",
+    "goldNameJp": "猪突猛進"
+  },
+  "204171": {
+    "whiteId": 204172,
+    "whiteNameEn": "Lively",
+    "whiteNameJp": "溌剌",
+    "goldNameEn": "Bursting with Energy",
+    "goldNameJp": "元気溌剌"
+  },
+  "204181": {
+    "whiteId": 204182,
+    "whiteNameEn": "Giant Stride",
+    "whiteNameJp": "巨歩",
+    "goldNameEn": "Uncharted Heights",
+    "goldNameJp": "前人未到"
+  },
+  "204191": {
+    "whiteId": 204192,
+    "whiteNameEn": "Approach",
+    "whiteNameJp": "アプローチ",
+    "goldNameEn": "Innovation",
+    "goldNameJp": "イノベーション"
+  },
+  "204211": {
+    "whiteId": 204212,
+    "whiteNameEn": "Outstanding Run",
+    "whiteNameJp": "卓越する走り",
+    "goldNameEn": "Paradigm Shift",
+    "goldNameJp": "パラダイムシフト"
+  },
+  "204271": {
+    "whiteId": 204272,
+    "whiteNameEn": "Sharp Turn",
+    "whiteNameJp": "急旋回",
+    "goldNameEn": "Masterful Steering",
+    "goldNameJp": "匠のステアリング"
+  },
+  "204301": {
+    "whiteId": 204302,
+    "whiteNameEn": "Individual",
+    "whiteNameJp": "個性的",
+    "goldNameEn": "Hundred Blooming Flowers",
+    "goldNameJp": "百花繚乱"
+  },
+  "204311": {
+    "whiteId": 204312,
+    "whiteNameEn": "On the Offensive",
+    "whiteNameJp": "押せ押せムード",
+    "goldNameEn": "Overwhelm",
+    "goldNameJp": "圧倒"
+  },
+  "204331": {
+    "whiteId": 204332,
+    "whiteNameEn": "Honest Run",
+    "whiteNameJp": "実直な走り",
+    "goldNameEn": "Persistence Is Power",
+    "goldNameJp": "継続は力なり"
+  },
+  "204351": {
+    "whiteId": 204352,
+    "whiteNameEn": "Muster Your Courage",
+    "whiteNameJp": "勇を奮って",
+    "goldNameEn": "Mighty Warrior",
+    "goldNameJp": "一騎当千"
+  },
+  "204381": {
+    "whiteId": 204382,
+    "whiteNameEn": "Radiating Brilliance",
+    "whiteNameJp": "輝きを放って",
+    "goldNameEn": "Dazzling Brilliance",
+    "goldNameJp": "光輝燦然"
+  },
+  "204391": {
+    "whiteId": 204392,
+    "whiteNameEn": "Breaktime Pro",
+    "whiteNameJp": "息抜き上手",
+    "goldNameEn": "Carefree Ease",
+    "goldNameJp": "悠々自適"
+  },
+  "204431": {
+    "whiteId": 204432,
+    "whiteNameEn": "Faster Than Shadow",
+    "whiteNameJp": "影より速く",
+    "goldNameEn": "Before Dust Can Rise",
+    "goldNameJp": "絶塵"
+  },
+  "204481": {
+    "whiteId": 204482,
+    "whiteNameEn": "Let the Brush Lead",
+    "whiteNameJp": "筆に任せて",
+    "goldNameEn": "Race Maker",
+    "goldNameJp": "レースメイカー"
+  },
+  "204501": {
+    "whiteId": 204502,
+    "whiteNameEn": "Double Axel",
+    "whiteNameJp": "ダブルアクセル",
+    "goldNameEn": "Two Birds, One Stone",
+    "goldNameJp": "一石二鳥"
+  },
+  "204511": {
+    "whiteId": 204512,
+    "whiteNameEn": "Presence",
+    "whiteNameJp": "存在感",
+    "goldNameEn": "Transcendental",
+    "goldNameJp": "超然"
+  },
+  "204521": {
+    "whiteId": 204522,
+    "whiteNameEn": "Seize the Turning Tide",
+    "whiteNameJp": "潮目を掴んで",
+    "goldNameEn": "Decisive Moment",
+    "goldNameJp": "当機立断"
+  },
+  "204531": {
+    "whiteId": 204532,
+    "whiteNameEn": "Splendid Stride",
+    "whiteNameJp": "華麗な踏み込み",
+    "goldNameEn": "Refined Elegance",
+    "goldNameJp": "清麗高雅"
+  },
+  "204541": {
+    "whiteId": 204542,
+    "whiteNameEn": "Forerunner",
+    "whiteNameJp": "先導者",
+    "goldNameEn": "Vanguard",
+    "goldNameJp": "急先鋒"
+  },
+  "204571": {
+    "whiteId": 204572,
+    "whiteNameEn": "Simply Onward",
+    "whiteNameJp": "ただその先へ",
+    "goldNameEn": "Purehearted",
+    "goldNameJp": "純真無垢"
+  },
+  "204701": {
+    "whiteId": 204702,
+    "whiteNameEn": "Breakthrough Run",
+    "whiteNameJp": "突き抜ける走り",
+    "goldNameEn": "Proof of Talent",
+    "goldNameJp": "素質の証明"
+  },
+  "210011": {
+    "whiteId": 210012,
+    "whiteNameEn": "Aoharu Ignition・Speed",
+    "whiteNameJp": "アオハル点火・速",
+    "goldNameEn": "Aoharu Burning・Speed",
+    "goldNameJp": "アオハル燃焼・速"
+  },
+  "210021": {
+    "whiteId": 210022,
+    "whiteNameEn": "Aoharu Ignition・Stamina",
+    "whiteNameJp": "アオハル点火・体",
+    "goldNameEn": "Aoharu Burning・Stamina",
+    "goldNameJp": "アオハル燃焼・体"
+  },
+  "210031": {
+    "whiteId": 210032,
+    "whiteNameEn": "Aoharu Ignition・Power",
+    "whiteNameJp": "アオハル点火・力",
+    "goldNameEn": "Aoharu Burning・Power",
+    "goldNameJp": "アオハル燃焼・力"
+  },
+  "210041": {
+    "whiteId": 210042,
+    "whiteNameEn": "Aoharu Ignition・Guts",
+    "whiteNameJp": "アオハル点火・根",
+    "goldNameEn": "Aoharu Burning・Guts",
+    "goldNameJp": "アオハル燃焼・根"
+  },
+  "210051": {
+    "whiteId": 210052,
+    "whiteNameEn": "Aoharu Ignition・Wisdom",
+    "whiteNameJp": "アオハル点火・賢",
+    "goldNameEn": "Aoharu Burning・Wisdom",
+    "goldNameJp": "アオハル燃焼・賢"
+  },
+  "210061": {
+    "whiteId": 210062,
+    "whiteNameEn": "Glittering Stars",
+    "whiteNameJp": "綺羅星",
+    "goldNameEn": "The First Star",
+    "goldNameJp": "一番星"
+  },
+  "210071": {
+    "whiteId": 210072,
+    "whiteNameEn": "Halfway to a Dream",
+    "whiteNameJp": "夢の途中",
+    "goldNameEn": "I Want to Win With You",
+    "goldNameJp": "キミと勝ちたい"
+  },
+  "210081": {
+    "whiteId": 210082,
+    "whiteNameEn": "Eyes on the Horizon",
+    "whiteNameJp": "前だけ見据えて",
+    "goldNameEn": "Beyond the Limits",
+    "goldNameJp": "限界の先へ"
+  },
+  "210261": {
+    "whiteId": 210262,
+    "whiteNameEn": "Blessing of the Sun",
+    "whiteNameJp": "陽の加護",
+    "goldNameEn": "Wisdom of the Sun",
+    "goldNameJp": "太陽の叡智"
+  },
+  "210271": {
+    "whiteId": 210272,
+    "whiteNameEn": "Blessing of the Ocean",
+    "whiteNameJp": "海の加護",
+    "goldNameEn": "Wisdom of the Ocean",
+    "goldNameJp": "大海の叡智"
+  },
+  "210281": {
+    "whiteId": 210282,
+    "whiteNameEn": "Blessing of the Land",
+    "whiteNameJp": "地の加護",
+    "goldNameEn": "Wisdom of the Land",
+    "goldNameJp": "大地の叡智"
+  },
+  "210291": {
+    "whiteId": 210292,
+    "whiteNameEn": "Bearer of Hope",
+    "whiteNameJp": "想いを背負って",
+    "goldNameEn": "Dreaming of the Peak",
+    "goldNameJp": "最高峰の夢"
+  },
+  "210301": {
+    "whiteId": 210302,
+    "whiteNameEn": "Burning Soul",
+    "whiteNameJp": "バーニングソウル",
+    "goldNameEn": "Blazing Radiance!",
+    "goldNameJp": "爆熱のキラメキ！"
+  },
+  "210321": {
+    "whiteId": 210322,
+    "whiteNameEn": "Forever Healthy",
+    "whiteNameJp": "いつまでも健やかに",
+    "goldNameEn": "The Races We Run",
+    "goldNameJp": "私たちの走る道程"
+  },
+  "210341": {
+    "whiteId": 210342,
+    "whiteNameEn": "Reproducing a Dream",
+    "whiteNameJp": "夢の再生方法",
+    "goldNameEn": "For a Fleeting View",
+    "goldNameJp": "もう少しだけ、いい景色"
+  },
+  "210351": {
+    "whiteId": 210352,
+    "whiteNameEn": "Herald of a New Age",
+    "whiteNameJp": "時代を変える者",
+    "goldNameEn": "Forger of Legends",
+    "goldNameJp": "新たな伝説を築く者"
+  },
+  "210361": {
+    "whiteId": 210362,
+    "whiteNameEn": "Be Myself",
+    "whiteNameJp": "あるがままに",
+    "goldNameEn": "Guided by Instinct",
+    "goldNameJp": "本能の懸け橋"
+  },
+  "210371": {
+    "whiteId": 210372,
+    "whiteNameEn": "Rest and Rise",
+    "whiteNameJp": "本気で休んで、もう一度",
+    "goldNameEn": "Miracle of Recreation",
+    "goldNameJp": "保養が導く奇跡"
+  },
+  "210381": {
+    "whiteId": 210382,
+    "whiteNameEn": "American Dream",
+    "whiteNameJp": "アメリカンドリーム",
+    "goldNameEn": "Struggle Leads to Glory",
+    "goldNameJp": "情熱と挑戦の先の栄光"
+  },
+  "210391": {
+    "whiteId": 210392,
+    "whiteNameEn": "Serving of Gratitude",
+    "whiteNameJp": "恩返し、召し上がれ",
+    "goldNameEn": "Premium Helping of Gratitude",
+    "goldNameJp": "極上の感謝を！"
+  }
+}
