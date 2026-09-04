@@ -16,7 +16,7 @@ interface SkillIconProps {
 export default function SkillIcon({
   iconId,
   name,
-  className = "h-5 w-5 rounded object-contain flex-none shrink-0",
+  className = "h-5 w-5 object-contain flex-none shrink-0",
   size,
 }: SkillIconProps) {
   const [hasError, setHasError] = useState(false);

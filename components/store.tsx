@@ -66,9 +66,9 @@ export const RUNNING_STYLE_OPTIONS: { value: RunningStyle | null; label: string 
 ];
 
 export const DISTANCE_LABELS: Record<DistanceType, string> = {
-  1: "Sprint (1000–1400m)",
+  1: "Sprint (1000-1400m)",
   2: "Mile (1600m)",
-  3: "Medium (2000–2400m)",
+  3: "Medium (2000-2400m)",
   4: "Long (2500m+)",
 };
 

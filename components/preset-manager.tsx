@@ -73,16 +73,16 @@ export default function PresetManager() {
   return (
     <>
       {/* Inline Preset Bar */}
-      <div className="flex items-center gap-2">
-        <label className="flex items-center gap-1.5 text-xs text-zinc-500 font-medium">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
           <span className="hidden sm:inline">Build:</span>
           <select
             value={activePresetId}
             onChange={(e) => setActivePresetId(e.target.value)}
-            className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-800 outline-none hover:border-zinc-300 focus:border-zinc-400 cursor-pointer shadow-xs"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-emerald-500 cursor-pointer shadow-xs"
           >
             {presets.map((p) => (
-              <option key={p.id} value={p.id}>
+              <option key={p.id} value={p.id} className="dark:bg-zinc-900">
                 {p.name}
               </option>
             ))}
@@ -90,45 +90,48 @@ export default function PresetManager() {
         </label>
 
         <button
+          type="button"
           onClick={() => {
             const id = addPreset();
             setActivePresetId(id);
           }}
-          className="rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 shadow-xs cursor-pointer"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-xs cursor-pointer transition-colors"
           title="New Preset"
         >
           + New
         </button>
 
         <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className="rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 hover:text-zinc-900 shadow-xs cursor-pointer"
+          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-xs cursor-pointer transition-colors"
         >
-          Manage ({presets.length})
+          <span className="hidden sm:inline">Manage </span>({presets.length})
         </button>
       </div>
 
       {/* Preset Management Modal */}
       {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 p-4 backdrop-blur-xs">
+        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
           <div
             ref={modalRef}
-            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-[#fbf9f5] shadow-2xl animate-in fade-in zoom-in-95 duration-150"
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-150 text-left"
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-zinc-200/80 px-5 py-4 bg-white">
+            <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800 px-5 py-4 bg-white dark:bg-zinc-900">
               <div>
-                <h3 className="text-base font-semibold text-zinc-900">Manage Build Presets</h3>
-                <p className="text-xs text-zinc-500 mt-0.5">
+                <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">Manage Build Presets</h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
                   Each preset bundles Main Deck + Parent Deck + Track info. Drag handles to reorder.
                 </p>
               </div>
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   setEditingId(null);
                 }}
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 text-sm font-bold"
+                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm font-bold cursor-pointer"
               >
                 ✕
               </button>
@@ -157,10 +160,10 @@ export default function PresetManager() {
                     }}
                     className={`flex items-center gap-3 rounded-xl border p-3 transition-all ${
                       isDragOver
-                        ? "border-[#794016] bg-amber-50/60 scale-[1.01]"
+                        ? "border-emerald-500 bg-emerald-50/60 dark:bg-emerald-950/40 scale-[1.01]"
                         : isActive
-                          ? "border-[#794016]/40 bg-white shadow-xs"
-                          : "border-zinc-200/80 bg-white hover:border-zinc-300"
+                          ? "border-emerald-500/60 dark:border-emerald-500/50 bg-white dark:bg-zinc-900 ring-1 ring-emerald-500/20 shadow-xs"
+                          : "border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700"
                     }`}
                   >
                     {/* Drag Handle & Order Controls */}
@@ -171,7 +174,7 @@ export default function PresetManager() {
                           type="button"
                           disabled={idx === 0}
                           onClick={() => reorderPresets(idx, idx - 1)}
-                          className="h-3.5 text-[9px] hover:text-zinc-800 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
+                          className="h-3.5 text-[9px] hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
                           title="Move up"
                         >
                           ▲
@@ -180,7 +183,7 @@ export default function PresetManager() {
                           type="button"
                           disabled={idx === presets.length - 1}
                           onClick={() => reorderPresets(idx, idx + 1)}
-                          className="h-3.5 text-[9px] hover:text-zinc-800 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
+                          className="h-3.5 text-[9px] hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
                           title="Move down"
                         >
                           ▼
@@ -201,11 +204,12 @@ export default function PresetManager() {
                               if (e.key === "Escape") setEditingId(null);
                             }}
                             autoFocus
-                            className="w-full rounded-md border border-zinc-300 px-2 py-1 text-xs font-semibold text-zinc-800 outline-none focus:border-[#794016]"
+                            className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none focus:border-emerald-500"
                           />
                           <button
+                            type="button"
                             onClick={() => commitRename(p.id)}
-                            className="rounded px-2 py-1 text-[11px] font-medium bg-zinc-900 text-white hover:bg-zinc-800"
+                            className="rounded px-2 py-1 text-[11px] font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 cursor-pointer"
                           >
                             Save
                           </button>
@@ -213,19 +217,21 @@ export default function PresetManager() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <button
+                            type="button"
                             onClick={() => setActivePresetId(p.id)}
-                            className="truncate text-left text-sm font-semibold text-zinc-900 hover:text-[#794016]"
+                            className="truncate text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
                           >
                             {p.name}
                           </button>
                           {isActive && (
-                            <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 uppercase">
+                            <span className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">
                               Active
                             </span>
                           )}
                           <button
+                            type="button"
                             onClick={() => startRename(p)}
-                            className="text-[11px] text-zinc-400 hover:text-zinc-700 cursor-pointer"
+                            className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
                             title="Rename preset"
                           >
                             ✎
@@ -233,7 +239,7 @@ export default function PresetManager() {
                         </div>
                       )}
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400">
+                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">
                         <span>Main: {mainCount}/6 cards</span>
                         <span>·</span>
                         <span>Parent: {parentCount}/6 cards</span>
@@ -243,16 +249,18 @@ export default function PresetManager() {
                     {/* Actions */}
                     <div className="flex items-center gap-1">
                       <button
+                        type="button"
                         onClick={() => duplicatePreset(p.id)}
-                        className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
+                        className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
                         title="Duplicate preset"
                       >
                         Duplicate
                       </button>
                       <button
+                        type="button"
                         disabled={presets.length <= 1}
                         onClick={() => deletePreset(p.id)}
-                        className="rounded-md border border-zinc-200 px-2 py-1 text-[11px] font-medium text-zinc-400 hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:opacity-30 disabled:cursor-not-allowed"
+                        className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-400 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                         title={presets.length <= 1 ? "Cannot delete the only preset" : "Delete preset"}
                       >
                         Delete
@@ -264,23 +272,25 @@ export default function PresetManager() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between border-t border-zinc-200 bg-white px-5 py-3">
+            <div className="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-3">
               <button
+                type="button"
                 onClick={() => {
                   const id = addPreset();
                   setActivePresetId(id);
                 }}
-                className="rounded-lg border border-dashed border-zinc-300 px-3 py-1.5 text-xs font-semibold text-[#794016] hover:border-[#794016] hover:bg-amber-50/40 cursor-pointer"
+                className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 cursor-pointer"
               >
                 + Add New Preset
               </button>
 
               <button
+                type="button"
                 onClick={() => {
                   setIsOpen(false);
                   setEditingId(null);
                 }}
-                className="rounded-lg bg-zinc-900 px-4 py-1.5 text-xs font-semibold text-white hover:bg-zinc-800 cursor-pointer"
+                className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-1.5 text-xs font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer"
               >
                 Done
               </button>

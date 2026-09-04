@@ -6,14 +6,15 @@ import {
   type RarityFilterKey,
 } from "../lib/skill-rarity";
 import SkillIcon from "./skill-icon";
+import SkillHoverCard from "./skill-hover-card";
 
 function sourceBadge(source: DeckSkill["source"]) {
   return source === "event" ? (
-    <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 border border-violet-200/80">
+    <span className="rounded bg-violet-100 dark:bg-violet-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80">
       event
     </span>
   ) : (
-    <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 border border-emerald-200/80">
+    <span className="rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
       hint
     </span>
   );
@@ -54,27 +55,27 @@ export default function SkillList() {
   return (
     <section className="mt-8">
       {/* Header & Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-zinc-900">
-            Skills <span className="text-sm font-normal text-zinc-400">({skills.length})</span>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+            Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({skills.length})</span>
           </h2>
-          <p className="text-sm text-zinc-500">
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {hasDeck
-              ? "Union of event + hint skills across the deck."
+              ? "Union of event + hint skills across the deck. Click any skill to inspect activation conditions."
               : "Add cards to see the skills they grant."}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
+          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             <span className="hidden sm:inline">Style</span>
             <select
               value={runningStyle ?? ""}
               onChange={(e) =>
                 setRunningStyle(e.target.value === "" ? null : (Number(e.target.value) as 1 | 2 | 3 | 4 | 5))
               }
-              className="rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-800 outline-none focus:border-zinc-400 shadow-2xs cursor-pointer"
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs cursor-pointer"
             >
               {RUNNING_STYLE_OPTIONS.map((o) => (
                 <option key={o.label} value={o.value ?? ""}>
@@ -88,53 +89,57 @@ export default function SkillList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search skills…"
-            className="w-40 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs outline-none focus:border-zinc-400 shadow-2xs"
+            className="w-36 sm:w-44 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs"
           />
 
           {/* Rarity Tabs */}
-          <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5 text-xs font-medium shadow-2xs">
+          <div className="flex overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
             <button
               onClick={() => setRarityFilter("all")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
-                rarityFilter === "all" ? "bg-zinc-900 text-white font-semibold" : "text-zinc-500 hover:text-zinc-800"
+              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+                rarityFilter === "all"
+                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               All ({skills.length})
             </button>
             <button
               onClick={() => setRarityFilter("white")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer ${
-                rarityFilter === "white" ? "bg-zinc-800 text-white font-semibold" : "text-zinc-600 hover:text-zinc-900"
+              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+                rarityFilter === "white"
+                  ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
             >
               White ({whiteCount})
             </button>
             <button
               onClick={() => setRarityFilter("gold")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer ${
+              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "gold"
                   ? "bg-amber-500 text-amber-950 font-bold shadow-2xs"
-                  : "text-amber-800 hover:bg-amber-50"
+                  : "text-amber-950 dark:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 font-medium"
               }`}
             >
               Gold ({goldCount})
             </button>
             <button
               onClick={() => setRarityFilter("unique")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer ${
+              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "unique"
                   ? "bg-pink-500 text-white font-bold shadow-2xs"
-                  : "text-pink-700 hover:bg-pink-50"
+                  : "text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
               }`}
             >
               Unique ({uniqueCount})
             </button>
             <button
               onClick={() => setRarityFilter("evolved")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer ${
+              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "evolved"
                   ? "bg-purple-600 text-white font-bold shadow-2xs"
-                  : "text-purple-700 hover:bg-purple-50"
+                  : "text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
               }`}
             >
               Evo ({evolvedCount})
@@ -142,13 +147,15 @@ export default function SkillList() {
           </div>
 
           {/* Source Filter */}
-          <div className="flex rounded-lg border border-zinc-200 bg-white p-0.5 text-xs font-medium shadow-2xs">
+          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
             {(["all", "hint", "event"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setSourceFilter(f)}
                 className={`rounded-md px-2 py-1 capitalize cursor-pointer transition-colors ${
-                  sourceFilter === f ? "bg-zinc-700 text-white font-semibold" : "text-zinc-500 hover:text-zinc-800"
+                  sourceFilter === f
+                    ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
                 }`}
               >
                 {f === "all" ? "Sources" : f}
@@ -160,23 +167,23 @@ export default function SkillList() {
 
       {/* List Body */}
       {loading && !hasDeck ? (
-        <p className="mt-4 text-sm text-zinc-400">Loading card index…</p>
+        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading card index…</p>
       ) : !hasDeck ? (
-        <div className="mt-4 rounded-xl border border-dashed border-zinc-300 p-8 text-center text-zinc-400">
+        <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-zinc-400 dark:text-zinc-500">
           No cards equipped yet. Add cards above to view granted skills.
         </div>
       ) : filtered.length === 0 ? (
         (rarityFilter === "unique" || rarityFilter === "evolved") ? (
-          <div className="mt-4 rounded-xl border border-dashed border-zinc-300 bg-zinc-50/50 p-6 text-center">
-            <p className="text-sm font-semibold text-zinc-700">
+          <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30 p-6 text-center">
+            <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
               No {rarityFilter === "unique" ? "Unique" : "Evolved"} Skills in Support Deck
             </p>
-            <p className="mt-1 text-xs text-zinc-500">
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
               Unique and Evolved skills come from Trainee/Parent characters, not support cards.
             </p>
           </div>
         ) : (
-          <p className="mt-4 text-sm text-zinc-400">No skills match the selected filters.</p>
+          <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">No skills match the selected filters.</p>
         )
       ) : (
         <ul className="mt-4 space-y-2">
@@ -185,7 +192,6 @@ export default function SkillList() {
             return (
               <li
                 key={s.id}
-                style={rStyle.bgStyle}
                 className={`flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
                   rStyle.borderClass
                 } ${rStyle.bgClass ?? ""}`}
@@ -196,19 +202,29 @@ export default function SkillList() {
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <SkillIcon iconId={s.iconId} name={s.nameEn} className="h-5 w-5 rounded object-contain flex-none" />
-                      <span className="text-sm font-semibold text-zinc-900">{s.nameEn}</span>
-                    </div>
-                    <span className="text-xs text-zinc-500">{s.nameJp}</span>
+                    <SkillHoverCard
+                      skillId={s.id}
+                      fallbackSkill={s}
+                      cardName={s.cardName}
+                      className="group inline-flex items-center gap-1.5 min-w-0 cursor-pointer"
+                    >
+                      <SkillIcon iconId={s.iconId} name={s.nameEn} className="h-5 w-5 object-contain flex-none" />
+                      <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-emerald-700 dark:group-hover:text-emerald-400 transition-colors">
+                        {s.nameEn}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 dark:text-zinc-500 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 opacity-60 group-hover:opacity-100 transition-opacity">
+                        ↗
+                      </span>
+                    </SkillHoverCard>
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400">{s.nameJp}</span>
                   </div>
                   {s.descEn && (
-                    <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-zinc-700">{s.descEn}</p>
+                    <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-zinc-700 dark:text-zinc-300">{s.descEn}</p>
                   )}
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500">
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
                     <span>
                       via{" "}
-                      <span className="font-medium text-zinc-700">
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
                         {s.grants && s.grants.length > 1
                           ? s.grants.map((g) => `${g.cardName} (${g.source})`).join(", ")
                           : s.cardName}
@@ -224,13 +240,13 @@ export default function SkillList() {
                         return (
                           <span
                             key={idx}
-                            className="inline-flex items-center gap-1 rounded bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-800 border border-violet-200/80"
+                            className="inline-flex items-center gap-1 rounded bg-violet-50 dark:bg-violet-950/50 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80"
                             title={`Event: ${em.eventNameJp} (${em.eventNameEn})\nChoice ${em.choiceIndex}: ${em.choiceTextJp}`}
                           >
                             <span className="font-bold">{eventTitle}</span>
-                            <span className="text-violet-400">•</span>
+                            <span className="text-violet-400 dark:text-violet-600">•</span>
                             <span>
-                              Choice {em.choiceIndex}: <span className="font-semibold text-violet-900">{choiceText}</span>
+                              Choice {em.choiceIndex}: <span className="font-semibold text-violet-900 dark:text-violet-200">{choiceText}</span>
                             </span>
                           </span>
                         );

@@ -94,7 +94,7 @@ describe("ChainStepBadge", () => {
     const html = renderToStaticMarkup(React.createElement(ChainStepBadge, { step: 3 }));
     expect(html).toContain("Step 3");
     expect(html).toContain("★");
-    expect(html).toContain("text-amber-900");
+    expect(html).toContain("text-amber-950");
   });
 });
 

@@ -503,7 +503,7 @@ export const EFFECT_LABELS: Record<number, { label: string; unit: string; scale:
   31: { label: "Acceleration", unit: "m/s²", scale: 10000 },
   22: { label: "Current Speed", unit: "m/s", scale: 10000 },
   21: { label: "Current Speed", unit: "m/s", scale: 10000 },
-  9:  { label: "HP", unit: "", scale: 1 },
+  9:  { label: "HP", unit: "%", scale: 100 },
   1:  { label: "Speed", unit: "", scale: 10000 },       // stat-up (+40, +60)
   2:  { label: "Stamina", unit: "", scale: 10000 },
   3:  { label: "Power", unit: "", scale: 10000 }, 
@@ -570,8 +570,18 @@ export function formatEffect(
     const scaled = e.value / meta.scale;
     const sign = scaled >= 0 ? "+" : "−";
     const abs = Math.abs(scaled);
-    const num = meta.unit ? abs.toFixed(2) : Math.round(abs).toString();
-    const unit = meta.unit ? ` ${meta.unit}` : "";
+    let num: string;
+    let unit: string;
+    if (meta.unit === "%") {
+      num = Number(abs.toFixed(2)).toString();
+      unit = "%";
+    } else if (meta.unit) {
+      num = abs.toFixed(2);
+      unit = ` ${meta.unit}`;
+    } else {
+      num = Math.round(abs).toString();
+      unit = "";
+    }
 
     let targetSuffix = "";
     if (hasTargetDifferences) {

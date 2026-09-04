@@ -55,17 +55,17 @@ function ConditionChips({
     <div className="flex flex-col gap-1">
       {needs && (
         <div className="mb-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400">Needs:</span>
+          <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Needs:</span>
           {needs.map((chips, bi) => (
             <div key={bi} className="mt-0.5 flex flex-wrap items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 bg-zinc-200" />
+              <span className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-700" />
               {bi > 0 && (
-                <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400">or</span>
+                <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">or</span>
               )}
               {chips.map((chip, ci) => (
                 <span
                   key={ci}
-                  className="rounded border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] leading-4 text-zinc-600 font-medium"
+                  className="rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[10px] leading-4 text-zinc-600 dark:text-zinc-300 font-medium"
                 >
                   {chip}
                 </span>
@@ -77,16 +77,16 @@ function ConditionChips({
       {branches.map((chips, bi) => (
         <div key={bi} className="flex flex-wrap items-center gap-1">
           <span
-            className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300"
+            className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700"
             style={{ background: tint }}
           />
           {bi > 0 && (
-            <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400">or</span>
+            <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">or</span>
           )}
           {chips.map((chip, ci) => (
             <span
               key={ci}
-              className="rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 text-[10px] leading-4 text-zinc-700 font-medium shadow-2xs"
+              className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] leading-4 text-zinc-700 dark:text-zinc-200 font-medium shadow-2xs"
             >
               {chip}
             </span>
@@ -109,10 +109,21 @@ export function SkillHoverCard({
   const [detail, setDetail] = useState<SkillDetail | null>(() => skillDetailCache.get(skillId) ?? null);
   const [loading, setLoading] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   const triggerRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    function checkMobile() {
+      setIsMobile(window.innerWidth < 768);
+    }
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const styleHorse = useMemo(
     () => (runningStyle ? horseForStrategy(runningStyle) : undefined),
@@ -138,10 +149,10 @@ export function SkillHoverCard({
   }, [skillId]);
 
   const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
+    if (!triggerRef.current || isMobile) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const popoverWidth = 340;
-    const popoverHeight = 280;
+    const popoverHeight = 300;
 
     let left = rect.left;
     // Keep popover inside horizontal screen bounds
@@ -159,7 +170,7 @@ export function SkillHoverCard({
     }
 
     setCoords({ top, left });
-  }, []);
+  }, [isMobile]);
 
   const handleOpen = useCallback(() => {
     if (closeTimerRef.current) {
@@ -172,14 +183,23 @@ export function SkillHoverCard({
   }, [updatePosition, loadDetail]);
 
   const handleClose = useCallback(() => {
+    if (isMobile) return; // on mobile, explicit dismiss only
     closeTimerRef.current = setTimeout(() => {
       setIsOpen(false);
     }, 120);
-  }, []);
+  }, [isMobile]);
+
+  const handleToggle = useCallback(() => {
+    if (isOpen) {
+      setIsOpen(false);
+    } else {
+      handleOpen();
+    }
+  }, [isOpen, handleOpen]);
 
   // Update position on scroll/resize while open
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || isMobile) return;
     function handleScrollOrResize() {
       updatePosition();
     }
@@ -189,9 +209,9 @@ export function SkillHoverCard({
       window.removeEventListener("scroll", handleScrollOrResize, true);
       window.removeEventListener("resize", handleScrollOrResize);
     };
-  }, [isOpen, updatePosition]);
+  }, [isOpen, isMobile, updatePosition]);
 
-  // Escape key closes popover
+  // Escape key closes popover/drawer
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
@@ -219,6 +239,130 @@ export function SkillHoverCard({
   const iconId = detail?.iconId ?? fallbackSkill?.iconId;
   const { style, text } = splitStylePrefix(detail?.descEn);
 
+  const content = (
+    <>
+      {/* Header: Skill Name + JP + Rarity */}
+      <div className="flex items-start justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <SkillIcon iconId={iconId} name={nameEn} className="h-5 w-5 object-contain flex-none" />
+          <div className="min-w-0">
+            <span className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{nameEn}</span>
+            {nameJp && <span className="block text-xs text-zinc-400 dark:text-zinc-500 font-normal truncate">{nameJp}</span>}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-none">
+          <span
+            className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${rarityMeta.badgeClass}`}
+          >
+            {rarityMeta.badgeLabel}
+          </span>
+          {isMobile && (
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 cursor-pointer"
+              aria-label="Close"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* From source & card origin */}
+      <div className="mt-2 flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+        <span className="text-zinc-400 dark:text-zinc-500 font-medium">From:</span>
+        <span className="rounded bg-violet-100 dark:bg-violet-950/80 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800">
+          event
+        </span>
+        {cardName && <span className="font-semibold text-zinc-700 dark:text-zinc-300 truncate">{cardName}</span>}
+      </div>
+
+      {/* Description */}
+      {detail?.descEn && (
+        <div className="mt-2 flex flex-wrap items-start gap-1.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+          {style && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-600 dark:text-zinc-300">
+              <span className="h-1.5 w-1.5 rounded-full bg-zinc-400 dark:bg-zinc-500" aria-hidden="true" />
+              {style}
+            </span>
+          )}
+          <span className="min-w-0 flex-1">{text}</span>
+        </div>
+      )}
+
+      {/* Condition Groups & Calculated Effect */}
+      {loading && !detail ? (
+        <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500 italic">Loading calculated stats…</p>
+      ) : detail?.conditionGroups && detail.conditionGroups.length > 0 ? (
+        <div className="mt-2.5 flex flex-col gap-2 border-t border-zinc-100 dark:border-zinc-800 pt-2">
+          {detail.conditionGroups.map((g, gi) => {
+            const z = zones[gi];
+            const wins =
+              z && z.regions.length
+                ? z.regions.map((r) => `${Math.round(r.start)}-${Math.round(r.end)}m`).join(", ")
+                : null;
+            const branches = conditionBranches(g.condition ?? "", racerCount).branches;
+            const needsBranches = g.precondition
+              ? conditionBranches(g.precondition, racerCount).branches
+              : null;
+            const effectLine = formatEffect(
+              (g.effects as Array<{ type: number; value: number }> | undefined) ?? [],
+              g.base_time,
+              course?.length ?? 1800,
+            );
+            const tint = hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.35);
+
+            return (
+              <div key={gi} className="rounded-lg border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5 text-xs shadow-2xs">
+                {/* Trigger header */}
+                <div className="flex items-center gap-1.5 mb-1.5">
+                  <span
+                    className="inline-block h-3 w-3 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700"
+                    style={{ background: tint }}
+                  />
+                  <span className="font-bold text-zinc-800 dark:text-zinc-200 text-[11px]">T{gi + 1}</span>
+                  {z && (
+                    <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                      {z.isRandom ? "random" : "deterministic"}
+                    </span>
+                  )}
+                  {wins ? (
+                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono">
+                      {wins}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500 italic">No trigger on active course</span>
+                  )}
+                </div>
+
+                {/* Condition branches */}
+                <div className="mt-1">
+                  <ConditionChips
+                    branches={branches}
+                    needsBranches={needsBranches}
+                    tint={tint}
+                  />
+                </div>
+
+                {/* Calculated Effect Line */}
+                {effectLine && (
+                  <div className="mt-2">
+                    <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 dark:border-emerald-600/60 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:text-emerald-300 shadow-2xs">
+                      {effectLine}
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </>
+  );
+
   return (
     <>
       <span
@@ -227,123 +371,52 @@ export function SkillHoverCard({
         onMouseLeave={handleClose}
         onFocus={handleOpen}
         onBlur={handleClose}
-        className={`inline-block ${className}`}
+        onClick={(e) => {
+          if (isMobile) {
+            e.stopPropagation();
+            handleToggle();
+          }
+        }}
+        className={`inline-block cursor-pointer ${className}`}
       >
         {children}
       </span>
 
       {isOpen && (
-        <div
-          ref={popoverRef}
-          onMouseEnter={handleOpen}
-          onMouseLeave={handleClose}
-          style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
-          className="fixed z-[150] w-[340px] max-h-[85vh] overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-left"
-          role="tooltip"
-        >
-          {/* Header: Skill Name + JP + Rarity */}
-          <div className="flex flex-wrap items-center gap-1.5 border-b border-zinc-100 pb-2">
-            <SkillIcon iconId={iconId} name={nameEn} className="h-5 w-5 rounded object-contain flex-none" />
-            <span className="text-sm font-bold text-zinc-900">{nameEn}</span>
-            {nameJp && <span className="text-xs text-zinc-400 font-normal">{nameJp}</span>}
-            <span
-              className={`ml-auto rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${rarityMeta.badgeClass}`}
+        isMobile ? (
+          /* Mobile slide-up Bottom Sheet */
+          <div
+            className="fixed inset-0 z-[190] flex items-end justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => setIsOpen(false)}
+            role="dialog"
+            aria-modal="true"
+          >
+            <div
+              ref={popoverRef}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full h-[65dvh] max-h-[92dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-200 text-left"
             >
-              {rarityMeta.badgeLabel}
-            </span>
-          </div>
-
-          {/* From source & card origin */}
-          <div className="mt-1.5 flex items-center gap-1.5 text-xs text-zinc-500">
-            <span className="text-zinc-400 font-medium">From:</span>
-            <span className="rounded bg-violet-100 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wide text-violet-700 border border-violet-200/80">
-              event
-            </span>
-            {cardName && <span className="font-semibold text-zinc-700">{cardName}</span>}
-          </div>
-
-          {/* Description */}
-          {detail?.descEn && (
-            <div className="mt-1.5 flex flex-wrap items-start gap-1.5 text-xs leading-relaxed text-zinc-600">
-              {style && (
-                <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium leading-4 text-zinc-600">
-                  <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" aria-hidden="true" />
-                  {style}
-                </span>
-              )}
-              <span className="min-w-0 flex-1">{text}</span>
+              {/* Drag Indicator Handle */}
+              <div className="mx-auto -mt-1 mb-3 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />
+              {content}
             </div>
-          )}
-
-          {/* Condition Groups & Calculated Effect */}
-          {loading && !detail ? (
-            <p className="mt-3 text-xs text-zinc-400 italic">Loading calculated stats…</p>
-          ) : detail?.conditionGroups && detail.conditionGroups.length > 0 ? (
-            <div className="mt-2.5 flex flex-col gap-2 border-t border-zinc-100 pt-2">
-              {detail.conditionGroups.map((g, gi) => {
-                const z = zones[gi];
-                const wins =
-                  z && z.regions.length
-                    ? z.regions.map((r) => `${Math.round(r.start)}-${Math.round(r.end)}m`).join(", ")
-                    : null;
-                const branches = conditionBranches(g.condition ?? "", racerCount).branches;
-                const needsBranches = g.precondition
-                  ? conditionBranches(g.precondition, racerCount).branches
-                  : null;
-                const effectLine = formatEffect(
-                  (g.effects as Array<{ type: number; value: number }> | undefined) ?? [],
-                  g.base_time,
-                  course?.length ?? 1800,
-                );
-                const tint = hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.35);
-
-                return (
-                  <div key={gi} className="rounded-lg border border-zinc-200/80 bg-[#fbfaf8] p-2 text-xs">
-                    {/* Trigger header */}
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <span
-                        className="inline-block h-3 w-3 flex-none rounded-sm border border-zinc-300"
-                        style={{ background: tint }}
-                      />
-                      <span className="font-bold text-zinc-800 text-[11px]">T{gi + 1}</span>
-                      {z && (
-                        <span className="text-[10px] text-zinc-500 font-medium">
-                          {z.isRandom ? "random" : "deterministic"}
-                        </span>
-                      )}
-                      {wins ? (
-                        <span className="text-[10px] font-semibold text-emerald-700 font-mono">
-                          {wins}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-zinc-400 italic">No trigger on active course</span>
-                      )}
-                    </div>
-
-                    {/* Condition branches */}
-                    <div className="mt-1">
-                      <ConditionChips
-                        branches={branches}
-                        needsBranches={needsBranches}
-                        tint={tint}
-                      />
-                    </div>
-
-                    {/* Calculated Effect Line */}
-                    {effectLine && (
-                      <div className="mt-2">
-                        <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-900 shadow-2xs">
-                          {effectLine}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-        </div>
+          </div>
+        ) : (
+          /* Desktop floating popover */
+          <div
+            ref={popoverRef}
+            onMouseEnter={handleOpen}
+            onMouseLeave={handleClose}
+            style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
+            className="fixed z-[150] w-[340px] max-h-[85vh] overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-2xl dark:shadow-zinc-950/60 animate-in fade-in zoom-in-95 duration-150 text-left"
+            role="tooltip"
+          >
+            {content}
+          </div>
+        )
       )}
     </>
   );
 }
+
+export default SkillHoverCard;

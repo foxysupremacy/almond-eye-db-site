@@ -3,7 +3,7 @@
 // the flat engine shape (`lib/skill-engine/types.ts`) and the activation-zone
 // overlay is fed by computed SkillZoneResults instead of an embedded skill blob.
 //
-// This module is browser-only (builds SVG DOM via createElementNS) — use it from
+// This module is browser-only (builds SVG DOM via createElementNS) - use it from
 // a `"use client"` component.
 
 import type { Course } from "./skill-engine/types";
@@ -253,6 +253,7 @@ function ruler(course: Course): SVGElement[] {
         anchor: "middle",
         size: "10px",
         fill: "rgb(107,145,173)",
+        className: "rulerText",
         dominantBaseline: "central",
       }),
     );
@@ -261,7 +262,7 @@ function ruler(course: Course): SVGElement[] {
   return elems;
 }
 
-// ---------- mouse hover ----------
+// ---------- mouse & touch hover ----------
 function attachHover(svg: SVGSVGElement, course: Course): void {
   const line = svg.querySelector(".mouseoverLine");
   const txt = svg.querySelector(".mouseoverText");
@@ -275,31 +276,46 @@ function attachHover(svg: SVGSVGElement, course: Course): void {
   const inner = ln.parentElement as SVGSVGElement | null;
   const W = inner ? Number(inner.getAttribute("width")) || 960 : 960;
   const H = inner ? Number(inner.getAttribute("height")) || 240 : 240;
-  function move(ev: MouseEvent) {
+
+  function updateHover(clientX: number, clientY: number) {
     if (!inner) return;
     const r = inner.getBoundingClientRect();
-    const u = (ev.clientX - r.left) / r.width; // 0..1 across the track
+    const u = (clientX - r.left) / r.width; // 0..1 across the track
     if (u < 0 || u > 1) return;
     const x = u * W;
     const m = Math.round(u * course.length);
     ln.setAttribute("x1", String(x));
     ln.setAttribute("x2", String(x));
     tx.setAttribute("x", String(x > W - 45 ? x - 45 : x + 5));
-    tx.setAttribute("y", String(((ev.clientY - r.top) / r.height) * H));
+    tx.setAttribute("y", String(((clientY - r.top) / r.height) * H));
     tx.textContent = `${m}m`;
   }
+
+  function move(ev: MouseEvent) {
+    updateHover(ev.clientX, ev.clientY);
+  }
+
+  function touchMove(ev: TouchEvent) {
+    if (!ev.touches[0]) return;
+    updateHover(ev.touches[0].clientX, ev.touches[0].clientY);
+  }
+
   function leave() {
     ln.setAttribute("x1", "-5");
     ln.setAttribute("x2", "-5");
     tx.setAttribute("x", "-5");
     tx.setAttribute("y", "-5");
   }
+
   svg.addEventListener("mousemove", move);
   svg.addEventListener("mouseleave", leave);
+  svg.addEventListener("touchstart", touchMove, { passive: true });
+  svg.addEventListener("touchmove", touchMove, { passive: true });
+  svg.addEventListener("touchend", leave);
 }
 
 // ---------- skill activation overlay ----------
-// Paints one tinted band per condition-group (T1, T2, …) onto the ruler (82%–100%).
+// Paints one tinted band per condition-group (T1, T2, …) onto the ruler (82%-100%).
 // Random triggers render as a dashed outline; deterministic ones are solid fills.
 export function renderSkillOverlay(
   inner: SVGSVGElement,
@@ -351,9 +367,9 @@ export function renderCourse(
   host.innerHTML = "";
   const W = 960;
   const H = 240;
-  const xOff = 20;
-  const yOff = 15;
-  const yExtra = 20;
+  const xOff = 12;
+  const yOff = 6;
+  const yExtra = 10;
 
   const svg = el("svg", {
     version: "1.1",
@@ -434,8 +450,8 @@ export function renderCourse(
   ruler(course).forEach((e) => inner.appendChild(e));
 
   // mouseover elements
-  inner.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "rgb(121,64,22)", "stroke-width": "2" }));
-  inner.appendChild(el("text", { class: "mouseoverText", x: "-5", y: "-5", fill: "rgb(121,64,22)" }));
+  inner.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "var(--track-hover-line, #0284c7)", "stroke-width": "2" }));
+  inner.appendChild(el("text", { class: "mouseoverText", x: "-5", y: "-5", fill: "var(--track-hover-line, #0284c7)" }));
 
   // skill zone overlay
   if (opts.zones) renderSkillOverlay(inner, course, opts.zones);

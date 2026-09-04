@@ -77,22 +77,22 @@ export function ChainStepBadge({
   if (isGoldStep) {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded-md border border-amber-300/90 bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-900 shadow-2xs ${className}`}
+        className={`inline-flex items-center gap-1 rounded-md border border-amber-400/80 dark:border-amber-700 bg-amber-200/90 dark:bg-amber-950 px-1.5 py-0.5 text-[10px] font-bold text-amber-950 dark:text-amber-100 shadow-2xs ${className}`}
         title={`Continuous Event Step ${step} (Gold Skill Climax)`}
       >
-        <ChainArrowIcon step={step} size="sm" className="text-amber-600" />
+        <ChainArrowIcon step={step} size="sm" className="text-amber-800 dark:text-amber-300" />
         <span>Step {step}</span>
-        <span className="text-[9px] text-amber-600 font-extrabold">★</span>
+        <span className="text-[9px] text-amber-800 dark:text-amber-300 font-extrabold">★</span>
       </span>
     );
   }
 
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-md border border-zinc-200 bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 ${className}`}
+      className={`inline-flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 dark:text-zinc-300 ${className}`}
       title={`Continuous Event Step ${step}`}
     >
-      <ChainArrowIcon step={step} size="sm" className="text-zinc-500" />
+      <ChainArrowIcon step={step} size="sm" className="text-zinc-500 dark:text-zinc-400" />
       <span>Step {step}</span>
     </span>
   );

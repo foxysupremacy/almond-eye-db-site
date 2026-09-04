@@ -1,24 +1,65 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   color-scheme: light;
-  /* Warm ink-on-paper, borrowed from track_visualizer.html's palette. */
-  --paper: #f5f2ec;
-  --ink: #2b2b2b;
-  --ink-soft: #794016;
-  --line: #e2dccf;
-  background: var(--paper);
-  color: var(--ink);
+  --bg-app: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-elevated: #f1f5f9;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --track-hover-line: #0284c7;
+  background: var(--bg-app);
+  color: var(--text-primary);
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    "Outfit", "Satoshi", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg-app: #09090b;
+  --bg-surface: #121215;
+  --bg-surface-elevated: #18181b;
+  --border-subtle: #27272a;
+  --border-strong: #3f3f46;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --track-hover-line: #38bdf8;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 body {
   margin: 0;
+  min-height: 100dvh;
 }
 
 a {
   color: inherit;
+}
+
+/* Scrollbar refinement */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
 }
 
 /* The SVG track keeps its fixed 980px pixel size; scale it down to fit the
@@ -28,15 +69,30 @@ a {
   max-width: 100%;
 }
 
-/* Ruler-section hover label */
-.mouseoverText {
+/* SVG race track text outline styling:
+   Crisp white border around all track texts across light and dark modes */
+.racetrackView text {
   paint-order: stroke;
-  stroke: #fff;
+  stroke: #ffffff;
   stroke-width: 2px;
+  stroke-linejoin: round;
+}
+
+.racetrackView .mouseoverText {
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+  font-weight: 600;
+}
+
+.dark .racetrackView text,
+.dark .racetrackView .mouseoverText {
+  stroke: #ffffff;
 }
 
 /* Band labels (straight/corner/phase/slope) sit inside a nested <svg> viewport
-   whose default overflow is hidden, so narrow bands clip the text ("Final Le").
+   whose default overflow is hidden, so narrow bands clip the text.
    Let the label draw past the band edge instead; keep labels short so overlap
    stays minimal. */
 .racetrackView .straight,
@@ -52,7 +108,36 @@ a {
   font-size: 12px;
   font-weight: 600;
   paint-order: stroke;
-  stroke: #fff;
-  stroke-width: 2px;
+  stroke: #ffffff;
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
   text-anchor: middle;
+}
+
+.dark .sectionText {
+  stroke: #ffffff;
+}
+
+.distanceMarker {
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  font-weight: 600;
+}
+
+.dark .distanceMarker {
+  stroke: #ffffff;
+}
+
+.rulerText {
+  paint-order: stroke;
+  stroke: #ffffff;
+  stroke-width: 2px;
+  stroke-linejoin: round;
+  font-weight: 600;
+}
+
+.dark .rulerText {
+  stroke: #ffffff;
 }

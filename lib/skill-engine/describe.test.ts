@@ -163,8 +163,18 @@ describe("formatEffect", () => {
   });
 
   test("recovery type 9", () => {
-    const line = formatEffect([{ type: 9, value: 350 }], null, 1200);
-    expect(line).toBe("+350 HP");
+    const line350 = formatEffect([{ type: 9, value: 350 }], null, 1200);
+    expect(line350).toBe("+3.5% HP");
+
+    const line550 = formatEffect([{ type: 9, value: 550 }], null, 1200);
+    expect(line550).toBe("+5.5% HP");
+
+    const lineHybrid = formatEffect(
+      [{ type: 9, value: 550 }, { type: 22, value: 1500 }],
+      20000,
+      2400,
+    );
+    expect(lineHybrid).toBe("+5.5% HP, +0.15 m/s Current Speed for 4.8 s");
   });
 
   test("passive no duration", () => {
