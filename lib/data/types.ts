@@ -47,6 +47,7 @@ export interface CardIndexEntry {
   titleEn?: string;
   titleJa?: string;
   rarity: 1 | 2 | 3;
+  /** Training type — filled in by the GameTora card crawl; null until then. */
   type:
     | "speed"
     | "stamina"
@@ -55,8 +56,11 @@ export interface CardIndexEntry {
     | "intelligence"
     | "wit"
     | "friend"
-    | "group";
+    | "group"
+    | null;
   release?: string | null;
+  /** GameTora URL slug (e.g. "30308-almond-eye") used by the card crawler. */
+  urlName?: string | null;
   imgUrl: string;
   portraitUrl: string;
   eventSkills: number[];
@@ -220,8 +224,9 @@ export interface MappedGoldSkill {
 }
 
 // ---------------------------------------------------------------------------
-// Translation/merge metadata (lib/card-data.json — patched by
-// scripts/generate-data.ts with Hachimi translations)
+// Translation/merge metadata (lib/data/skill-meta.json — patched by
+// scripts/generate-data.ts with Hachimi translations; card metadata is
+// derived from lib/data/cards.json)
 // ---------------------------------------------------------------------------
 
 export interface SkillMeta {
@@ -243,6 +248,7 @@ export interface CardMeta {
   nameEn: string;
   nameJp: string;
   rarity: number;
-  type: string;
+  /** Training type; null while a card awaits its first GameTora crawl. */
+  type: string | null;
   urlName: string;
 }

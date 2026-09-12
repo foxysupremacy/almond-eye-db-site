@@ -2,16 +2,15 @@
  * Data Preprocessing & Generation Script
  *
  * Reads raw JSON files from the repository:
- * - support_cards.json
  * - skills.json
+ * - characters.json
  * - data/racetracks_raw.json
  * - data/translations/track_names.json
  *
- * Prunes unused metadata (dropping unused translations, raw stat tables, etc.)
- * and exports lightweight JSON datasets into `lib/data/`:
- * - cards.json (~31 KB gzipped)
- * - skills.json (~105 KB gzipped)
- * - racetracks.json (~10 KB gzipped)
+ * Prunes unused metadata and exports lightweight JSON datasets into
+ * `lib/data/`. The support-card index (cards.json) is NOT generated here —
+ * it comes from master.mdb via extract-mdb.ts and is maintained in place by
+ * the GameTora card crawler (see scripts/crawl_gametora_cards.py).
  */
 
 import fs from "node:fs";
@@ -24,7 +23,6 @@ const __dirname = path.dirname(__filename);
 const SITE_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(SITE_ROOT, "..");
 
-const cardsPath = path.join(REPO_ROOT, "support_cards.json");
 const skillsPath = path.join(REPO_ROOT, "skills.json");
 const tracksPath = path.join(REPO_ROOT, "data", "racetracks_raw.json");
 const trackNamesPath = path.join(REPO_ROOT, "data", "translations", "track_names.json");
@@ -32,10 +30,6 @@ const charasPath = path.join(REPO_ROOT, "characters.json");
 const hachimiPath = path.join(REPO_ROOT, "hachimi_text_data.json");
 const outDir = path.join(SITE_ROOT, "lib", "data");
 
-if (!fs.existsSync(cardsPath)) {
-  console.error(`Error: support_cards.json not found at ${cardsPath}`);
-  process.exit(1);
-}
 if (!fs.existsSync(skillsPath)) {
   console.error(`Error: skills.json not found at ${skillsPath}`);
   process.exit(1);
@@ -52,7 +46,6 @@ if (!fs.existsSync(charasPath)) {
 fs.mkdirSync(outDir, { recursive: true });
 
 console.log("Loading raw JSON sources...");
-const rawCards = JSON.parse(fs.readFileSync(cardsPath, "utf8"));
 const rawSkills = JSON.parse(fs.readFileSync(skillsPath, "utf8"));
 const rawTracks = JSON.parse(fs.readFileSync(tracksPath, "utf8"));
 const trackNames = fs.existsSync(trackNamesPath)
@@ -69,58 +62,7 @@ if (hachimiData) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Process Support Cards
-// ---------------------------------------------------------------------------
-console.log(`Processing ${rawCards.length} support cards...`);
-const cards = rawCards.map((c: any) => {
-  const titleEn = c.title_en?.trim() || "";
-  const charName = c.char_name?.trim() || "";
-  const titleJa = c.title_ja?.trim() || "";
-  const nameJp = c.name_jp?.trim() || "";
-
-  // GameTora stores the card title with brackets ("[Seaside Bloom]"); keep
-  // them in the titleEn field but compose nameEn without the whole "[...]"
-  // group and its content.
-  const bareTitleEn = titleEn.replace(/^\s*\[[^\]]*\]\s*/, "").trim();
-
-  const nameEn = charName
-    ? bareTitleEn
-      ? `${bareTitleEn} ${charName}`
-      : charName
-    : bareTitleEn;
-  const fullNameJp = titleJa ? `${titleJa} ${nameJp}` : nameJp;
-
-  return {
-    id: Number(c.support_id),
-    nameEn: nameEn || nameJp,
-    nameJp: fullNameJp,
-    charName,
-    titleEn,
-    titleJa,
-    rarity: Number(c.rarity),
-    type: c.type,
-    release: c.release || null,
-    eventSkills: Array.isArray(c.event_skills) ? c.event_skills : [],
-    hintSkills: Array.isArray(c.hints?.hint_skills) ? c.hints.hint_skills : [],
-    eventDetails: Array.isArray(c.event_details) ? c.event_details : [],
-  };
-});
-
-// Sort by rarity descending (SSR -> SR -> R), then release date descending, then id
-cards.sort((a: any, b: any) => {
-  if (b.rarity !== a.rarity) return b.rarity - a.rarity;
-  const relA = a.release || "";
-  const relB = b.release || "";
-  if (relB !== relA) return relB.localeCompare(relA);
-  return b.id - a.id;
-});
-
-const cardsOutPath = path.join(outDir, "cards.json");
-fs.writeFileSync(cardsOutPath, JSON.stringify(cards));
-console.log(`Wrote ${cards.length} cards to ${cardsOutPath} (${(fs.statSync(cardsOutPath).size / 1024).toFixed(1)} KB)`);
-
-// ---------------------------------------------------------------------------
-// 2. Process Skills
+// 1. Process Skills
 // ---------------------------------------------------------------------------
 console.log(`Processing ${rawSkills.length} skills...`);
 let hachimiCount = 0;
@@ -163,6 +105,9 @@ const skills = rawSkills.map((s: any) => {
     descJp,
     rarity: Number(s.rarity || 1),
     iconId: s.iconid || s.icon_id || null,
+    // Raw effect tags ("run"/"ldr"/"sho"/"mil"/"tur"…) — consumed by the
+    // GameTora card crawler to build skill-meta.json tactical tags.
+    tags: Array.isArray(s.type) ? s.type : [],
     conditionGroups,
   };
 });
@@ -195,26 +140,24 @@ if (fs.existsSync(goldToWhitePath) && Object.keys(hachimiSkillNames).length > 0)
   console.log(`Updated gold-to-white.json with Hachimi translations (${g2wUpdated} fields updated).`);
 }
 
-// Also sync Hachimi skill names into card-data.json skillMeta
-const cardDataPath = path.join(SITE_ROOT, "lib", "card-data.json");
-if (fs.existsSync(cardDataPath) && Object.keys(hachimiSkillNames).length > 0) {
-  const cardData = JSON.parse(fs.readFileSync(cardDataPath, "utf8"));
-  if (cardData.skillMeta) {
-    let cardSkillUpdated = 0;
-    for (const [sid, meta] of Object.entries<any>(cardData.skillMeta)) {
-      const hName = hachimiSkillNames[sid]?.trim();
-      if (hName && meta.nameEn !== hName) {
-        meta.nameEn = hName;
-        cardSkillUpdated++;
-      }
+// Also sync Hachimi skill names into skill-meta.json
+const skillMetaPath = path.join(outDir, "skill-meta.json");
+if (fs.existsSync(skillMetaPath) && Object.keys(hachimiSkillNames).length > 0) {
+  const skillMeta = JSON.parse(fs.readFileSync(skillMetaPath, "utf8"));
+  let cardSkillUpdated = 0;
+  for (const [sid, meta] of Object.entries<any>(skillMeta)) {
+    const hName = hachimiSkillNames[sid]?.trim();
+    if (hName && meta.nameEn !== hName) {
+      meta.nameEn = hName;
+      cardSkillUpdated++;
     }
-    fs.writeFileSync(cardDataPath, JSON.stringify(cardData));
-    console.log(`Updated card-data.json skillMeta with Hachimi translations (${cardSkillUpdated} skills updated).`);
   }
+  fs.writeFileSync(skillMetaPath, JSON.stringify(skillMeta));
+  console.log(`Updated skill-meta.json with Hachimi translations (${cardSkillUpdated} skills updated).`);
 }
 
 // ---------------------------------------------------------------------------
-// 3. Process Racetracks & Courses
+// 2. Process Racetracks & Courses
 // ---------------------------------------------------------------------------
 console.log(`Processing ${rawTracks.length} racetracks...`);
 const racetracks = rawTracks.map((t: any) => {
@@ -265,7 +208,7 @@ fs.writeFileSync(tracksOutPath, JSON.stringify(racetracks));
 console.log(`Wrote ${racetracks.length} racetracks to ${tracksOutPath} (${(fs.statSync(tracksOutPath).size / 1024).toFixed(1)} KB)`);
 
 // ---------------------------------------------------------------------------
-// 4. Process Playable Characters
+// 3. Process Playable Characters
 // ---------------------------------------------------------------------------
 console.log("Processing playable characters...");
 const rawCharas = JSON.parse(fs.readFileSync(charasPath, "utf8"));
@@ -311,7 +254,7 @@ fs.writeFileSync(charasOutPath, JSON.stringify(characters));
 console.log(`Wrote ${characters.length} characters to ${charasOutPath} (${(fs.statSync(charasOutPath).size / 1024).toFixed(1)} KB)`);
 
 // ---------------------------------------------------------------------------
-// 5. Sync assets to public/assets for static serving
+// 4. Sync assets to public/assets for static serving
 // ---------------------------------------------------------------------------
 const srcAssets = path.join(__dirname, "..", "assets");
 const destAssets = path.join(__dirname, "..", "public", "assets");

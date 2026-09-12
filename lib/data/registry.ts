@@ -18,7 +18,7 @@ import rawAffinityJson from "./affinity.json";
 import rawCareersJson from "./careers.json";
 import rawUniqueInheritJson from "./unique-inherit-map.json";
 import rawGoldToWhiteJson from "../gold-to-white.json";
-import rawCardDataJson from "../card-data.json";
+import rawSkillMetaJson from "./skill-meta.json";
 
 import type {
   AffinityDataPayload,
@@ -79,6 +79,7 @@ export const cards: CardIndexEntry[] = (rawCardsJson as any[]).map((c) => ({
   rarity: c.rarity,
   type: c.type,
   release: c.release,
+  urlName: c.urlName ?? null,
   imgUrl: getCardImageUrl(c.id, "art"),
   portraitUrl: getCardImageUrl(c.id, "portrait"),
   eventSkills: c.eventSkills || [],
@@ -116,6 +117,7 @@ export const skillsBase: SkillDetail[] = (rawSkillsJson as any[]).map((s) => ({
   descJp: s.descJp,
   rarity: s.rarity || 1,
   iconId: s.iconId,
+  tags: s.tags || [],
   conditionGroups: s.conditionGroups || [],
 }));
 
@@ -127,6 +129,7 @@ export const skillsInherit: SkillDetail[] = (rawSkillsInheritJson as any[]).map(
   descJp: s.descJp,
   rarity: s.rarity || 1,
   iconId: s.iconId,
+  tags: s.tags || [],
   conditionGroups: s.conditionGroups || [],
 }));
 
@@ -184,13 +187,25 @@ export const goldToWhiteMap: Record<string, MappedGoldSkill> = rawGoldToWhiteJso
 >;
 
 /** Hachimi-translated skill metadata keyed by skill id string. */
-export const skillMetaMap: Record<string, SkillMeta> = rawCardDataJson.skillMeta as Record<
+export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Record<
   string,
   SkillMeta
 >;
 
-/** Card metadata (grant lists, url names) keyed by card id string. */
-export const cardMetaMap: Record<string, CardMeta> = rawCardDataJson.cardMeta as Record<
-  string,
-  CardMeta
->;
+/** Card metadata (grant lists, url names) keyed by card id string — derived
+ * from the hydrated cards dataset (formerly a separate card-data.json). */
+export const cardMetaMap: Record<string, CardMeta> = Object.fromEntries(
+  cards.map((c) => [
+    String(c.id),
+    {
+      hints: c.hintSkills,
+      events: c.eventSkills,
+      eventDetails: c.eventDetails,
+      nameEn: c.nameEn,
+      nameJp: c.nameJp,
+      rarity: c.rarity,
+      type: c.type,
+      urlName: c.urlName ?? "",
+    } satisfies CardMeta,
+  ])
+);

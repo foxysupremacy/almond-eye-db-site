@@ -41,7 +41,7 @@ Deck types/constants live in `lib/deck/*`; components/store.tsx only wires React
 ### Data gateway (IMPORTANT)
 
 `lib/data/registry.ts` is the **only** module allowed to import game JSON
-(`lib/data/*.json`, `lib/card-data.json`, `lib/gold-to-white.json`). It
+(`lib/data/*.json`, `lib/gold-to-white.json`). It
 hydrates cards/characters/skills(+inherited uniques) with CDN image URLs and
 exposes canonical lookup maps. `lib/data/types.ts` is the typed contract with
 the data pipeline — update it together with `scripts/generate-data.ts` /
@@ -138,19 +138,29 @@ Refer to `DESIGN.md` for UI/UX specifications on skill presentations:
 
 ## Data pipeline & external dependencies
 
-- `bun run build:data` (`scripts/generate-data.ts` + `scripts/extract-affinity.ts`,
-  auto-run on `prebuild`) generates `lib/data/*.json` and patches
-  `lib/card-data.json` with Hachimi translations. Card name EN output strips
-  the `[Title] ` bracket group at the source.
-- **Hidden build preconditions (outside this repo)**: `scripts/extract-affinity.ts`
-  reads the game's `master.mdb` (SQLite) directly — path from `$UMAMUSUME_MDB_PATH`,
-  defaulting to the local CrossOver/Steam install; `scripts/generate-data.ts` reads
-  `../support_cards.json`, `../skills.json`, `../data/racetracks_raw.json`.
-  Affinity/careers are **mdb-first** (`succession_relation`, `succession_relation_member`,
-  `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program` →
-  `race_instance` → `race` → `race_course_set`); the only GameTora input left is
-  `factors.json` (EN factor names, fetched by `bun run fetch:gametora` — its URL
-  embeds a content hash refreshed manually per scrape).
+- `bun run build:data` (`scripts/generate-data.ts` + `scripts/extract-mdb.ts`,
+  auto-run on `prebuild`) generates `lib/data/*.json`. Hachimi translations are
+  merged into skills.json names and skill-meta.json at the source. Card name
+  EN output strips the `[Title] ` bracket group.
+- **Data ownership per dataset (no ping-pong between raw and processed):**
+  - `scripts/generate-data.ts` reads `../skills.json`, `../characters.json`,
+    `../data/racetracks_raw.json` → `lib/data/{skills,characters,racetracks}.json`
+    (skills.json entries carry a `tags` array of raw effect tags for the crawler).
+  - `scripts/extract-mdb.ts` reads the game's `master.mdb` (SQLite) directly —
+    path from `$UMAMUSUME_MDB_PATH`, defaulting to the local CrossOver/Steam
+    install. It MERGES `lib/data/cards.json` (mdb contributes the index: new
+    cards, rarity, release, JP names via text_data cat 75/76/77; existing
+    entries are preserved verbatim) and owns `lib/data/affinity.json` +
+    `lib/data/careers.json` (`succession_relation`, `succession_relation_member`,
+    `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program`
+    → `race_instance` → `race` → `race_course_set`).
+  - `scripts/crawl_gametora_cards.py` (repo root, manual) operates **directly
+    on `lib/data/`**: reads cards.json + skills.json, crawls GameTora, and
+    updates cards.json in place (type/nameEn/urlName/hints/eventSkills/
+    eventDetails — the fields mdb cannot provide) and writes
+    `lib/data/skill-meta.json`.
+  - `bun run fetch:gametora` fetches only `factors.json` (EN factor names —
+    its URL embeds a content hash refreshed manually per scrape).
 
 ## Verification
 

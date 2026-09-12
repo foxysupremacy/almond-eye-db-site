@@ -11,7 +11,8 @@ export interface DuplicateCardEntry {
   cardName: string;
   cardNameJp?: string;
   rarity?: number;
-  type?: string;
+  /** Card training type; null while a card awaits its first GameTora crawl. */
+  type?: string | null;
   portraitUrl?: string;
   imgUrl?: string;
   source?: "hint" | "event" | "unique" | "factor" | string;

@@ -233,7 +233,7 @@ export default function CardPickerPopover({
         const scoreA = recA?.score ?? -1;
         const scoreB = recB?.score ?? -1;
         if (scoreA !== scoreB) return scoreB - scoreA;
-        return b.rarity - a.rarity || a.type.localeCompare(b.type);
+        return b.rarity - a.rarity || (a.type ?? "").localeCompare(b.type ?? "");
       });
     } else if (sort === "release") {
       list = [...list].sort((a, b) => {
@@ -243,7 +243,7 @@ export default function CardPickerPopover({
         return b.rarity - a.rarity || b.id - a.id;
       });
     } else if (sort === "rarity") {
-      list = [...list].sort((a, b) => b.rarity - a.rarity || a.type.localeCompare(b.type));
+      list = [...list].sort((a, b) => b.rarity - a.rarity || (a.type ?? "").localeCompare(b.type ?? ""));
     } else if (sort === "targetSkills") {
       // Same count as the "+X target skills" badge: skills the card adds that
       // actually fire on the active course (all new skills when no course set)
@@ -257,11 +257,11 @@ export default function CardPickerPopover({
       };
       list = [...list].sort(
         (a, b) =>
-          countFor(b.id) - countFor(a.id) || b.rarity - a.rarity || a.type.localeCompare(b.type),
+          countFor(b.id) - countFor(a.id) || b.rarity - a.rarity || (a.type ?? "").localeCompare(b.type ?? ""),
       );
     } else if (sort === "type") {
       list = [...list].sort(
-        (a, b) => TYPE_ORDER[a.type as TypeKey] - TYPE_ORDER[b.type as TypeKey] || b.rarity - a.rarity,
+        (a, b) => (TYPE_ORDER[a.type as TypeKey] ?? 99) - (TYPE_ORDER[b.type as TypeKey] ?? 99) || b.rarity - a.rarity,
       );
     }
     return list;

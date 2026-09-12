@@ -22,7 +22,8 @@ export function formatCardType(type: string | undefined | null): string {
 }
 
 interface CardTypeIconProps {
-  type?: string;
+  /** Card type; null while a card awaits its first GameTora crawl. */
+  type?: string | null;
   className?: string;
   size?: number;
 }

@@ -48,7 +48,8 @@ export interface CardRecommendation {
   nameEn: string;
   nameJp: string;
   rarity: number;
-  type: string;
+  /** Card training type; null while a card awaits its first GameTora crawl. */
+  type: string | null;
   score: number;
   /** Skills provided by this card that are NOT in the Main Deck and match filters */
   newMatchingSkills: NewSkillMatch[];

@@ -1,11 +1,14 @@
-// Extracts affinity/relation data and career G1 objectives directly from the
-// game's master.mdb (SQLite) into lib/data/affinity.json + lib/data/careers.json.
+// Extracts card index + affinity/relation data + career G1 objectives directly
+// from the game's master.mdb (SQLite) into lib/data/{cards,affinity,careers}.json.
 //
-// mdb-first pipeline: everything except English names lives in master.mdb.
-// The only remaining GameTora input is factors.json (English factor-name
-// overlay — text_data is Japanese-only).
+// mdb-first pipeline: everything except English names and crawl results lives
+// in master.mdb. cards.json is a MERGE — existing entries are preserved
+// verbatim (their names/type/hints/events are GameTora-crawl-owned fields),
+// mdb only contributes the index: new card rows, rarity, release date and
+// JP names (text_data cat 75/76/77). English factor names still come from
+// GameTora's factors.json overlay (text_data is Japanese-only).
 //
-//MDB path resolution: $UMAMUSUME_MDB_PATH, else the local CrossOver/Steam install.
+// MDB path resolution: $UMAMUSUME_MDB_PATH, else the local CrossOver/Steam install.
 import fs from "fs";
 import path from "path";
 import { DatabaseSync } from "node:sqlite";
@@ -19,7 +22,9 @@ const DEFAULT_MDB_PATH =
 const MDB_PATH = process.env.UMAMUSUME_MDB_PATH || DEFAULT_MDB_PATH;
 
 const GAMETORA_DIR = path.resolve(__dirname, "../data-source/gametora");
+const HACHIMI_PATH = path.resolve(__dirname, "../../hachimi_text_data.json");
 const CHARACTERS_PATH = path.resolve(__dirname, "../lib/data/characters.json");
+const CARDS_PATH = path.resolve(__dirname, "../lib/data/cards.json");
 const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/affinity.json");
 const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/careers.json");
 
@@ -296,6 +301,78 @@ export function extractAffinityData() {
     coverage = `Relation coverage: ${charIds.length - missing.length}/${charIds.length} characters` +
       (missing.length ? ` (missing: ${missing.join(", ")})` : " (complete)");
   }
+
+  // 8. Support card index -> lib/data/cards.json (mdb-first merge).
+  //    Existing entries are preserved verbatim — names/type/urlName and the
+  //    crawl fields (hints/eventSkills/eventDetails) are owned by
+  //    crawl_gametora_cards.py. mdb contributes the index: new cards,
+  //    rarity, release date and JP names (text_data cat 75/76/77).
+  const cardName = (category: number): Map<number, string> => {
+    const map = new Map<number, string>();
+    for (const t of db
+      .prepare('SELECT "index", text FROM text_data WHERE category = ?')
+      .all(category)) {
+      if (t.text) map.set(Number(t.index), String(t.text));
+    }
+    return map;
+  };
+  const cardFullJp = cardName(75); // "[variant] chara"
+  const cardVariant = cardName(76); // "[variant]"
+  const cardCharJp = cardName(77); // chara
+
+  // Sparse English card names from hachimi (cat 4); strip the [variant] group
+  // to keep the project-wide bracket-free nameEn convention.
+  const hachimiCards: Record<string, string> =
+    fs.existsSync(HACHIMI_PATH) ? (JSON.parse(fs.readFileSync(HACHIMI_PATH, "utf-8"))["4"] ?? {}) : {};
+  const stripVariant = (s: string) => s.replace(/^\s*\[[^\]]*\]\s*/, "").trim();
+
+  const existingCards: any[] = fs.existsSync(CARDS_PATH) ? JSON.parse(fs.readFileSync(CARDS_PATH, "utf-8")) : [];
+  const existingById = new Map<number, any>(existingCards.map((c) => [Number(c.id), c]));
+
+  const mdbCardRows = db
+    .prepare("SELECT id, rarity, start_date FROM support_card_data")
+    .all();
+  for (const row of mdbCardRows) {
+    const id = Number(row.id);
+    if (existingById.has(id)) continue;
+    const fullJp = cardFullJp.get(id) ?? "";
+    const variant = cardVariant.get(id) ?? "";
+    const charJp = cardCharJp.get(id) ?? "";
+    const startDate = Number(row.start_date);
+    const releaseJst =
+      startDate > 0
+        ? new Date((startDate + 9 * 3600) * 1000).toISOString().slice(0, 10)
+        : null;
+    const hachimiName = hachimiCards[String(id)]?.trim();
+    existingById.set(id, {
+      id,
+      nameEn: stripVariant(hachimiName || variant) || charJp || fullJp,
+      nameJp: fullJp,
+      charName: charJp,
+      titleEn: variant,
+      titleJa: variant,
+      rarity: Number(row.rarity),
+      type: null,
+      release: releaseJst,
+      urlName: null,
+      eventSkills: [],
+      hintSkills: [],
+      eventDetails: [],
+    });
+  }
+
+  const mergedCards = [...existingById.values()].sort((a, b) => {
+    if ((b.rarity ?? 0) !== (a.rarity ?? 0)) return (b.rarity ?? 0) - (a.rarity ?? 0);
+    const relA = a.release || "";
+    const relB = b.release || "";
+    if (relB !== relA) return relB.localeCompare(relA);
+    return b.id - a.id;
+  });
+  fs.writeFileSync(CARDS_PATH, JSON.stringify(mergedCards));
+  const addedCards = mergedCards.length - existingCards.length;
+  console.log(
+    `Card index: ${mergedCards.length} cards (+${addedCards} new from mdb) → ${CARDS_PATH}`
+  );
 
   const payload = {
     relationPoints,
