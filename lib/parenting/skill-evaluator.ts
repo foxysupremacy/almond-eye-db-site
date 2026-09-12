@@ -5,11 +5,10 @@ import {
   type EvaluatorZoneInput,
   type SkillEvaluationResult,
 } from "../skill-evaluator";
-import rawSkillsData from "../data/skills.json";
+import { skillsById } from "../data/registry";
 import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";
 
-const rawSkillsMap = new Map<number, any>((rawSkillsData as any[]).map((s) => [s.id, s]));
 
 export function runningStyleToNum(
   style: RunningStyle | number | string | null | undefined
@@ -140,7 +139,7 @@ export function evaluateUniqueSkill(
     };
   }
 
-  const rawSkill = rawSkillsMap.get(uniqueSkillId);
+  const rawSkill = skillsById.get(uniqueSkillId);
   if (!rawSkill) {
     return {
       category: "other",

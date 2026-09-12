@@ -4,7 +4,7 @@
 // Used to score untrained "potential veteran" candidates and to surface
 // career/track fit in the parent picker. Zero-server, 100% client-side.
 
-import rawCareersData from "../data/careers.json";
+import { careersByCharId as rawCareersData } from "../data/registry";
 import type { Course } from "../skill-engine/types";
 
 export interface CareerG1Race {

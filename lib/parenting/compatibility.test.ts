@@ -9,10 +9,10 @@ import { calculateAffinity, calculatePairAffinity } from "../affinity-engine";
 import { getDeckAnalysis } from "./deck-analyzer";
 import type { Course } from "../skill-engine/types";
 import type { KyumaruVeteranItem } from "../kyumaru-types";
-import rawCharactersData from "../data/characters.json";
+import { characters as rawCharactersData } from "../data/registry";
 import type { CharacterIndexEntry } from "../api";
 
-const characters = rawCharactersData as CharacterIndexEntry[];
+const characters = rawCharactersData;
 const charByCharId = new Map<number, CharacterIndexEntry>(characters.map((c) => [c.charId, c]));
 
 const kyoto2200Course: Course = {

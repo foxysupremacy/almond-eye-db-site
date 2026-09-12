@@ -12,12 +12,14 @@ import type { KyumaruVeteranItem } from "../lib/kyumaru-types";
 import {
   EFFECT_CATEGORIES,
   classifySkillEffects,
+  type SkillEffectCategory,
+} from "../lib/skill-effects";
+import {
   getCardsGrantingSkill,
   getCharactersGrantingSkill,
-  type SkillEffectCategory,
   type GrantingCardInfo,
   type GrantingCharacterInfo,
-} from "../lib/skill-effects";
+} from "../lib/data/skill-grants";
 import SkillIcon from "./skill-icon";
 import SkillItem from "./skill-item";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";

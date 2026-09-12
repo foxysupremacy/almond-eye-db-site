@@ -1,5 +1,6 @@
 import { describe, it, expect } from "bun:test";
-import { isSkillObtainableFromCards, getCharactersGrantingSkill, getAllParentWhiteSkills } from "./skill-effects";
+import { isSkillObtainableFromCards, getAllParentWhiteSkills } from "./skill-effects";
+import { getCharactersGrantingSkill } from "./data/skill-grants";
 import type { CharacterIndexEntry } from "./api";
 
 describe("Skill Effects & Exclusivity", () => {

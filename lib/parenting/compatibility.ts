@@ -12,7 +12,12 @@
 // Zero-server, 100% client-side.
 
 import type { CharacterIndexEntry } from "../api";
-import rawCharactersData from "../data/characters.json";
+import {
+  characters as charactersList,
+  charactersById as characterMap,
+  charactersByCharId as characterByCharIdMap,
+  characterVariantsByCharId as variantsByCharIdMap,
+} from "../data/registry";
 import { getCharacterImageUrl } from "../data-store";
 import type { KyumaruVeteranItem } from "../kyumaru-types";
 import type { Course } from "../skill-engine/types";
@@ -33,17 +38,6 @@ import {
 } from "./career-engine";
 import type { LegacyCandidate, LegacyUniqueEval } from "./types";
 
-const charactersList = rawCharactersData as CharacterIndexEntry[];
-const characterMap = new Map<number, CharacterIndexEntry>(charactersList.map((c) => [c.id, c]));
-const characterByCharIdMap = new Map<number, CharacterIndexEntry>(
-  charactersList.map((c) => [c.charId, c])
-);
-const variantsByCharIdMap = new Map<number, CharacterIndexEntry[]>();
-for (const c of charactersList) {
-  const list = variantsByCharIdMap.get(c.charId) ?? [];
-  list.push(c);
-  variantsByCharIdMap.set(c.charId, list);
-}
 
 /** Avatar image URL for a character */
 export function getCharacterAvatarUrl(charId: number, cardId: number): string {

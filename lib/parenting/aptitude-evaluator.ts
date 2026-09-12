@@ -1,10 +1,10 @@
 import type { Course } from "../skill-engine/types";
 import type { CharacterIndexEntry } from "../api";
-import rawCharactersData from "../data/characters.json";
+import { characters } from "../data/registry";
 import { getCharaIdFromCardId } from "../affinity-engine";
 import type { AptitudePatchInfo } from "./types";
 
-const charactersList = rawCharactersData as CharacterIndexEntry[];
+const charactersList = characters;
 const characterMap = new Map<number, CharacterIndexEntry>(charactersList.map((c) => [c.id, c]));
 const characterByCharIdMap = new Map<number, CharacterIndexEntry>(charactersList.map((c) => [c.charId, c]));
 

@@ -2,19 +2,12 @@
 // Ported from Umamusume master data and hakuraku production affinity math.
 // Zero-server, 100% client-side.
 
-import rawAffinityData from "./data/affinity.json";
+import { affinityData } from "./data/registry";
+import type { AffinityDataPayload } from "./data/types";
+
+export type { AffinityDataPayload };
 import type { KyumaruVeteranItem } from "./kyumaru-types";
 
-export interface AffinityDataPayload {
-  relationPoints: Record<string, number>;
-  charaRelationTypes: Record<string, number[]>;
-  g1Saddles: number[];
-  winSaddleToRaceInstance: Record<string, number>;
-  factorNames: Record<string, string>;
-  saddleNames: Record<string, string>;
-}
-
-const affinityData = rawAffinityData as AffinityDataPayload;
 
 export const G1_RACE_AFFINITY_VALUE = 3;
 

@@ -1,18 +1,11 @@
-import goldToWhiteData from "./gold-to-white.json";
-import inheritMapData from "./data/unique-inherit-map.json";
+import { goldToWhiteMap, uniqueInheritMap } from "./data/registry";
+import type { MappedGoldSkill } from "./data/types";
+
+export type { MappedGoldSkill };
 
 export type RarityFilterKey = "all" | "white" | "gold" | "unique" | "evolved";
 
-export interface MappedGoldSkill {
-  whiteId: number;
-  whiteNameEn: string;
-  whiteNameJp: string;
-  goldNameEn: string;
-  goldNameJp: string;
-}
-
-export const GOLD_TO_WHITE_MAP: Record<string, MappedGoldSkill> =
-  goldToWhiteData as Record<string, MappedGoldSkill>;
+export const GOLD_TO_WHITE_MAP = goldToWhiteMap;
 
 export interface RarityStyleMeta {
   key: "white" | "gold" | "unique" | "evolved";
@@ -108,9 +101,8 @@ export function getInheritableSkillForGold(goldSkillId: number): MappedGoldSkill
  * from master.mdb (skill_data.unique_skill_id_1/2), see
  * scripts/generate_inherit_skills.py.
  */
-const UNIQUE_INHERIT_MAP: Record<string, number> = inheritMapData as Record<string, number>;
 
 /** Get the white inherit skill id for a unique skill, or null if unmapped. */
 export function getInheritableSkillForUnique(uniqueSkillId: number): number | null {
-  return UNIQUE_INHERIT_MAP[String(uniqueSkillId)] ?? null;
+  return uniqueInheritMap[String(uniqueSkillId)] ?? null;
 }

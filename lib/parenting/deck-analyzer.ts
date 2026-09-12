@@ -1,10 +1,8 @@
 import type { CharacterIndexEntry } from "../api";
-import rawCardsData from "../data/cards.json";
-import rawCharactersData from "../data/characters.json";
+import { cardsById, characters as charactersList } from "../data/registry";
 import type { DeckAnalysis } from "./types";
 
-const rawCardsMap = new Map<number, any>((rawCardsData as any[]).map((c) => [c.id, c]));
-const charactersList = rawCharactersData as CharacterIndexEntry[];
+const rawCardsMap = cardsById;
 
 export function getDeckAnalysis(supportCardIds?: (number | null)[]): DeckAnalysis {
   const equippedDeckCharNames = new Set<string>();
@@ -21,10 +19,11 @@ export function getDeckAnalysis(supportCardIds?: (number | null)[]): DeckAnalysi
     if (!card) continue;
 
     if (card.charName) {
-      equippedDeckCharNames.add(card.charName.toLowerCase().trim());
+      const charName = card.charName;
+      equippedDeckCharNames.add(charName.toLowerCase().trim());
       const chara = charactersList.find(
         (c) =>
-          c.nameEn.toLowerCase().trim() === card.charName.toLowerCase().trim() ||
+          c.nameEn.toLowerCase().trim() === charName.toLowerCase().trim() ||
           card.nameEn.toLowerCase().includes(c.nameEn.toLowerCase().trim())
       );
       if (chara) equippedDeckCharIds.add(chara.charId);

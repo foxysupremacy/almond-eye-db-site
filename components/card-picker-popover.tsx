@@ -20,7 +20,7 @@ import CardSkillsSheet from "./card-skills-sheet";
 import { getPvpRaceParameters } from "../lib/pvp-events";
 import { useParentingSetup } from "../lib/parenting-state";
 import { cardCharacterKey } from "../lib/deck/card-constraints";
-import rawCharactersData from "../lib/data/characters.json";
+import { charactersByCharId } from "../lib/data/registry";
 
 // Rarity label + chip colors. Rarity: 3 = SSR, 2 = SR, 1 = R.
 const RARITY_META: Record<number, { label: string; chip: string }> = {
@@ -148,7 +148,7 @@ export default function CardPickerPopover({
   const { setup } = useParentingSetup();
   const targetChara = useMemo(() => {
     if (!setup.targetCharaId) return null;
-    return (rawCharactersData as any[]).find((c) => c.charId === setup.targetCharaId) || null;
+    return charactersByCharId.get(setup.targetCharaId) || null;
   }, [setup.targetCharaId]);
 
   // Recommendations map for both parent and main deck modes

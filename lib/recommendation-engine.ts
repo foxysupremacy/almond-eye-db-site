@@ -3,8 +3,7 @@
 // that the Main Deck does NOT have, with priority boost for skills that
 // activate on the selected course geometry.
 
-import cardData from "./card-data.json";
-import rawSkillsData from "./data/skills.json";
+import { cardMetaMap, skillMetaMap, skillIconById, skillsById } from "./data/registry";
 import type { Course, RaceParameters } from "./skill-engine/types";
 import { computeAllZones, horseForStrategy } from "./skill-engine/zones";
 import { getInheritableSkillForGold } from "./skill-rarity";
@@ -15,56 +14,13 @@ import {
 } from "./skill-evaluator";
 import { BANNED_DEBUFF_SKILL_IDS } from "./pvp-events";
 
-const skillIconMap = new Map<number, number | null>((rawSkillsData as any[]).map((s) => [s.id, s.iconId]));
-const rawSkillsMap = new Map<number, any>((rawSkillsData as any[]).map((s) => [s.id, s]));
-export { rawSkillsMap };
+// Dataset types (SkillMeta/CardMeta) and lookup maps live in lib/data —
+// re-exported here for existing consumers/tests (they mutate these maps as fixtures).
+export { cardMetaMap, skillMetaMap } from "./data/registry";
+import type { SkillMeta, CardMeta, EventSkillMetadata } from "./data/types";
+export type { SkillMeta, CardMeta };
 
-export interface SkillMeta {
-  nameEn: string;
-  nameJp: string;
-  descEn?: string;
-  rarity: number;
-  styles: number[];     // 1: Runner, 2: Leader, 3: Betweener, 4: Chaser
-  distances: number[];  // 1: Sprint, 2: Mile, 3: Medium, 4: Long
-  surfaces: number[];   // 1: Turf, 2: Dirt
-  isGeneric: boolean;
-  conditions?: { condition: string; precondition?: string | null }[];
-}
-
-export interface CardEventChoice {
-  index: number;
-  textEn: string;
-  textJp: string;
-  skillIds: number[];
-}
-
-export interface CardEventDetail {
-  eventId: number;
-  nameEn: string;
-  nameJp: string;
-  choices: CardEventChoice[];
-}
-
-export interface EventSkillMetadata {
-  eventId: number;
-  eventNameEn: string;
-  eventNameJp: string;
-  choiceIndex: number;
-  choiceTextEn: string;
-  choiceTextJp: string;
-  totalChoices: number;
-}
-
-export interface CardMeta {
-  hints: number[];
-  events: number[];
-  eventDetails?: CardEventDetail[];
-  nameEn: string;
-  nameJp: string;
-  rarity: number;
-  type: string;
-  urlName: string;
-}
+const skillIconMap = skillIconById;
 
 export interface NewSkillMatch {
   id: number;
@@ -100,11 +56,6 @@ export interface CardRecommendation {
   newEventCount: number;
   totalNewCount: number;
 }
-
-const cardMetaMap: Record<string, CardMeta> = cardData.cardMeta as Record<string, CardMeta>;
-const skillMetaMap: Record<string, SkillMeta> = cardData.skillMeta as Record<string, SkillMeta>;
-
-export { cardMetaMap, skillMetaMap };
 
 export function isSkillMatchingFilter(
   skillId: number,
@@ -251,7 +202,7 @@ export function recommendCardsForParent({
         const mapped = getInheritableSkillForGold(rawSid);
         if (!mapped) return null;
         sid = mapped.whiteId;
-        originalGoldName = rawSkillsMap.get(rawSid)?.nameEn || rawMeta.nameEn || mapped.goldNameEn;
+        originalGoldName = skillsById.get(rawSid)?.nameEn || rawMeta.nameEn || mapped.goldNameEn;
       }
 
       if (combinedExclusions.has(sid) || seenSkillIds.has(sid)) return null;
@@ -261,7 +212,7 @@ export function recommendCardsForParent({
       const rawMetaResolved = skillMetaMap[sid] || rawMeta;
       if (!rawMetaResolved) return null;
 
-      const rawSkill = rawSkillsMap.get(sid) || rawSkillsMap.get(rawSid);
+      const rawSkill = skillsById.get(sid) || skillsById.get(rawSid);
       const meta: SkillMeta = {
         ...rawMetaResolved,
         nameEn: rawSkill?.nameEn || rawMetaResolved.nameEn,

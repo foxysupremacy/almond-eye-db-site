@@ -16,7 +16,7 @@ import SkillPickerModal from "./skill-picker-modal";
 import { SearchIcon } from "./icons";
 import { useParentingSetup } from "../lib/parenting-state";
 import { findCharConflict } from "../lib/deck/card-constraints";
-import rawCharactersData from "../lib/data/characters.json";
+import { charactersByCharId } from "../lib/data/registry";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
@@ -42,7 +42,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
   const { setup } = useParentingSetup();
   const targetChara = useMemo(() => {
     if (!setup.targetCharaId) return null;
-    return (rawCharactersData as any[]).find((c) => c.charId === setup.targetCharaId) || null;
+    return charactersByCharId.get(setup.targetCharaId) || null;
   }, [setup.targetCharaId]);
 
   const isParent = mode === "parent";
