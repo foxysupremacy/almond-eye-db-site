@@ -35,6 +35,7 @@
 		"start": "wrangler dev --config dist/server/wrangler.json",
 		"deploy": "node --experimental-strip-types scripts/bump-version.ts && vinext build && vinext-cloudflare deploy --config dist/server/wrangler.json",
 		"preview": "bun run build && bun run start",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts"
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./worker-configuration.d.ts",
+		"test": "bun test"
 	}
 }
