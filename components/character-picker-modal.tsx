@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "../lib/api";
+import { PickerSearchBar } from "./shared/picker-search-bar";
 
 interface CharacterPickerModalProps {
   isOpen: boolean;
@@ -56,12 +57,10 @@ export default function CharacterPickerModal({
 
         {/* Search */}
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
-          <input
-            type="text"
+          <PickerSearchBar
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
             placeholder="Search characters by name (e.g. Silence Suzuka, Special Week)..."
-            className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3.5 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-hidden focus:border-emerald-500 transition-colors"
             autoFocus
           />
         </div>

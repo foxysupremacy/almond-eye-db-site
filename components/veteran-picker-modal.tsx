@@ -9,6 +9,7 @@ import {
 } from "../lib/affinity-engine";
 import { decodeFactor, calculateLineageBlueStars } from "../lib/factor-decoder";
 import type { LegacyCandidate } from "../lib/parenting";
+import { PickerSearchBar } from "./shared/picker-search-bar";
 
 export interface PickerRecommendations {
   owned: LegacyCandidate[];
@@ -440,12 +441,11 @@ export default function VeteranPickerModal({
           </div>
 
           <div className="flex items-center gap-2 flex-1 max-w-sm">
-            <input
-              type="text"
+            <PickerSearchBar
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
               placeholder="Search by name..."
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-hidden focus:border-emerald-500"
+              inputClassName="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-emerald-500"
             />
           </div>
 
