@@ -1,54 +1,33 @@
+// Extracts affinity/relation data and career G1 objectives directly from the
+// game's master.mdb (SQLite) into lib/data/affinity.json + lib/data/careers.json.
+//
+// mdb-first pipeline: everything except English names lives in master.mdb.
+// The only remaining GameTora input is factors.json (English factor-name
+// overlay — text_data is Japanese-only).
+//
+//MDB path resolution: $UMAMUSUME_MDB_PATH, else the local CrossOver/Steam install.
 import fs from "fs";
 import path from "path";
+import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const HAKURAKU_UMDB_PATH = path.resolve(__dirname, "../../hakuraku/public/data/umdb.json");
+const DEFAULT_MDB_PATH =
+  "/Users/fubuki/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/UmamusumePrettyDerby_Jpn/UmamusumePrettyDerby_Jpn_Data/Persistent/master/master.mdb";
+const MDB_PATH = process.env.UMAMUSUME_MDB_PATH || DEFAULT_MDB_PATH;
+
 const GAMETORA_DIR = path.resolve(__dirname, "../data-source/gametora");
 const CHARACTERS_PATH = path.resolve(__dirname, "../lib/data/characters.json");
 const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/affinity.json");
 const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/careers.json");
-
-interface RawUMDB {
-  successionRelation: Array<{ relationType?: number; relationPoint?: number }>;
-  successionRelationMember: Array<{ charaId?: number; relationType?: number }>;
-  singleModeWinsSaddle: Array<{ id?: number; raceInstanceId?: number; raceInstanceIds?: number[] }>;
-  textData: Array<{ category?: number; index?: number; text?: string }>;
-}
-
-interface GameToraRelation {
-  relation_type: number;
-  relation_point: number;
-}
-
-interface GameToraRelationMember {
-  chara_id: number;
-  relation_type: number;
-}
 
 interface GameToraFactor {
   id: string;
   type: number;
   name_en?: string;
   name_ja?: string;
-}
-
-// Trimmed schema written by fetch-gametora.ts (data-source/gametora/objectives.json)
-interface GameToraObjective {
-  order?: number;
-  turn?: number;
-  condValue?: number;
-  races?: Array<{
-    id: number;
-    nameEn?: string;
-    nameJp?: string;
-    grade?: number;
-    track?: number;
-    distance?: number;
-    terrain?: number;
-  }>;
 }
 
 interface CareerRace {
@@ -62,101 +41,85 @@ interface CareerRace {
   mustWin: boolean;
 }
 
-export function extractAffinityData() {
-  if (!fs.existsSync(HAKURAKU_UMDB_PATH)) {
-    throw new Error(`hakuraku umdb.json not found at ${HAKURAKU_UMDB_PATH}`);
-  }
+interface CourseRow {
+  race_track_id: number;
+  distance: number;
+  ground: number;
+}
 
-  const rawData: RawUMDB = JSON.parse(fs.readFileSync(HAKURAKU_UMDB_PATH, "utf-8"));
+function openMdb(): DatabaseSync {
+  if (!fs.existsSync(MDB_PATH)) {
+    throw new Error(
+      `master.mdb not found at ${MDB_PATH} — set $UMAMUSUME_MDB_PATH or launch the game client once.`
+    );
+  }
+  return new DatabaseSync(MDB_PATH, { readOnly: true });
+}
+
+export function extractAffinityData() {
+  const db = openMdb();
 
   // 1. relation_type -> relation_point
   const relationPoints: Record<number, number> = {};
-  for (const r of rawData.successionRelation || []) {
-    if (r.relationType != null && r.relationPoint != null) {
-      relationPoints[r.relationType] = r.relationPoint;
-    }
+  for (const r of db.prepare("SELECT relation_type, relation_point FROM succession_relation").all()) {
+    relationPoints[Number(r.relation_type)] = Number(r.relation_point);
   }
 
   // 2. chara_id -> relation_type[]
   const charaRelationTypes: Record<number, number[]> = {};
-  for (const m of rawData.successionRelationMember || []) {
-    if (m.charaId != null && m.relationType != null) {
-      if (!charaRelationTypes[m.charaId]) {
-        charaRelationTypes[m.charaId] = [];
-      }
-      charaRelationTypes[m.charaId].push(m.relationType);
-    }
+  for (const m of db
+    .prepare("SELECT chara_id, relation_type FROM succession_relation_member")
+    .all()) {
+    const charaId = Number(m.chara_id);
+    const relationType = Number(m.relation_type);
+    const list = charaRelationTypes[charaId] ?? (charaRelationTypes[charaId] = []);
+    if (!list.includes(relationType)) list.push(relationType);
   }
 
-  // 3. G1 Saddles (raceInstanceId in 100000..199999) & WinSaddle -> RaceInstance
+  // 3. Win saddles: flatten race_instance_id_1..8. G1 saddles are those whose
+  //    single race instance falls in the G1 trophy range (100000..199999).
   const g1Saddles: number[] = [];
   const winSaddleToRaceInstance: Record<number, number> = {};
-  for (const s of rawData.singleModeWinsSaddle || []) {
-    if (s.id == null) continue;
-    const rIds = s.raceInstanceIds && s.raceInstanceIds.length > 0
-      ? s.raceInstanceIds
-      : (s.raceInstanceId ? [s.raceInstanceId] : []);
-
-    if (rIds.length === 1 && rIds[0] >= 100000 && rIds[0] < 200000) {
-      g1Saddles.push(s.id);
+  const saddleRows = db
+    .prepare(
+      `SELECT id, ${[1, 2, 3, 4, 5, 6, 7, 8].map((n) => `race_instance_id_${n}`).join(", ")}
+       FROM single_mode_wins_saddle`
+    )
+    .all() as Record<string, number>[];
+  for (const s of saddleRows) {
+    const saddleId = Number(s.id);
+    const instanceIds = [1, 2, 3, 4, 5, 6, 7, 8]
+      .map((n) => Number(s[`race_instance_id_${n}`]))
+      .filter((v) => v > 0);
+    if (instanceIds.length === 1 && instanceIds[0] >= 100000 && instanceIds[0] < 200000) {
+      g1Saddles.push(saddleId);
     }
-    if (s.raceInstanceId) {
-      winSaddleToRaceInstance[s.id] = s.raceInstanceId;
-    }
-  }
-
-  // 4. Factor Names (textData category 147)
-  const factorNames: Record<number, string> = {};
-  for (const t of rawData.textData || []) {
-    if (t.category === 147 && t.index != null && t.text) {
-      factorNames[t.index] = t.text;
-    }
-  }
-
-  // 5. Saddle / Trophy Names (textData category 111)
-  const saddleNames: Record<number, string> = {};
-  for (const t of rawData.textData || []) {
-    if (t.category === 111 && t.index != null && t.text) {
-      saddleNames[t.index] = t.text;
+    for (const instanceId of instanceIds) {
+      if (winSaddleToRaceInstance[saddleId] == null) {
+        winSaddleToRaceInstance[saddleId] = instanceId;
+      }
     }
   }
 
-  // 6. Merge GameTora succession data (newer master dump covering all released chars).
-  const gtRelationPath = path.join(GAMETORA_DIR, "succession_relation.json");
-  const gtMemberPath = path.join(GAMETORA_DIR, "succession_relation_member.json");
+  // 4./5. text_data lookups: factor names (cat 147), saddle names (cat 111),
+  //       race names (cat 28, indexed by race_instance_id).
+  const textByCategory = (category: number): Map<number, string> => {
+    const map = new Map<number, string>();
+    for (const t of db
+      .prepare('SELECT "index", text FROM text_data WHERE category = ?')
+      .all(category)) {
+      if (t.text) map.set(Number(t.index), String(t.text));
+    }
+    return map;
+  };
+  const factorNames: Record<number, string> = Object.fromEntries(textByCategory(147));
+  const saddleNames: Record<number, string> = Object.fromEntries(textByCategory(111));
+  const raceNameByInstanceId = textByCategory(28);
+
+  // 6. English factor-name overlay from GameTora (mdb is JP-only).
   const gtFactorsPath = path.join(GAMETORA_DIR, "factors.json");
-
-  let gtRelations = 0;
-  let gtMembers = 0;
   let gtFactorNames = 0;
-
-  if (fs.existsSync(gtRelationPath) && fs.existsSync(gtMemberPath)) {
-    // relation_point per type — GameTora wins on conflicts (newer dump)
-    const gtRelation: GameToraRelation[] = JSON.parse(fs.readFileSync(gtRelationPath, "utf-8"));
-    for (const r of gtRelation) {
-      if (r.relation_type != null && r.relation_point != null) {
-        relationPoints[r.relation_type] = r.relation_point;
-        gtRelations++;
-      }
-    }
-
-    // chara_id -> relation_type[] — union with umdb, only types with a known point
-    const gtMember: GameToraRelationMember[] = JSON.parse(fs.readFileSync(gtMemberPath, "utf-8"));
-    for (const m of gtMember) {
-      if (m.chara_id == null || m.relation_type == null) continue;
-      if (relationPoints[m.relation_type] == null) continue;
-      const list = charaRelationTypes[m.chara_id] ?? (charaRelationTypes[m.chara_id] = []);
-      if (!list.includes(m.relation_type)) {
-        list.push(m.relation_type);
-        gtMembers++;
-      }
-    }
-  } else {
-    console.warn("GameTora succession files not found — run `bun run fetch:gametora` to refresh.");
-  }
-
   if (fs.existsSync(gtFactorsPath)) {
-    // Fill factor names missing from umdb textData, preferring English names
     const gtFactors = JSON.parse(fs.readFileSync(gtFactorsPath, "utf-8")) as {
       blue?: GameToraFactor[];
       other?: GameToraFactor[];
@@ -172,85 +135,155 @@ export function extractAffinityData() {
     }
   }
 
-  // 7. GameTora career objectives -> lib/data/careers.json (G1 races only).
-  // Objective race ids map to umdb G1 saddles via winSaddleToRaceInstance
-  // (raceInstanceId = <raceId><instance suffix>, so raceId = floor(/100)).
-  const objectivesPath = path.join(GAMETORA_DIR, "objectives.json");
-  let careerCoverage = "";
-  if (fs.existsSync(objectivesPath)) {
-    const objectivesByTalentGroup = JSON.parse(
-      fs.readFileSync(objectivesPath, "utf-8")
-    ) as Record<string, GameToraObjective[]>;
-
-    // raceId -> saddleId; prefer the smallest saddle id when several share a race.
-    const saddleByRaceId = new Map<number, number>();
-    for (const [saddleStr, instance] of Object.entries(winSaddleToRaceInstance)) {
-      const raceId = Math.floor(instance / 100);
-      const saddleId = Number(saddleStr);
-      const prev = saddleByRaceId.get(raceId);
-      if (prev === undefined || saddleId < prev) saddleByRaceId.set(raceId, saddleId);
-    }
-
-    const careers: Record<string, CareerRace[]> = {};
-    const seenRaceIdsByCharId = new Map<number, Set<number>>();
-    let g1Total = 0;
-    let g1Mapped = 0;
-    for (const [talentGroupStr, objectives] of Object.entries(objectivesByTalentGroup)) {
-      const talentGroup = Number(talentGroupStr);
-      if (!Number.isFinite(talentGroup)) continue;
-      const charId = Math.floor(talentGroup / 100);
-      // Variant pages (100101/100102/…) share the same career; dedupe by race id per charId.
-      const seenRaceIds = seenRaceIdsByCharId.get(charId) ?? new Set<number>();
-      seenRaceIdsByCharId.set(charId, seenRaceIds);
-      const races: CareerRace[] = [];
-      for (const objective of objectives || []) {
-        const mustWin = objective.condValue === 1;
-        for (const race of objective.races || []) {
-          if (race.grade !== 100) continue; // G1s only — everything else is schedule noise
-          if (seenRaceIds.has(race.id)) continue;
-          seenRaceIds.add(race.id);
-          g1Total++;
-          const saddleId = saddleByRaceId.get(race.id);
-          if (saddleId != null) g1Mapped++;
-          races.push({
-            saddleId,
-            raceId: race.id,
-            nameEn: race.nameEn || race.nameJp || `Race ${race.id}`,
-            grade: race.grade,
-            trackId: race.track ?? 0,
-            distance: race.distance ?? 0,
-            terrain: race.terrain ?? 0,
-            mustWin,
-          });
-        }
-      }
-      if (races.length > 0) {
-        const key = String(charId);
-        careers[key] = (careers[key] ?? []).concat(races);
-      }
-    }
-
-    fs.writeFileSync(CAREERS_OUTPUT_PATH, JSON.stringify(careers));
-    const careersStats = fs.statSync(CAREERS_OUTPUT_PATH);
-    let withCareer = 0;
-    let rosterTotal = 0;
-    if (fs.existsSync(CHARACTERS_PATH)) {
-      const chars = JSON.parse(fs.readFileSync(CHARACTERS_PATH, "utf-8"));
-      const charIds: number[] = [
-        ...new Set<number>((Array.isArray(chars) ? chars : chars.default).map((c: any) => c.charId as number)),
-      ];
-      rosterTotal = charIds.length;
-      withCareer = charIds.filter((c) => careers[String(c)]?.length).length;
-    }
-    careerCoverage =
-      `Career data: ${Object.keys(careers).length} characters (${withCareer}/${rosterTotal} on roster)` +
-      ` → ${CAREERS_OUTPUT_PATH} (${(careersStats.size / 1024).toFixed(1)} KB)` +
-      `; G1 saddle mapping ${g1Mapped}/${g1Total}`;
-  } else {
-    console.warn(
-      "GameTora objectives.json not found — run `bun run fetch:gametora` to generate career data."
-    );
+  // 7. Career G1 objectives -> lib/data/careers.json.
+  //    route (chara -> race_set) -> route_race (objective). condition_type 1
+  //    objectives resolve to races; condition_type 3 is a fan-count target.
+  //    condition_id resolution: a direct single_mode_program.id, or (for
+  //    multi-race objectives like the JBC Classic venues) a race_group_id in
+  //    single_mode_race_group. NB: the race_group.id column coincidentally
+  //    overlaps condition ids of unrelated races — never join on it. Groups
+  //    larger than 8 members are "win any of these scenario finals" conditions,
+  //    not real objectives.
+  const courses = new Map<number, CourseRow>();
+  for (const c of db
+    .prepare("SELECT id, race_track_id, distance, ground FROM race_course_set")
+    .all()) {
+    courses.set(Number(c.id), {
+      race_track_id: Number(c.race_track_id),
+      distance: Number(c.distance),
+      ground: Number(c.ground),
+    });
   }
+
+  interface ProgramRace {
+    raceInstanceId: number;
+    reserveProgramId: number;
+    raceId: number | null;
+    grade: number | null;
+    courseSet: number | null;
+  }
+  const programRace = new Map<number, ProgramRace>();
+  for (const p of db
+    .prepare(
+      `SELECT p.id, p.race_instance_id, p.reserve_program_id, ri.race_id, r.grade, r.course_set
+       FROM single_mode_program p
+       LEFT JOIN race_instance ri ON ri.id = p.race_instance_id
+       LEFT JOIN race r ON r.id = ri.race_id`
+    )
+    .all()) {
+    programRace.set(Number(p.id), {
+      raceInstanceId: Number(p.race_instance_id),
+      reserveProgramId: Number(p.reserve_program_id),
+      raceId: p.race_id == null ? null : Number(p.race_id),
+      grade: p.grade == null ? null : Number(p.grade),
+      courseSet: p.course_set == null ? null : Number(p.course_set),
+    });
+  }
+  const raceGroupMembers = new Map<number, number[]>();
+  for (const g of db
+    .prepare(
+      `SELECT race_group_id, race_program_id FROM single_mode_race_group
+       WHERE race_group_id IN (
+         SELECT race_group_id FROM single_mode_race_group GROUP BY race_group_id HAVING COUNT(*) <= 8
+       )`
+    )
+    .all()) {
+    const groupId = Number(g.race_group_id);
+    const list = raceGroupMembers.get(groupId) ?? [];
+    list.push(Number(g.race_program_id));
+    raceGroupMembers.set(groupId, list);
+  }
+
+  const objectives = db
+    .prepare(
+      `SELECT rt.chara_id, rr.condition_value_1, rr.condition_id
+       FROM single_mode_route rt
+       JOIN single_mode_route_race rr ON rr.race_set_id = rt.race_set_id
+       WHERE rt.chara_id > 0`
+    )
+    .all() as { chara_id: number; condition_value_1: number; condition_id: number }[];
+
+  // raceId -> saddleId; prefer the smallest saddle id when several share a race.
+  const saddleByRaceId = new Map<number, number>();
+  for (const [saddleStr, instance] of Object.entries(winSaddleToRaceInstance)) {
+    const raceId = Math.floor(instance / 100);
+    const saddleId = Number(saddleStr);
+    const prev = saddleByRaceId.get(raceId);
+    if (prev === undefined || saddleId < prev) saddleByRaceId.set(raceId, saddleId);
+  }
+
+  const careers: Record<string, CareerRace[]> = {};
+  const seenRaceIdsByCharId = new Map<number, Set<number>>();
+  let g1Total = 0;
+  let g1Mapped = 0;
+  const emitG1 = (
+    charaId: number,
+    placeReq: number,
+    program: ProgramRace,
+    raceName: string | null
+  ) => {
+    if (program.grade !== 100 || program.raceId == null) return;
+    const seenRaceIds = seenRaceIdsByCharId.get(charaId) ?? new Set<number>();
+    seenRaceIdsByCharId.set(charaId, seenRaceIds);
+    const raceId = program.raceId;
+    const races = careers[String(charaId)] ?? (careers[String(charaId)] = []);
+    const existing = races.find((r) => r.raceId === raceId);
+    if (existing) {
+      // The same race can appear in several objectives (e.g. "3rd or better"
+      // then later "win it") — keep the strictest requirement.
+      if (placeReq === 1) existing.mustWin = true;
+      return;
+    }
+    seenRaceIds.add(raceId);
+    g1Total++;
+    const course = program.courseSet != null ? courses.get(program.courseSet) : undefined;
+    const saddleId = saddleByRaceId.get(raceId);
+    if (saddleId != null) g1Mapped++;
+    races.push({
+      saddleId,
+      raceId,
+      nameEn: raceName || `Race ${raceId}`,
+      grade: 100,
+      trackId: course?.race_track_id ?? 0,
+      distance: course?.distance ?? 0,
+      terrain: course?.ground ?? 0,
+      mustWin: placeReq === 1,
+    });
+  };
+
+  for (const obj of objectives) {
+    const conditionId = Number(obj.condition_id);
+    const programIds = programRace.has(conditionId)
+      ? [conditionId]
+      : (raceGroupMembers.get(conditionId) ?? []);
+    for (const programId of programIds) {
+      const program = programRace.get(programId);
+      if (!program) continue;
+      const raceName = raceNameByInstanceId.get(program.raceInstanceId) ?? null;
+      emitG1(Number(obj.chara_id), Number(obj.condition_value_1), program, raceName);
+      if (program.reserveProgramId > 0) {
+        const reserve = programRace.get(program.reserveProgramId);
+        if (reserve) emitG1(Number(obj.chara_id), Number(obj.condition_value_1), reserve, null);
+      }
+    }
+  }
+
+  fs.writeFileSync(CAREERS_OUTPUT_PATH, JSON.stringify(careers));
+  const careersStats = fs.statSync(CAREERS_OUTPUT_PATH);
+  let withCareer = 0;
+  let rosterTotal = 0;
+  if (fs.existsSync(CHARACTERS_PATH)) {
+    const chars = JSON.parse(fs.readFileSync(CHARACTERS_PATH, "utf-8"));
+    const charIds: number[] = [
+      ...new Set<number>((Array.isArray(chars) ? chars : chars.default).map((c: any) => c.charId as number)),
+    ];
+    rosterTotal = charIds.length;
+    withCareer = charIds.filter((c) => careers[String(c)]?.length).length;
+  }
+  const careerCoverage =
+    `Career data: ${Object.keys(careers).length} characters (${withCareer}/${rosterTotal} on roster)` +
+    ` → ${CAREERS_OUTPUT_PATH} (${(careersStats.size / 1024).toFixed(1)} KB)` +
+    `; G1 saddle mapping ${g1Mapped}/${g1Total}`;
 
   // Coverage report against the playable character roster
   let coverage = "";
@@ -276,9 +309,7 @@ export function extractAffinityData() {
   fs.writeFileSync(OUTPUT_PATH, JSON.stringify(payload));
   const stats = fs.statSync(OUTPUT_PATH);
   console.log(`Successfully generated ${OUTPUT_PATH} (${(stats.size / 1024).toFixed(1)} KB)`);
-  console.log(
-    `GameTora merge: +${gtRelations} relation points, +${gtMembers} member rows, +${gtFactorNames} factor names`
-  );
+  console.log(`Factor names: ${Object.keys(factorNames).length} (JP from mdb, +${gtFactorNames} EN from GameTora)`);
   if (coverage) console.log(coverage);
   if (careerCoverage) console.log(careerCoverage);
 }

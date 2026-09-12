@@ -143,10 +143,14 @@ Refer to `DESIGN.md` for UI/UX specifications on skill presentations:
   `lib/card-data.json` with Hachimi translations. Card name EN output strips
   the `[Title] ` bracket group at the source.
 - **Hidden build preconditions (outside this repo)**: `scripts/extract-affinity.ts`
-  reads `../../hakuraku/public/data/umdb.json`; `scripts/generate-data.ts` reads
+  reads the game's `master.mdb` (SQLite) directly — path from `$UMAMUSUME_MDB_PATH`,
+  defaulting to the local CrossOver/Steam install; `scripts/generate-data.ts` reads
   `../support_cards.json`, `../skills.json`, `../data/racetracks_raw.json`.
-  GameTora source URLs in `scripts/fetch-gametora.ts` embed content hashes that
-  must be refreshed manually per scrape.
+  Affinity/careers are **mdb-first** (`succession_relation`, `succession_relation_member`,
+  `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program` →
+  `race_instance` → `race` → `race_course_set`); the only GameTora input left is
+  `factors.json` (EN factor names, fetched by `bun run fetch:gametora` — its URL
+  embeds a content hash refreshed manually per scrape).
 
 ## Verification
 
