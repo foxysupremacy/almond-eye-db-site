@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import type { SkillEvaluationResult } from "../lib/skill-evaluator";
+import type { SkillEvaluationResult } from "../lib/evaluator";
 import { EFFECT_LABELS } from "../lib/skill-engine/describe";
 import { TimerIcon, FlagIcon, ChevronDownIcon, ChevronUpIcon } from "./icons";
 

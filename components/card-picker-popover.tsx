@@ -21,14 +21,9 @@ import { getPvpRaceParameters } from "../lib/pvp-events";
 import { useParentingSetup } from "../lib/parenting-state";
 import { cardCharacterKey } from "../lib/deck/card-constraints";
 import { charactersByCharId } from "../lib/data/registry";
+import { RARITY_META } from "../lib/skill-rarity";
 
 // Rarity label + chip colors. Rarity: 3 = SSR, 2 = SR, 1 = R.
-const RARITY_META: Record<number, { label: string; chip: string }> = {
-  1: { label: "R", chip: "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300" },
-  2: { label: "SR", chip: "bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200" },
-  3: { label: "SSR", chip: "bg-amber-200/90 dark:bg-amber-950 text-amber-950 dark:text-amber-100 font-bold border border-amber-400/80 dark:border-amber-700" },
-};
-
 type SortKey = "recommended" | "release" | "rarity" | "type" | "targetSkills";
 type TypeKey =
   | "all"
@@ -51,8 +46,6 @@ const TYPE_ORDER: Record<TypeKey, number> = {
   friend: 6,
   group: 7,
 };
-
-export { RARITY_META };
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;

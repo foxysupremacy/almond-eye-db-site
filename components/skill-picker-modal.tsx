@@ -23,7 +23,7 @@ import {
 import SkillIcon from "./skill-icon";
 import SkillItem from "./skill-item";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
-import { RARITY_META } from "./card-picker-popover";
+import { RARITY_META } from "../lib/skill-rarity";
 import { SearchIcon, XIcon, CheckIcon } from "./icons";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 

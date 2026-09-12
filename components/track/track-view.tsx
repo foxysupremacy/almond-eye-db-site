@@ -13,7 +13,7 @@ import {
 } from "../../lib/skill-engine/zones";
 import { useDeck } from "../store";
 import { matchesRarityFilter, type RarityFilterKey } from "../../lib/skill-rarity";
-import { evaluateSkillForTrack } from "../../lib/skill-evaluator";
+import { evaluateSkillForTrack } from "../../lib/evaluator";
 import { TrackCanvas } from "./track-canvas";
 import { TrackSkillSidebar } from "./track-skill-sidebar";
 import { SkillDetailInspector } from "./skill-detail-inspector";

@@ -9,7 +9,7 @@ import { useDeck } from "./store";
 import { RUNNING_STYLE_LABELS, DISTANCE_LABELS, SURFACE_LABELS } from "../lib/deck/constants";
 import { recommendCardsForParent, type CardRecommendation } from "../lib/recommendation-engine";
 import { getPvpRaceParameters } from "../lib/pvp-events";
-import { RARITY_META } from "./card-picker-popover";
+import { RARITY_META } from "../lib/skill-rarity";
 import type { CardIndexEntry } from "../lib/api";
 import SkillIcon from "./skill-icon";
 import SkillHoverCard from "./skill-hover-card";

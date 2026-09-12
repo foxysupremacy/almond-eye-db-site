@@ -3,17 +3,11 @@
 // Recovery / Heal, Debuffs, Passive Stat buffs, etc.
 
 import type { CharacterIndexEntry, SkillDetail } from "./data-store";
+import { classifyEffect, type EffectCategory } from "./evaluator/effects";
 import { GOLD_TO_WHITE_MAP } from "./skill-rarity";
 import type { KyumaruVeteranItem } from "./kyumaru-types";
 
-export type SkillEffectCategory =
-  | "target_speed"
-  | "current_speed"
-  | "acceleration"
-  | "heal"
-  | "debuff"
-  | "passive"
-  | "other";
+export type SkillEffectCategory = EffectCategory;
 
 export interface EffectCategoryMeta {
   id: SkillEffectCategory;
@@ -99,33 +93,8 @@ export function classifySkillEffects(skill: SkillDetail): SkillEffectCategory[] 
     }>;
 
     for (const eff of effects) {
-      const type = eff.type;
-      const val = eff.value ?? 0;
-      const target = eff.target ?? 0;
-
-      // Debuffs target opponents or inflict negative effects
-      const isOpponentTarget = target === 9 || target === 10 || target === 18;
-      const isNegativeValue = val < 0;
-
-      if (isOpponentTarget || isNegativeValue || type === 10 || type === 14) {
-        categories.add("debuff");
-        continue;
-      }
-
-      // Normal positive buffs
-      if (type === 27) {
-        categories.add("target_speed");
-      } else if (type === 21 || type === 22) {
-        categories.add("current_speed");
-      } else if (type === 31) {
-        categories.add("acceleration");
-      } else if (type === 9) {
-        categories.add("heal");
-      } else if (type >= 1 && type <= 5) {
-        categories.add("passive");
-      } else {
-        categories.add("other");
-      }
+      const cat = classifyEffect(eff);
+      categories.add(cat ?? "other");
     }
   }
 

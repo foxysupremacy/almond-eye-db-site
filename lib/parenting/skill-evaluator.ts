@@ -4,7 +4,7 @@ import {
   evaluateSkillForTrack,
   type EvaluatorZoneInput,
   type SkillEvaluationResult,
-} from "../skill-evaluator";
+} from "../evaluator";
 import { skillsById } from "../data/registry";
 import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";

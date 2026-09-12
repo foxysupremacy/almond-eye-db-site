@@ -34,5 +34,8 @@ declare module "bun:test" {
     toBeUndefined(): void;
     toBeNull(): void;
     toThrow(): void;
+    toBeTruthy(): void;
+    toBeFalsy(): void;
+    toHaveProperty(key: string): void;
   };
 }

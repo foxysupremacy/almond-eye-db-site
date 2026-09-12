@@ -8,7 +8,7 @@ import { conditionBranches, formatEffect } from "../lib/skill-engine/describe";
 import { getSkillRarityStyle } from "../lib/skill-rarity";
 import { ZONE_COLORS } from "../lib/track-render";
 import SkillIcon from "./skill-icon";
-import { evaluateSkillForTrack } from "../lib/skill-evaluator";
+import { evaluateSkillForTrack } from "../lib/evaluator";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 import {
   HighlightText,

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, type CardIndexEntry, type SkillSummary, type CardSkills } from "../lib/api";
 import { useDeck } from "./store";
-import { RARITY_META } from "./card-picker-popover";
+import { RARITY_META } from "../lib/skill-rarity";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import SkillIcon from "./skill-icon";
 import { SkillHoverCard } from "./skill-hover-card";

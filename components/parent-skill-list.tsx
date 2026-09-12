@@ -19,7 +19,7 @@ import { getCharaIdFromCardId } from "../lib/affinity-engine";
 import { isSkillBanned } from "../lib/pvp-events";
 import { deriveSkillsForDeck } from "../lib/deck/skill-resolver";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
-import { RARITY_META } from "./card-picker-popover";
+import { RARITY_META } from "../lib/skill-rarity";
 import DuplicateSkillBadge, { type DuplicateCardEntry } from "./duplicate-skill-badge";
 
 type FilterTab = "all" | "unique" | "duplicate" | "parent_duplicate" | "hint" | "event" | "parent_unique" | "factor";

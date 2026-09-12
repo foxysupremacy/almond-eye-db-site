@@ -20,7 +20,7 @@ import {
 import { getPvpRaceParameters } from "../lib/pvp-events";
 import { useLineageSkills } from "../lib/use-lineage-skills";
 import { EFFECT_CATEGORIES, classifySkillEffects, type SkillEffectCategory } from "../lib/skill-effects";
-import { RARITY_META } from "./card-picker-popover";
+import { RARITY_META } from "../lib/skill-rarity";
 import type { CardIndexEntry, SkillDetail } from "../lib/api";
 import { api } from "../lib/api";
 import SkillIcon from "./skill-icon";

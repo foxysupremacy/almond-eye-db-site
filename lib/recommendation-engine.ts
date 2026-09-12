@@ -11,7 +11,7 @@ import {
   evaluateSkillForTrack,
   type SkillTacticalCategory,
   type EvaluatorZoneInput,
-} from "./skill-evaluator";
+} from "./evaluator";
 import { BANNED_DEBUFF_SKILL_IDS } from "./pvp-events";
 
 // Dataset types (SkillMeta/CardMeta) and lookup maps live in lib/data —

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
-import { evaluateSkillForTrack } from "./skill-evaluator";
-import type { Course } from "./skill-engine/types";
+import { evaluateSkillForTrack } from "./evaluator";
+import type { Course } from "../skill-engine/types";
 
 // Mock Kyoto 2200m Outer course
 const KYOTO_2200M: Course = {

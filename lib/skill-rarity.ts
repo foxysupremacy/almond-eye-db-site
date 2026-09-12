@@ -106,3 +106,13 @@ export function getInheritableSkillForGold(goldSkillId: number): MappedGoldSkill
 export function getInheritableSkillForUnique(uniqueSkillId: number): number | null {
   return uniqueInheritMap[String(uniqueSkillId)] ?? null;
 }
+
+/**
+ * Support-card rarity chip metadata (R/SR/SSR), shared by every picker/list UI.
+ * Chip values are Tailwind class strings.
+ */
+export const RARITY_META: Record<number, { label: string; chip: string }> = {
+  1: { label: "R", chip: "bg-zinc-200 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300" },
+  2: { label: "SR", chip: "bg-sky-100 dark:bg-sky-950 text-sky-800 dark:text-sky-200" },
+  3: { label: "SSR", chip: "bg-amber-200/90 dark:bg-amber-950 text-amber-950 dark:text-amber-100 font-bold border border-amber-400/80 dark:border-amber-700" },
+};

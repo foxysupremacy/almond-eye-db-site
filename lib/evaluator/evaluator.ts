@@ -10,6 +10,7 @@ import type {
   CalculationBreakdown,
 } from "./types";
 import { STYLE_EXPECTED_RANKS, STYLE_NAMES } from "./constants";
+import { classifyEffect } from "./effects";
 import { parseRankRequirements } from "./rank-parser";
 import { getCategoryBadge, buildCalculationBreakdown } from "./calculation-steps";
 
@@ -66,25 +67,23 @@ export function evaluateSkillForTrack(
 
     for (const rawEff of group.effects ?? []) {
       const eff = rawEff as { type?: number; value?: number; target?: number; target_details?: number };
-      const type = eff.type ?? 0;
       const val = eff.value ?? 0;
-      const target = eff.target ?? 0;
+      const cat = classifyEffect(eff);
 
-      const isOpponent = target === 9 || target === 10 || target === 18 || val < 0;
-      if (isOpponent || type === 10 || type === 14) {
+      if (cat === "debuff") {
         hasDebuff = true;
-      } else if (type === 31) {
+      } else if (cat === "acceleration") {
         hasAccel = true;
         if (val > maxAccelVal) maxAccelVal = val;
-      } else if (type === 27) {
+      } else if (cat === "target_speed") {
         hasTargetSpeed = true;
         if (val > maxSpeedVal) maxSpeedVal = val;
-      } else if (type === 21 || type === 22) {
+      } else if (cat === "current_speed") {
         hasCurrentSpeed = true;
         if (val > maxSpeedVal) maxSpeedVal = val;
-      } else if (type === 9) {
+      } else if (cat === "heal") {
         hasHeal = true;
-      } else if (type >= 1 && type <= 5) {
+      } else if (cat === "passive") {
         hasPassive = true;
       }
     }
