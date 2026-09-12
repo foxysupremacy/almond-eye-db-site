@@ -3,6 +3,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import type { KyumaruVeteranItem } from "./kyumaru-types";
+import {
+  readJsonStorage,
+  writeJsonStorage,
+  notifyLocalUpdate,
+  subscribeLocalUpdates,
+} from "./persistence";
 
 export interface GrandparentSlot {
   card_id: number;
@@ -80,35 +86,24 @@ const STORAGE_KEY = "almondeye_parenting_setup";
 const EVENT_KEY = "almondeye_parenting_updated";
 
 export function loadParentingSetup(): ParentingSetup {
-  if (typeof window === "undefined") return DEFAULT_PARENTING_SETUP;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_PARENTING_SETUP;
-    const parsed = JSON.parse(raw);
-    return {
+  const parsed = readJsonStorage<Partial<ParentingSetup>>(STORAGE_KEY);
+  if (!parsed) return DEFAULT_PARENTING_SETUP;
+  return {
       targetCharaId: parsed.targetCharaId ?? null,
       parent1: parsed.parent1 ?? null,
       parent2: parsed.parent2 ?? null,
       p1IsBorrow: parsed.p1IsBorrow ?? false,
       p2IsBorrow: parsed.p2IsBorrow ?? true,
       gpOverrides: parsed.gpOverrides ?? {},
-      supportCardIds: Array.isArray(parsed.supportCardIds)
-        ? parsed.supportCardIds
-        : [null, null, null, null, null, null],
-    };
-  } catch {
-    return DEFAULT_PARENTING_SETUP;
-  }
+    supportCardIds: Array.isArray(parsed.supportCardIds)
+      ? parsed.supportCardIds
+      : [null, null, null, null, null, null],
+  };
 }
 
 export function saveParentingSetup(setup: ParentingSetup): void {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(setup));
-    window.dispatchEvent(new Event(EVENT_KEY));
-  } catch (err) {
-    console.error("Failed to save parenting setup:", err);
-  }
+  writeJsonStorage(STORAGE_KEY, setup);
+  notifyLocalUpdate(EVENT_KEY);
 }
 
 /** Serialize parenting setup to a URL-safe deflated Base64 hash */
@@ -152,12 +147,7 @@ export function useParentingSetup() {
       setSetup(loadParentingSetup());
     };
 
-    window.addEventListener(EVENT_KEY, handleUpdate);
-    window.addEventListener("storage", handleUpdate);
-    return () => {
-      window.removeEventListener(EVENT_KEY, handleUpdate);
-      window.removeEventListener("storage", handleUpdate);
-    };
+    return subscribeLocalUpdates(EVENT_KEY, handleUpdate);
   }, []);
 
   const updateSetup = useCallback((updater: (prev: ParentingSetup) => ParentingSetup) => {

@@ -93,13 +93,9 @@ export interface DeckContextValue {
   resetCardChainChoices: (mode: "main" | "parent", cardId: number) => void;
 
   // Main Deck
-  slots: (CardIndexEntry | null)[];
   mainSlots: (CardIndexEntry | null)[];
-  setCard: (index: number, card: CardIndexEntry | null) => void;
   setMainCard: (index: number, card: CardIndexEntry | null) => void;
-  clear: () => void;
   clearMain: () => void;
-  skills: DeckSkill[];
   mainSkills: DeckSkill[];
   mainSkillIdSet: Set<number>;
 
@@ -135,6 +131,5 @@ export interface DeckContextValue {
 
   allCards: CardIndexEntry[] | null;
   skillsByCard: Record<number, CardSkills | null>;
-  pendingSkillCards: Set<number>;
   loading: boolean;
 }

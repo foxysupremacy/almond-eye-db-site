@@ -29,15 +29,14 @@ export interface DeckPickerProps {
 
 export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
   const {
-    slots: mainSlots,
-    setCard,
+    mainSlots,
+    setMainCard,
     parentSlots,
     setParentCard,
     clearParent,
     copyMainToParent,
     mainSkills,
     skillsByCard,
-    pendingSkillCards,
   } = useDeck();
 
   const { setup } = useParentingSetup();
@@ -48,7 +47,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
 
   const isParent = mode === "parent";
   const activeSlots = isParent ? parentSlots : mainSlots;
-  const onPickCard = isParent ? setParentCard : setCard;
+  const onPickCard = isParent ? setParentCard : setMainCard;
 
   const [openSlot, setOpenSlot] = useState<number | null>(null);
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
@@ -204,9 +203,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                         className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
                         title="Click to view and inspect all skills from this card"
                       >
-                        {pendingSkillCards.has(card.id)
-                          ? "loading…"
-                          : skillsByCard[card.id]
+                        {skillsByCard[card.id]
                           ? `${(skillsByCard[card.id]?.hintSkills?.length ?? 0) + (skillsByCard[card.id]?.eventSkills?.length ?? 0)} skills ↗`
                           : "Inspect skills ↗"}
                       </button>

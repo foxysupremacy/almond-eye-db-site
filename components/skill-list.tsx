@@ -39,8 +39,8 @@ function rarityBadge(rarity?: number) {
 
 export default function SkillList() {
   const {
-    skills,
-    slots,
+    mainSkills,
+    mainSlots,
     loading,
     runningStyle,
     setRunningStyle,
@@ -69,7 +69,7 @@ export default function SkillList() {
   // Map each card slot to its exact granted skills (respecting chosen chain branches)
   const cardSkillsMap = useMemo(() => {
     const map = new Map<number, DeckSkill[]>();
-    slots.forEach((card) => {
+    mainSlots.forEach((card) => {
       if (!card) return;
       const cSkills = deriveSkillsForDeck(
         [card],
@@ -80,12 +80,12 @@ export default function SkillList() {
       map.set(card.id, cSkills);
     });
     return map;
-  }, [slots, skillsByCard, activePreset.mainChainChoices]);
+  }, [mainSlots, skillsByCard, activePreset.mainChainChoices]);
 
   // Map skillId -> all deck cards that provide this skill
   const duplicateSkillCardsMap = useMemo(() => {
     const map = new Map<number, DuplicateCardEntry[]>();
-    slots.forEach((card) => {
+    mainSlots.forEach((card) => {
       if (!card) return;
       const cSkills = cardSkillsMap.get(card.id) || [];
       cSkills.forEach((s) => {
@@ -108,7 +108,7 @@ export default function SkillList() {
       });
     });
     return map;
-  }, [slots, cardSkillsMap]);
+  }, [mainSlots, cardSkillsMap]);
 
   // Track skills appearing in more than one support card
   const duplicateSkillIdSet = useMemo(() => {
@@ -119,22 +119,22 @@ export default function SkillList() {
     return dupes;
   }, [duplicateSkillCardsMap]);
 
-  const whiteCount = useMemo(() => skills.filter((s) => (s.rarity ?? 1) === 1).length, [skills]);
-  const goldCount = useMemo(() => skills.filter((s) => s.rarity === 2).length, [skills]);
-  const uniqueCount = useMemo(() => skills.filter((s) => [3, 4, 5].includes(s.rarity)).length, [skills]);
-  const evolvedCount = useMemo(() => skills.filter((s) => s.rarity === 6).length, [skills]);
+  const whiteCount = useMemo(() => mainSkills.filter((s) => (s.rarity ?? 1) === 1).length, [mainSkills]);
+  const goldCount = useMemo(() => mainSkills.filter((s) => s.rarity === 2).length, [mainSkills]);
+  const uniqueCount = useMemo(() => mainSkills.filter((s) => [3, 4, 5].includes(s.rarity)).length, [mainSkills]);
+  const evolvedCount = useMemo(() => mainSkills.filter((s) => s.rarity === 6).length, [mainSkills]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return skills.filter((s) => {
+    return mainSkills.filter((s) => {
       if (sourceFilter !== "all" && s.source !== sourceFilter) return false;
       if (!matchesRarityFilter(s.rarity, rarityFilter)) return false;
       if (q && !`${s.nameEn} ${s.nameJp} ${s.descEn ?? ""}`.toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [skills, sourceFilter, rarityFilter, search]);
+  }, [mainSkills, sourceFilter, rarityFilter, search]);
 
-  const hasDeck = slots.some(Boolean);
+  const hasDeck = mainSlots.some(Boolean);
 
   return (
     <section className="mt-8">
@@ -142,7 +142,7 @@ export default function SkillList() {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({skills.length})</span>
+            Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({mainSkills.length})</span>
           </h2>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             {hasDeck
@@ -186,7 +186,7 @@ export default function SkillList() {
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
-              All ({skills.length})
+              All ({mainSkills.length})
             </button>
             <button
               onClick={() => setRarityFilter("white")}
@@ -297,7 +297,7 @@ export default function SkillList() {
         )
       ) : viewMode === "card" ? (
         <div className="mt-4 space-y-6">
-          {slots.map((card, slotIdx) => {
+          {mainSlots.map((card, slotIdx) => {
             if (!card) return null;
             const allCardSkills = cardSkillsMap.get(card.id) || [];
             const cFiltered = allCardSkills.filter((s) => {

@@ -3,9 +3,12 @@
 // Deck & Preset State:
 // - Manages multiple Deck Presets (combo of Main Deck + Parent Deck + Target Race & Style).
 // - Merged Target Profile = Venue + Course + Running Style + Racer Count.
-// - Caches card skills from API.
+// - Caches card skills from the data store.
 // - Derives Main Deck skills and Parent Deck skills with duplicate highlighting.
 // - Supplies unified global track/course geometry and derived distance/surface.
+//
+// Mutation semantics live in lib/deck/preset-reducer.ts (pure); this provider
+// only wires it to React and adapts it to the useDeck() interface.
 
 import {
   createContext,
@@ -13,6 +16,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useReducer,
   useState,
   type ReactNode,
 } from "react";
@@ -27,26 +31,19 @@ import {
 import { initDataStore, type DataStore } from "../lib/data-store";
 import type { Course } from "../lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById } from "../lib/pvp-events";
+import { readJsonStorage, removeJsonStorage } from "../lib/persistence";
 
 // Extracted Domain Modules
 import {
   DECK_SIZE,
-  PRESETS_STORAGE_KEY,
-  VISUALIZER_SAVE_KEY,
   CHAIN_CHOICES_STORAGE_KEY,
-  DEFAULT_TRACK_ID,
   DEFAULT_COURSE_ID,
-  RUNNING_STYLE_LABELS,
-  RUNNING_STYLE_OPTIONS,
-  DISTANCE_LABELS,
-  SURFACE_LABELS,
 } from "../lib/deck/constants";
 
 import type {
   RunningStyle,
   DistanceType,
   SurfaceType,
-  TrackInfo,
   DeckPreset,
   DeckSkillGrant,
   DeckSkill,
@@ -54,13 +51,6 @@ import type {
   DeckContextValue,
 } from "../lib/deck/types";
 
-import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
-import {
-  createDefaultPreset,
-  DEFAULT_PRESET,
-  loadStoredPresets,
-  persistPresetsAndVisualizer,
-} from "../lib/deck/preset-storage";
 import {
   deriveSkillsForDeck,
   deriveMainSkillIdSet,
@@ -68,22 +58,45 @@ import {
   deriveParentSkills,
 } from "../lib/deck/skill-resolver";
 import { canPlaceCard } from "../lib/deck/card-constraints";
+import { createDefaultPreset, DEFAULT_PRESET, loadStoredPresets, persistPresetsAndVisualizer } from "../lib/deck/preset-storage";
+import {
+  presetReducer,
+  buildImportedPreset,
+  type PresetListState,
+} from "../lib/deck/preset-reducer";
 
 const DeckContext = createContext<DeckContextValue | null>(null);
 
 export function DeckProvider({ children }: { children: ReactNode }) {
-  const [presetState, setPresetState] = useState<{ presets: DeckPreset[]; activeId: string }>({
+  const [presetState, dispatch] = useReducer(presetReducer, {
     presets: [DEFAULT_PRESET],
     activeId: DEFAULT_PRESET.id,
-  });
+  } satisfies PresetListState);
   const [hasHydrated, setHasHydrated] = useState(false);
 
-  // Restore saved presets from localStorage after initial hydration
+  // Restore saved presets from localStorage after initial hydration.
+  // Legacy one-time migration: chain choices used to also live in a
+  // standalone chain_choices.v1 map — fold it into the active preset, then
+  // retire the key (chain choices are single-sourced in the preset now).
   useEffect(() => {
     const loaded = loadStoredPresets();
+    const legacyChoices = readJsonStorage<Record<string, number>>(CHAIN_CHOICES_STORAGE_KEY);
     if (loaded) {
-      setPresetState(loaded);
+      if (legacyChoices) {
+        loaded.presets = loaded.presets.map((p) =>
+          p.id === loaded.activeId
+            ? { ...p, mainChainChoices: { ...legacyChoices, ...p.mainChainChoices } }
+            : p
+        );
+      }
+      dispatch({ type: "hydrate", state: loaded });
+    } else if (legacyChoices) {
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => ({ ...p, mainChainChoices: { ...legacyChoices, ...p.mainChainChoices } }),
+      });
     }
+    if (legacyChoices) removeJsonStorage(CHAIN_CHOICES_STORAGE_KEY);
     setHasHydrated(true);
   }, []);
 
@@ -176,124 +189,44 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     return map;
   }, [dataStore, mainSlots, parentSlots]);
 
-  const pending = useMemo(() => new Set<number>(), []);
-
-  // Preset operations
+  // Preset CRUD (reducer actions, ids minted at the call site)
   const setActivePresetId = useCallback((id: string) => {
-    setPresetState((prev) => ({ ...prev, activeId: id }));
+    dispatch({ type: "setActiveId", id });
   }, []);
 
   const addPreset = useCallback((name?: string) => {
     const id = `preset-${Date.now()}`;
-    const newName = name?.trim() || `Preset ${presetState.presets.length + 1}`;
-    const newPreset = createDefaultPreset(id, newName);
-    setPresetState((prev) => ({
-      presets: [...prev.presets, newPreset],
-      activeId: id,
-    }));
+    dispatch({ type: "addPreset", id, name });
     return id;
-  }, [presetState.presets.length]);
+  }, []);
 
-  const duplicatePreset = useCallback(
-    (id: string) => {
-      const src = presetState.presets.find((p) => p.id === id);
-      if (!src) return "";
-      const newId = `preset-${Date.now()}`;
-      const clone: DeckPreset = {
-        ...src,
-        id: newId,
-        name: `${src.name} (Copy)`,
-        mainDeckIds: [...src.mainDeckIds],
-        parentDeckIds: [...src.parentDeckIds],
-        trackInfo: { ...src.trackInfo },
-        mainChainChoices: src.mainChainChoices ? { ...src.mainChainChoices } : undefined,
-        parentChainChoices: src.parentChainChoices ? { ...src.parentChainChoices } : undefined,
-      };
-      setPresetState((prev) => ({
-        presets: [...prev.presets, clone],
-        activeId: newId,
-      }));
-      return newId;
-    },
-    [presetState.presets],
-  );
+  const duplicatePreset = useCallback((id: string) => {
+    const newId = `preset-${Date.now()}`;
+    dispatch({ type: "duplicatePreset", id, newId });
+    return newId;
+  }, []);
 
   const updatePresetName = useCallback((id: string, name: string) => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) => (p.id === id ? { ...p, name: name.trim() || p.name } : p)),
-    }));
+    dispatch({ type: "updatePresetName", id, name });
   }, []);
 
   const deletePreset = useCallback((id: string) => {
-    setPresetState((prev) => {
-      if (prev.presets.length <= 1) return prev;
-      const remaining = prev.presets.filter((p) => p.id !== id);
-      const newActiveId = prev.activeId === id ? remaining[0].id : prev.activeId;
-      return { presets: remaining, activeId: newActiveId };
-    });
+    dispatch({ type: "deletePreset", id });
   }, []);
 
   const reorderPresets = useCallback((fromIndex: number, toIndex: number) => {
-    setPresetState((prev) => {
-      if (fromIndex < 0 || fromIndex >= prev.presets.length || toIndex < 0 || toIndex >= prev.presets.length) {
-        return prev;
-      }
-      const next = [...prev.presets];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      return { ...prev, presets: next };
-    });
+    dispatch({ type: "reorderPresets", fromIndex, toIndex });
   }, []);
 
   const importPreset = useCallback((presetData: Partial<DeckPreset>, asNewPreset: boolean, customName?: string): string => {
     const finalName = customName?.trim() || presetData.name?.trim() || "Shared Build";
     if (asNewPreset) {
       const newId = `preset-${Date.now()}`;
-      const newPreset: DeckPreset = {
-        id: newId,
-        name: finalName,
-        mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
-        parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
-        trackInfo: {
-          trackId: presetData.trackInfo?.trackId ?? DEFAULT_TRACK_ID,
-          courseId: presetData.trackInfo?.courseId ?? DEFAULT_COURSE_ID,
-          runningStyle: presetData.trackInfo?.runningStyle ?? null,
-          racerCount: presetData.trackInfo?.racerCount ?? 12,
-          pvpEventId: presetData.trackInfo?.pvpEventId ?? null,
-        },
-        mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : undefined,
-        parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : undefined,
-      };
-      setPresetState((prev) => ({
-        presets: [...prev.presets, newPreset],
-        activeId: newId,
-      }));
+      dispatch({ type: "importAsNew", preset: buildImportedPreset(newId, finalName, presetData) });
       return newId;
-    } else {
-      setPresetState((prev) => ({
-        ...prev,
-        presets: prev.presets.map((p) => {
-          if (p.id !== prev.activeId) return p;
-          return {
-            ...p,
-            name: customName?.trim() || p.name,
-            mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? p.mainDeckIds,
-            parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? p.parentDeckIds,
-            trackInfo: {
-              trackId: presetData.trackInfo?.trackId ?? p.trackInfo.trackId,
-              courseId: presetData.trackInfo?.courseId ?? p.trackInfo.courseId,
-              runningStyle: presetData.trackInfo?.runningStyle !== undefined ? presetData.trackInfo.runningStyle : p.trackInfo.runningStyle,
-              racerCount: presetData.trackInfo?.racerCount ?? p.trackInfo.racerCount,
-              pvpEventId: presetData.trackInfo?.pvpEventId ?? p.trackInfo.pvpEventId,
-            },
-            mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
-            parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
-          };
-        }),
-      }));
-      return presetState.activeId;
     }
+    dispatch({ type: "importOverwrite", presetData, customName });
+    return presetState.activeId;
   }, [presetState.activeId]);
 
   // Card modifications
@@ -302,61 +235,51 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   // the setters are the single choke point every picking UI funnels through.
   const setMainCard = useCallback((slotIndex: number, card: CardIndexEntry | null) => {
     if (card && !canPlaceCard(mainSlots, slotIndex, card)) return;
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) => {
-        if (p.id !== prev.activeId) return p;
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => {
         const nextIds = [...p.mainDeckIds];
         nextIds[slotIndex] = card?.id ?? null;
         return { ...p, mainDeckIds: nextIds };
-      }),
-    }));
+      },
+    });
   }, [mainSlots]);
 
   const clearMain = useCallback(() => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId ? { ...p, mainDeckIds: Array(DECK_SIZE).fill(null) } : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({ ...p, mainDeckIds: Array(DECK_SIZE).fill(null) }),
+    });
   }, []);
 
   const setParentCard = useCallback((slotIndex: number, card: CardIndexEntry | null) => {
     if (card && !canPlaceCard(parentSlots, slotIndex, card)) return;
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) => {
-        if (p.id !== prev.activeId) return p;
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => {
         const nextIds = [...p.parentDeckIds];
         nextIds[slotIndex] = card?.id ?? null;
         return { ...p, parentDeckIds: nextIds };
-      }),
-    }));
+      },
+    });
   }, [parentSlots]);
 
   const clearParent = useCallback(() => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId ? { ...p, parentDeckIds: Array(DECK_SIZE).fill(null) } : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({ ...p, parentDeckIds: Array(DECK_SIZE).fill(null) }),
+    });
   }, []);
 
   const copyMainToParent = useCallback(() => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              parentDeckIds: [...p.mainDeckIds],
-              parentChainChoices: p.mainChainChoices ? { ...p.mainChainChoices } : p.parentChainChoices,
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        parentDeckIds: [...p.mainDeckIds],
+        parentChainChoices: p.mainChainChoices ? { ...p.mainChainChoices } : p.parentChainChoices,
+      }),
+    });
   }, []);
 
   // Target Track & Course Actions
@@ -364,139 +287,87 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     (newTrackId: number) => {
       const d = trackDetailsCache[newTrackId];
       const firstCourseId = d?.courses[0]?.id ?? DEFAULT_COURSE_ID;
-      setPresetState((prev) => ({
-        ...prev,
-        presets: prev.presets.map((p) =>
-          p.id === prev.activeId
-            ? {
-                ...p,
-                trackInfo: {
-                  ...p.trackInfo,
-                  trackId: newTrackId,
-                  courseId: firstCourseId,
-                },
-              }
-            : p,
-        ),
-      }));
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => ({
+          ...p,
+          trackInfo: { ...p.trackInfo, trackId: newTrackId, courseId: firstCourseId },
+        }),
+      });
     },
     [trackDetailsCache],
   );
 
   const setCourseId = useCallback((newCourseId: number) => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              trackInfo: { ...p.trackInfo, courseId: newCourseId },
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: { ...p.trackInfo, courseId: newCourseId },
+      }),
+    });
   }, []);
 
   const setRunningStyle = useCallback((style: RunningStyle | null) => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              trackInfo: { ...p.trackInfo, runningStyle: style },
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: { ...p.trackInfo, runningStyle: style },
+      }),
+    });
   }, []);
 
   const setRacerCount = useCallback((count: number) => {
     const clamped = Math.min(18, Math.max(9, Math.round(count)));
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              trackInfo: { ...p.trackInfo, racerCount: clamped },
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: { ...p.trackInfo, racerCount: clamped },
+      }),
+    });
   }, []);
 
   const applyPvpPreset = useCallback((event: PvpEvent) => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              trackInfo: {
-                ...p.trackInfo,
-                trackId: event.trackId,
-                courseId: event.courseId,
-                racerCount: event.racerCount,
-                pvpEventId: event.id,
-              },
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: {
+          ...p.trackInfo,
+          trackId: event.trackId,
+          courseId: event.courseId,
+          racerCount: event.racerCount,
+          pvpEventId: event.id,
+        },
+      }),
+    });
   }, []);
 
   const clearPvpPreset = useCallback(() => {
-    setPresetState((prev) => ({
-      ...prev,
-      presets: prev.presets.map((p) =>
-        p.id === prev.activeId
-          ? {
-              ...p,
-              trackInfo: {
-                ...p.trackInfo,
-                pvpEventId: null,
-              },
-            }
-          : p,
-      ),
-    }));
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: { ...p.trackInfo, pvpEventId: null },
+      }),
+    });
   }, []);
 
+  // Chain choices are single-sourced in the active preset.
   const setChainChoice = useCallback(
     (mode: "main" | "parent", cardId: number, eventId: number, choiceIndex: number) => {
       const key = `${cardId}:${eventId}`;
-      setPresetState((prev) => ({
-        ...prev,
-        presets: prev.presets.map((p) => {
-          if (p.id !== prev.activeId) return p;
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => {
           if (mode === "main") {
-            const current = p.mainChainChoices ?? {};
-            return {
-              ...p,
-              mainChainChoices: { ...current, [key]: choiceIndex },
-            };
-          } else {
-            const current = p.parentChainChoices ?? {};
-            return {
-              ...p,
-              parentChainChoices: { ...current, [key]: choiceIndex },
-            };
+            return { ...p, mainChainChoices: { ...(p.mainChainChoices ?? {}), [key]: choiceIndex } };
           }
-        }),
-      }));
-
-      // Persist to standalone CHAIN_CHOICES_STORAGE_KEY as well
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          const raw = window.localStorage.getItem(CHAIN_CHOICES_STORAGE_KEY);
-          const map = raw ? JSON.parse(raw) : {};
-          map[key] = choiceIndex;
-          window.localStorage.setItem(CHAIN_CHOICES_STORAGE_KEY, JSON.stringify(map));
-        }
-      } catch {
-        /* ignore storage errors */
-      }
+          return { ...p, parentChainChoices: { ...(p.parentChainChoices ?? {}), [key]: choiceIndex } };
+        },
+      });
     },
     [],
   );
@@ -511,19 +382,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       if (choices && typeof choices[String(cardId)] === "number") {
         return choices[String(cardId)];
       }
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          const raw = window.localStorage.getItem(CHAIN_CHOICES_STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (typeof parsed?.[key] === "number") {
-              return parsed[key];
-            }
-          }
-        }
-      } catch {
-        /* ignore storage errors */
-      }
       return defaultChoiceIndex;
     },
     [activePreset.mainChainChoices, activePreset.parentChainChoices],
@@ -532,46 +390,23 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const resetCardChainChoices = useCallback(
     (mode: "main" | "parent", cardId: number) => {
       const prefix = `${cardId}:`;
-      setPresetState((prev) => ({
-        ...prev,
-        presets: prev.presets.map((p) => {
-          if (p.id !== prev.activeId) return p;
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => {
           if (mode === "main") {
             const current = { ...(p.mainChainChoices ?? {}) };
             for (const key of Object.keys(current)) {
               if (key.startsWith(prefix)) delete current[key];
             }
             return { ...p, mainChainChoices: current };
-          } else {
-            const current = { ...(p.parentChainChoices ?? {}) };
-            for (const key of Object.keys(current)) {
-              if (key.startsWith(prefix)) delete current[key];
-            }
-            return { ...p, parentChainChoices: current };
           }
-        }),
-      }));
-
-      try {
-        if (typeof window !== "undefined" && window.localStorage) {
-          const raw = window.localStorage.getItem(CHAIN_CHOICES_STORAGE_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            let changed = false;
-            for (const key of Object.keys(parsed)) {
-              if (key.startsWith(prefix)) {
-                delete parsed[key];
-                changed = true;
-              }
-            }
-            if (changed) {
-              window.localStorage.setItem(CHAIN_CHOICES_STORAGE_KEY, JSON.stringify(parsed));
-            }
+          const current = { ...(p.parentChainChoices ?? {}) };
+          for (const key of Object.keys(current)) {
+            if (key.startsWith(prefix)) delete current[key];
           }
-        }
-      } catch {
-        /* ignore storage errors */
-      }
+          return { ...p, parentChainChoices: current };
+        },
+      });
     },
     [],
   );
@@ -621,13 +456,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       getChainChoice,
       resetCardChainChoices,
 
-      slots: mainSlots,
       mainSlots,
-      setCard: setMainCard,
       setMainCard,
-      clear: clearMain,
       clearMain,
-      skills: mainSkills,
       mainSkills,
       mainSkillIdSet,
 
@@ -660,7 +491,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
       allCards: index,
       skillsByCard,
-      pendingSkillCards: pending,
       loading,
     }),
     [
@@ -705,7 +535,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       clearPvpPreset,
       index,
       skillsByCard,
-      pending,
       loading,
     ],
   );
