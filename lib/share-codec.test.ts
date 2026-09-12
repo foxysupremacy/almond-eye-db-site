@@ -7,7 +7,7 @@ import {
 } from "./share-codec";
 import type { DeckPreset } from "./deck/types";
 
-describe("share-codec V2", () => {
+describe("share-codec V3", () => {
   test("encodes and decodes a full preset accurately with compact length", () => {
     const preset: DeckPreset = {
       id: "test-preset-1",
@@ -26,9 +26,10 @@ describe("share-codec V2", () => {
 
     const code = encodePresetToShareCode(preset);
     expect(typeof code).toBe("string");
-    // Code should be ultra-compact (< 60 chars even with long name & choices)
+    // Code should be ultra-compact (< 64 chars even with long name & choices;
+    // V3 adds a 20-bit section header over the V2 payload)
     expect(code.length).toBeGreaterThan(20);
-    expect(code.length).toBeLessThan(60);
+    expect(code.length).toBeLessThan(64);
 
     const decoded = decodePresetFromShareCode(code);
     expect(Boolean(decoded)).toBe(true);
@@ -43,7 +44,7 @@ describe("share-codec V2", () => {
     expect(decoded?.parentChainChoices).toEqual({ "30101": 3 });
   });
 
-  test("achieves ~40 chars on competitive deck (Mile Senkou with 6 main, 2 parent)", () => {
+  test("achieves ~44 chars on competitive deck (Mile Senkou with 6 main, 2 parent)", () => {
     const preset: DeckPreset = {
       id: "preset-mile",
       name: "Mile Senkou",
@@ -60,7 +61,7 @@ describe("share-codec V2", () => {
     };
 
     const code = encodePresetToShareCode(preset);
-    expect(code.length).toBeLessThan(42);
+    expect(code.length).toBeLessThan(46);
 
     const decoded = decodePresetFromShareCode(code);
     expect(decoded?.name).toBe("Mile Senkou");
@@ -87,7 +88,7 @@ describe("share-codec V2", () => {
     };
 
     const code = encodePresetToShareCode(preset);
-    expect(code.length).toBeLessThan(25);
+    expect(code.length).toBeLessThan(28);
 
     const decoded = decodePresetFromShareCode(code);
     expect(decoded?.name).toBe("Short Build");
@@ -166,5 +167,54 @@ describe("share-codec V2", () => {
     expect(decoded?.trackInfo.runningStyle).toBe(2);
     expect(decoded?.trackInfo.racerCount).toBe(9);
     expect(decoded?.mainDeckIds).toEqual([30305, 30311, 30275, 30253, 30289, 30294]);
+  });
+
+  test("backward compatibility: successfully decodes legacy V2 bit-packed share codes", () => {
+    // Generated with the pre-V3 encoder (version 0b01 + inline fields) for the
+    // Mile Senkou preset above. Old links must decode forever.
+    const legacyV2Code = "YMltB_PUZ6vPM547PQZ6MBc2OZ8BN-iWm8A";
+    const decoded = decodePresetFromShareCode(legacyV2Code);
+    expect(Boolean(decoded)).toBe(true);
+    expect(decoded?.name).toBe("Mile Senkou");
+    expect(decoded?.trackInfo.trackId).toBe(10006);
+    expect(decoded?.trackInfo.courseId).toBe(10603);
+    expect(decoded?.trackInfo.runningStyle).toBe(2);
+    expect(decoded?.trackInfo.racerCount).toBe(9);
+    expect(decoded?.mainDeckIds).toEqual([30305, 30311, 30275, 30253, 30289, 30294]);
+  });
+
+  test("skips unknown extension sections without failing", async () => {
+    const { BitWriter, base64UrlToBytes } = await import("./share-codec");
+
+    const preset: DeckPreset = {
+      id: "ext",
+      name: "Ext Test",
+      mainDeckIds: [30001, null, null, null, null, null],
+      parentDeckIds: [],
+      trackInfo: { trackId: 10006, courseId: 10603, runningStyle: null, racerCount: 12 },
+    };
+    const base = encodePresetToShareCode(preset);
+    expect(decodePresetFromShareCode(base)?.mainDeckIds).toEqual([
+      30001, null, null, null, null, null,
+    ]);
+
+    // Rebuild the code with a bogus extension section (tag 15, 5 junk bits)
+    // injected right after the version header, before the CORE section. A
+    // future decoder of today's format must skip it and still decode CORE.
+    const bytes = base64UrlToBytes(base);
+    const w = new BitWriter(96);
+    w.write(2, 2); // version 0b10
+    w.write(15, 4); // unknown tag
+    w.write(5, 16); // section length: 5 bits
+    w.write(0b101, 5); // junk payload
+    for (let i = 2; i < bytes.length * 8; i++) {
+      w.write((bytes[i >> 3] >>> (7 - (i & 7))) & 1, 1); // rest of the original stream
+    }
+
+    const decoded = decodePresetFromShareCode(w.getEncoded());
+    expect(decoded?.name).toBe("Ext Test");
+    expect(decoded?.trackInfo.trackId).toBe(10006);
+    expect(decoded?.trackInfo.courseId).toBe(10603);
+    expect(decoded?.mainDeckIds).toEqual([30001, null, null, null, null, null]);
   });
 });
