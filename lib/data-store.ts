@@ -16,6 +16,21 @@ export function getCardImageUrl(cardId: number, variant: "art" | "portrait" = "a
   return `${CDN_BASE}/support/${cardId}/${cardId}/${code}.png`;
 }
 
+/** Generate CDN image URLs for playable character avatars and stands.
+ * variant="01" -> full art / character stand (img field in manifest)
+ * variant="02" -> support-card / character portrait (portrait field)
+ * Format: https://cdn.almond-eye.tech/assets/chara_stand/{cardId}/{paddedBaseId}/{variant}.png
+ */
+export function getCharacterImageUrl(
+  charId: number,
+  cardId: number,
+  variant: "01" | "02" = "01"
+): string {
+  const baseId = charId || Math.floor(cardId / 100);
+  const paddedBaseId = String(baseId).padStart(6, "0");
+  return `${CDN_BASE}/assets/chara_stand/${cardId}/${paddedBaseId}/${variant}.png`;
+}
+
 // ---------------------------------------------------------------------------
 // Type definitions
 // ---------------------------------------------------------------------------
@@ -73,6 +88,25 @@ export interface CardIndexEntry {
   eventSkills: number[];
   hintSkills: number[];
   eventDetails?: CardEventDetail[];
+}
+
+export interface CharacterIndexEntry {
+  id: number; // card_id, e.g. 100101
+  charId: number; // char_id, e.g. 1001
+  variant: string; // costume variant, e.g. "01"
+  nameEn: string;
+  nameJp: string;
+  titleEn: string;
+  titleJp: string;
+  rarity: number; // base stars (1..3)
+  release?: string | null;
+  aptitude: string[];
+  baseStats: number[];
+  uniqueSkillId?: number | null;
+  innateSkills?: number[];
+  awakeningSkills?: number[];
+  eventSkills?: number[];
+  imgUrl: string;
 }
 
 export interface SkillSummary {
@@ -160,14 +194,17 @@ export interface RacetrackDetail extends Racetrack {
 
 export interface DataStore {
   cards: CardIndexEntry[];
+  characters: CharacterIndexEntry[];
   skills: SkillDetail[];
   racetracks: RacetrackDetail[];
   cardsById: Map<number, CardIndexEntry>;
+  charactersById: Map<number, CharacterIndexEntry>;
   skillsById: Map<number, SkillDetail>;
   tracksById: Map<number, RacetrackDetail>;
   coursesById: Map<number, CourseRow>;
 
   getCard(id: number): CardIndexEntry | undefined;
+  getCharacter(id: number): CharacterIndexEntry | undefined;
   getSkill(id: number): SkillDetail | undefined;
   getTrack(id: number): RacetrackDetail | undefined;
   getCourse(id: number): CourseRow | undefined;
@@ -182,15 +219,23 @@ export async function initDataStore(): Promise<DataStore> {
   if (storePromise) return storePromise;
 
   storePromise = (async () => {
-    const [rawCardsMod, rawSkillsMod, rawTracksMod] = await Promise.all([
+    const [rawCardsMod, rawSkillsMod, rawTracksMod, rawCharasMod, rawInheritSkillsMod] = await Promise.all([
       import("./data/cards.json"),
       import("./data/skills.json"),
       import("./data/racetracks.json"),
+      import("./data/characters.json"),
+      import("./data/skills-inherit.json"),
     ]);
 
     const rawCards = (rawCardsMod.default || rawCardsMod) as any[];
-    const rawSkills = (rawSkillsMod.default || rawSkillsMod) as any[];
+    // Inherited-unique (white) skill versions, generated from master.mdb —
+    // see scripts/generate_inherit_skills.py
+    const rawSkills = [
+      ...((rawSkillsMod.default || rawSkillsMod) as any[]),
+      ...((rawInheritSkillsMod.default || rawInheritSkillsMod) as any[]),
+    ] as any[];
     const rawTracks = (rawTracksMod.default || rawTracksMod) as any[];
+    const rawCharas = (rawCharasMod.default || rawCharasMod) as any[];
 
     // Hydrate cards with deterministic image URLs
     const cards: CardIndexEntry[] = rawCards.map((c) => ({
@@ -210,6 +255,26 @@ export async function initDataStore(): Promise<DataStore> {
       eventDetails: c.eventDetails || [],
     }));
 
+    // Hydrate playable characters with CDN avatar URLs
+    const characters: CharacterIndexEntry[] = rawCharas.map((c) => ({
+      id: c.id,
+      charId: c.charId,
+      variant: c.variant || String(c.id).slice(-2),
+      nameEn: c.nameEn,
+      nameJp: c.nameJp,
+      titleEn: c.titleEn,
+      titleJp: c.titleJp,
+      rarity: c.rarity,
+      release: c.release,
+      aptitude: c.aptitude || [],
+      baseStats: c.baseStats || [],
+      uniqueSkillId: c.uniqueSkillId,
+      innateSkills: c.innateSkills || [],
+      awakeningSkills: c.awakeningSkills || [],
+      eventSkills: c.eventSkills || [],
+      imgUrl: getCharacterImageUrl(c.charId, c.id),
+    }));
+
     const skills: SkillDetail[] = rawSkills.map((s) => ({
       id: s.id,
       nameEn: s.nameEn,
@@ -224,6 +289,7 @@ export async function initDataStore(): Promise<DataStore> {
     const racetracks: RacetrackDetail[] = rawTracks as RacetrackDetail[];
 
     const cardsById = new Map<number, CardIndexEntry>(cards.map((c) => [c.id, c]));
+    const charactersById = new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
     const skillsById = new Map<number, SkillDetail>(skills.map((s) => [s.id, s]));
     const tracksById = new Map<number, RacetrackDetail>(racetracks.map((t) => [t.id, t]));
     const coursesById = new Map<number, CourseRow>();
@@ -235,15 +301,20 @@ export async function initDataStore(): Promise<DataStore> {
 
     const store: DataStore = {
       cards,
+      characters,
       skills,
       racetracks,
       cardsById,
+      charactersById,
       skillsById,
       tracksById,
       coursesById,
 
       getCard(id: number) {
         return cardsById.get(id);
+      },
+      getCharacter(id: number) {
+        return charactersById.get(id);
       },
       getSkill(id: number) {
         return skillsById.get(id);

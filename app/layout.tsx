@@ -19,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('almond_theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||((!t||t==='system')&&d)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}})()`,
+            __html: `(function(){try{var t=localStorage.getItem('almond_theme');var d=window.matchMedia('(prefers-color-scheme: dark)').matches;if(t==='dark'||((!t||t==='system')&&d)){document.documentElement.classList.add('dark');}else{document.documentElement.classList.remove('dark');}}catch(e){}try{window.addEventListener('error',function(e){if(e&&(e.message==='Script error.'||(!e.error&&!e.filename))){e.stopImmediatePropagation();}},true);window.addEventListener('unhandledrejection',function(e){if(e&&(e.reason==='Script error.'||String(e.reason)==='Script error.')){e.stopImmediatePropagation();}},true);}catch(e){}})()`,
           }}
         />
       </head>

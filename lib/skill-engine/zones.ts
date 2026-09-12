@@ -9,6 +9,7 @@ import { Conditions, EqOperator, NeqOperator, LtOperator, LteOperator, GtOperato
 import { getParser } from "./parser";
 import { ImmediatePolicy, isRandom } from "./sample-policy";
 import type { Course, HorseParameters, RaceParameters } from "./types";
+import { BANNED_DEBUFF_SKILL_IDS } from "../pvp-events";
 
 // Fixed max-stat horse, same choice as uma-tools' skill-visualizer app.
 const HORSE: HorseParameters = {
@@ -62,8 +63,15 @@ export function computeZones(
   condition: string,
   precondition?: string | null,
   horse: HorseParameters = HORSE,
+  extra?: Partial<RaceParameters>,
 ): SkillZoneResult {
-  const extra: RaceParameters = { skillId: "" };
+  const fullExtra: RaceParameters = { skillId: "", ...extra };
+  if (fullExtra.noDebuffs && fullExtra.skillId) {
+    const numId = Number(fullExtra.skillId);
+    if (!Number.isNaN(numId) && BANNED_DEBUFF_SKILL_IDS.has(numId)) {
+      return { regions: new RegionList(), isRandom: false, earliestFire: null };
+    }
+  }
   let full = wholeCourse(course);
   let earliestFire: number | null = null;
 
@@ -71,7 +79,7 @@ export function computeZones(
   // satisfied", then the main condition is intersected within that.
   if (precondition) {
     const pre = parser.parse(parser.tokenize(precondition));
-    const [preRegions] = pre.apply(full, course, horse, extra);
+    const [preRegions] = pre.apply(full, course, horse, fullExtra);
     if (preRegions.length === 0) {
       return { regions: new RegionList(), isRandom: false, earliestFire: null };
     }
@@ -87,7 +95,7 @@ export function computeZones(
     return { regions: new RegionList(), isRandom: false, earliestFire };
   }
 
-  const [regions] = op.apply(full, course, horse, extra);
+  const [regions] = op.apply(full, course, horse, fullExtra);
   const random = isRandom(op.samplePolicy);
 
   // An empty condition (e.g. "always" or a bare noop chain) still yields the
@@ -104,9 +112,10 @@ export function computeAllZones(
   course: Course,
   groups: { condition?: string | null; precondition?: string | null }[],
   horse: HorseParameters = HORSE,
+  extra?: Partial<RaceParameters>,
 ): SkillZoneResult[] {
   const results = groups.map((g) =>
-    computeZones(course, g.condition ?? "", g.precondition ?? null, horse),
+    computeZones(course, g.condition ?? "", g.precondition ?? null, horse, extra),
   );
   for (let i = 0; i < groups.length; i++) {
     const raw = `${groups[i].condition ?? ""}&${groups[i].precondition ?? ""}`;

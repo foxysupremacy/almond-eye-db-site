@@ -1,6 +1,26 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
 @custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  /* Non-linear motion curves (web-animation-design skill):
+     out-expo for enter/exit, out-quart for micro-interactions,
+     in-out-cubic for on-screen movement. */
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 :root {
   color-scheme: light;
@@ -69,8 +89,17 @@ a {
   max-width: 100%;
 }
 
+/* Mobile: cap the track to 128px tall. The SVG keeps its 972×256 viewBox, so the
+   content letterboxes inside the shorter viewport (hover math uses the inner
+   rect's live bounding box and is unaffected by the CSS resize). */
+@media (max-width: 767px) {
+  .racetrackView {
+    height: 128px;
+  }
+}
+
 /* SVG race track text outline styling:
-   Crisp white border around all track texts across light and dark modes */
+   Crisp white border around black/dark text across both light and dark modes */
 .racetrackView text {
   paint-order: stroke;
   stroke: #ffffff;
@@ -107,6 +136,7 @@ a {
   dominant-baseline: central;
   font-size: 12px;
   font-weight: 600;
+  fill: #000000;
   paint-order: stroke;
   stroke: #ffffff;
   stroke-width: 2.5px;
@@ -115,6 +145,7 @@ a {
 }
 
 .dark .sectionText {
+  fill: #000000;
   stroke: #ffffff;
 }
 

@@ -143,3 +143,108 @@ describe("computeZones - furlong and accumulatetime", () => {
     expect(res.regions).toEqual([{ start: 200, end: 2400 } as any]);
   });
 });
+
+describe("computeZones - intrinsic track & environmental conditions", () => {
+  test("is_tight_track gates tight vs wide racecourses", () => {
+    // dummyCourse trackId is 10005 (Nakayama / wide), not in tight track list
+    const wideRes = computeZones(dummyCourse, "is_tight_track==1");
+    expect(wideRes.regions.length).toBe(0);
+
+    const wideResNot = computeZones(dummyCourse, "is_tight_track==0");
+    expect(wideResNot.regions.length).toBeGreaterThan(0);
+
+    // Sapporo (10001) is a tight track
+    const tightCourse = { ...dummyCourse, trackId: 10001 };
+    const tightRes = computeZones(tightCourse, "is_tight_track==1");
+    expect(tightRes.regions.length).toBeGreaterThan(0);
+  });
+
+  test("is_abroad gates domestic vs overseas racecourses", () => {
+    // dummyCourse trackId is 10005 (domestic)
+    const domesticAbroadRes = computeZones(dummyCourse, "is_abroad==1");
+    expect(domesticAbroadRes.regions.length).toBe(0);
+
+    const domesticDomesticRes = computeZones(dummyCourse, "is_abroad==0");
+    expect(domesticDomesticRes.regions.length).toBeGreaterThan(0);
+
+    // Longchamp (10201) is abroad
+    const overseasCourse = { ...dummyCourse, trackId: 10201 };
+    const overseasAbroadRes = computeZones(overseasCourse, "is_abroad==1");
+    expect(overseasAbroadRes.regions.length).toBeGreaterThan(0);
+  });
+
+  test("is_dirtgrade gates NAR dirt racecourses", () => {
+    // dummyCourse is Tokyo (10005, JRA turf)
+    const jraDirtGradeRes = computeZones(dummyCourse, "is_dirtgrade==1");
+    expect(jraDirtGradeRes.regions.length).toBe(0);
+
+    // Ooi (10101) is NAR dirt grade
+    const narCourse = { ...dummyCourse, trackId: 10101 };
+    const narDirtGradeRes = computeZones(narCourse, "is_dirtgrade==1");
+    expect(narDirtGradeRes.regions.length).toBeGreaterThan(0);
+  });
+
+  test("rotation handles straight courses (turn 4)", () => {
+    const straightCourse = { ...dummyCourse, turn: 4 };
+    const matchRes = computeZones(straightCourse, "rotation==4");
+    expect(matchRes.regions.length).toBeGreaterThan(0);
+
+    const mismatchRes = computeZones(straightCourse, "rotation==1");
+    expect(mismatchRes.regions.length).toBe(0);
+  });
+
+  test("environmental conditions pass through when unset, and filter strictly when specified", () => {
+    // Unset environmental conditions pass through
+    const unsetSeason = computeZones(dummyCourse, "season==3");
+    expect(unsetSeason.regions.length).toBeGreaterThan(0);
+
+    // Matching specified season (3 = Autumn/Fall)
+    const matchSeason = computeZones(dummyCourse, "season==3", null, undefined, { season: 3 });
+    expect(matchSeason.regions.length).toBeGreaterThan(0);
+
+    // Mismatched specified season (Spring 1 vs Autumn 3)
+    const mismatchSeason = computeZones(dummyCourse, "season==3", null, undefined, { season: 1 });
+    expect(mismatchSeason.regions.length).toBe(0);
+
+    // Weather: sunny (1) vs rainy (3)
+    const matchWeather = computeZones(dummyCourse, "weather==1", null, undefined, { weather: 1 });
+    expect(matchWeather.regions.length).toBeGreaterThan(0);
+    const mismatchWeather = computeZones(dummyCourse, "weather==1", null, undefined, { weather: 3 });
+    expect(mismatchWeather.regions.length).toBe(0);
+
+    // Ground condition: good (1) vs yielding (2)
+    const matchGround = computeZones(dummyCourse, "ground_condition==1", null, undefined, { groundCondition: 1 });
+    expect(matchGround.regions.length).toBeGreaterThan(0);
+    const mismatchGround = computeZones(dummyCourse, "ground_condition==1", null, undefined, { groundCondition: 2 });
+    expect(mismatchGround.regions.length).toBe(0);
+
+    // Time: daytime (2) vs night (4)
+    const matchTime = computeZones(dummyCourse, "time==2", null, undefined, { time: 2 });
+    expect(matchTime.regions.length).toBeGreaterThan(0);
+    const mismatchTime = computeZones(dummyCourse, "time==2", null, undefined, { time: 4 });
+    expect(mismatchTime.regions.length).toBe(0);
+
+    // Grade: G1 (100) vs G2 (200)
+    const matchGrade = computeZones(dummyCourse, "grade==100", null, undefined, { grade: 100 });
+    expect(matchGrade.regions.length).toBeGreaterThan(0);
+    const mismatchGrade = computeZones(dummyCourse, "grade==100", null, undefined, { grade: 200 });
+    expect(mismatchGrade.regions.length).toBe(0);
+  });
+
+  test("noDebuffs rule returns empty regions for banned skills and preserves unbanned skills", () => {
+    // 201151 = Monopolize (独占力), a banned debuff
+    const normalZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "201151" });
+    expect(normalZones.regions.length).toBeGreaterThan(0);
+
+    const bannedZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "201151", noDebuffs: true });
+    expect(bannedZones.regions.length).toBe(0);
+
+    // 110071 = Adventure of 564 (継承スキル ban)
+    const bannedUnique = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "110071", noDebuffs: true });
+    expect(bannedUnique.regions.length).toBe(0);
+
+    // 200011 = General speed skill (not banned)
+    const unbannedZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "200011", noDebuffs: true });
+    expect(unbannedZones.regions.length).toBeGreaterThan(0);
+  });
+});

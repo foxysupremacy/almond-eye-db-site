@@ -7,11 +7,13 @@ import {
   initDataStore,
   getDataStore,
   getCardImageUrl,
+  getCharacterImageUrl,
   flattenCourse,
   distanceLabel,
   terrainLabel,
   turnLabel,
   type CardIndexEntry,
+  type CharacterIndexEntry,
   type SkillSummary,
   type CardSkills,
   type SkillConditionGroup,
@@ -40,9 +42,19 @@ export const api = {
     return store.cards;
   },
 
+  async listCharacters(): Promise<CharacterIndexEntry[]> {
+    const store = await initDataStore();
+    return store.characters;
+  },
+
   async cardSkills(cardId: number): Promise<CardSkills> {
     const store = await initDataStore();
     return store.getCardSkills(cardId);
+  },
+
+  async listSkills(): Promise<SkillDetail[]> {
+    const store = await initDataStore();
+    return store.skills;
   },
 
   async skill(id: number): Promise<SkillDetail> {
@@ -74,6 +86,7 @@ export {
   initDataStore,
   getDataStore,
   getCardImageUrl,
+  getCharacterImageUrl,
   flattenCourse,
   distanceLabel,
   terrainLabel,
@@ -83,6 +96,7 @@ export {
 
 export type {
   CardIndexEntry,
+  CharacterIndexEntry,
   SkillSummary,
   CardSkills,
   SkillConditionGroup,

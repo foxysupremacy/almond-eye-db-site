@@ -12,6 +12,8 @@ import {
   type RunningStyle,
 } from "./store";
 import { distanceLabel, terrainLabel, turnLabel } from "../lib/api";
+import { PVP_EVENTS } from "../lib/pvp-events";
+import { TrophyIcon } from "./icons";
 
 export default function GlobalTrackBar() {
   const {
@@ -26,6 +28,10 @@ export default function GlobalTrackBar() {
     setRunningStyle,
     racerCount,
     setRacerCount,
+    activePvpEventId,
+    activePvpEvent,
+    applyPvpPreset,
+    clearPvpPreset,
   } = useDeck();
 
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -41,9 +47,21 @@ export default function GlobalTrackBar() {
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
           <div className="min-w-0">
-            <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-              Target Race
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                Target Race
+              </span>
+              {activePvpEvent && (
+                <span className="rounded bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.2 text-[9px] font-bold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
+                  {activePvpEvent.shortName}
+                </span>
+              )}
+              {activePvpEvent?.noDebuffs && (
+                <span className="rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.2 text-[9px] font-bold text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
+                  No Debuff
+                </span>
+              )}
+            </div>
             <span className="block truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
               {raceTitle}
             </span>
@@ -67,11 +85,98 @@ export default function GlobalTrackBar() {
       </div>
 
       {/* Full Selectors Grid (Expanded on Mobile or always visible on md+) */}
-      <div className={`mt-3 md:mt-0 flex flex-wrap items-center justify-between gap-3 ${mobileExpanded ? "block" : "hidden md:flex"}`}>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-2.5 text-xs w-full md:w-auto">
-          <span className="hidden md:inline font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 text-[11px]">
-            Target Race:
-          </span>
+      <div className={`mt-3 md:mt-0 flex flex-col gap-2.5 ${mobileExpanded ? "block" : "hidden md:flex"}`}>
+        {/* PvP Presets & Conditions Section */}
+        <div className="flex flex-col gap-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
+          {/* PvP Presets Row */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 text-[11px] mr-1 flex items-center gap-1.5">
+              <TrophyIcon className="h-3.5 w-3.5" />
+              <span>PvP:</span>
+            </span>
+            {PVP_EVENTS.map((event) => {
+              const isActive = activePvpEventId === event.id;
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => {
+                    if (isActive) {
+                      clearPvpPreset();
+                    } else {
+                      applyPvpPreset(event);
+                    }
+                  }}
+                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-purple-600 text-white shadow-xs ring-2 ring-purple-500/40 border border-purple-500"
+                      : "border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/90 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  }`}
+                  title={event.name}
+                >
+                  <span>{event.shortName}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Active Event Conditions Badges (Below PvP Selector) */}
+          {activePvpEvent && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px] animate-in fade-in duration-200 ease-out-quart">
+              {/* Season */}
+              <span className="inline-flex items-center gap-1 rounded-md border border-orange-200 dark:border-orange-900/60 bg-orange-50/80 dark:bg-orange-950/40 px-1.5 py-0.5 font-medium text-orange-800 dark:text-orange-300">
+                <img src={activePvpEvent.seasonIcon} alt={activePvpEvent.season} className="h-3.5 w-3.5 object-contain" />
+                <span>{activePvpEvent.season}</span>
+              </span>
+
+              {/* Weather */}
+              {activePvpEvent.weather && activePvpEvent.weatherIcon ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 dark:border-sky-900/60 bg-sky-50/80 dark:bg-sky-950/40 px-1.5 py-0.5 font-medium text-sky-800 dark:text-sky-300">
+                  <img src={activePvpEvent.weatherIcon} alt={activePvpEvent.weather} className="h-3.5 w-3.5 object-contain" />
+                  <span>{activePvpEvent.weather}</span>
+                </span>
+              ) : null}
+
+              {/* Ground */}
+              {activePvpEvent.ground ? (
+                <span className="inline-flex items-center gap-1 rounded-md border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/80 dark:bg-emerald-950/40 px-1.5 py-0.5 font-medium text-emerald-800 dark:text-emerald-300">
+                  <span>Ground: {activePvpEvent.ground}</span>
+                </span>
+              ) : null}
+
+              {/* Variable Weather / Ground for LoH */}
+              {!activePvpEvent.weather && !activePvpEvent.ground && (
+                <span className="inline-flex items-center gap-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-100/80 dark:bg-zinc-800/60 px-1.5 py-0.5 font-medium text-zinc-600 dark:text-zinc-300">
+                  <span>Ground/Weather: Random</span>
+                </span>
+              )}
+
+              {/* Timezone */}
+              <span className="inline-flex items-center gap-1 rounded-md border border-amber-200 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 px-1.5 py-0.5 font-medium text-amber-800 dark:text-amber-300">
+                <img src={activePvpEvent.timeIcon} alt={activePvpEvent.time} className="h-3.5 w-3.5 object-contain" />
+                <span>{activePvpEvent.time}</span>
+              </span>
+
+              {/* Special Rule: No Debuff */}
+              {activePvpEvent.noDebuffs && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-md border border-rose-300 dark:border-rose-800 bg-rose-50/90 dark:bg-rose-950/60 px-1.5 py-0.5 font-bold text-rose-800 dark:text-rose-300 shadow-2xs"
+                  title="Special Rule: Debuff skills cannot be used and will not activate (debuff=false)"
+                >
+                  <span>🚫</span>
+                  <span>No Debuff</span>
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Selectors Grid */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:flex md:flex-wrap items-center gap-2.5 text-xs w-full md:w-auto">
+            <span className="hidden md:inline font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 text-[11px]">
+              Target Race:
+            </span>
 
           {/* Venue Selector */}
           <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 shadow-2xs">
@@ -151,5 +256,6 @@ export default function GlobalTrackBar() {
         )}
       </div>
     </div>
+  </div>
   );
 }

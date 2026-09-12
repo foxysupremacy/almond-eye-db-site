@@ -100,6 +100,12 @@ Warm ink-on-paper editorial-tool palette (from `track_visualizer.html`):
 zinc grays + emerald for "triggerable", amber/sky/violet for rarity. No fancy
 motion — hierarchy + legibility matter here.
 
+### Component Design System (`DESIGN.md`)
+Refer to `DESIGN.md` for UI/UX specifications on skill presentations:
+- **Bilingual Display Hierarchy**: English translated name is always primary on top; original Japanese name is secondary directly underneath (`mt-0.5`, muted `text-zinc-400 dark:text-zinc-500`, smaller font size). Never place them side-by-side.
+- **Icon Centering**: The skill icon must be vertically centered (`items-center`) against the combined 2-line title block, never aligned to the top line (`items-start`).
+- **Interactive Wrapping**: `SkillHoverCard` wraps both the centered icon and the 2-line title container as a single interactive trigger.
+
 ## Verification
 
 1. `npx tsc --noEmit` clean.

@@ -7,6 +7,8 @@ import { ChainArrowIcon, ChainStepBadge } from "./chain-arrow-icon";
 import { SkillHoverCard } from "./skill-hover-card";
 import SkillIcon from "./skill-icon";
 import { getInheritableSkillForGold } from "../lib/skill-rarity";
+import { ZapIcon } from "./icons";
+import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 
 interface CardChainSelectorProps {
   card: CardIndexEntry;
@@ -16,6 +18,7 @@ interface CardChainSelectorProps {
 export default function CardChainSelector({ card, mode }: CardChainSelectorProps) {
   const { setChainChoice, getChainChoice, resetCardChainChoices, skillsByCard } = useDeck();
   const [isOpen, setIsOpen] = useState(false);
+  useBodyScrollLock(isOpen);
 
   // Only SSR cards (rarity 3) have continuous chain choices
   const chainEvents = useMemo(() => {
@@ -243,7 +246,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
               e.stopPropagation();
               setIsOpen(true);
             }}
-            className={`w-full flex items-center justify-between gap-1 sm:gap-1.5 rounded-lg border px-1.5 sm:px-2 py-1 sm:py-1.5 text-left transition-all cursor-pointer group active:scale-[0.98] shadow-2xs ${
+            className={`w-full flex items-center justify-between gap-1 sm:gap-1.5 rounded-lg border px-1.5 sm:px-2 py-1 sm:py-1.5 text-left transition-all ease-out-quart duration-150 cursor-pointer group active:scale-[0.98] shadow-2xs ${
               isGoldOutcome
                 ? "border-amber-400 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/60 text-amber-950 dark:text-amber-100 hover:border-amber-500 dark:hover:border-amber-600"
                 : mode === "parent"
@@ -296,14 +299,14 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
       {/* Centered Modal Dialog / Bottom Sheet on Mobile */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-150"
+          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
           onClick={() => setIsOpen(false)}
           role="dialog"
           aria-modal="true"
           aria-labelledby="chain-modal-title"
         >
           <div
-            className="flex max-h-[85vh] sm:max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border-t sm:border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left"
+            className="flex max-h-[85vh] sm:max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border-t sm:border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-[250ms] ease-out-expo text-left overscroll-contain touch-pan-y"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -334,7 +337,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                 <button
                   type="button"
                   onClick={() => resetCardChainChoices(mode, card.id)}
-                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-750 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-2xs active:scale-[0.98] transition-all cursor-pointer"
+                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-2xs active:scale-[0.98] transition-all ease-out-quart duration-150 cursor-pointer"
                   title="Reset all choices for this card to recommended defaults"
                 >
                   Reset
@@ -342,7 +345,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 active:scale-[0.95] transition-all cursor-pointer"
+                  className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 active:scale-[0.95] transition-all ease-out-quart duration-150 cursor-pointer"
                   aria-label="Close dialog"
                 >
                   <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -353,7 +356,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
             </div>
 
             {/* Modal Body - List of Continuous Steps */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
               {chainEvents.map((ev) => {
                 const defaultChoice = getDefaultChoiceIndex(ev, (id) => {
                   const sk = cardSkills?.eventSkills.find((s) => s.id === id);
@@ -394,7 +397,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                             key={ch.index}
                             type="button"
                             onClick={() => setChainChoice(mode, card.id, ev.eventId, ch.index)}
-                            className={`w-full flex items-start gap-3 rounded-xl border p-2.5 text-left transition-all cursor-pointer active:scale-[0.99] ${
+                            className={`w-full flex items-start gap-3 rounded-xl border p-2.5 text-left transition-all ease-out-quart duration-150 cursor-pointer active:scale-[0.99] ${
                               isSelected
                                 ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-2xs ring-1 ring-emerald-600 dark:ring-emerald-500"
                                 : hasGoldSkill
@@ -460,8 +463,8 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                                 })}
 
                                 {ch.statSummary && (
-                                  <span className="inline-flex items-center gap-1 rounded-md border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/50 px-2 py-0.5 text-[10px] font-medium text-sky-900 dark:text-sky-300">
-                                    <span>⚡</span>
+                                  <span className="inline-flex items-center gap-1.5 rounded-md border border-sky-200 dark:border-sky-800 bg-sky-50 dark:bg-sky-950/50 px-2 py-0.5 text-[10px] font-medium text-sky-900 dark:text-sky-300">
+                                    <ZapIcon className="h-3 w-3 flex-none" />
                                     <span>{ch.statSummary}</span>
                                   </span>
                                 )}
@@ -490,7 +493,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
-                className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-2xs active:scale-[0.98] transition-all cursor-pointer"
+                className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-2xs active:scale-[0.98] transition-all ease-out-quart duration-150 cursor-pointer"
               >
                 Done
               </button>

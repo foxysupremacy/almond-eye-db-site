@@ -245,6 +245,45 @@ function valueFilter(getValue: (c: Course, h: HorseParameters, e: RaceParameters
   });
 }
 
+/** An environmental scalar condition that passes through when unset (null/undefined)
+ *  and tests strictly when specified. */
+function optionalValueFilter(
+  getValue: (c: Course, h: HorseParameters, e?: RaceParameters) => number | null | undefined,
+): Condition {
+  return immediate({
+    filterEq(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v === value ? regions : new RegionList();
+    },
+    filterNeq(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v !== value ? regions : new RegionList();
+    },
+    filterLt(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v < value ? regions : new RegionList();
+    },
+    filterLte(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v <= value ? regions : new RegionList();
+    },
+    filterGt(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v > value ? regions : new RegionList();
+    },
+    filterGte(regions, value, course, horse, extra) {
+      const v = getValue(course, horse, extra);
+      if (v == null) return regions;
+      return v >= value ? regions : new RegionList();
+    },
+  });
+}
+
 /** A phase-bound skill activation count condition (e.g. activate_count_middle>=3).
  *  Narrows >= and > to the specified phase/section bounds while preserving pass-through
  *  behavior for == (historical checks like Neo Universe's unique). */
@@ -608,6 +647,21 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   course_distance: valueFilter((course) => course.length),
   is_basis_distance: valueFilter((course) => (course.length % 400 === 0 ? 1 : 0)),
   track_id: valueFilter((course) => course.trackId ?? -1),
+  is_tight_track: valueFilter((course) =>
+    [10001, 10002, 10004, 10010, 10101, 10103, 10104, 10105].includes(course.trackId ?? -1) ? 1 : 0,
+  ),
+  is_abroad: valueFilter((course) => ((course.trackId ?? 0) >= 10200 ? 1 : 0)),
+  is_dirtgrade: valueFilter((course) =>
+    [10101, 10103, 10104, 10105].includes(course.trackId ?? -1) ? 1 : 0,
+  ),
+
+  // -- environmental / race context filters (optional pass-through when unset) --
+  season: optionalValueFilter((_c, _h, extra) => extra?.season),
+  weather: optionalValueFilter((_c, _h, extra) => extra?.weather),
+  ground_condition: optionalValueFilter((_c, _h, extra) => extra?.groundCondition),
+  time: optionalValueFilter((_c, _h, extra) => extra?.time),
+  grade: optionalValueFilter((_c, _h, extra) => extra?.grade),
+
   base_speed: valueFilter((_c, horse) => horse.speed),
   base_stamina: valueFilter((_c, horse) => horse.stamina),
   base_power: valueFilter((_c, horse) => horse.power),
@@ -675,8 +729,6 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   distance_diff_rate: noopImmediate,
   distance_diff_top: noopImmediate,
   distance_diff_top_float: noopImmediate,
-  grade: noopImmediate,
-  ground_condition: noopImmediate,
   hp_per: noopImmediate,
   infront_near_lane_time: noopRandom,
   is_activate_any_skill: noopRandom,
@@ -684,7 +736,6 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   is_activate_other_skill_detail: noopImmediate,
   is_badstart: noopImmediate,
   is_behind_in: noopImmediate,
-  is_dirtgrade: noopImmediate,
   is_exist_chara_id: noopImmediate,
   is_exist_skill_id: noopImmediate,
   is_goodstart: noopImmediate,
@@ -712,8 +763,6 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   is_used_skill_id_with_detail_one: noopImmediate,
   is_popularity_top_character_activate_advantage_skill: noopImmediate,
   is_other_character_activate_advantage_skill: noopImmediate,
-  is_abroad: noopImmediate,
-  is_tight_track: noopImmediate,
   lane_type: noopImmediate,
   // `lastspurt==1` (entered last spurt) / `==2` (deep in it) → last-spurt
   // section; `==3` ("not in last spurt") → before it. The precise
@@ -774,15 +823,12 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   running_style_temptation_opponent_count_sashi: noopRandom,
   running_style_temptation_opponent_count_oikomi: noopRandom,
   same_skill_horse_count: noopImmediate,
-  season: noopImmediate,
   succession_skill_count: noopImmediate,
   temptation_count: noopImmediate,
   temptation_count_behind: noopRandom,
   temptation_count_infront: noopRandom,
   temptation_opponent_count_behind: noopRandom,
   temptation_opponent_count_infront: noopRandom,
-  time: noopImmediate,
-  weather: noopImmediate,
   visiblehorse: noopImmediate,
   fan_count: noopImmediate,
 });

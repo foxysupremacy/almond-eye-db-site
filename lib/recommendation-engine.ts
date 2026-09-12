@@ -5,11 +5,19 @@
 
 import cardData from "./card-data.json";
 import rawSkillsData from "./data/skills.json";
-import type { Course } from "./skill-engine/types";
+import type { Course, RaceParameters } from "./skill-engine/types";
 import { computeAllZones, horseForStrategy } from "./skill-engine/zones";
 import { getInheritableSkillForGold } from "./skill-rarity";
+import {
+  evaluateSkillForTrack,
+  type SkillTacticalCategory,
+  type EvaluatorZoneInput,
+} from "./skill-evaluator";
+import { BANNED_DEBUFF_SKILL_IDS } from "./pvp-events";
 
 const skillIconMap = new Map<number, number | null>((rawSkillsData as any[]).map((s) => [s.id, s.iconId]));
+const rawSkillsMap = new Map<number, any>((rawSkillsData as any[]).map((s) => [s.id, s]));
+export { rawSkillsMap };
 
 export interface SkillMeta {
   nameEn: string;
@@ -71,6 +79,12 @@ export interface NewSkillMatch {
   eventMeta?: EventSkillMetadata;
   choiceConflict?: boolean; // True if this skill comes from a choice branching event with competing matches
   isRecommendedChoice?: boolean; // True if this choice is the optimal scoring branch
+  tacticalCategory?: SkillTacticalCategory;
+  evalTier?: "S" | "A" | "B" | "C" | "D" | "F";
+  evalStars?: 1 | 2 | 3 | 4 | 5;
+  tacticalLabel?: string;
+  tacticalBadgeClass?: string;
+  evalScore?: number;
 }
 
 export interface CardRecommendation {
@@ -135,18 +149,32 @@ export function doesSkillFireOnCourse(
   skillId: number,
   course: Course,
   style: number | null,
+  raceParams?: Partial<RaceParameters>,
 ): boolean | null {
   const meta = skillMetaMap[skillId];
   if (!meta || !meta.conditions || meta.conditions.length === 0) return null;
 
   const horse = style ? horseForStrategy(style) : undefined;
   try {
-    const zones = computeAllZones(course, meta.conditions, horse);
+    const zones = computeAllZones(course, meta.conditions, horse, { ...raceParams, skillId: String(skillId) });
     return zones.some((z) => z.regions.length > 0);
   } catch {
     return null;
   }
 }
+
+/** Tactical categories that actually move the uma (accel/speed families).
+    Excludes recovery, passive, debuff, other, invalid. */
+export const SPEED_TACTICAL_CATEGORIES: readonly SkillTacticalCategory[] = [
+  "fastest_accel",
+  "carry_over",
+  "delayed_accel",
+  "dead_accel",
+  "current_speed",
+  "mid_speed",
+  "late_speed",
+  "early_speed",
+];
 
 export function recommendCardsForParent({
   mainDeckSkillIds,
@@ -155,7 +183,11 @@ export function recommendCardsForParent({
   style = null,
   distance = null,
   surface = null,
-  limit = 12,
+  limit = 16,
+  raceParams,
+  excludeSkillIds,
+  tacticalCategories,
+  requireFiresOnCourse,
 }: {
   mainDeckSkillIds: Set<number>;
   equippedParentCardIds?: (number | null)[];
@@ -164,8 +196,19 @@ export function recommendCardsForParent({
   distance?: number | null;
   surface?: number | null;
   limit?: number;
+  raceParams?: Partial<RaceParameters>;
+  /** Extra skill ids to treat as already-owned (e.g. uma-inherited uniques) */
+  excludeSkillIds?: Set<number>;
+  /** When set, only keep skills whose tactical category is in this list.
+      Requires a course (categories come from track evaluation). */
+  tacticalCategories?: readonly SkillTacticalCategory[];
+  /** When true, drop skills that don't activate on the course. Requires a course. */
+  requireFiresOnCourse?: boolean;
 }): CardRecommendation[] {
   const equippedSet = new Set(equippedParentCardIds.filter((id): id is number => typeof id === "number"));
+  const combinedExclusions = excludeSkillIds
+    ? new Set([...mainDeckSkillIds, ...excludeSkillIds])
+    : mainDeckSkillIds;
   const recommendations: CardRecommendation[] = [];
 
   // When a course is provided, derive target distance & surface directly from it
@@ -182,54 +225,22 @@ export function recommendCardsForParent({
     let newHintCount = 0;
     let newEventCount = 0;
 
-    // Check hint skills (primary in parent farming)
-    for (const sid of card.hints) {
-      if (mainDeckSkillIds.has(sid) || seenSkillIds.has(sid)) continue;
-      const filterCheck = isSkillMatchingFilter(sid, style, effDistance, effSurface);
-      if (!filterCheck.matches) continue;
-
-      const meta = skillMetaMap[sid];
-      seenSkillIds.add(sid);
-      newHintCount++;
-
-      let firesOnCourse: boolean | undefined = undefined;
-      let triggerBonus = 0;
-
-      if (course) {
-        const fires = doesSkillFireOnCourse(sid, course, style);
-        if (fires === true) {
-          firesOnCourse = true;
-          triggerBonus = 4; // Substantial boost for skills activating on this exact track
-        } else if (fires === false) {
-          firesOnCourse = false;
-          triggerBonus = -2; // Demote skills with zero activation zones on this course
-        }
-      }
-
-      // Base score: 3 for specialized style/track hint, 1 for generic
-      score += (filterCheck.isSpecialized ? 3 : 1) + triggerBonus;
-
-      newMatchingSkills.push({
-        id: sid,
-        nameEn: meta?.nameEn || `Skill #${sid}`,
-        nameJp: meta?.nameJp || "",
-        rarity: meta?.rarity ?? 1,
-        iconId: skillIconMap.get(sid) ?? null,
-        source: "hint",
-        isSpecialized: filterCheck.isSpecialized,
-        firesOnCourse,
-      });
-    }
-
     // Helper to evaluate a candidate skill for parent recommendations
-    const evaluateSkill = (
+    const evaluateCandidateSkill = (
       rawSid: number,
+      source: "hint" | "event"
     ): {
       sid: number;
       meta: SkillMeta;
       filterCheck: { matches: boolean; isSpecialized: boolean };
       originalGoldName?: string;
       firesOnCourse?: boolean;
+      tacticalCategory?: SkillTacticalCategory;
+      evalTier?: "S" | "A" | "B" | "C" | "D" | "F";
+      evalStars?: 1 | 2 | 3 | 4 | 5;
+      tacticalLabel?: string;
+      tacticalBadgeClass?: string;
+      evalScore?: number;
       score: number;
     } | null => {
       const rawMeta = skillMetaMap[rawSid];
@@ -240,31 +251,134 @@ export function recommendCardsForParent({
         const mapped = getInheritableSkillForGold(rawSid);
         if (!mapped) return null;
         sid = mapped.whiteId;
-        originalGoldName = rawMeta.nameEn || mapped.goldNameEn;
+        originalGoldName = rawSkillsMap.get(rawSid)?.nameEn || rawMeta.nameEn || mapped.goldNameEn;
       }
 
-      if (mainDeckSkillIds.has(sid) || seenSkillIds.has(sid)) return null;
+      if (combinedExclusions.has(sid) || seenSkillIds.has(sid)) return null;
       const filterCheck = isSkillMatchingFilter(sid, style, effDistance, effSurface);
       if (!filterCheck.matches) return null;
 
-      const meta = skillMetaMap[sid] || rawMeta;
-      if (!meta) return null;
+      const rawMetaResolved = skillMetaMap[sid] || rawMeta;
+      if (!rawMetaResolved) return null;
 
+      const rawSkill = rawSkillsMap.get(sid) || rawSkillsMap.get(rawSid);
+      const meta: SkillMeta = {
+        ...rawMetaResolved,
+        nameEn: rawSkill?.nameEn || rawMetaResolved.nameEn,
+      };
       let firesOnCourse: boolean | undefined = undefined;
-      let triggerBonus = 0;
+      let tacticalCategory: SkillTacticalCategory | undefined = undefined;
+      let evalTier: "S" | "A" | "B" | "C" | "D" | "F" | undefined = undefined;
+      let evalStars: (1 | 2 | 3 | 4 | 5) | undefined = undefined;
+      let tacticalLabel: string | undefined = undefined;
+      let tacticalBadgeClass: string | undefined = undefined;
+      let evalScore: number | undefined = undefined;
+      let tacticalBonus = 0;
 
       if (course) {
-        const fires = doesSkillFireOnCourse(sid, course, style);
-        if (fires === true) {
-          firesOnCourse = true;
-          triggerBonus = 2.5;
-        } else if (fires === false) {
-          firesOnCourse = false;
-          triggerBonus = -1;
+        const horse = style ? horseForStrategy(style) : undefined;
+        let zones: EvaluatorZoneInput[] = [];
+        const condGroups = (rawSkill?.conditionGroups ?? meta.conditions ?? []).map((g: any) => ({
+          condition: g.condition ?? "",
+          precondition: g.precondition ?? null,
+          base_time: g.base_time ?? 0,
+          effects: g.effects ?? [],
+        }));
+
+        const isBanned = Boolean(raceParams?.noDebuffs && BANNED_DEBUFF_SKILL_IDS.has(sid));
+
+        try {
+          zones = isBanned ? [] : computeAllZones(course, condGroups, horse, { ...raceParams, skillId: String(sid) });
+        } catch {
+          zones = [];
+        }
+
+        const skillInput = rawSkill ?? {
+          id: sid,
+          rarity: meta.rarity,
+          nameEn: meta.nameEn,
+          nameJp: meta.nameJp,
+          descEn: meta.descEn,
+          conditionGroups: condGroups,
+        };
+
+        const evalResult = evaluateSkillForTrack(
+          skillInput,
+          course,
+          style as any,
+          raceParams?.numUmas ?? 9,
+          true, // isParentMode = true
+          zones
+        );
+
+        const hasZones = zones.some((z) => z.regions.length > 0);
+        firesOnCourse = hasZones && evalResult.category !== "invalid" && !isBanned;
+        tacticalCategory = evalResult.category;
+        evalTier = evalResult.tier;
+        evalStars = evalResult.stars;
+        tacticalLabel = evalResult.primaryBadge.label;
+        tacticalBadgeClass = evalResult.primaryBadge.badgeClass;
+        evalScore = evalResult.score;
+
+        const isStyleMismatch = evalResult.specialEffects.some((e) => e.id === "style_mismatch");
+        const isRankMismatch = evalResult.specialEffects.some((e) => e.id === "rank_mismatch");
+
+        if (isBanned) {
+          tacticalBonus = -50;
+          tacticalLabel = "BANNED";
+          tacticalBadgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800";
+        } else if (isStyleMismatch) {
+          tacticalBonus = -12;
+        } else {
+          switch (evalResult.category) {
+            case "fastest_accel":
+              tacticalBonus = source === "hint" ? 18 : 14;
+              break;
+            case "carry_over":
+              tacticalBonus = source === "hint" ? 12 : 10;
+              break;
+            case "current_speed":
+              tacticalBonus = source === "hint" ? 8 : 6;
+              break;
+            case "late_speed":
+            case "mid_speed":
+              tacticalBonus = source === "hint" ? 5 : 4;
+              break;
+            case "recovery":
+            case "passive":
+              tacticalBonus = source === "hint" ? 3 : 2.5;
+              break;
+            case "delayed_accel":
+              tacticalBonus = source === "hint" ? 1 : 0.5;
+              break;
+            case "dead_accel":
+              tacticalBonus = -6;
+              break;
+            case "invalid":
+              tacticalBonus = -4;
+              break;
+            default:
+              tacticalBonus = hasZones ? (source === "hint" ? 2 : 1) : -3;
+              break;
+          }
+
+          if (isRankMismatch) {
+            tacticalBonus -= 4;
+          }
         }
       }
 
-      const skillScore = (filterCheck.isSpecialized ? 2 : 0.5) + triggerBonus;
+      // Opt-in hard gates (both need a course: the data comes from track evaluation)
+      if (requireFiresOnCourse && !firesOnCourse) return null;
+      if (tacticalCategories && (tacticalCategory === undefined || !tacticalCategories.includes(tacticalCategory))) {
+        return null;
+      }
+
+      const baseScore = source === "hint"
+        ? (filterCheck.isSpecialized ? 3 : 1)
+        : (filterCheck.isSpecialized ? 2 : 0.5);
+
+      const skillScore = baseScore + tacticalBonus;
 
       return {
         sid,
@@ -272,9 +386,43 @@ export function recommendCardsForParent({
         filterCheck,
         originalGoldName,
         firesOnCourse,
+        tacticalCategory,
+        evalTier,
+        evalStars,
+        tacticalLabel,
+        tacticalBadgeClass,
+        evalScore,
         score: skillScore,
       };
     };
+
+    // Check hint skills (primary in parent farming)
+    for (const sid of card.hints || []) {
+      const res = evaluateCandidateSkill(sid, "hint");
+      if (!res) continue;
+
+      seenSkillIds.add(res.sid);
+      newHintCount++;
+      score += res.score;
+
+      newMatchingSkills.push({
+        id: res.sid,
+        nameEn: res.meta.nameEn || `Skill #${res.sid}`,
+        nameJp: res.meta.nameJp || "",
+        rarity: res.meta.rarity ?? 1,
+        iconId: skillIconMap.get(res.sid) ?? null,
+        source: "hint",
+        isSpecialized: res.filterCheck.isSpecialized,
+        firesOnCourse: res.firesOnCourse,
+        originalGoldName: res.originalGoldName,
+        tacticalCategory: res.tacticalCategory,
+        evalTier: res.evalTier,
+        evalStars: res.evalStars,
+        tacticalLabel: res.tacticalLabel,
+        tacticalBadgeClass: res.tacticalBadgeClass,
+        evalScore: res.evalScore,
+      });
+    }
 
     const handledEventSkillIds = new Set<number>();
 
@@ -288,7 +436,7 @@ export function recommendCardsForParent({
           textEn: string;
           textJp: string;
           skills: {
-            evalResult: NonNullable<ReturnType<typeof evaluateSkill>>;
+            evalResult: NonNullable<ReturnType<typeof evaluateCandidateSkill>>;
             eventMeta: EventSkillMetadata;
           }[];
           totalScore: number;
@@ -302,7 +450,7 @@ export function recommendCardsForParent({
 
           for (const rawSid of ch.skillIds) {
             handledEventSkillIds.add(rawSid);
-            const res = evaluateSkill(rawSid);
+            const res = evaluateCandidateSkill(rawSid, "event");
             if (res) {
               const eventMeta: EventSkillMetadata = {
                 eventId: ev.eventId,
@@ -362,6 +510,12 @@ export function recommendCardsForParent({
             eventMeta,
             choiceConflict: hasConflict,
             isRecommendedChoice: true,
+            tacticalCategory: evalResult.tacticalCategory,
+            evalTier: evalResult.evalTier,
+            evalStars: evalResult.evalStars,
+            tacticalLabel: evalResult.tacticalLabel,
+            tacticalBadgeClass: evalResult.tacticalBadgeClass,
+            evalScore: evalResult.evalScore,
           });
         }
 
@@ -386,6 +540,12 @@ export function recommendCardsForParent({
               eventMeta,
               choiceConflict: true,
               isRecommendedChoice: false,
+              tacticalCategory: evalResult.tacticalCategory,
+              evalTier: evalResult.evalTier,
+              evalStars: evalResult.evalStars,
+              tacticalLabel: evalResult.tacticalLabel,
+              tacticalBadgeClass: evalResult.tacticalBadgeClass,
+              evalScore: evalResult.evalScore,
             });
           }
         }
@@ -393,9 +553,9 @@ export function recommendCardsForParent({
     }
 
     // Fallback: Check any raw events not handled by eventDetails
-    for (const rawSid of card.events) {
+    for (const rawSid of card.events || []) {
       if (handledEventSkillIds.has(rawSid)) continue;
-      const res = evaluateSkill(rawSid);
+      const res = evaluateCandidateSkill(rawSid, "event");
       if (!res) continue;
 
       seenSkillIds.add(res.sid);
@@ -412,6 +572,12 @@ export function recommendCardsForParent({
         isSpecialized: res.filterCheck.isSpecialized,
         firesOnCourse: res.firesOnCourse,
         originalGoldName: res.originalGoldName,
+        tacticalCategory: res.tacticalCategory,
+        evalTier: res.evalTier,
+        evalStars: res.evalStars,
+        tacticalLabel: res.tacticalLabel,
+        tacticalBadgeClass: res.tacticalBadgeClass,
+        evalScore: res.evalScore,
       });
     }
 

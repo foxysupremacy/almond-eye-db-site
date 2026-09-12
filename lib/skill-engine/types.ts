@@ -33,6 +33,12 @@ export interface RaceParameters {
   skillId: string;
   orderRange?: [number, number];
   numUmas?: number;
+  season?: number | null;
+  weather?: number | null;
+  groundCondition?: number | null;
+  time?: number | null;
+  grade?: number | null;
+  noDebuffs?: boolean;
 }
 
 export type DynamicCondition = (s: unknown) => boolean;

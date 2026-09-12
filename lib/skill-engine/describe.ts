@@ -86,8 +86,15 @@ function timeName(v: number): string {
   return t[v] ?? `time ${v}`;
 }
 
+function ordinal(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return `${n}`;
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 function motivationName(v: number): string {
-  const t: Record<number, string> = { 1: "terrible", 2: "bad", 3: "normal", 4: "good", 5: "perfect" };
+  const t: Record<number, string> = { 1: "Awful", 2: "Bad", 3: "Normal", 4: "Good", 5: "Great" };
   return t[v] ?? `motivation ${v}`;
 }
 
@@ -214,7 +221,7 @@ phraseByOp("remain_distance", "==", (v) => `${v}m remaining`);
 phraseByOp("distance_rate", ">=", (v) => `race is past ${v}%`);
 phraseByOp("distance_rate", "<=", (v) => `race is within the first ${v}%`);
 phraseByOp("distance_rate_after_random", "==", (v) => `a random point after ${v}% of the race`);
-lookup("rotation", { 1: "a right-hand course", 2: "a left-hand course" });
+lookup("rotation", { 1: "a right-hand course", 2: "a left-hand course", 4: "a straight course" });
 phrase("is_abroad", "==", 1, "an overseas course");
 phrase("is_abroad", "==", 0, "a domestic course");
 phrase("is_tight_track", "==", 1, "a tight track");
@@ -233,11 +240,11 @@ phraseByOp("weather", "==", (v) => `${weatherName(v)} weather`);
 phraseByOp("time", "==", (v) => timeName(v));
 
 // --- position / order ------------------------------------------------------
-phraseByOp("order", "<=", (v) => `position ${v} or better`);
-phraseByOp("order", "<", (v) => `position better than ${v}`);
-phraseByOp("order", ">", (v) => `position worse than ${v}`);
-phraseByOp("order", ">=", (v) => `position ${v} or worse`);
-phraseByOp("order", "==", (v) => `position exactly ${v}`);
+phraseByOp("order", "<=", (v) => (v <= 1 ? "position 1" : `position 1–${v}`));
+phraseByOp("order", "<", (v) => (v <= 2 ? "position 1" : `position 1–${v - 1}`));
+phraseByOp("order", ">", (v) => (v + 1 >= currentRacerCount ? `position ${currentRacerCount}` : `position ${v + 1}–${currentRacerCount}`));
+phraseByOp("order", ">=", (v) => (v >= currentRacerCount ? `position ${currentRacerCount}` : `position ${v}–${currentRacerCount}`));
+phraseByOp("order", "==", (v) => `position ${v}`);
 // order_rate conditions express a fractional position (rate% of the field),
 // so their phrase depends on the number of racers in the race. `currentRacerCount`
 // is set by renderCondition's racerCount argument (module-level so DictEntry's
@@ -248,22 +255,22 @@ let currentRacerCount = 12;
 phraseByOpOpt("order_rate", "<=", (v) => {
   if (v <= 0) return undefined;
   const t = Math.round((currentRacerCount * v) / 100);
-  return `position ${t} or better`;
+  return t <= 1 ? "position 1" : `position 1–${t}`;
 });
 phraseByOpOpt("order_rate", "<", (v) => {
   if (v <= 0) return undefined;
   const t = Math.round((currentRacerCount * v) / 100);
-  return `position better than ${t}`;
+  return t <= 2 ? "position 1" : `position 1–${t - 1}`;
 });
 phraseByOpOpt("order_rate", ">=", (v) => {
   if (v <= 0) return undefined;
   const t = Math.round((currentRacerCount * v) / 100);
-  return `position ${t} or worse`;
+  return t >= currentRacerCount ? `position ${currentRacerCount}` : `position ${t}–${currentRacerCount}`;
 });
 phraseByOpOpt("order_rate", ">", (v) => {
   if (v <= 0) return undefined;
   const t = Math.round((currentRacerCount * v) / 100);
-  return `position ${t + 1} or worse`;
+  return t + 1 >= currentRacerCount ? `position ${currentRacerCount}` : `position ${t + 1}–${currentRacerCount}`;
 });
 phrase("order_rate_in20_continue", "==", 1, "position inside the top 20% continuously");
 phrase("order_rate_in40_continue", "==", 1, "position inside the top 40% continuously");
@@ -304,13 +311,16 @@ phrase("change_order_onetime", ">", 0, "just got passed");
 phraseByOp("change_order_up_end_after", ">=", (v) => `passed ${v} ${v === 1 ? "girl" : "girls"} in the late race`);
 phraseByOp("change_order_up_middle", ">=", (v) => `passed ${v} ${v === 1 ? "girl" : "girls"} in mid-race`);
 phraseByOp("change_order_up_finalcorner_after", ">=", (v) => `passed ${v} ${v === 1 ? "girl" : "girls"} at or after the final corner`);
-phraseByOp("post_number", "<=", (v) => `gate ${v} or better`);
-phraseByOp("post_number", ">=", (v) => `gate ${v} or worse`);
+phraseByOp("post_number", "<=", (v) => (v <= 1 ? "gate 1" : `gate 1–${v}`));
+phraseByOp("post_number", "<", (v) => (v <= 2 ? "gate 1" : `gate 1–${v - 1}`));
+phraseByOp("post_number", ">=", (v) => (v >= currentRacerCount ? `gate ${currentRacerCount}` : `gate ${v}–${currentRacerCount}`));
+phraseByOp("post_number", ">", (v) => (v + 1 >= currentRacerCount ? `gate ${currentRacerCount}` : `gate ${v + 1}–${currentRacerCount}`));
 phraseByOp("post_number", "==", (v) => `gate ${v}`);
-phraseByOp("popularity", "<=", (v) => `popularity ${v} or better`);
-phraseByOp("popularity", "==", (v) => `popularity exactly ${v}`);
-phraseByOp("popularity", ">=", (v) => `popularity ${v} or worse`);
-phraseByOp("popularity", "<", (v) => `popularity better than ${v}`);
+phraseByOp("popularity", "<=", (v) => (v <= 1 ? "1st favorite" : `1st–${ordinal(v)} favorite`));
+phraseByOp("popularity", "<", (v) => (v <= 2 ? "1st favorite" : `1st–${ordinal(v - 1)} favorite`));
+phraseByOp("popularity", ">=", (v) => (v >= currentRacerCount ? `${ordinal(currentRacerCount)} favorite` : `${ordinal(v)}–${ordinal(currentRacerCount)} favorite`));
+phraseByOp("popularity", ">", (v) => (v + 1 >= currentRacerCount ? `${ordinal(currentRacerCount)} favorite` : `${ordinal(v + 1)}–${ordinal(currentRacerCount)} favorite`));
+phraseByOp("popularity", "==", (v) => `${ordinal(v)} favorite`);
 lookup("running_style", { 1: "running as a Runner", 2: "running as a Leader", 3: "running as a Betweener", 4: "running as a Chaser" });
 phraseByOp("visiblehorse", ">=", (v) => `${v} or more girls in view`);
 
@@ -330,9 +340,9 @@ phraseByOp("hp_per", ">=", (v) => `HP ≥ ${v}%`);
 phraseByOp("hp_per", ">", (v) => `HP > ${v}%`);
 phraseByOp("hp_per", "<", (v) => `HP < ${v}%`);
 phrase("is_hp_empty_onetime", "==", 1, "HP was depleted");
-phraseByOp("motivation", ">=", (v) => `motivation ${motivationName(v)} or better`);
-phraseByOp("motivation", "==", (v) => `motivation ${motivationName(v)}`);
-phraseByOp("motivation", "<=", (v) => `motivation ${motivationName(v)} or worse`);
+phraseByOp("motivation", ">=", (v) => (v >= 5 ? "Great motivation" : `at least ${motivationName(v)} motivation`));
+phraseByOp("motivation", "==", (v) => `${motivationName(v)} motivation`);
+phraseByOp("motivation", "<=", (v) => (v <= 1 ? "Terrible motivation" : `at most ${motivationName(v)} motivation`));
 phraseByOp("fan_count", ">=", (v) => `${v} or more fans`);
 
 // --- timing / skill activation ---------------------------------------------
@@ -449,26 +459,163 @@ function normalizeRacerCount(racerCount: number | undefined): number {
   return Math.min(18, Math.max(9, Math.round(racerCount)));
 }
 
+interface ParsedFrag {
+  raw: string;
+  kw?: string;
+  op?: string;
+  value?: number;
+}
+
+function parseFragment(raw: string): ParsedFrag {
+  const cleaned = raw.trim();
+  if (!cleaned) return { raw: cleaned };
+  TOKEN.lastIndex = 0;
+  const m = TOKEN.exec(cleaned);
+  if (!m || m[0].trim() !== cleaned) {
+    return { raw: cleaned };
+  }
+  return {
+    raw: cleaned,
+    kw: m[1],
+    op: m[2],
+    value: Number(m[3]),
+  };
+}
+
 /**
- * Split a condition string into raw fragments on `&`/`@` (respects nothing —
- * the grammar has no parens). Returns [] for empty input.
+ * Render a single AND-separated group of conditions (e.g. "order>=2&order<=5"),
+ * consolidating multiple position, gate, or popularity constraints into single ranges.
  */
-function splitFragments(str: string): { frags: string[]; seps: (" and " | " or ")[] } {
-  const cleaned = str.trim();
-  const frags: string[] = [];
-  const seps: (" and " | " or ")[] = [];
-  let buf = "";
-  for (const ch of cleaned) {
-    if (ch === "@" || ch === "&") {
-      if (buf.trim()) frags.push(buf);
-      buf = "";
-      seps.push(ch === "@" ? " or " : " and ");
-    } else {
-      buf += ch;
+function renderAndGroup(andClause: string, racerCount: number): string[] {
+  const rawFrags = andClause
+    .split("&")
+    .map((f) => f.trim())
+    .filter(Boolean);
+  if (rawFrags.length === 0) return [];
+
+  const parsed = rawFrags.map(parseFragment);
+
+  // Identify constraint groups to consolidate
+  const posIndices: number[] = [];
+  const gateIndices: number[] = [];
+  const popIndices: number[] = [];
+
+  for (let i = 0; i < parsed.length; i++) {
+    const p = parsed[i];
+    if (p.kw === "order" || (p.kw === "order_rate" && p.value !== undefined && p.value > 0)) {
+      posIndices.push(i);
+    } else if (p.kw === "post_number" && p.value !== undefined) {
+      gateIndices.push(i);
+    } else if (p.kw === "popularity" && p.value !== undefined) {
+      popIndices.push(i);
     }
   }
-  if (buf.trim()) frags.push(buf);
-  return { frags, seps };
+
+  const replacements: Record<number, string> = {};
+  const skipIndices = new Set<number>();
+
+  // Consolidate positions (when >= 2 conditions)
+  if (posIndices.length > 1) {
+    let minPos = 1;
+    let maxPos = racerCount;
+    let exactPos: number | null = null;
+
+    for (const idx of posIndices) {
+      const p = parsed[idx];
+      if (p.kw === "order") {
+        if (p.op === "==") exactPos = p.value!;
+        else if (p.op === "<=") maxPos = Math.min(maxPos, p.value!);
+        else if (p.op === "<") maxPos = Math.min(maxPos, p.value! - 1);
+        else if (p.op === ">=") minPos = Math.max(minPos, p.value!);
+        else if (p.op === ">") minPos = Math.max(minPos, p.value! + 1);
+      } else if (p.kw === "order_rate") {
+        const t = Math.round((racerCount * p.value!) / 100);
+        if (p.op === "<=") maxPos = Math.min(maxPos, t);
+        else if (p.op === "<") maxPos = Math.min(maxPos, t - 1);
+        else if (p.op === ">=") minPos = Math.max(minPos, t);
+        else if (p.op === ">") minPos = Math.max(minPos, t + 1);
+      }
+    }
+
+    if (exactPos !== null) {
+      minPos = exactPos;
+      maxPos = exactPos;
+    }
+    minPos = Math.max(1, Math.min(racerCount, minPos));
+    maxPos = Math.max(1, Math.min(racerCount, maxPos));
+    if (minPos > maxPos) maxPos = minPos;
+
+    replacements[posIndices[0]] = minPos === maxPos ? `position ${minPos}` : `position ${minPos}–${maxPos}`;
+    for (let k = 1; k < posIndices.length; k++) {
+      skipIndices.add(posIndices[k]);
+    }
+  }
+
+  // Consolidate gates
+  if (gateIndices.length > 1) {
+    let minGate = 1;
+    let maxGate = racerCount;
+    let exactGate: number | null = null;
+
+    for (const idx of gateIndices) {
+      const p = parsed[idx];
+      if (p.op === "==") exactGate = p.value!;
+      else if (p.op === "<=") maxGate = Math.min(maxGate, p.value!);
+      else if (p.op === "<") maxGate = Math.min(maxGate, p.value! - 1);
+      else if (p.op === ">=") minGate = Math.max(minGate, p.value!);
+      else if (p.op === ">") minGate = Math.max(minGate, p.value! + 1);
+    }
+
+    if (exactGate !== null) {
+      minGate = exactGate;
+      maxGate = exactGate;
+    }
+    if (minGate > maxGate) maxGate = minGate;
+
+    replacements[gateIndices[0]] = minGate === maxGate ? `gate ${minGate}` : `gate ${minGate}–${maxGate}`;
+    for (let k = 1; k < gateIndices.length; k++) {
+      skipIndices.add(gateIndices[k]);
+    }
+  }
+
+  // Consolidate popularity
+  if (popIndices.length > 1) {
+    let minPop = 1;
+    let maxPop = racerCount;
+    let exactPop: number | null = null;
+
+    for (const idx of popIndices) {
+      const p = parsed[idx];
+      if (p.op === "==") exactPop = p.value!;
+      else if (p.op === "<=") maxPop = Math.min(maxPop, p.value!);
+      else if (p.op === "<") maxPop = Math.min(maxPop, p.value! - 1);
+      else if (p.op === ">=") minPop = Math.max(minPop, p.value!);
+      else if (p.op === ">") minPop = Math.max(minPop, p.value! + 1);
+    }
+
+    if (exactPop !== null) {
+      minPop = exactPop;
+      maxPop = exactPop;
+    }
+    if (minPop > maxPop) maxPop = minPop;
+
+    replacements[popIndices[0]] =
+      minPop === maxPop ? `${ordinal(minPop)} favorite` : `${ordinal(minPop)}–${ordinal(maxPop)} favorite`;
+    for (let k = 1; k < popIndices.length; k++) {
+      skipIndices.add(popIndices[k]);
+    }
+  }
+
+  const out: string[] = [];
+  for (let i = 0; i < parsed.length; i++) {
+    if (skipIndices.has(i)) continue;
+    if (replacements[i] !== undefined) {
+      out.push(replacements[i]);
+    } else {
+      out.push(renderFragment(parsed[i].raw));
+    }
+  }
+  return out;
 }
 
 /**
@@ -478,16 +625,36 @@ function splitFragments(str: string): { frags: string[]; seps: (" and " | " or "
  */
 function renderCondition(str: string, racerCount?: number): string {
   currentRacerCount = normalizeRacerCount(racerCount);
-  const { frags, seps } = splitFragments(str);
+  const raw = (str ?? "").trim();
+  if (!raw) return "";
+
+  const orGroups = raw.split("@");
+  const renderedBranches: string[] = [];
+
+  for (const orGroup of orGroups) {
+    const frags = renderAndGroup(orGroup, currentRacerCount).filter(Boolean);
+    if (frags.length === 0) continue;
+    let branchText = "";
+    for (let i = 0; i < frags.length; i++) {
+      const rendered = frags[i];
+      if (i === 0) {
+        branchText = rendered;
+      } else {
+        branchText += " and " + rendered.charAt(0).toLowerCase() + rendered.slice(1);
+      }
+    }
+    renderedBranches.push(branchText);
+  }
+
+  if (renderedBranches.length === 0) return "";
+
   let out = "";
-  for (let i = 0; i < frags.length; i++) {
-    const rendered = renderFragment(frags[i]);
-    if (!rendered) continue;
-    if (out) {
-      out += seps[i - 1];
-      out += rendered.charAt(0).toLowerCase() + rendered.slice(1);
+  for (let i = 0; i < renderedBranches.length; i++) {
+    const b = renderedBranches[i];
+    if (i === 0) {
+      out = b.charAt(0).toUpperCase() + b.slice(1);
     } else {
-      out = rendered.charAt(0).toUpperCase() + rendered.slice(1);
+      out += " or " + b.charAt(0).toLowerCase() + b.slice(1);
     }
   }
   return out;
@@ -614,15 +781,11 @@ export function conditionBranches(str: string, racerCount?: number): {
   const when = renderCondition(str, racerCount);
   const raw = (str ?? "").trim();
   if (!raw) return { branches: [], when };
-  // Split on `@` first (OR branches → lines), then `&` within each (AND → chips).
+  const count = normalizeRacerCount(racerCount);
+  // Split on `@` first (OR branches → lines), then consolidate and render & (AND → chips).
   const branches = raw
     .split("@")
-    .map((orGroup) =>
-      orGroup
-        .split("&")
-        .map((f) => renderFragment(f.trim()))
-        .filter(Boolean),
-    )
+    .map((orGroup) => renderAndGroup(orGroup, count).filter(Boolean))
     .filter((b) => b.length > 0);
   return { branches, when };
 }

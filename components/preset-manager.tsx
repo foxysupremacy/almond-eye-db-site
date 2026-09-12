@@ -4,7 +4,11 @@
 // and drag up & down to reorder preset combos (Main Deck + Parent Deck + Track Info).
 
 import { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useDeck, type DeckPreset } from "./store";
+import ShareModal from "./share-modal";
+import { LinkIcon, XIcon, EditIcon } from "./icons";
+import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 
 export default function PresetManager() {
   const {
@@ -19,12 +23,19 @@ export default function PresetManager() {
     reorderPresets,
   } = useDeck();
 
+  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  useBodyScrollLock(isOpen);
+  const [sharingPreset, setSharingPreset] = useState<DeckPreset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close modal on Escape
   useEffect(() => {
@@ -108,14 +119,33 @@ export default function PresetManager() {
         >
           <span className="hidden sm:inline">Manage </span>({presets.length})
         </button>
+
+        <button
+          type="button"
+          onClick={() => setSharingPreset(activePreset)}
+          className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/30 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 shadow-xs cursor-pointer transition-colors"
+          title="Share active build with ultra-compact URL"
+        >
+          <LinkIcon className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Share</span>
+        </button>
       </div>
 
       {/* Preset Management Modal */}
-      {isOpen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-150">
+      {mounted && isOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setIsOpen(false);
+              setEditingId(null);
+            }
+          }}
+        >
           <div
             ref={modalRef}
-            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-150 text-left"
+            onClick={(e) => e.stopPropagation()}
+            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo text-left touch-auto overscroll-contain"
           >
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800 px-5 py-4 bg-white dark:bg-zinc-900">
@@ -131,14 +161,14 @@ export default function PresetManager() {
                   setIsOpen(false);
                   setEditingId(null);
                 }}
-                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 text-sm font-bold cursor-pointer"
+                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
               >
-                ✕
+                <XIcon className="h-4 w-4" />
               </button>
             </div>
 
             {/* Presets List */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-2 touch-auto">
               {presets.map((p, idx) => {
                 const isActive = p.id === activePresetId;
                 const isEditing = editingId === p.id;
@@ -231,10 +261,10 @@ export default function PresetManager() {
                           <button
                             type="button"
                             onClick={() => startRename(p)}
-                            className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+                            className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
                             title="Rename preset"
                           >
-                            ✎
+                            <EditIcon className="h-3 w-3" />
                           </button>
                         </div>
                       )}
@@ -248,6 +278,14 @@ export default function PresetManager() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setSharingPreset(p)}
+                        className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
+                        title="Share preset build"
+                      >
+                        Share
+                      </button>
                       <button
                         type="button"
                         onClick={() => duplicatePreset(p.id)}
@@ -296,8 +334,16 @@ export default function PresetManager() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
+
+      {/* Share Preset Modal */}
+      <ShareModal
+        preset={sharingPreset || activePreset}
+        isOpen={Boolean(sharingPreset)}
+        onClose={() => setSharingPreset(null)}
+      />
     </>
   );
 }

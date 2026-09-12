@@ -2,8 +2,11 @@ import { describe, it, expect } from "bun:test";
 import {
   isSkillMatchingFilter,
   recommendCardsForParent,
+  doesSkillFireOnCourse,
   cardMetaMap,
+  skillMetaMap,
 } from "./recommendation-engine";
+import type { Course } from "./skill-engine/types";
 
 describe("recommendation-engine", () => {
   it("correctly filters skills by running style", () => {
@@ -114,9 +117,10 @@ describe("recommendation-engine", () => {
     // Should NOT contain Summer Gale (200184) directly
     expect(card!.newMatchingSkills.some((s) => s.id === 200184)).toBe(false);
 
-    // Should contain the mapped white skill with originalGoldName
-    const mapped = card!.newMatchingSkills.find((s) => s.originalGoldName === "Summer Gale");
+    // Should contain the mapped white skill with originalGoldName (Hachimi: Verdant Wind)
+    const mapped = card!.newMatchingSkills.find((s) => s.id === 200181);
     expect(Boolean(mapped)).toBe(true);
+    expect(mapped!.originalGoldName).toBe("Verdant Wind");
     expect(mapped!.rarity).toBe(1);
 
     // All skills recommended for parent should be White skills (rarity === 1)
@@ -233,6 +237,310 @@ describe("recommendation-engine", () => {
       expect(testCard!.totalNewCount).toBe(1);
     } finally {
       delete cardMetaMap[testCardId];
+    }
+  });
+
+  it("boosts or demotes skills based on raceParams (pvp conditions)", () => {
+    const testSkillId = 999999;
+    const testCardId = 999999;
+    (skillMetaMap as any)[testSkillId] = {
+      nameEn: "Autumn Specialist",
+      nameJp: "秋ウマ娘",
+      rarity: 1,
+      styles: [],
+      distances: [],
+      surfaces: [],
+      isGeneric: true,
+      conditions: [{ condition: "season==3" }],
+    };
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Test Autumn Card",
+      nameJp: "テストカード",
+      rarity: 3,
+      type: "speed",
+      hints: [testSkillId],
+      events: [],
+    };
+
+    const course: Course = {
+      id: 10001,
+      terrain: 1,
+      turn: 1,
+      distance: 3,
+      inout: 0,
+      length: 2000,
+      corners: [],
+      slopes: [],
+      straights: [],
+    };
+
+    try {
+      // 1. Without raceParams (unset), passes through -> firesOnCourse is true
+      expect(doesSkillFireOnCourse(testSkillId, course, null)).toBe(true);
+
+      // 2. With matching raceParams (season: 3 = Autumn) -> firesOnCourse is true
+      expect(doesSkillFireOnCourse(testSkillId, course, null, { season: 3 })).toBe(true);
+
+      // 3. With non-matching raceParams (season: 1 = Spring) -> firesOnCourse is false
+      expect(doesSkillFireOnCourse(testSkillId, course, null, { season: 1 })).toBe(false);
+
+      // 4. In recommendCardsForParent, matching season gives bonus (score higher) than non-matching
+      const recsAutumn = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course,
+        raceParams: { season: 3 },
+        limit: 1000,
+      });
+      const autumnCard = recsAutumn.find((r) => r.cardId === testCardId);
+      expect(Boolean(autumnCard)).toBe(true);
+      expect(autumnCard?.newMatchingSkills[0].firesOnCourse).toBe(true);
+
+      const recsSpring = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course,
+        raceParams: { season: 1 },
+        limit: 1000,
+      });
+      const springCard = recsSpring.find((r) => r.cardId === testCardId);
+      expect(Boolean(springCard)).toBe(true);
+      expect(springCard?.newMatchingSkills[0].firesOnCourse).toBe(false);
+      expect((autumnCard?.score ?? 0) > (springCard?.score ?? 0)).toBe(true);
+    } finally {
+      delete (skillMetaMap as any)[testSkillId];
+      delete (cardMetaMap as any)[testCardId];
+    }
+  });
+
+  it("prioritizes Valid Fastest Accel skills over Dead Accel skills", () => {
+    const fastestAccelSkillId = 888001;
+    const deadAccelSkillId = 888002;
+    const cardFastestId = 888101;
+    const cardDeadId = 888102;
+
+    const KYOTO_2200M: Course = {
+      id: 10808,
+      terrain: 1,
+      turn: 1,
+      distance: 3,
+      inout: 3,
+      length: 2200,
+      spurtStart: { meters: 1467 },
+      corners: [
+        { start: 400, end: 600, number: 1 },
+        { start: 600, end: 800, number: 2 },
+        { start: 1300, end: 1550, number: 3 },
+        { start: 1550, end: 1797, number: 4 },
+      ],
+      straights: [
+        { start: 0, end: 400, frontType: 1 },
+        { start: 800, end: 1300, frontType: 2 },
+        { start: 1797, end: 2200, frontType: 1 },
+      ],
+      slopes: [
+        { start: 1050, end: 1375, slope: 10000 },
+        { start: 1375, end: 1525, slope: -20000 },
+      ],
+    };
+
+    // Fastest Accel: late-race corner (1467m is inside corner 3 [1300-1550], so fires immediately at 1467m)
+    (skillMetaMap as any)[fastestAccelSkillId] = {
+      nameEn: "Angling Test",
+      nameJp: "アングリングテスト",
+      rarity: 1,
+      styles: [1],
+      distances: [3],
+      surfaces: [1],
+      isGeneric: false,
+      conditions: [{ condition: "phase>=2&corner!=0&order==1", base_time: 24000, effects: [{ type: 31, value: 2000 }] }],
+    };
+
+    // Dead Accel: final straight (1797m-2200m, +330m after spurtStart 1467m)
+    (skillMetaMap as any)[deadAccelSkillId] = {
+      nameEn: "Dead Accel Test",
+      nameJp: "無効加速テスト",
+      rarity: 1,
+      styles: [1],
+      distances: [3],
+      surfaces: [1],
+      isGeneric: false,
+      conditions: [{ condition: "is_last_straight==1", base_time: 24000, effects: [{ type: 31, value: 2000 }] }],
+    };
+
+    (cardMetaMap as any)[cardFastestId] = {
+      nameEn: "Fastest Accel Parent Card",
+      nameJp: "最速加速親カード",
+      rarity: 3,
+      type: "speed",
+      hints: [fastestAccelSkillId],
+      events: [],
+    };
+
+    (cardMetaMap as any)[cardDeadId] = {
+      nameEn: "Dead Accel Parent Card",
+      nameJp: "無効加速親カード",
+      rarity: 3,
+      type: "speed",
+      hints: [deadAccelSkillId],
+      events: [],
+    };
+
+    try {
+      const recs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course: KYOTO_2200M,
+        style: 1, // Runner
+        limit: 1000,
+      });
+
+      const cardFastest = recs.find((r) => r.cardId === cardFastestId);
+      const cardDead = recs.find((r) => r.cardId === cardDeadId);
+
+      expect(Boolean(cardFastest)).toBe(true);
+      expect(Boolean(cardDead)).toBe(true);
+
+      // Card with fastest accel must score dramatically higher than card with dead accel
+      expect(cardFastest!.score).toBeGreaterThan(cardDead!.score);
+
+      // Verify tactical metadata is attached
+      const fastestSkill = cardFastest!.newMatchingSkills.find((s) => s.id === fastestAccelSkillId);
+      expect(Boolean(fastestSkill)).toBe(true);
+      expect(fastestSkill!.tacticalCategory).toBe("fastest_accel");
+      expect(fastestSkill!.evalTier).toBe("S");
+      expect(fastestSkill!.evalStars).toBe(5);
+
+      const deadSkill = cardDead!.newMatchingSkills.find((s) => s.id === deadAccelSkillId);
+      expect(Boolean(deadSkill)).toBe(true);
+      expect(deadSkill!.tacticalCategory).toBe("dead_accel");
+      expect(deadSkill!.evalTier).toBe("F");
+    } finally {
+      delete (skillMetaMap as any)[fastestAccelSkillId];
+      delete (skillMetaMap as any)[deadAccelSkillId];
+      delete (cardMetaMap as any)[cardFastestId];
+      delete (cardMetaMap as any)[cardDeadId];
+    }
+  });
+
+  it("penalizes cards with running style traps", () => {
+    const betweenerOnlySkillId = 888003;
+    const testCardId = 888103;
+
+    (skillMetaMap as any)[betweenerOnlySkillId] = {
+      nameEn: "Betweener Secret",
+      nameJp: "差し秘術",
+      rarity: 1,
+      styles: [], // Unfiltered in meta styles to simulate a skill that condition-requires Betweener (3)
+      distances: [],
+      surfaces: [],
+      isGeneric: true,
+      conditions: [{ condition: "phase>=1&running_style==3" }],
+    };
+
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Trap Parent Card",
+      nameJp: "罠親カード",
+      rarity: 3,
+      type: "speed",
+      hints: [betweenerOnlySkillId],
+      events: [],
+    };
+
+    const course: Course = {
+      id: 10001,
+      terrain: 1,
+      turn: 1,
+      distance: 3,
+      inout: 0,
+      length: 2000,
+      corners: [],
+      slopes: [],
+      straights: [],
+    };
+
+    try {
+      // Evaluating for Runner (1) with Betweener requirement should trigger style trap penalty (-12)
+      const recs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course,
+        style: 1, // Runner
+        limit: 1000,
+      });
+
+      const trapCard = recs.find((r) => r.cardId === testCardId);
+      expect(Boolean(trapCard)).toBe(true);
+      // Score should be heavily penalized (negative score)
+      expect(trapCard!.score).toBeLessThan(0);
+    } finally {
+      delete (skillMetaMap as any)[betweenerOnlySkillId];
+      delete (cardMetaMap as any)[testCardId];
+    }
+  });
+
+  it("returns up to 16 cards when requested for the View More option", () => {
+    const recs = recommendCardsForParent({
+      mainDeckSkillIds: new Set(),
+      style: 1,
+      limit: 16,
+    });
+
+    expect(recs.length).toBeGreaterThan(4);
+    expect(recs.length <= 16).toBe(true);
+  });
+
+  it("penalizes and marks banned debuff skills with BANNED badge when noDebuffs is active", () => {
+    const testCardId = 999998;
+    const debuffSkillId = 201152; // 束縛 (Binding Chains), banned debuff
+
+    const course: Course = {
+      id: 11203,
+      terrain: 1,
+      turn: 1,
+      distance: 3,
+      inout: 0,
+      length: 2400,
+      corners: [],
+      slopes: [],
+      straights: [],
+    };
+
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Debuff Test Card",
+      nameJp: "デバフテスト",
+      rarity: 3,
+      type: "speed",
+      hints: [debuffSkillId],
+      events: [],
+    };
+
+    try {
+      // Normal race params: skill is not banned
+      const normalRecs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course,
+        style: 3, // Betweener
+        limit: 1000,
+        raceParams: { noDebuffs: false },
+      });
+      const normalCard = normalRecs.find((r) => r.cardId === testCardId);
+      expect(Boolean(normalCard)).toBe(true);
+      const normalSkill = normalCard!.newMatchingSkills.find((s) => s.id === debuffSkillId);
+      expect(normalSkill?.tacticalLabel).not.toBe("BANNED");
+
+      // No Debuffs race params: skill is banned
+      const bannedRecs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course,
+        style: 3, // Betweener
+        limit: 1000,
+        raceParams: { noDebuffs: true },
+      });
+      const bannedCard = bannedRecs.find((r) => r.cardId === testCardId);
+      expect(Boolean(bannedCard)).toBe(true);
+      const bannedSkill = bannedCard!.newMatchingSkills.find((s) => s.id === debuffSkillId);
+      expect(bannedSkill?.tacticalLabel).toBe("BANNED");
+      expect(bannedSkill?.firesOnCourse).toBe(false);
+      expect(bannedCard!.score).toBeLessThan(0);
+    } finally {
+      delete (cardMetaMap as any)[testCardId];
     }
   });
 });

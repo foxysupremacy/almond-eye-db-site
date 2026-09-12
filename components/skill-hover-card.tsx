@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
 import { api, type SkillDetail } from "../lib/api";
 import { useDeck } from "./store";
 import { computeAllZones, horseForStrategy, type SkillZoneResult } from "../lib/skill-engine/zones";
@@ -8,6 +8,14 @@ import { conditionBranches, formatEffect } from "../lib/skill-engine/describe";
 import { getSkillRarityStyle } from "../lib/skill-rarity";
 import { ZONE_COLORS } from "../lib/track-render";
 import SkillIcon from "./skill-icon";
+import { evaluateSkillForTrack } from "../lib/skill-evaluator";
+import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
+import {
+  HighlightText,
+  FormattedEffectBadges,
+  TacticalTimingStrip,
+} from "./highlighted-numbers";
+import { StarRating } from "./icons";
 
 interface SkillHoverCardProps {
   skillId: number;
@@ -18,89 +26,23 @@ interface SkillHoverCardProps {
     iconId?: number | null;
   };
   cardName?: string;
+  isParentMode?: boolean;
   children: React.ReactNode;
   className?: string;
 }
 
 // Module-level cache to avoid refetching skill details across multiple hovers
+import { hexToRgba } from "./shared/color-utils";
+import { splitStylePrefix } from "./shared/skill-badges";
+import { ConditionChips } from "./shared/condition-chips";
+
 const skillDetailCache = new Map<number, SkillDetail>();
-
-function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
-
-function splitStylePrefix(desc: string | undefined): { style: string | null; text: string } {
-  const m = /^([A-Za-z]+)・(.+)$/.exec(desc ?? "");
-  if (m) {
-    return { style: m[1], text: m[2] };
-  }
-  return { style: null, text: desc ?? "" };
-}
-
-function ConditionChips({
-  branches,
-  needsBranches,
-  tint,
-}: {
-  branches: string[][];
-  needsBranches: string[][] | null;
-  tint: string;
-}) {
-  const needs = needsBranches && needsBranches.length > 0 ? needsBranches : null;
-
-  return (
-    <div className="flex flex-col gap-1">
-      {needs && (
-        <div className="mb-0.5">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Needs:</span>
-          {needs.map((chips, bi) => (
-            <div key={bi} className="mt-0.5 flex flex-wrap items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-700" />
-              {bi > 0 && (
-                <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">or</span>
-              )}
-              {chips.map((chip, ci) => (
-                <span
-                  key={ci}
-                  className="rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/80 px-1.5 py-0.5 text-[10px] leading-4 text-zinc-600 dark:text-zinc-300 font-medium"
-                >
-                  {chip}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-      {branches.map((chips, bi) => (
-        <div key={bi} className="flex flex-wrap items-center gap-1">
-          <span
-            className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700"
-            style={{ background: tint }}
-          />
-          {bi > 0 && (
-            <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">or</span>
-          )}
-          {chips.map((chip, ci) => (
-            <span
-              key={ci}
-              className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] leading-4 text-zinc-700 dark:text-zinc-200 font-medium shadow-2xs"
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 export function SkillHoverCard({
   skillId,
   fallbackSkill,
   cardName,
+  isParentMode = false,
   children,
   className = "",
 }: SkillHoverCardProps) {
@@ -108,8 +50,16 @@ export function SkillHoverCard({
   const [isOpen, setIsOpen] = useState(false);
   const [detail, setDetail] = useState<SkillDetail | null>(() => skillDetailCache.get(skillId) ?? null);
   const [loading, setLoading] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const [coords, setCoords] = useState<{ top: number; left: number; originX: "left" | "right" }>({
+    top: 0,
+    left: 0,
+    originX: "left",
+  });
   const [isMobile, setIsMobile] = useState(false);
+  const [isHoveringPopover, setIsHoveringPopover] = useState(false);
+
+  // Lock body scroll if mobile sheet is open, or if desktop popover is actively hovered
+  useBodyScrollLock((isMobile && isOpen) || (!isMobile && isOpen && isHoveringPopover));
 
   const triggerRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -152,25 +102,31 @@ export function SkillHoverCard({
     if (!triggerRef.current || isMobile) return;
     const rect = triggerRef.current.getBoundingClientRect();
     const popoverWidth = 340;
-    const popoverHeight = 300;
+    const popoverHeight = popoverRef.current?.getBoundingClientRect().height ?? 300;
 
-    let left = rect.left;
-    // Keep popover inside horizontal screen bounds
+    // Place the popover beside the trigger: right side preferred, flip left when out of room
+    let left = rect.right + 8;
+    let originX: "left" | "right" = "left"; // scale from the edge nearest the trigger
     if (left + popoverWidth > window.innerWidth - 16) {
-      left = window.innerWidth - popoverWidth - 16;
+      left = rect.left - popoverWidth - 8;
+      originX = "right";
     }
     if (left < 16) {
       left = 16;
     }
 
-    let top = rect.bottom + 8;
-    // If popover goes off the bottom of the viewport, position it above
-    if (top + popoverHeight > window.innerHeight - 16) {
-      top = Math.max(16, rect.top - popoverHeight - 8);
-    }
+    // Vertically center the popover on the trigger, clamped to the viewport
+    let top = rect.top + rect.height / 2 - popoverHeight / 2;
+    top = Math.min(Math.max(top, 16), window.innerHeight - popoverHeight - 16);
 
-    setCoords({ top, left });
+    setCoords({ top, left, originX });
   }, [isMobile]);
+
+  // Re-measure once the popover has rendered (initial mount and after detail loads)
+  useLayoutEffect(() => {
+    if (!isOpen || isMobile) return;
+    updatePosition();
+  }, [isOpen, detail, loading, isMobile, updatePosition]);
 
   const handleOpen = useCallback(() => {
     if (closeTimerRef.current) {
@@ -186,12 +142,14 @@ export function SkillHoverCard({
     if (isMobile) return; // on mobile, explicit dismiss only
     closeTimerRef.current = setTimeout(() => {
       setIsOpen(false);
+      setIsHoveringPopover(false);
     }, 120);
   }, [isMobile]);
 
   const handleToggle = useCallback(() => {
     if (isOpen) {
       setIsOpen(false);
+      setIsHoveringPopover(false);
     } else {
       handleOpen();
     }
@@ -231,6 +189,18 @@ export function SkillHoverCard({
     if (course) return computeAllZones(course, groups, styleHorse);
     return [];
   }, [detail, course, styleHorse]);
+
+  const evaluation = useMemo(() => {
+    if (!detail) return null;
+    return evaluateSkillForTrack(
+      detail,
+      course,
+      runningStyle,
+      racerCount,
+      isParentMode,
+      zones
+    );
+  }, [detail, course, runningStyle, racerCount, isParentMode, zones]);
 
   const rarity = detail?.rarity ?? fallbackSkill?.rarity ?? 1;
   const rarityMeta = getSkillRarityStyle(rarity);
@@ -293,6 +263,70 @@ export function SkillHoverCard({
         </div>
       )}
 
+      {/* Tactical Rating & Verdict Banner */}
+      {evaluation && (
+        <div className="mt-2.5 rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/80 dark:bg-zinc-900/90 p-2.5 shadow-2xs">
+          {/* Top row: Star rating + Category Badge */}
+          <div className="flex flex-wrap items-center justify-between gap-1.5 mb-1.5">
+            <div className="flex items-center gap-1.5">
+              <StarRating stars={evaluation.stars} starClassName="h-3 w-3" />
+              <span className="text-[10px] font-bold text-zinc-700 dark:text-zinc-300 ml-0.5">
+                {evaluation.tier} Tier
+              </span>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[10px] border shadow-2xs ${evaluation.primaryBadge.badgeClass}`}
+            >
+              <span className={`h-1.5 w-1.5 rounded-full ${evaluation.primaryBadge.dotColor}`} />
+              {evaluation.primaryBadge.label}
+            </span>
+          </div>
+
+          {/* Verdict summary with highlighted numbers */}
+          <p className="text-[11px] leading-relaxed font-medium text-zinc-700 dark:text-zinc-200">
+            <HighlightText text={evaluation.verdictSummary} />
+          </p>
+
+          {/* Compact 3-box Highlighted Numbers Strip */}
+          <TacticalTimingStrip evaluation={evaluation} />
+
+          {/* Special Dynamics Pills */}
+          {evaluation.specialEffects.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {evaluation.specialEffects.map((eff) => (
+                <span
+                  key={eff.id}
+                  className={`inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[9px] font-semibold border ${
+                    eff.type === "success"
+                      ? "bg-emerald-50 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700"
+                      : eff.type === "warning"
+                      ? "bg-amber-50 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border-amber-300 dark:border-amber-700"
+                      : eff.type === "error"
+                      ? "bg-rose-50 dark:bg-rose-950/80 text-rose-800 dark:text-rose-300 border-rose-300 dark:border-rose-700"
+                      : "bg-blue-50 dark:bg-blue-950/80 text-blue-800 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                  }`}
+                  title={eff.description}
+                >
+                  <span>{eff.badge}</span>
+                  {eff.meters && <span className="opacity-80 font-mono font-bold">{eff.meters}</span>}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Parent Mode factor notification */}
+          {evaluation.parentMeta?.isGoldTransformed && (
+            <div className="mt-1.5 pt-1.5 border-t border-zinc-200 dark:border-zinc-800 text-[10px] text-zinc-500 dark:text-zinc-400">
+              <span className="font-semibold text-amber-600 dark:text-amber-400">Parent Factor:</span>{" "}
+              Inherits as{" "}
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200">
+                {evaluation.parentMeta.inheritedWhiteNameEn}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Condition Groups & Calculated Effect */}
       {loading && !detail ? (
         <p className="mt-3 text-xs text-zinc-400 dark:text-zinc-500 italic">Loading calculated stats…</p>
@@ -330,7 +364,7 @@ export function SkillHoverCard({
                     </span>
                   )}
                   {wins ? (
-                    <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono">
+                    <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 font-mono bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.2 rounded border border-emerald-200 dark:border-emerald-800">
                       {wins}
                     </span>
                   ) : (
@@ -347,14 +381,19 @@ export function SkillHoverCard({
                   />
                 </div>
 
-                {/* Calculated Effect Line */}
-                {effectLine && (
-                  <div className="mt-2">
+                {/* Highlighted Calculated Effect Badges */}
+                <div className="mt-2">
+                  <FormattedEffectBadges
+                    effects={(g.effects as Array<{ type: number; value: number }>) ?? []}
+                    baseTime={g.base_time}
+                    courseLength={course?.length ?? 1800}
+                  />
+                  {!g.effects?.length && effectLine && (
                     <span className="inline-flex items-center gap-1 rounded-md border border-emerald-300 dark:border-emerald-600/60 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 text-xs font-semibold text-emerald-900 dark:text-emerald-300 shadow-2xs">
                       {effectLine}
                     </span>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
@@ -386,15 +425,18 @@ export function SkillHoverCard({
         isMobile ? (
           /* Mobile slide-up Bottom Sheet */
           <div
-            className="fixed inset-0 z-[190] flex items-end justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
-            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 z-[190] flex items-end justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
+            onClick={() => {
+              setIsOpen(false);
+              setIsHoveringPopover(false);
+            }}
             role="dialog"
             aria-modal="true"
           >
             <div
               ref={popoverRef}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-[65dvh] max-h-[92dvh] overflow-y-auto rounded-t-2xl border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-200 text-left"
+              className="w-full h-[65dvh] max-h-[92dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-t-2xl border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-[250ms] ease-out-expo text-left"
             >
               {/* Drag Indicator Handle */}
               <div className="mx-auto -mt-1 mb-3 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />
@@ -405,10 +447,21 @@ export function SkillHoverCard({
           /* Desktop floating popover */
           <div
             ref={popoverRef}
-            onMouseEnter={handleOpen}
-            onMouseLeave={handleClose}
-            style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
-            className="fixed z-[150] w-[340px] max-h-[85vh] overflow-y-auto rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-2xl dark:shadow-zinc-950/60 animate-in fade-in zoom-in-95 duration-150 text-left"
+            onMouseEnter={() => {
+              setIsHoveringPopover(true);
+              handleOpen();
+            }}
+            onMouseLeave={() => {
+              setIsHoveringPopover(false);
+              handleClose();
+            }}
+            onWheel={(e) => e.stopPropagation()}
+            style={{
+              top: `${coords.top}px`,
+              left: `${coords.left}px`,
+              transformOrigin: `${coords.originX} center`,
+            }}
+            className="fixed z-[150] w-[340px] max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-2xl dark:shadow-zinc-950/60 animate-in fade-in zoom-in-95 duration-200 ease-out-expo text-left"
             role="tooltip"
           >
             {content}

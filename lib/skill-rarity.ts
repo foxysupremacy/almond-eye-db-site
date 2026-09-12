@@ -1,4 +1,5 @@
 import goldToWhiteData from "./gold-to-white.json";
+import inheritMapData from "./data/unique-inherit-map.json";
 
 export type RarityFilterKey = "all" | "white" | "gold" | "unique" | "evolved";
 
@@ -99,4 +100,17 @@ export function matchesRarityFilter(rarity: number | undefined, filter: RarityFi
  */
 export function getInheritableSkillForGold(goldSkillId: number): MappedGoldSkill | null {
   return GOLD_TO_WHITE_MAP[String(goldSkillId)] ?? null;
+}
+
+/**
+ * Unique skills downgrade to a white inherit version when passed down a
+ * lineage tree — a separate skill id, not a rarity change. Mapping generated
+ * from master.mdb (skill_data.unique_skill_id_1/2), see
+ * scripts/generate_inherit_skills.py.
+ */
+const UNIQUE_INHERIT_MAP: Record<string, number> = inheritMapData as Record<string, number>;
+
+/** Get the white inherit skill id for a unique skill, or null if unmapped. */
+export function getInheritableSkillForUnique(uniqueSkillId: number): number | null {
+  return UNIQUE_INHERIT_MAP[String(uniqueSkillId)] ?? null;
 }

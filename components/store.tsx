@@ -13,12 +13,10 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
-  api,
   type CardIndexEntry,
   type CardSkills,
   type Racetrack,
@@ -26,227 +24,77 @@ import {
   type CourseRow,
   flattenCourse,
 } from "../lib/api";
-import {
-  initDataStore,
-  type DataStore,
-  type EventSkillMetadata,
-  type CardEventDetail,
-} from "../lib/data-store";
+import { initDataStore, type DataStore } from "../lib/data-store";
 import type { Course } from "../lib/skill-engine/types";
-import { getInheritableSkillForGold } from "../lib/skill-rarity";
+import { type PvpEvent, getPvpEventById } from "../lib/pvp-events";
 
-const DECK_SIZE = 6;
-const PRESETS_STORAGE_KEY = "presets.v2";
-const VISUALIZER_SAVE_KEY = "visualizer.v1";
-export const CHAIN_CHOICES_STORAGE_KEY = "chain_choices.v1";
+// Extracted Domain Modules
+import {
+  DECK_SIZE,
+  PRESETS_STORAGE_KEY,
+  VISUALIZER_SAVE_KEY,
+  CHAIN_CHOICES_STORAGE_KEY,
+  DEFAULT_TRACK_ID,
+  DEFAULT_COURSE_ID,
+  RUNNING_STYLE_LABELS,
+  RUNNING_STYLE_OPTIONS,
+  DISTANCE_LABELS,
+  SURFACE_LABELS,
+} from "../lib/deck/constants";
 
-/** 1: Runner, 2: Leader, 3: Betweener, 4: Chaser, 5: Runaway */
-export type RunningStyle = 1 | 2 | 3 | 4 | 5;
+import type {
+  RunningStyle,
+  DistanceType,
+  SurfaceType,
+  TrackInfo,
+  DeckPreset,
+  DeckSkillGrant,
+  DeckSkill,
+  ParentDeckSkill,
+  DeckContextValue,
+} from "../lib/deck/types";
 
-/** 1: Sprint, 2: Mile, 3: Medium, 4: Long */
-export type DistanceType = 1 | 2 | 3 | 4;
+import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
+import {
+  createDefaultPreset,
+  DEFAULT_PRESET,
+  loadStoredPresets,
+  persistPresetsAndVisualizer,
+} from "../lib/deck/preset-storage";
+import {
+  deriveSkillsForDeck,
+  deriveMainSkillIdSet,
+  deriveMainGrantsBySkillId,
+  deriveParentSkills,
+} from "../lib/deck/skill-resolver";
+import { canPlaceCard } from "../lib/deck/card-constraints";
 
-/** 1: Turf, 2: Dirt */
-export type SurfaceType = 1 | 2;
-
-export const RUNNING_STYLE_LABELS: Record<RunningStyle, string> = {
-  1: "Runner",
-  2: "Leader",
-  3: "Betweener",
-  4: "Chaser",
-  5: "Runaway",
+// Re-exports for backward compatibility
+export {
+  DECK_SIZE,
+  PRESETS_STORAGE_KEY,
+  VISUALIZER_SAVE_KEY,
+  CHAIN_CHOICES_STORAGE_KEY,
+  RUNNING_STYLE_LABELS,
+  RUNNING_STYLE_OPTIONS,
+  DISTANCE_LABELS,
+  SURFACE_LABELS,
+  getDefaultChoiceIndex,
 };
 
-export const RUNNING_STYLE_OPTIONS: { value: RunningStyle | null; label: string }[] = [
-  { value: null, label: "Any style" },
-  { value: 1, label: "Runner" },
-  { value: 2, label: "Leader" },
-  { value: 3, label: "Betweener" },
-  { value: 4, label: "Chaser" },
-];
-
-export const DISTANCE_LABELS: Record<DistanceType, string> = {
-  1: "Sprint (1000-1400m)",
-  2: "Mile (1600m)",
-  3: "Medium (2000-2400m)",
-  4: "Long (2500m+)",
+export type {
+  RunningStyle,
+  DistanceType,
+  SurfaceType,
+  TrackInfo,
+  DeckPreset,
+  DeckSkillGrant,
+  DeckSkill,
+  ParentDeckSkill,
+  DeckContextValue,
 };
-
-export const SURFACE_LABELS: Record<SurfaceType, string> = {
-  1: "Turf",
-  2: "Dirt",
-};
-
-export interface TrackInfo {
-  trackId: number;
-  courseId: number;
-  runningStyle: RunningStyle | null;
-  racerCount: number;
-}
-
-export function getDefaultChoiceIndex(
-  eventDetail: CardEventDetail,
-  skillRarityLookup?: (id: number) => number,
-): number {
-  if (!eventDetail.choices || eventDetail.choices.length <= 1) return 1;
-
-  let bestIndex = 1;
-  let bestScore = -1;
-
-  for (const ch of eventDetail.choices) {
-    let score = 0;
-    for (const sid of ch.skillIds) {
-      const rarity = skillRarityLookup ? skillRarityLookup(sid) : (sid >= 200000 ? 1 : 1);
-      score += rarity === 2 ? 10 : 2;
-    }
-    if (score > bestScore) {
-      bestScore = score;
-      bestIndex = ch.index;
-    }
-  }
-
-  return bestIndex;
-}
-
-export interface DeckPreset {
-  id: string;
-  name: string;
-  mainDeckIds: (number | null)[];
-  parentDeckIds: (number | null)[];
-  trackInfo: TrackInfo;
-  mainChainChoices?: Record<string, number>;
-  parentChainChoices?: Record<string, number>;
-}
-
-export interface DeckSkillGrant {
-  cardId: number;
-  cardName: string;
-  source: "event" | "hint";
-  eventMeta?: EventSkillMetadata;
-  originalGoldSkill?: {
-    id: number;
-    nameEn: string;
-    nameJp: string;
-  };
-}
-
-export interface DeckSkill {
-  id: number;
-  nameJp: string;
-  nameEn: string;
-  descEn?: string;
-  rarity: number;
-  source: "event" | "hint";
-  cardId: number;
-  cardName: string;
-  iconId?: number | null;
-  eventMeta?: EventSkillMetadata;
-  grants?: DeckSkillGrant[];
-}
-
-export interface ParentDeckSkill extends DeckSkill {
-  isDuplicateInMain: boolean;
-  mainCardGrants?: DeckSkillGrant[];
-  parentDuplicateCount: number;
-  isUniqueToParent: boolean;
-  originalGoldSkill?: {
-    id: number;
-    nameEn: string;
-    nameJp: string;
-  };
-}
-
-interface DeckContextValue {
-  // Presets
-  presets: DeckPreset[];
-  activePresetId: string;
-  activePreset: DeckPreset;
-  setActivePresetId: (id: string) => void;
-  addPreset: (name?: string) => string;
-  duplicatePreset: (id: string) => string;
-  updatePresetName: (id: string, name: string) => void;
-  deletePreset: (id: string) => void;
-  reorderPresets: (fromIndex: number, toIndex: number) => void;
-
-  // Chain choices
-  setChainChoice: (mode: "main" | "parent", cardId: number, eventId: number, choiceIndex: number) => void;
-  getChainChoice: (mode: "main" | "parent", cardId: number, eventId: number, defaultChoiceIndex?: number) => number;
-  resetCardChainChoices: (mode: "main" | "parent", cardId: number) => void;
-
-  // Main Deck
-  slots: (CardIndexEntry | null)[];
-  mainSlots: (CardIndexEntry | null)[];
-  setCard: (index: number, card: CardIndexEntry | null) => void;
-  setMainCard: (index: number, card: CardIndexEntry | null) => void;
-  clear: () => void;
-  clearMain: () => void;
-  skills: DeckSkill[];
-  mainSkills: DeckSkill[];
-  mainSkillIdSet: Set<number>;
-
-  // Parent Deck
-  parentSlots: (CardIndexEntry | null)[];
-  setParentCard: (index: number, card: CardIndexEntry | null) => void;
-  clearParent: () => void;
-  copyMainToParent: () => void;
-  parentSkills: ParentDeckSkill[];
-
-  // Global Unified Target Race & Course
-  tracks: Racetrack[] | null;
-  trackId: number;
-  setTrackId: (id: number) => void;
-  trackDetail: RacetrackDetail | null;
-  courseId: number;
-  setCourseId: (id: number) => void;
-  activeCourseRow: CourseRow | null;
-  course: Course | null;
-  distance: DistanceType | null;
-  surface: SurfaceType | null;
-
-  runningStyle: RunningStyle | null;
-  setRunningStyle: (s: RunningStyle | null) => void;
-  racerCount: number;
-  setRacerCount: (c: number) => void;
-
-  // Loading & Card Index
-  allCards: CardIndexEntry[] | null;
-  skillsByCard: Record<number, CardSkills | null>;
-  pendingSkillCards: Set<number>;
-  loading: boolean;
-}
 
 const DeckContext = createContext<DeckContextValue | null>(null);
-
-const DEFAULT_TRACK_ID = 10006; // Tokyo
-const DEFAULT_COURSE_ID = 10606; // 2400m Turf
-
-function createDefaultPreset(id: string, name: string): DeckPreset {
-  return {
-    id,
-    name,
-    mainDeckIds: Array(DECK_SIZE).fill(null),
-    parentDeckIds: Array(DECK_SIZE).fill(null),
-    trackInfo: {
-      trackId: DEFAULT_TRACK_ID,
-      courseId: DEFAULT_COURSE_ID,
-      runningStyle: null,
-      racerCount: 12,
-    },
-  };
-}
-
-function cleanChoices(raw: unknown): Record<string, number> | undefined {
-  if (!raw || typeof raw !== "object") return undefined;
-  const res: Record<string, number> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof k === "string" && typeof v === "number" && Number.isFinite(v)) {
-      res[k] = v;
-    }
-  }
-  return Object.keys(res).length > 0 ? res : undefined;
-}
-
-const DEFAULT_PRESET = createDefaultPreset("default-1", "Default Build");
 
 export function DeckProvider({ children }: { children: ReactNode }) {
   const [presetState, setPresetState] = useState<{ presets: DeckPreset[]; activeId: string }>({
@@ -257,40 +105,13 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
   // Restore saved presets from localStorage after initial hydration
   useEffect(() => {
-    try {
-      const rawPresets = window.localStorage.getItem(PRESETS_STORAGE_KEY);
-      if (rawPresets) {
-        const parsed = JSON.parse(rawPresets);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const cleaned: DeckPreset[] = parsed.map((p, idx) => ({
-            id: typeof p.id === "string" ? p.id : `preset-${idx + 1}-${Date.now()}`,
-            name: typeof p.name === "string" && p.name.trim() ? p.name : `Preset ${idx + 1}`,
-            mainDeckIds: Array.isArray(p.mainDeckIds)
-              ? p.mainDeckIds.slice(0, DECK_SIZE).map((x: unknown) => (typeof x === "number" ? x : null))
-              : Array(DECK_SIZE).fill(null),
-            parentDeckIds: Array.isArray(p.parentDeckIds)
-              ? p.parentDeckIds.slice(0, DECK_SIZE).map((x: unknown) => (typeof x === "number" ? x : null))
-              : Array(DECK_SIZE).fill(null),
-            trackInfo: {
-              trackId: typeof p.trackInfo?.trackId === "number" ? p.trackInfo.trackId : DEFAULT_TRACK_ID,
-              courseId: typeof p.trackInfo?.courseId === "number" ? p.trackInfo.courseId : DEFAULT_COURSE_ID,
-              runningStyle: [1, 2, 3, 4, 5].includes(p.trackInfo?.runningStyle) ? p.trackInfo.runningStyle : null,
-              racerCount: typeof p.trackInfo?.racerCount === "number" ? p.trackInfo.racerCount : 12,
-            },
-            mainChainChoices: cleanChoices(p.mainChainChoices),
-            parentChainChoices: cleanChoices(p.parentChainChoices),
-          }));
-          if (cleaned.length > 0) {
-            setPresetState({ presets: cleaned, activeId: cleaned[0].id });
-          }
-        }
-      }
-    } catch {
-      /* ignore storage errors */
-    } finally {
-      setHasHydrated(true);
+    const loaded = loadStoredPresets();
+    if (loaded) {
+      setPresetState(loaded);
     }
+    setHasHydrated(true);
   }, []);
+
   const [dataStore, setDataStore] = useState<DataStore | null>(null);
   const [index, setIndex] = useState<CardIndexEntry[] | null>(null);
   const [tracks, setTracks] = useState<Racetrack[] | null>(null);
@@ -324,7 +145,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
   const activeTrackId = activePreset.trackInfo.trackId;
   const activeCourseId = activePreset.trackInfo.courseId;
-
   const activeTrackDetail = trackDetailsCache[activeTrackId] ?? null;
 
   // Active course row within venue
@@ -348,22 +168,13 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     return activeCourseRow ? (activeCourseRow.terrain as SurfaceType) : null;
   }, [activeCourseRow]);
 
+  const activePvpEventId = activePreset.trackInfo.pvpEventId ?? null;
+  const activePvpEvent = useMemo(() => getPvpEventById(activePvpEventId), [activePvpEventId]);
+
   // Persist presets and visualizer state once hydrated
   useEffect(() => {
     if (!hasHydrated) return;
-    try {
-      window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presetState.presets));
-      window.localStorage.setItem(
-        VISUALIZER_SAVE_KEY,
-        JSON.stringify({
-          trackId: activePreset.trackInfo.trackId,
-          courseId: activePreset.trackInfo.courseId,
-          racerCount: activePreset.trackInfo.racerCount,
-        }),
-      );
-    } catch {
-      /* ignore storage errors */
-    }
+    persistPresetsAndVisualizer(presetState.presets, activePreset);
   }, [hasHydrated, presetState.presets, activePreset]);
 
   // Hydrate Main Deck slots from index
@@ -460,8 +271,62 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const importPreset = useCallback((presetData: Partial<DeckPreset>, asNewPreset: boolean, customName?: string): string => {
+    const finalName = customName?.trim() || presetData.name?.trim() || "Shared Build";
+    if (asNewPreset) {
+      const newId = `preset-${Date.now()}`;
+      const newPreset: DeckPreset = {
+        id: newId,
+        name: finalName,
+        mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
+        parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
+        trackInfo: {
+          trackId: presetData.trackInfo?.trackId ?? DEFAULT_TRACK_ID,
+          courseId: presetData.trackInfo?.courseId ?? DEFAULT_COURSE_ID,
+          runningStyle: presetData.trackInfo?.runningStyle ?? null,
+          racerCount: presetData.trackInfo?.racerCount ?? 12,
+          pvpEventId: presetData.trackInfo?.pvpEventId ?? null,
+        },
+        mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : undefined,
+        parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : undefined,
+      };
+      setPresetState((prev) => ({
+        presets: [...prev.presets, newPreset],
+        activeId: newId,
+      }));
+      return newId;
+    } else {
+      setPresetState((prev) => ({
+        ...prev,
+        presets: prev.presets.map((p) => {
+          if (p.id !== prev.activeId) return p;
+          return {
+            ...p,
+            name: customName?.trim() || p.name,
+            mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? p.mainDeckIds,
+            parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? p.parentDeckIds,
+            trackInfo: {
+              trackId: presetData.trackInfo?.trackId ?? p.trackInfo.trackId,
+              courseId: presetData.trackInfo?.courseId ?? p.trackInfo.courseId,
+              runningStyle: presetData.trackInfo?.runningStyle !== undefined ? presetData.trackInfo.runningStyle : p.trackInfo.runningStyle,
+              racerCount: presetData.trackInfo?.racerCount ?? p.trackInfo.racerCount,
+              pvpEventId: presetData.trackInfo?.pvpEventId ?? p.trackInfo.pvpEventId,
+            },
+            mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
+            parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
+          };
+        }),
+      }));
+      return presetState.activeId;
+    }
+  }, [presetState.activeId]);
+
   // Card modifications
+  // Character-identity constraint: within each deck, two different cards of
+  // the same uma may never coexist. Main and Parent decks are independent —
+  // the setters are the single choke point every picking UI funnels through.
   const setMainCard = useCallback((slotIndex: number, card: CardIndexEntry | null) => {
+    if (card && !canPlaceCard(mainSlots, slotIndex, card)) return;
     setPresetState((prev) => ({
       ...prev,
       presets: prev.presets.map((p) => {
@@ -471,7 +336,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         return { ...p, mainDeckIds: nextIds };
       }),
     }));
-  }, []);
+  }, [mainSlots]);
 
   const clearMain = useCallback(() => {
     setPresetState((prev) => ({
@@ -483,6 +348,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const setParentCard = useCallback((slotIndex: number, card: CardIndexEntry | null) => {
+    if (card && !canPlaceCard(parentSlots, slotIndex, card)) return;
     setPresetState((prev) => ({
       ...prev,
       presets: prev.presets.map((p) => {
@@ -492,7 +358,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         return { ...p, parentDeckIds: nextIds };
       }),
     }));
-  }, []);
+  }, [parentSlots]);
 
   const clearParent = useCallback(() => {
     setPresetState((prev) => ({
@@ -585,6 +451,43 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const applyPvpPreset = useCallback((event: PvpEvent) => {
+    setPresetState((prev) => ({
+      ...prev,
+      presets: prev.presets.map((p) =>
+        p.id === prev.activeId
+          ? {
+              ...p,
+              trackInfo: {
+                ...p.trackInfo,
+                trackId: event.trackId,
+                courseId: event.courseId,
+                racerCount: event.racerCount,
+                pvpEventId: event.id,
+              },
+            }
+          : p,
+      ),
+    }));
+  }, []);
+
+  const clearPvpPreset = useCallback(() => {
+    setPresetState((prev) => ({
+      ...prev,
+      presets: prev.presets.map((p) =>
+        p.id === prev.activeId
+          ? {
+              ...p,
+              trackInfo: {
+                ...p.trackInfo,
+                pvpEventId: null,
+              },
+            }
+          : p,
+      ),
+    }));
+  }, []);
+
   const setChainChoice = useCallback(
     (mode: "main" | "parent", cardId: number, eventId: number, choiceIndex: number) => {
       const key = `${cardId}:${eventId}`;
@@ -629,6 +532,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       const choices = mode === "main" ? activePreset.mainChainChoices : activePreset.parentChainChoices;
       if (choices && typeof choices[key] === "number") {
         return choices[key];
+      }
+      if (choices && typeof choices[String(cardId)] === "number") {
+        return choices[String(cardId)];
       }
       try {
         if (typeof window !== "undefined" && window.localStorage) {
@@ -695,150 +601,31 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  // Skill derivation
-  const deriveSkills = useCallback(
-    (slotsArr: (CardIndexEntry | null)[], isParentDeck = false): DeckSkill[] => {
-      const byId = new Map<number, DeckSkill>();
-      const chainChoicesMap = isParentDeck ? activePreset.parentChainChoices : activePreset.mainChainChoices;
-
-      slotsArr.forEach((card) => {
-        if (!card) return;
-        const cs = skillsByCard[card.id];
-        if (!cs) return;
-        const cardName = card.nameEn || card.nameJp;
-
-        const push = (
-          s: CardSkills["eventSkills"][number],
-          source: "event" | "hint",
-          originalGoldSkill?: { id: number; nameEn: string; nameJp: string },
-        ) => {
-          const grant: DeckSkillGrant = {
-            cardId: card.id,
-            cardName,
-            source,
-            eventMeta: s.eventMeta,
-            originalGoldSkill,
-          };
-          const existing = byId.get(s.id);
-          if (!existing) {
-            byId.set(s.id, {
-              id: s.id,
-              nameJp: s.nameJp,
-              nameEn: s.nameEn,
-              descEn: s.descEn,
-              rarity: s.rarity,
-              source,
-              cardId: card.id,
-              cardName,
-              iconId: s.iconId,
-              eventMeta: s.eventMeta,
-              grants: [grant],
-            });
-          } else {
-            if (!existing.grants?.some((g) => g.cardId === card.id && g.source === source)) {
-              existing.grants = [...(existing.grants ?? []), grant];
-            }
-          }
-        };
-
-        // Hints are always inheritable White skills
-        cs.hintSkills.forEach((s) => push(s, "hint"));
-
-        // Events: Filter by user's chosen branch (or default optimal choice)
-        cs.eventSkills.forEach((s) => {
-          if (s.eventMeta && card.eventDetails) {
-            const evDetail = card.eventDetails.find((ev) => ev.eventId === s.eventMeta!.eventId);
-            if (evDetail && evDetail.choices && evDetail.choices.length > 1) {
-              const choiceKey = `${card.id}:${s.eventMeta.eventId}`;
-              const selectedChoice =
-                chainChoicesMap?.[choiceKey] ??
-                getDefaultChoiceIndex(
-                  evDetail,
-                  (id) => skillsByCard[card.id]?.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
-                );
-              if (s.eventMeta.choiceIndex !== selectedChoice) {
-                return; // User/default choice excludes this skill
-              }
-            }
-          }
-
-          if (isParentDeck && s.rarity === 2) {
-            const mapped = getInheritableSkillForGold(s.id);
-            if (!mapped) return; // Skip uninheritable gold skills with no white counterpart
-            push(
-              {
-                id: mapped.whiteId,
-                nameEn: mapped.whiteNameEn,
-                nameJp: mapped.whiteNameJp,
-                descEn: s.descEn,
-                rarity: 1,
-                isRCard: s.isRCard,
-                iconId: s.iconId,
-                eventMeta: s.eventMeta,
-              },
-              "event",
-              { id: s.id, nameEn: s.nameEn, nameJp: s.nameJp },
-            );
-          } else {
-            push(s, "event");
-          }
-        });
-      });
-      return [...byId.values()].sort((a, b) => a.nameEn.localeCompare(b.nameEn));
-    },
-    [skillsByCard, activePreset.mainChainChoices, activePreset.parentChainChoices],
+  // Skill derivation using pure extracted modules
+  const mainSkills = useMemo<DeckSkill[]>(
+    () => deriveSkillsForDeck(mainSlots, false, skillsByCard, activePreset.mainChainChoices),
+    [mainSlots, skillsByCard, activePreset.mainChainChoices],
   );
 
-  const mainSkills = useMemo<DeckSkill[]>(() => deriveSkills(mainSlots, false), [deriveSkills, mainSlots]);
-  const mainSkillIdSet = useMemo<Set<number>>(() => {
-    const set = new Set<number>();
-    mainSkills.forEach((s) => {
-      set.add(s.id);
-      // If main deck has a gold skill, also mark its base white skill as covered
-      if (s.rarity === 2) {
-        const mapped = getInheritableSkillForGold(s.id);
-        if (mapped) set.add(mapped.whiteId);
-      }
-    });
-    return set;
-  }, [mainSkills]);
+  const mainSkillIdSet = useMemo<Set<number>>(
+    () => deriveMainSkillIdSet(mainSkills),
+    [mainSkills],
+  );
 
-  const rawParentSkills = useMemo<DeckSkill[]>(() => deriveSkills(parentSlots, true), [deriveSkills, parentSlots]);
+  const rawParentSkills = useMemo<DeckSkill[]>(
+    () => deriveSkillsForDeck(parentSlots, true, skillsByCard, activePreset.parentChainChoices),
+    [parentSlots, skillsByCard, activePreset.parentChainChoices],
+  );
 
-  const mainGrantsBySkillId = useMemo<Map<number, DeckSkillGrant[]>>(() => {
-    const map = new Map<number, DeckSkillGrant[]>();
-    mainSkills.forEach((s) => {
-      if (s.grants) {
-        map.set(s.id, s.grants);
-        if (s.rarity === 2) {
-          const mapped = getInheritableSkillForGold(s.id);
-          if (mapped && !map.has(mapped.whiteId)) {
-            map.set(mapped.whiteId, s.grants);
-          }
-        }
-      }
-    });
-    return map;
-  }, [mainSkills]);
+  const mainGrantsBySkillId = useMemo<Map<number, DeckSkillGrant[]>>(
+    () => deriveMainGrantsBySkillId(mainSkills),
+    [mainSkills],
+  );
 
-  const parentSkills = useMemo<ParentDeckSkill[]>(() => {
-    return rawParentSkills.map((s) => {
-      const isDuplicateInMain = mainSkillIdSet.has(s.id);
-      const mainCardGrants = mainGrantsBySkillId.get(s.id);
-      const parentDuplicateCount = s.grants?.length ?? 1;
-      const isUniqueToParent = !isDuplicateInMain;
-      const originalGoldSkill = s.grants?.find((g) => g.originalGoldSkill)?.originalGoldSkill;
-
-      return {
-        ...s,
-        isDuplicateInMain,
-        mainCardGrants,
-        parentDuplicateCount,
-        isUniqueToParent,
-        originalGoldSkill,
-      };
-    });
-  }, [rawParentSkills, mainSkillIdSet, mainGrantsBySkillId]);
+  const parentSkills = useMemo<ParentDeckSkill[]>(
+    () => deriveParentSkills(rawParentSkills, mainSkillIdSet, mainGrantsBySkillId),
+    [rawParentSkills, mainSkillIdSet, mainGrantsBySkillId],
+  );
 
   const loading = !dataStore || !index;
 
@@ -853,6 +640,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       updatePresetName,
       deletePreset,
       reorderPresets,
+      importPreset,
 
       setChainChoice,
       getChainChoice,
@@ -890,6 +678,11 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       racerCount: activePreset.trackInfo.racerCount,
       setRacerCount,
 
+      activePvpEventId,
+      activePvpEvent,
+      applyPvpPreset,
+      clearPvpPreset,
+
       allCards: index,
       skillsByCard,
       pendingSkillCards: pending,
@@ -905,6 +698,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       updatePresetName,
       deletePreset,
       reorderPresets,
+      importPreset,
       setChainChoice,
       getChainChoice,
       resetCardChainChoices,
@@ -930,6 +724,10 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       surface,
       setRunningStyle,
       setRacerCount,
+      activePvpEventId,
+      activePvpEvent,
+      applyPvpPreset,
+      clearPvpPreset,
       index,
       skillsByCard,
       pending,
@@ -945,5 +743,3 @@ export function useDeck(): DeckContextValue {
   if (!ctx) throw new Error("useDeck must be used within <DeckProvider>");
   return ctx;
 }
-
-export { DECK_SIZE };

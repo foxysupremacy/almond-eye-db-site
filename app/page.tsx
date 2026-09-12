@@ -7,32 +7,56 @@ import { useEffect, useState } from "react";
 import { DeckProvider } from "../components/store";
 import DeckPicker from "../components/deck-picker";
 import SkillList from "../components/skill-list";
-import ParentDeckPicker from "../components/parent-deck-picker";
-import RecommendedShelf from "../components/recommended-shelf";
-import ParentSkillList from "../components/parent-skill-list";
-import TrackView from "../components/track-view";
+import ParentDeckView from "../components/parent-deck-view";
+import TrackView from "../components/track/track-view";
 import GlobalTrackBar from "../components/global-track-bar";
 import PresetManager from "../components/preset-manager";
 import ThemeToggle from "../components/theme-toggle";
+import Footer from "../components/footer";
+import SharedImportDialog from "../components/shared-import-dialog";
+import CollectionView from "../components/collection/collection-view";
+import ParentingView from "../components/parenting/parenting-view";
+import VeteransView from "../components/veterans-view";
+import ImportModal from "../components/import-modal";
 
-type Tab = "main" | "parent" | "visualizer";
+type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
 
 const TABS: { id: Tab; label: string; badge?: string }[] = [
   { id: "main", label: "Main Deck" },
-  { id: "parent", label: "Parent Deck", badge: "Farm" },
+  { id: "parent-deck", label: "Parent Deck", badge: "Deck & Skills" },
+  { id: "parenting", label: "Parenting", badge: "Inheritance" },
   { id: "visualizer", label: "Visualizer" },
+  { id: "collection", label: "Collection" },
+  { id: "veterans", label: "Trained Umas", badge: "Beta" },
 ];
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("main");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
+  // Tabs are addressable via URL hash (#main, #parent-deck, #parenting,
+  // #visualizer, #collection, #veterans) so any view can be linked directly.
+  // Unknown hashes (e.g. #share=...) are ignored so share links still work.
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("almond_header_collapsed");
-      if (saved === "true") setIsHeaderCollapsed(true);
+      if (localStorage.getItem("almond_header_collapsed") === "true") setIsHeaderCollapsed(true);
     } catch {}
+    function applyHash() {
+      const id = window.location.hash.replace(/^#/, "").split("=")[0];
+      if (TABS.some((t) => t.id === id)) setTab(id as Tab);
+    }
+    applyHash();
+    window.addEventListener("hashchange", applyHash);
+    return () => window.removeEventListener("hashchange", applyHash);
   }, []);
+
+  const handleTabChange = (next: Tab) => {
+    setTab(next);
+    try {
+      history.replaceState(null, "", next === "main" ? window.location.pathname : `#${next}`);
+    } catch {}
+  };
 
   const toggleHeaderCollapse = () => {
     setIsHeaderCollapsed((prev) => {
@@ -61,8 +85,17 @@ export default function Home() {
                   </h1>
                 </div>
 
-                {/* Preset Switcher, Management & Theme Toggle */}
+                {/* Preset Switcher, Management, Sync & Theme Toggle */}
                 <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="flex items-center gap-1.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-2xs cursor-pointer transition-colors"
+                    title="Sync or Import Kyumaru Game Data"
+                  >
+                    <span>📥</span>
+                    <span className="hidden sm:inline">Sync Data</span>
+                  </button>
                   <PresetManager />
                   <ThemeToggle />
                 </div>
@@ -79,10 +112,13 @@ export default function Home() {
           <div className={`mx-auto flex max-w-5xl items-end justify-between px-3 sm:px-6 ${isHeaderCollapsed ? "pt-1.5" : ""}`}>
             <nav className="flex gap-1 overflow-x-auto scrollbar-none" aria-label="Tabs">
               {TABS.map((t) => (
-                <button
+                <a
                   key={t.id}
-                  type="button"
-                  onClick={() => setTab(t.id)}
+                  href={`#${t.id}`}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleTabChange(t.id);
+                  }}
                   className={`flex items-center gap-1.5 rounded-t-xl border border-b-0 px-3.5 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-colors cursor-pointer shrink-0 ${
                     tab === t.id
                       ? "border-zinc-200/90 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
@@ -101,7 +137,7 @@ export default function Home() {
                       {t.badge}
                     </span>
                   )}
-                </button>
+                </a>
               ))}
             </nav>
 
@@ -115,7 +151,7 @@ export default function Home() {
                 aria-label={isHeaderCollapsed ? "Expand header" : "Collapse header"}
               >
                 <svg
-                  className={`h-3.5 w-3.5 transition-transform duration-200 ${isHeaderCollapsed ? "" : "rotate-180"}`}
+                  className={`h-3.5 w-3.5 transition-transform duration-200 ease-in-out-cubic ${isHeaderCollapsed ? "" : "rotate-180"}`}
                   viewBox="0 0 16 16"
                   fill="none"
                   stroke="currentColor"
@@ -139,16 +175,30 @@ export default function Home() {
               <DeckPicker />
               <SkillList />
             </div>
-          ) : tab === "parent" ? (
-            <div className="flex flex-col gap-6 sm:gap-8">
-              <ParentDeckPicker />
-              <RecommendedShelf />
-              <ParentSkillList />
-            </div>
-          ) : (
+          ) : tab === "parent-deck" ? (
+            <ParentDeckView onNavigateToParenting={() => handleTabChange("parenting")} />
+          ) : tab === "parenting" ? (
+            <ParentingView onNavigateToParentDeck={() => handleTabChange("parent-deck")} />
+          ) : tab === "visualizer" ? (
             <TrackView />
+          ) : tab === "collection" ? (
+            <CollectionView />
+          ) : (
+            <VeteransView />
           )}
         </main>
+
+        {/* Page Footer */}
+        <Footer />
+
+        {/* URL Share Import Dialog */}
+        <SharedImportDialog />
+
+        {/* Kyumaru Game Data Import Modal */}
+        <ImportModal
+          isOpen={isImportModalOpen}
+          onClose={() => setIsImportModalOpen(false)}
+        />
       </div>
     </DeckProvider>
   );

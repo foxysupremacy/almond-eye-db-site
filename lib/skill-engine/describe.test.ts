@@ -28,26 +28,29 @@ describe("describeCondition", () => {
     expect(describeCondition("accumulatetime>=25").when).toBe("After 25s");
   });
 
-  test("position renders order", () => {
-    expect(describeCondition("order<=3").when).toBe("Position 3 or better");
-    expect(describeCondition("order_rate<=50").when).toBe("Position 6 or better");
+  test("position renders order as a range", () => {
+    expect(describeCondition("order<=3").when).toBe("Position 1–3");
+    expect(describeCondition("order>=4").when).toBe("Position 4–12");
+    expect(describeCondition("order>=4", undefined, 9).when).toBe("Position 4–9");
+    expect(describeCondition("order==1").when).toBe("Position 1");
+    expect(describeCondition("order_rate<=50").when).toBe("Position 1–6");
   });
 
   test("order_rate renders exact positions from racer count", () => {
     expect(describeCondition("order_rate<=33", undefined, 18).when).toBe(
-      "Position 6 or better",
+      "Position 1–6",
     );
-    expect(describeCondition("order_rate<50").when).toBe("Position better than 6");
-    expect(describeCondition("order_rate>50").when).toBe("Position 7 or worse");
-    expect(describeCondition("order_rate>=50").when).toBe("Position 6 or worse");
+    expect(describeCondition("order_rate<50").when).toBe("Position 1–5");
+    expect(describeCondition("order_rate>50").when).toBe("Position 7–12");
+    expect(describeCondition("order_rate>=50").when).toBe("Position 6–12");
     expect(describeCondition("order_rate<=50", undefined, 9).when).toBe(
-      "Position 5 or better",
+      "Position 1–5",
     );
     expect(describeCondition("order_rate>50", undefined, 9).when).toBe(
-      "Position 6 or worse",
+      "Position 6–9",
     );
     // No racerCount passed → default 12.
-    expect(describeCondition("order_rate<=50").when).toBe("Position 6 or better");
+    expect(describeCondition("order_rate<=50").when).toBe("Position 1–6");
   });
 
   test("order_rate<=0 falls back to raw text", () => {
@@ -59,21 +62,58 @@ describe("describeCondition", () => {
     expect(() => describeCondition("order_rate<=50", null, 0)).not.toThrow();
     expect(() => describeCondition("order_rate<=50", null, 999)).not.toThrow();
     expect(() => describeCondition("order_rate<=50", null, NaN)).not.toThrow();
-    // Clamping: 0 → 9 → round(4.5) = 5 → "Position 5 or better".
+    // Clamping: 0 → 9 → round(4.5) = 5 → "Position 1–5".
     expect(describeCondition("order_rate<=50", null, 0)).toEqual({
-      when: "Position 5 or better",
+      when: "Position 1–5",
     });
     // Clamping: 999 → 18.
     expect(describeCondition("order_rate>50", null, 999)).toEqual({
-      when: "Position 10 or worse",
+      when: "Position 10–18",
     });
   });
 
   test("order_rate precondition renders with the same racer count", () => {
     expect(describeCondition("order_rate<=50", "accumulatetime>=25", 9)).toEqual({
-      when: "Position 5 or better",
+      when: "Position 1–5",
       needs: "After 25s",
     });
+  });
+
+  test("post_number renders as gate ranges", () => {
+    expect(describeCondition("post_number<=3").when).toBe("Gate 1–3");
+    expect(describeCondition("post_number>=6").when).toBe("Gate 6–12");
+    expect(describeCondition("post_number>=6", undefined, 9).when).toBe("Gate 6–9");
+    expect(describeCondition("post_number>=6", undefined, 18).when).toBe("Gate 6–18");
+    expect(describeCondition("post_number==7").when).toBe("Gate 7");
+  });
+
+  test("paired position conditions merge into single clean ranges", () => {
+    expect(describeCondition("order>=2&order<=5").when).toBe("Position 2–5");
+    expect(describeCondition("order_rate>=40&order_rate<=80").when).toBe("Position 5–10");
+    expect(describeCondition("order>=2&order<=5&order_rate<=50", undefined, 9).when).toBe("Position 2–5");
+    expect(describeCondition("is_finalcorner==1&order>=2&order<=5").when).toBe(
+      "At or after the final corner and position 2–5",
+    );
+  });
+
+  test("popularity renders as favorites", () => {
+    expect(describeCondition("popularity<=3").when).toBe("1st–3rd favorite");
+    expect(describeCondition("popularity>=4").when).toBe("4th–12th favorite");
+    expect(describeCondition("popularity>=4", undefined, 9).when).toBe("4th–9th favorite");
+    expect(describeCondition("popularity==1").when).toBe("1st favorite");
+  });
+
+  test("motivation renders without better/worse", () => {
+    expect(describeCondition("motivation>=4").when).toBe("At least Good motivation");
+    expect(describeCondition("motivation<=4").when).toBe("At most Good motivation");
+    expect(describeCondition("motivation==5").when).toBe("Great motivation");
+    expect(describeCondition("motivation>=5").when).toBe("Great motivation");
+    expect(describeCondition("is_last_straight==1&motivation==5").when).toBe(
+      "On the final straight and great motivation",
+    );
+    expect(describeCondition("is_last_straight==1&motivation>=4").when).toBe(
+      "On the final straight and at least Good motivation",
+    );
   });
 
   test("unknown keyword falls back to raw text", () => {
@@ -152,6 +192,12 @@ describe("conditionBranches", () => {
   test("preserves backward compat .when", () => {
     const { when } = conditionBranches("phase==1&is_overtake==1");
     expect(when).toBe("Mid-race and has an overtake target");
+  });
+
+  test("merges paired position conditions into a single chip", () => {
+    const { branches } = conditionBranches("is_finalcorner==1&order>=2&order<=5");
+    expect(branches).toHaveLength(1);
+    expect(branches[0]).toEqual(["at or after the final corner", "position 2–5"]);
   });
 });
 
