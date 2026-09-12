@@ -6,7 +6,7 @@ import {
   type SkillEvaluationResult,
 } from "../skill-evaluator";
 import rawSkillsData from "../data/skills.json";
-import type { RunningStyle } from "../../components/store";
+import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";
 
 const rawSkillsMap = new Map<number, any>((rawSkillsData as any[]).map((s) => [s.id, s]));

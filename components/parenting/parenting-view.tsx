@@ -35,7 +35,8 @@ import {
 } from "../../lib/parenting";
 import CharacterPickerModal from "../character-picker-modal";
 import VeteranPickerModal, { type PickerRecommendations } from "../veteran-picker-modal";
-import InheritedSkillsModal, { type ParticipantSlot } from "../inherited-skills-modal";
+import InheritedSkillsModal from "../inherited-skills-modal";
+import type { ParticipantSlot } from "../../lib/parenting/types";
 import { LineageAffinityHeader } from "./lineage-affinity-header";
 import { TraineeSpotlight } from "./trainee-spotlight";
 import { PedigreeSlotCard } from "./pedigree-slot-card";

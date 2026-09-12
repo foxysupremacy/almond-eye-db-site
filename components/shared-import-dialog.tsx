@@ -7,7 +7,9 @@
 // 3. Cancel
 
 import { useEffect, useState, useMemo } from "react";
-import { useDeck, type DeckPreset, RUNNING_STYLE_LABELS } from "./store";
+import { useDeck } from "./store";
+import type { DeckPreset } from "../lib/deck/types";
+import { RUNNING_STYLE_LABELS } from "../lib/deck/constants";
 import {
   decodePresetFromShareCode,
   extractShareCodeFromUrl,

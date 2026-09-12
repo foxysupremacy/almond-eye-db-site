@@ -2,7 +2,8 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import type { CardIndexEntry, SkillSummary } from "../lib/data-store";
-import { useDeck, getDefaultChoiceIndex } from "./store";
+import { useDeck } from "./store";
+import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
 import { ChainArrowIcon, ChainStepBadge } from "./chain-arrow-icon";
 import { SkillHoverCard } from "./skill-hover-card";
 import SkillIcon from "./skill-icon";

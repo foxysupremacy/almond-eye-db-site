@@ -1,5 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
-import { useDeck, RUNNING_STYLE_OPTIONS, type DeckSkill } from "./store";
+import { useDeck } from "./store";
+import { RUNNING_STYLE_OPTIONS } from "../lib/deck/constants";
+import type { DeckSkill } from "../lib/deck/types";
 import {
   matchesRarityFilter,
   getSkillRarityStyle,

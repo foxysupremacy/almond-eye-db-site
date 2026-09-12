@@ -4,7 +4,7 @@ import type {
   ParentingSetup,
   GrandparentSlot,
 } from "../parenting-state";
-import type { ParticipantSlot } from "../../components/inherited-skills-modal";
+import type { ParticipantSlot } from "./types";
 
 /**
  * Resolves a grandparent slot from manual overrides or from parent veteran's succession history.

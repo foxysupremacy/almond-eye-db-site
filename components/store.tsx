@@ -69,31 +69,6 @@ import {
 } from "../lib/deck/skill-resolver";
 import { canPlaceCard } from "../lib/deck/card-constraints";
 
-// Re-exports for backward compatibility
-export {
-  DECK_SIZE,
-  PRESETS_STORAGE_KEY,
-  VISUALIZER_SAVE_KEY,
-  CHAIN_CHOICES_STORAGE_KEY,
-  RUNNING_STYLE_LABELS,
-  RUNNING_STYLE_OPTIONS,
-  DISTANCE_LABELS,
-  SURFACE_LABELS,
-  getDefaultChoiceIndex,
-};
-
-export type {
-  RunningStyle,
-  DistanceType,
-  SurfaceType,
-  TrackInfo,
-  DeckPreset,
-  DeckSkillGrant,
-  DeckSkill,
-  ParentDeckSkill,
-  DeckContextValue,
-};
-
 const DeckContext = createContext<DeckContextValue | null>(null);
 
 export function DeckProvider({ children }: { children: ReactNode }) {

@@ -6,7 +6,8 @@
 
 import { useState, useMemo } from "react";
 import type { CardIndexEntry } from "../lib/api";
-import { DECK_SIZE, useDeck } from "./store";
+import { useDeck } from "./store";
+import { DECK_SIZE } from "../lib/deck/constants";
 import CardPickerPopover, { RARITY_META } from "./card-picker-popover";
 import CardChainSelector from "./card-chain-selector";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";

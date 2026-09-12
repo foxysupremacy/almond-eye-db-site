@@ -3,7 +3,7 @@
 // Packs DeckPreset (Main Deck, Parent Deck, Track Info, Event Choices, Name)
 // into an ultra-compact URL-safe string (~25-38 chars) without any server-side database.
 
-import type { DeckPreset, TrackInfo, RunningStyle } from "../components/store";
+import type { DeckPreset, TrackInfo, RunningStyle } from "./deck/types";
 
 export const CODEC_VERSION = 1; // 2-bit version identifier (0b01)
 

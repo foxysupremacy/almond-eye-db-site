@@ -16,7 +16,7 @@ import rawCharactersData from "../data/characters.json";
 import { getCharacterImageUrl } from "../data-store";
 import type { KyumaruVeteranItem } from "../kyumaru-types";
 import type { Course } from "../skill-engine/types";
-import type { RunningStyle } from "../../components/store";
+import type { RunningStyle } from "../deck/types";
 import {
   calculateAffinity,
   calculatePairAffinity,

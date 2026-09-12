@@ -5,12 +5,8 @@
 // giving priority to skills that activate on the specific course geometry.
 
 import { useState, useMemo } from "react";
-import {
-  useDeck,
-  RUNNING_STYLE_LABELS,
-  DISTANCE_LABELS,
-  SURFACE_LABELS,
-} from "./store";
+import { useDeck } from "./store";
+import { RUNNING_STYLE_LABELS, DISTANCE_LABELS, SURFACE_LABELS } from "../lib/deck/constants";
 import { recommendCardsForParent, type CardRecommendation } from "../lib/recommendation-engine";
 import { getPvpRaceParameters } from "../lib/pvp-events";
 import { RARITY_META } from "./card-picker-popover";

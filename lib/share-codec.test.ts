@@ -5,7 +5,7 @@ import {
   buildShareUrl,
   extractShareCodeFromUrl,
 } from "./share-codec";
-import type { DeckPreset } from "../components/store";
+import type { DeckPreset } from "./deck/types";
 
 describe("share-codec V2", () => {
   test("encodes and decodes a full preset accurately with compact length", () => {

@@ -1,18 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { KyumaruVeteranItem } from "../lib/kyumaru-types";
-import type { GrandparentSlot } from "../lib/parenting-state";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "../lib/api";
 import { getCharaIdFromCardId, getCanonicalFactorName } from "../lib/affinity-engine";
 import { decodeFactor } from "../lib/factor-decoder";
-
-export interface ParticipantSlot {
-  slotLabel: string;
-  subLabel: string;
-  vet: KyumaruVeteranItem | GrandparentSlot | null;
-  chara: CharacterIndexEntry | null;
-}
+import type { ParticipantSlot } from "../lib/parenting/types";
 
 interface InheritedSkillsModalProps {
   isOpen: boolean;

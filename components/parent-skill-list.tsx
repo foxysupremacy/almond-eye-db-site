@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { useDeck, type ParentDeckSkill, type DeckSkill } from "./store";
+import { useDeck } from "./store";
+import type { DeckSkill, ParentDeckSkill } from "../lib/deck/types";
 import { useParentingSetup } from "../lib/parenting-state";
 import { useLineageSkills, type DisplayParentSkill } from "../lib/use-lineage-skills";
 import {

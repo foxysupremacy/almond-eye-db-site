@@ -4,7 +4,9 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useDeck, type DeckPreset, RUNNING_STYLE_LABELS } from "./store";
+import { useDeck } from "./store";
+import type { DeckPreset } from "../lib/deck/types";
+import { RUNNING_STYLE_LABELS } from "../lib/deck/constants";
 import { buildShareUrl } from "../lib/share-codec";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import { XIcon, CheckIcon, ClipboardIcon } from "./icons";

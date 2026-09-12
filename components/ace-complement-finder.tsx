@@ -9,12 +9,8 @@
 //    excluding every skill the ace already has (cards + inherited uniques).
 
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import {
-  useDeck,
-  RUNNING_STYLE_LABELS,
-  DISTANCE_LABELS,
-  SURFACE_LABELS,
-} from "./store";
+import { useDeck } from "./store";
+import { RUNNING_STYLE_LABELS, DISTANCE_LABELS, SURFACE_LABELS } from "../lib/deck/constants";
 import {
   recommendCardsForParent,
   doesSkillFireOnCourse,

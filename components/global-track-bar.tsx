@@ -5,12 +5,9 @@
 // Main Deck analysis, and Visualizer racecourse simulation.
 
 import { useState } from "react";
-import {
-  useDeck,
-  RUNNING_STYLE_OPTIONS,
-  RUNNING_STYLE_LABELS,
-  type RunningStyle,
-} from "./store";
+import { useDeck } from "./store";
+import { RUNNING_STYLE_OPTIONS, RUNNING_STYLE_LABELS } from "../lib/deck/constants";
+import type { RunningStyle } from "../lib/deck/types";
 import { distanceLabel, terrainLabel, turnLabel } from "../lib/api";
 import { PVP_EVENTS } from "../lib/pvp-events";
 import { TrophyIcon } from "./icons";

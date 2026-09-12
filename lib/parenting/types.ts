@@ -1,4 +1,14 @@
 import type { KyumaruVeteranItem } from "../kyumaru-types";
+import type { GrandparentSlot } from "../parenting-state";
+import type { CharacterIndexEntry } from "../api";
+
+/** One pedigree slot shown in the inherited-skills modal (parent/grandparent line). */
+export interface ParticipantSlot {
+  slotLabel: string;
+  subLabel: string;
+  vet: KyumaruVeteranItem | GrandparentSlot | null;
+  chara: CharacterIndexEntry | null;
+}
 
 export interface AptitudePatchInfo {
   requiresPatch: boolean;

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CardIndexEntry, CardSkills, SkillSummary } from "../api";
+import type { DeckSkill, DeckSkillGrant } from "./types";
 import {
   deriveMainGrantsBySkillId,
   deriveMainSkillIdSet,
@@ -60,7 +61,7 @@ describe("deriveSkillsForDeck", () => {
     const byCard: Record<number, CardSkills | null> = {
       1: cardSkills({ id: 1, hintSkills: [], eventSkills: [ev] }),
     };
-    const slots = [card({ id: 1, eventDetails: [{ eventId: 5, choices: [{ index: 1, skillIds: [200] }, { index: 2, skillIds: [] }] }] } as Partial<CardIndexEntry>)];
+    const slots = [card({ id: 1, eventDetails: [{ eventId: 5, nameEn: "Ev", nameJp: "Ev", choices: [{ index: 1, textEn: "a", textJp: "a", skillIds: [200] }, { index: 2, textEn: "b", textJp: "b", skillIds: [] }] }] })];
 
     const chosen = deriveSkillsForDeck(slots, false, byCard, { "1:5": 1 });
     expect(chosen.map((s) => s.id)).toContain(200);
@@ -74,7 +75,7 @@ describe("deriveSkillsForDeck", () => {
     const byCard: Record<number, CardSkills | null> = {
       1: cardSkills({ id: 1, hintSkills: [], eventSkills: [ev] }),
     };
-    const slots = [card({ id: 1, eventDetails: [{ eventId: 5, choices: [{ index: 1, skillIds: [200] }, { index: 2, skillIds: [] }] }] } as Partial<CardIndexEntry>)];
+    const slots = [card({ id: 1, eventDetails: [{ eventId: 5, nameEn: "Ev", nameJp: "Ev", choices: [{ index: 1, textEn: "a", textJp: "a", skillIds: [200] }, { index: 2, textEn: "b", textJp: "b", skillIds: [] }] }] })];
 
     const out = deriveSkillsForDeck(slots, false, byCard, { "1": 2 });
     expect(out.map((s) => s.id)).not.toContain(200);
@@ -86,7 +87,7 @@ describe("deriveSkillsForDeck", () => {
     const byCard: Record<number, CardSkills | null> = {
       1: cardSkills({ id: 1, hintSkills: [], eventSkills: [whiteEv, goldEv] }),
     };
-    const slots = [card({ id: 1, eventDetails: [{ eventId: 6, choices: [{ index: 1, skillIds: [201] }, { index: 2, skillIds: [GOLD_ID] }] }] } as Partial<CardIndexEntry>)];
+    const slots = [card({ id: 1, eventDetails: [{ eventId: 6, nameEn: "Ev", nameJp: "Ev", choices: [{ index: 1, textEn: "a", textJp: "a", skillIds: [201] }, { index: 2, textEn: "b", textJp: "b", skillIds: [GOLD_ID] }] }] })];
 
     const out = deriveSkillsForDeck(slots, false, byCard);
     expect(out.map((s) => s.id)).toContain(GOLD_ID);
@@ -141,7 +142,7 @@ describe("deriveSkillsForDeck", () => {
 describe("deriveMainSkillIdSet", () => {
   test("covers white counterpart of owned gold skills", () => {
     const gold = skill({ id: GOLD_ID, rarity: 2 });
-    const set = deriveMainSkillIdSet([gold]);
+    const set = deriveMainSkillIdSet([gold as unknown as DeckSkill]);
     expect(set.has(GOLD_ID)).toBe(true);
     expect(set.has(GOLD_WHITE_COUNTERPART)).toBe(true);
   });
@@ -149,33 +150,49 @@ describe("deriveMainSkillIdSet", () => {
 
 describe("deriveMainGrantsBySkillId", () => {
   test("maps gold grants onto the white id when the main deck owns the gold", () => {
-    const gold = skill({ id: GOLD_ID, rarity: 2 }) as ReturnType<typeof skill> & { grants?: never[] };
-    gold.grants = [];
-    const map = deriveMainGrantsBySkillId([gold as never]);
+    const gold = { ...skill({ id: GOLD_ID, rarity: 2 }), grants: [] } as unknown as DeckSkill;
+    const map = deriveMainGrantsBySkillId([gold]);
     expect(map.get(GOLD_ID)).toEqual([]);
     expect(map.get(GOLD_WHITE_COUNTERPART)).toEqual([]);
   });
 
   test("does not overwrite explicit white grants with gold grants", () => {
-    const gold = skill({ id: GOLD_ID, rarity: 2 });
-    const white = skill({ id: GOLD_WHITE_COUNTERPART });
-    gold.grants = [{ cardId: 1, cardName: "g", source: "event" }];
-    white.grants = [{ cardId: 2, cardName: "w", source: "hint" }];
-    const map = deriveMainGrantsBySkillId([gold, white] as never);
+    const gold = {
+      ...skill({ id: GOLD_ID, rarity: 2 }),
+      grants: [{ cardId: 1, cardName: "g", source: "event" }],
+    } as unknown as DeckSkill;
+    const white = {
+      ...skill({ id: GOLD_WHITE_COUNTERPART }),
+      grants: [{ cardId: 2, cardName: "w", source: "hint" }],
+    } as unknown as DeckSkill;
+    const map = deriveMainGrantsBySkillId([gold, white]);
     expect(map.get(GOLD_WHITE_COUNTERPART)?.[0].cardId).toBe(2);
   });
 });
 
 describe("deriveParentSkills", () => {
   test("flags duplicates against the main deck and passes through original gold lineage", () => {
-    const shared = skill({ id: 100 });
-    shared.grants = [{ cardId: 9, cardName: "parent-card", source: "hint", originalGoldSkill: { id: GOLD_ID, nameEn: "g", nameJp: "g" } }];
-    const uniqueToParent = skill({ id: 500 });
-    uniqueToParent.grants = [{ cardId: 9, cardName: "parent-card", source: "hint" }];
+    const shared = {
+      ...skill({ id: 100 }),
+      grants: [
+        {
+          cardId: 9,
+          cardName: "parent-card",
+          source: "hint",
+          originalGoldSkill: { id: GOLD_ID, nameEn: "g", nameJp: "g" },
+        },
+      ],
+    } as unknown as DeckSkill;
+    const uniqueToParent = {
+      ...skill({ id: 500 }),
+      grants: [{ cardId: 9, cardName: "parent-card", source: "hint" }],
+    } as unknown as DeckSkill;
     const mainSet = new Set([100]);
-    const mainGrants = new Map([[100, [{ cardId: 1, cardName: "main-card", source: "hint" }]]]);
+    const mainGrants = new Map<number, DeckSkillGrant[]>([
+      [100, [{ cardId: 1, cardName: "main-card", source: "hint" }]],
+    ]);
 
-    const out = deriveParentSkills([shared, uniqueToParent] as never, mainSet, mainGrants);
+    const out = deriveParentSkills([shared, uniqueToParent], mainSet, mainGrants);
     expect(out[0].isDuplicateInMain).toBe(true);
     expect(out[0].isUniqueToParent).toBe(false);
     expect(out[0].mainCardGrants?.[0].cardName).toBe("main-card");

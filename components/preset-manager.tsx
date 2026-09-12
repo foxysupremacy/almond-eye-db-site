@@ -5,7 +5,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { useDeck, type DeckPreset } from "./store";
+import { useDeck } from "./store";
+import type { DeckPreset } from "../lib/deck/types";
 import ShareModal from "./share-modal";
 import { LinkIcon, XIcon, EditIcon } from "./icons";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
