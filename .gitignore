@@ -3,3 +3,6 @@ dist/
 .data/
 tsconfig.tsbuildinfo
 .DS_Store
+
+# wrangler/miniflare local state
+.wrangler/
