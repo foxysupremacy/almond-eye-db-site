@@ -4,7 +4,8 @@ import { useState, useCallback } from "react";
 import { useOwnedCards } from "../lib/use-owned-cards";
 import { useOwnedUmas } from "../lib/use-owned-umas";
 import { saveVeterans, clearVeterans } from "../lib/db/veterans-db";
-import { type KyumaruInventoryDump, type KyumaruVeteranItem, type KyumaruSyncPayload } from "../lib/kyumaru-types";
+import { type KyumaruInventoryDump, type KyumaruVeteranItem } from "../lib/kyumaru-types";
+import { decodeKyumaruSyncPayload } from "../lib/kyumaru-decode";
 
 export default function ImportModal({
   isOpen,
@@ -31,14 +32,8 @@ export default function ImportModal({
 
       // If Base64 compressed hash
       if (!data.startsWith("{") && !data.startsWith("[")) {
-        const unescaped = data.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = unescaped.padEnd(unescaped.length + ((4 - (unescaped.length % 4)) % 4), "=");
-        const binaryStr = atob(padded);
-        const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
-        const stream = new Response(
-          new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"))
-        );
-        const payload: KyumaruSyncPayload = await stream.json();
+        // Kyumaru emits raw DEFLATE (RFC 1951); see decodeKyumaruSyncPayload
+        const payload = await decodeKyumaruSyncPayload(data);
 
         if (payload.cards) {
           window.localStorage.setItem("almondeye_owned_cards", JSON.stringify(payload.cards));

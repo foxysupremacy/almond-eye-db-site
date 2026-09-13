@@ -5,11 +5,25 @@ import { type CharacterIndexEntry, getCharacterImageUrl } from "../lib/api";
 import type { KyumaruVeteranItem } from "../lib/kyumaru-types";
 import {
   calculateAffinity,
+  countSharedG1Wins,
   getCharaIdFromCardId,
 } from "../lib/affinity-engine";
 import { decodeFactor, calculateLineageBlueStars } from "../lib/factor-decoder";
 import type { LegacyCandidate } from "../lib/parenting";
+import type { LegacyUniqueEval } from "../lib/parenting/types";
+import { evaluateUniqueSkill, runningStyleToNum } from "../lib/parenting/skill-evaluator";
+import { getCareerG1Saddles } from "../lib/parenting/career-engine";
+import { useOwnedUmas } from "../lib/use-owned-umas";
+import {
+  charactersById,
+  charactersByCharId,
+  skillsById,
+} from "../lib/data/registry";
+import { getInheritableSkillForUnique } from "../lib/skill-rarity";
+import { useDeck } from "./store";
+import SkillItem from "./skill-item";
 import { PickerSearchBar } from "./shared/picker-search-bar";
+import { TIER_CHIP_CLASSES } from "./shared/skill-badges";
 
 export interface PickerRecommendations {
   owned: LegacyCandidate[];
@@ -34,33 +48,144 @@ interface VeteranPickerModalProps {
   slotLabel: string;
   veterans: KyumaruVeteranItem[];
   characters: CharacterIndexEntry[];
-  initialTab?: "recommended" | "veterans" | "templates";
+  /** The other fixed uma for shared-G1 context (branch parent for GP slots, other parent otherwise). */
+  contextParent?: KyumaruVeteranItem | null;
+  initialTab?: "recommended" | "owned" | "veterans" | "templates";
 }
 
-type PickerTab = "recommended" | "veterans" | "templates";
-type SortBy = "affinity" | "rank_score" | "blue_stars";
+type PickerTab = "recommended" | "owned" | "veterans" | "templates";
+type SortBy = "affinity" | "rank_score" | "blue_stars" | "skill_effect" | "unique_tier";
+const SORT_STORAGE_KEY = "almond_parent_picker_sort";
+const TAB_STORAGE_KEY = "almond_parent_picker_tab";
 
-const TIER_CHIP_CLASSES: Record<string, string> = {
-  "S+": "bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-400/50",
-  S: "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-400/50",
-  A: "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-400/50",
-  B: "bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 border-sky-400/50",
-  C: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700",
-  D: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700",
-  F: "bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border-red-400/50",
+const TIER_ORDER: Record<string, number> = {
+  "S+": 0,
+  S: 1,
+  A: 2,
+  B: 3,
+  C: 4,
+  D: 5,
+  F: 6,
 };
+
+/**
+ * Fire state from the header-selected track/style: 2 = unique can fire,
+ * 1 = unknown (no track selected yet), 0 = cannot fire (F tier — dead accel,
+ * style/rank mismatch). Used as the primary sort key so activatable uniques
+ * surface first and dead ones sink to the bottom.
+ */
+function uniqueFireState(uniqueEval?: LegacyUniqueEval): number {
+  if (!uniqueEval) return 1;
+  return uniqueEval.tier === "F" ? 0 : 2;
+}
+
+function loadSort(): SortBy {
+  try {
+    const v = localStorage.getItem(SORT_STORAGE_KEY);
+    if (
+      v === "affinity" ||
+      v === "rank_score" ||
+      v === "blue_stars" ||
+      v === "skill_effect" ||
+      v === "unique_tier"
+    ) {
+      return v;
+    }
+  } catch {}
+  return "affinity";
+}
+
+function loadTab(): PickerTab {
+  try {
+    const v = localStorage.getItem(TAB_STORAGE_KEY);
+    if (v === "recommended" || v === "owned" || v === "veterans" || v === "templates") {
+      return v;
+    }
+  } catch {}
+  return "veterans";
+}
+
+/** White (inherit) version of a character's unique skill, from the generated inherit map. */
+interface WhiteUniqueInfo {
+  skillId: number;
+  nameEn: string;
+  nameJp: string;
+  rarity?: number;
+  iconId: number | null;
+}
+
+function resolveWhiteUnique(cardId: number): WhiteUniqueInfo | null {
+  const chara =
+    charactersById.get(cardId) ?? charactersByCharId.get(getCharaIdFromCardId(cardId));
+  if (!chara?.uniqueSkillId) return null;
+  const skillId = getInheritableSkillForUnique(chara.uniqueSkillId) ?? chara.uniqueSkillId;
+  const raw = skillsById.get(skillId);
+  if (!raw) return null;
+  return {
+    skillId,
+    nameEn: raw.nameEn,
+    nameJp: raw.nameJp,
+    rarity: raw.rarity,
+    iconId: raw.iconId ?? null,
+  };
+}
+
+function sortRecommended(
+  candidates: LegacyCandidate[],
+  mode: SortBy
+): LegacyCandidate[] {
+  const fire = (c: LegacyCandidate) => -uniqueFireState(c.uniqueEval); // fireable first
+  if (mode === "affinity") {
+    return [...candidates].sort(
+      (a, b) => fire(a) - fire(b) || b.totalScore - a.totalScore
+    );
+  }
+  const arr = [...candidates];
+  if (mode === "skill_effect") {
+    arr.sort(
+      (a, b) =>
+        fire(a) - fire(b) ||
+        (b.uniqueEval?.score ?? -1) - (a.uniqueEval?.score ?? -1) ||
+        b.totalScore - a.totalScore
+    );
+  } else if (mode === "unique_tier") {
+    arr.sort(
+      (a, b) =>
+        fire(a) - fire(b) ||
+        (TIER_ORDER[a.uniqueEval?.tier ?? "F"] ?? 9) -
+          (TIER_ORDER[b.uniqueEval?.tier ?? "F"] ?? 9) ||
+        b.totalScore - a.totalScore
+    );
+  }
+  return arr;
+}
+
+function TierChip({ tier, title }: { tier: string; title?: string }) {
+  return (
+    <span
+      className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${
+        TIER_CHIP_CLASSES[tier] ?? TIER_CHIP_CLASSES.C
+      }`}
+      title={title}
+    >
+      {tier}
+    </span>
+  );
+}
 
 function RecommendedRow({
   rank,
   candidate,
   isBorrow,
   borrowUsed,
+  whiteUnique,
   onSelect,
 }: {
   rank: number;
   candidate: LegacyCandidate;
   isBorrow: boolean;
   borrowUsed: boolean;
+  whiteUnique: WhiteUniqueInfo | null;
   onSelect: () => void;
 }) {
   return (
@@ -77,46 +202,26 @@ function RecommendedRow({
       />
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
-            {candidate.nameEn}
-          </span>
-          {isBorrow ? (
-            <span
-              className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                borrowUsed
-                  ? "bg-zinc-400/60 text-white"
-                  : "bg-amber-500/90 text-white"
-              }`}
-            >
-              Borrow
-            </span>
-          ) : candidate.isUntrained ? (
-            <span
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
-              title="Owned but not yet trained — train this Uma to use it here (no borrow needed)"
-            >
-              Untrained
-            </span>
-          ) : (
-            <span
-              className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
-              title="Imported Hall of Fame veteran"
-            >
-              HoF{candidate.blueStarsTotal ? ` · ${candidate.blueStarsTotal}★` : ""}
-            </span>
-          )}
-          {candidate.uniqueEval && (
-            <span
-              className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${
-                TIER_CHIP_CLASSES[candidate.uniqueEval.tier] ?? TIER_CHIP_CLASSES.C
-              }`}
-              title={candidate.uniqueEval.explanation}
-            >
-              {candidate.uniqueEval.tier}
-            </span>
-          )}
-        </div>
+        <span className="block text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+          {candidate.nameEn}
+        </span>
+        {whiteUnique && (
+          <SkillItem
+            skill={{
+              id: whiteUnique.skillId,
+              nameEn: whiteUnique.nameEn,
+              nameJp: whiteUnique.nameJp,
+              rarity: whiteUnique.rarity,
+              iconId: whiteUnique.iconId,
+              cardName: `${candidate.nameEn} · white inherit`,
+            }}
+            size="xs"
+            isParentMode
+            titleClassName="!text-[10px]"
+            subtitleClassName="!text-[8px]"
+            className="mt-0.5"
+          />
+        )}
         {candidate.reasons.length > 0 && (
           <span className="block text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
             {candidate.reasons.join(" · ")}
@@ -129,32 +234,71 @@ function RecommendedRow({
         )}
       </div>
 
-      <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums shrink-0">
-        {candidate.totalScore}
-      </span>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {candidate.uniqueEval && (
+          <TierChip tier={candidate.uniqueEval.tier} title={candidate.uniqueEval.explanation} />
+        )}
+        {isBorrow ? (
+          <span
+            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+              borrowUsed ? "bg-zinc-400/60 text-white" : "bg-amber-500/90 text-white"
+            }`}
+          >
+            Borrow
+          </span>
+        ) : candidate.isUntrained ? (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
+            title="Owned but not yet trained — train this Uma to use it here (no borrow needed)"
+          >
+            Untrained
+          </span>
+        ) : (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
+            title="Imported Hall of Fame veteran"
+          >
+            HoF{candidate.blueStarsTotal ? ` · ${candidate.blueStarsTotal}★` : ""}
+          </span>
+        )}
 
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onSelect();
-        }}
-        className="text-[10px] font-bold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white shrink-0 cursor-pointer transition-colors"
-      >
-        Select →
-      </button>
+        <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums shrink-0">
+          {candidate.totalScore}
+        </span>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          className="text-[10px] font-bold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white shrink-0 cursor-pointer transition-colors"
+        >
+          Select →
+        </button>
+      </div>
     </div>
   );
 }
 
 function RecommendedTabContent({
   recommendations,
+  sortBy,
   onSelect,
 }: {
   recommendations: PickerRecommendations;
+  sortBy: SortBy;
   onSelect: (candidate: LegacyCandidate) => void;
 }) {
-  const { owned, borrow, borrowUsed, runLabel, contextNote } = recommendations;
+  const { borrowUsed, runLabel, contextNote } = recommendations;
+  const owned = useMemo(
+    () => sortRecommended(recommendations.owned, sortBy),
+    [recommendations.owned, sortBy]
+  );
+  const borrow = useMemo(
+    () => sortRecommended(recommendations.borrow, sortBy),
+    [recommendations.borrow, sortBy]
+  );
 
   const borrowBadgeLabel = borrowUsed
     ? `1/1 borrow used${runLabel ? ` · ${runLabel}` : ""}`
@@ -191,6 +335,7 @@ function RecommendedTabContent({
                 key={c.charId}
                 rank={i + 1}
                 candidate={c}
+                whiteUnique={resolveWhiteUnique(c.cardId)}
                 isBorrow={false}
                 borrowUsed={false}
                 onSelect={() => onSelect(c)}
@@ -226,6 +371,7 @@ function RecommendedTabContent({
                 key={c.charId}
                 rank={i + 1}
                 candidate={c}
+                whiteUnique={resolveWhiteUnique(c.cardId)}
                 isBorrow
                 borrowUsed={borrowUsed}
                 onSelect={() => onSelect(c)}
@@ -234,6 +380,156 @@ function RecommendedTabContent({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/** One row in the Owned Umas tab — a collection-owned (not-yet-trained) uma. */
+interface OwnedUmaEntry {
+  chara: CharacterIndexEntry;
+  ownedRarity: number;
+  ownedTalent: number;
+  hasHofRuns: boolean;
+  affBase: number;
+  affTotal: number;
+  sharedG1WithParent: number;
+  sharedG1WithTrainee: number;
+  careerG1Count: number;
+  whiteUnique: WhiteUniqueInfo | null;
+  uniqueEval?: LegacyUniqueEval;
+}
+
+function OwnedUmaRow({
+  entry,
+  onSelect,
+}: {
+  entry: OwnedUmaEntry;
+  onSelect: () => void;
+}) {
+  return (
+    <div
+      onClick={onSelect}
+      className="flex items-center gap-2.5 px-2.5 py-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-emerald-400/60 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 cursor-pointer transition-colors group"
+    >
+      <img
+        src={getCharacterImageUrl(entry.chara.charId, entry.chara.id, "01")}
+        alt={entry.chara.nameEn}
+        className="w-9 h-9 rounded-full object-cover object-top bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700"
+      />
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 truncate">
+            {entry.chara.nameEn}
+          </span>
+          <span className="text-[9px] font-semibold text-amber-500 shrink-0">
+            {"★".repeat(entry.ownedRarity)}
+          </span>
+          <span
+            className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 shrink-0"
+            title="Talent level from your Collection"
+          >
+            T{entry.ownedTalent}
+          </span>
+        </div>
+
+        {entry.whiteUnique && (
+          <SkillItem
+            skill={{
+              id: entry.whiteUnique.skillId,
+              nameEn: entry.whiteUnique.nameEn,
+              nameJp: entry.whiteUnique.nameJp,
+              rarity: entry.whiteUnique.rarity,
+              iconId: entry.whiteUnique.iconId,
+              cardName: `${entry.chara.nameEn} · white inherit`,
+            }}
+            size="xs"
+            isParentMode
+            titleClassName="!text-[10px]"
+            subtitleClassName="!text-[8px]"
+            className="mt-0.5"
+          />
+        )}
+
+        <span className="block text-[10px] text-zinc-500 dark:text-zinc-400 truncate">
+          🔗 {entry.sharedG1WithParent} G1 w/ parent · {entry.sharedG1WithTrainee} G1 w/ trainee · 🏆{" "}
+          {entry.careerG1Count} Career G1s
+        </span>
+      </div>
+
+      <div className="flex items-center gap-1.5 shrink-0">
+        {entry.uniqueEval && (
+          <TierChip tier={entry.uniqueEval.tier} title={entry.uniqueEval.explanation} />
+        )}
+        {entry.hasHofRuns ? (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
+            title="This Uma also has imported Hall of Fame runs"
+          >
+            HoF
+          </span>
+        ) : (
+          <span
+            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
+            title="Owned but not yet trained — train this Uma to use it here (no borrow needed)"
+          >
+            Untrained
+          </span>
+        )}
+
+        <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums shrink-0">
+          +{entry.affTotal}
+        </span>
+
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect();
+          }}
+          className="text-[10px] font-bold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white shrink-0 cursor-pointer transition-colors"
+        >
+          Select →
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OwnedTabContent({
+  entries,
+  hasTarget,
+  onSelect,
+}: {
+  entries: OwnedUmaEntry[];
+  hasTarget: boolean;
+  onSelect: (entry: OwnedUmaEntry) => void;
+}) {
+  if (!hasTarget) {
+    return (
+      <div className="py-16 text-center text-xs text-zinc-500">
+        Select a target trainee first to score your owned Umas.
+      </div>
+    );
+  }
+  if (entries.length === 0) {
+    return (
+      <div className="py-16 text-center text-xs text-zinc-500">
+        No owned Umas match. Mark Umas as owned in the Collection to see them here.
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg px-2.5 py-1.5">
+        Owned Umas from your Collection — scored as potential parents via their career G1
+        schedule. Selecting one uses your own Uma (no friend borrow needed).
+      </p>
+      <div className="flex flex-col gap-1">
+        {entries.map((entry) => (
+          <OwnedUmaRow key={entry.chara.id} entry={entry} onSelect={() => onSelect(entry)} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -250,25 +546,182 @@ export default function VeteranPickerModal({
   slotLabel,
   veterans,
   characters,
+  contextParent,
   initialTab,
 }: VeteranPickerModalProps) {
-  const [activeTab, setActiveTab] = useState<PickerTab>(
-    initialTab || (recommendations ? "recommended" : "veterans")
-  );
+  const [activeTab, setActiveTab] = useState<PickerTab>(loadTab);
 
+  // Remember the last-used tab across visits; fall back when the saved tab is
+  // unavailable in this context (e.g. "recommended" with no recommendations).
   useEffect(() => {
     if (isOpen) {
-      setActiveTab(initialTab || (recommendations ? "recommended" : "veterans"));
+      if (initialTab) {
+        setActiveTab(initialTab);
+        return;
+      }
+      const saved = loadTab();
+      setActiveTab(saved === "recommended" && !recommendations ? "veterans" : saved);
     }
-  }, [initialTab, isOpen, recommendations]);
+  }, [isOpen, initialTab, recommendations]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(TAB_STORAGE_KEY, activeTab);
+    } catch {}
+  }, [activeTab]);
+
+  const { course, runningStyle } = useDeck();
+  const { ownedUmas } = useOwnedUmas();
 
   const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<SortBy>("affinity");
+  const [sortBy, setSortBy] = useState<SortBy>(loadSort);
   const [expandedCharId, setExpandedCharId] = useState<number | null>(null);
+
+  // Remember the sort mode across visits
+  useEffect(() => {
+    try {
+      localStorage.setItem(SORT_STORAGE_KEY, sortBy);
+    } catch {}
+  }, [sortBy]);
 
   const charaMap = useMemo(() => {
     return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
   }, [characters]);
+
+  // White-unique track/style evaluation per card id (tier chips + skill_effect /
+  // unique_tier sorting). Only computed while the modal is open and a course is
+  // selected; deduped by white skill id since variants share the same unique.
+  const uniqueEvalByCardId = useMemo(() => {
+    const map = new Map<number, LegacyUniqueEval>();
+    if (!isOpen || !course) return map;
+    const styleNum = runningStyleToNum(runningStyle);
+    const evalByWhiteId = new Map<number, LegacyUniqueEval>();
+    const addCard = (cardId: number) => {
+      if (map.has(cardId)) return;
+      const white = resolveWhiteUnique(cardId);
+      if (!white) return;
+      let e = evalByWhiteId.get(white.skillId);
+      if (!e) {
+        e = evaluateUniqueSkill(white.skillId, course, styleNum);
+        evalByWhiteId.set(white.skillId, e);
+      }
+      map.set(cardId, e);
+    };
+    for (const vet of veterans) addCard(vet.card_id);
+    if (activeTab === "templates") {
+      for (const c of characters) addCard(c.id);
+    } else if (activeTab === "owned") {
+      for (const cardIdStr of Object.keys(ownedUmas)) addCard(Number(cardIdStr));
+    }
+    return map;
+  }, [isOpen, course, runningStyle, veterans, characters, activeTab, ownedUmas]);
+
+  // Owned Umas tab: collection-owned characters scored as potential parents via
+  // their career G1 schedule (same math as the recommender's untrained picks).
+  const ownedUmaEntries = useMemo(() => {
+    if (!targetCharaId) return [];
+    const q = search.trim().toLowerCase();
+    const excluded = new Set<number>(
+      targetCharaId ? [targetCharaId, ...(excludedCharId ? [excludedCharId] : [])] : []
+    );
+    const hofCharIds = new Set(veterans.map((v) => getCharaIdFromCardId(v.card_id)));
+    const traineeCareerG1s = targetCharaId ? getCareerG1Saddles(targetCharaId) : [];
+
+    const entries: OwnedUmaEntry[] = [];
+    for (const [cardIdStr, details] of Object.entries(ownedUmas)) {
+      const chara = charaMap.get(Number(cardIdStr));
+      if (!chara) continue;
+      if (excluded.has(chara.charId)) continue;
+
+      const nameEn = chara.nameEn || "";
+      if (q && !`${nameEn} ${chara.nameJp} ${chara.titleEn ?? ""}`.toLowerCase().includes(q)) {
+        continue;
+      }
+
+      const saddles = getCareerG1Saddles(chara.charId);
+      const aff = calculateAffinity(
+        { card_id: chara.id, win_saddle_id_array: saddles },
+        targetCharaId!
+      );
+
+      entries.push({
+        chara,
+        ownedRarity: details[0],
+        ownedTalent: details[1],
+        hasHofRuns: hofCharIds.has(chara.charId),
+        affBase: aff.base,
+        affTotal: aff.total,
+        sharedG1WithParent: contextParent
+          ? countSharedG1Wins(saddles, contextParent.win_saddle_id_array)
+          : 0,
+        sharedG1WithTrainee: countSharedG1Wins(saddles, traineeCareerG1s),
+        careerG1Count: saddles.length,
+        whiteUnique: resolveWhiteUnique(chara.id),
+        uniqueEval: uniqueEvalByCardId.get(chara.id),
+      });
+    }
+
+    // Fireable uniques first per the header track/style, then the chosen mode.
+    if (sortBy === "skill_effect") {
+      entries.sort(
+        (a, b) =>
+          uniqueFireState(b.uniqueEval) - uniqueFireState(a.uniqueEval) ||
+          (b.uniqueEval?.score ?? -1) - (a.uniqueEval?.score ?? -1) ||
+          b.affTotal - a.affTotal
+      );
+    } else if (sortBy === "unique_tier") {
+      entries.sort(
+        (a, b) =>
+          uniqueFireState(b.uniqueEval) - uniqueFireState(a.uniqueEval) ||
+          (TIER_ORDER[a.uniqueEval?.tier ?? "F"] ?? 9) -
+            (TIER_ORDER[b.uniqueEval?.tier ?? "F"] ?? 9) ||
+          b.affTotal - a.affTotal
+      );
+    } else {
+      // affinity / rank_score / blue_stars all fall back to base affinity ranking
+      entries.sort(
+        (a, b) =>
+          uniqueFireState(b.uniqueEval) - uniqueFireState(a.uniqueEval) ||
+          b.affTotal - a.affTotal ||
+          a.chara.nameEn.localeCompare(b.chara.nameEn)
+      );
+    }
+    return entries;
+  }, [
+    ownedUmas,
+    charaMap,
+    search,
+    sortBy,
+    targetCharaId,
+    excludedCharId,
+    contextParent,
+    veterans,
+    uniqueEvalByCardId,
+  ]);
+
+  const handleSelectOwnedUma = (entry: OwnedUmaEntry) => {
+    if (onSelectCandidate) {
+      // Untrained-style candidate: full career G1 saddle set, consumes no borrow.
+      onSelectCandidate({
+        charId: entry.chara.charId,
+        cardId: entry.chara.id,
+        nameEn: entry.chara.nameEn,
+        nameJp: entry.chara.nameJp,
+        titleEn: entry.chara.titleEn,
+        avatarUrl: getCharacterImageUrl(entry.chara.charId, entry.chara.id),
+        isVeteran: false,
+        isUntrained: true,
+        careerG1Count: entry.careerG1Count,
+        affinityScore: entry.affBase,
+        totalScore: entry.affTotal,
+        uniqueEval: entry.uniqueEval,
+        reasons: [],
+      });
+    } else if (onSelectCharacterTemplate) {
+      onSelectCharacterTemplate(entry.chara);
+    }
+    onClose();
+  };
 
   // Group and sort Veterans by Uma
   const unifiedVeterans = useMemo(() => {
@@ -310,6 +763,8 @@ export default function VeteranPickerModal({
       const affResult = targetCharaId ? calculateAffinity(bestVet, targetCharaId) : null;
       const maxBlueStars = Math.max(...runs.map((r) => calculateLineageBlueStars(r).total));
       const bestRankScore = Math.max(...runs.map((r) => r.rank_score || 0));
+      const whiteUnique = resolveWhiteUnique(bestVet.card_id);
+      const uniqueEval = uniqueEvalByCardId.get(bestVet.card_id);
 
       return {
         charId,
@@ -324,22 +779,39 @@ export default function VeteranPickerModal({
         maxBlueStars,
         bestRankScore,
         affinity: affResult?.total ?? null,
+        whiteUnique,
+        uniqueEval,
       };
     });
 
-    // 3. Sort groups
+    // 3. Sort groups (fireable uniques first per the header track/style)
     groups.sort((a, b) => {
+      const fire = uniqueFireState(b.uniqueEval) - uniqueFireState(a.uniqueEval);
+      if (fire) return fire;
       if (sortBy === "affinity" && targetCharaId) {
         return (b.affinity || 0) - (a.affinity || 0) || b.bestRankScore - a.bestRankScore;
       }
       if (sortBy === "blue_stars") {
         return b.maxBlueStars - a.maxBlueStars || b.bestRankScore - a.bestRankScore;
       }
+      if (sortBy === "skill_effect") {
+        return (
+          (b.uniqueEval?.score ?? -1) - (a.uniqueEval?.score ?? -1) ||
+          b.bestRankScore - a.bestRankScore
+        );
+      }
+      if (sortBy === "unique_tier") {
+        return (
+          (TIER_ORDER[a.uniqueEval?.tier ?? "F"] ?? 9) -
+            (TIER_ORDER[b.uniqueEval?.tier ?? "F"] ?? 9) ||
+          b.bestRankScore - a.bestRankScore
+        );
+      }
       return b.bestRankScore - a.bestRankScore;
     });
 
     return groups;
-  }, [veterans, charaMap, search, sortBy, targetCharaId, excludedCharId]);
+  }, [veterans, charaMap, search, sortBy, targetCharaId, excludedCharId, uniqueEvalByCardId]);
 
   // Filter Character Templates
   const processedTemplates = useMemo(() => {
@@ -358,16 +830,42 @@ export default function VeteranPickerModal({
       return true;
     });
 
+    // Fireable uniques first per the header track/style, then the chosen mode.
     if (sortBy === "affinity" && targetCharaId) {
       list.sort((a, b) => {
+        const fire = uniqueFireState(uniqueEvalByCardId.get(b.id)) - uniqueFireState(uniqueEvalByCardId.get(a.id));
+        if (fire) return fire;
         const aAff = calculateAffinity({ card_id: a.id }, targetCharaId).total;
         const bAff = calculateAffinity({ card_id: b.id }, targetCharaId).total;
         return bAff - aAff;
       });
+    } else if (sortBy === "skill_effect") {
+      list.sort(
+        (a, b) =>
+          uniqueFireState(uniqueEvalByCardId.get(b.id)) - uniqueFireState(uniqueEvalByCardId.get(a.id)) ||
+          (uniqueEvalByCardId.get(b.id)?.score ?? -1) -
+            (uniqueEvalByCardId.get(a.id)?.score ?? -1) ||
+          (a.nameEn || "").localeCompare(b.nameEn || "")
+      );
+    } else if (sortBy === "unique_tier") {
+      list.sort(
+        (a, b) =>
+          uniqueFireState(uniqueEvalByCardId.get(b.id)) - uniqueFireState(uniqueEvalByCardId.get(a.id)) ||
+          (TIER_ORDER[uniqueEvalByCardId.get(a.id)?.tier ?? "F"] ?? 9) -
+            (TIER_ORDER[uniqueEvalByCardId.get(b.id)?.tier ?? "F"] ?? 9) ||
+          (a.nameEn || "").localeCompare(b.nameEn || "")
+      );
+    } else if (sortBy === "rank_score" || sortBy === "blue_stars") {
+      // no native metric for templates — stable order by name, fireable first
+      list.sort(
+        (a, b) =>
+          uniqueFireState(uniqueEvalByCardId.get(b.id)) - uniqueFireState(uniqueEvalByCardId.get(a.id)) ||
+          (a.nameEn || "").localeCompare(b.nameEn || "")
+      );
     }
 
     return list;
-  }, [characters, search, sortBy, targetCharaId, excludedCharId]);
+  }, [characters, search, sortBy, targetCharaId, excludedCharId, uniqueEvalByCardId]);
 
   if (!isOpen) return null;
 
@@ -382,7 +880,11 @@ export default function VeteranPickerModal({
                 Select {slotLabel}
               </h3>
               <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
-                {activeTab === "veterans" ? `${unifiedVeterans.length} Umas (${veterans.length} Runs)` : `${processedTemplates.length} Characters`}
+                {activeTab === "veterans"
+                  ? `${unifiedVeterans.length} Umas (${veterans.length} Runs)`
+                  : activeTab === "owned"
+                  ? `${ownedUmaEntries.length} Owned`
+                  : `${processedTemplates.length} Characters`}
               </span>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
@@ -416,6 +918,17 @@ export default function VeteranPickerModal({
                 ⭐ Recommended
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => setActiveTab("owned")}
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+                activeTab === "owned"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
+                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+              }`}
+            >
+              Owned Umas
+            </button>
             <button
               type="button"
               onClick={() => setActiveTab("veterans")}
@@ -461,6 +974,12 @@ export default function VeteranPickerModal({
               </option>
               <option value="rank_score">Evaluation Score</option>
               <option value="blue_stars">Lineage Blue Stars</option>
+              <option value="skill_effect" disabled={!course}>
+                Unique Skill Effect
+              </option>
+              <option value="unique_tier" disabled={!course}>
+                Unique Rating (S/A/B/C)
+              </option>
             </select>
           </div>
         </div>
@@ -470,12 +989,19 @@ export default function VeteranPickerModal({
           {activeTab === "recommended" && recommendations ? (
             <RecommendedTabContent
               recommendations={recommendations}
+              sortBy={sortBy}
               onSelect={(candidate) => {
                 if (onSelectCandidate) {
                   onSelectCandidate(candidate);
                   onClose();
                 }
               }}
+            />
+          ) : activeTab === "owned" ? (
+            <OwnedTabContent
+              entries={ownedUmaEntries}
+              hasTarget={targetCharaId !== null}
+              onSelect={handleSelectOwnedUma}
             />
           ) : activeTab === "veterans" ? (
             unifiedVeterans.length === 0 ? (
@@ -574,6 +1100,41 @@ export default function VeteranPickerModal({
                                 🏆 {vet.win_saddle_id_array?.length || 0} Wins
                               </span>
                             </div>
+
+                            {/* Inheritable white unique (hover for full skill popover) + right-aligned rating / provenance */}
+                            {group.whiteUnique && (
+                              <SkillItem
+                                skill={{
+                                  id: group.whiteUnique.skillId,
+                                  nameEn: group.whiteUnique.nameEn,
+                                  nameJp: group.whiteUnique.nameJp,
+                                  rarity: group.whiteUnique.rarity,
+                                  iconId: group.whiteUnique.iconId,
+                                  cardName: `${group.nameEn} · white inherit`,
+                                }}
+                                size="xs"
+                                isParentMode
+                                titleClassName="!text-[10px]"
+                                subtitleClassName="!text-[8px]"
+                                className="mt-1.5"
+                                trailing={
+                                  <>
+                                    {group.uniqueEval && (
+                                      <TierChip
+                                        tier={group.uniqueEval.tier}
+                                        title={group.uniqueEval.explanation}
+                                      />
+                                    )}
+                                    <span
+                                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
+                                      title="Imported Hall of Fame veteran"
+                                    >
+                                      HoF
+                                    </span>
+                                  </>
+                                }
+                              />
+                            )}
                           </div>
                         </div>
 
@@ -701,6 +1262,8 @@ export default function VeteranPickerModal({
                   const affResult = targetCharaId
                     ? calculateAffinity({ card_id: chara.id }, targetCharaId)
                     : null;
+                  const whiteUnique = resolveWhiteUnique(chara.id);
+                  const uniqueEval = uniqueEvalByCardId.get(chara.id);
 
                   return (
                     <button
@@ -750,6 +1313,39 @@ export default function VeteranPickerModal({
                         <span className="text-[10px] font-semibold text-amber-500">
                           {"★".repeat(chara.rarity)}
                         </span>
+                        {whiteUnique && (
+                          <SkillItem
+                            skill={{
+                              id: whiteUnique.skillId,
+                              nameEn: whiteUnique.nameEn,
+                              nameJp: whiteUnique.nameJp,
+                              rarity: whiteUnique.rarity,
+                              iconId: whiteUnique.iconId,
+                              cardName: `${chara.nameEn} · white inherit`,
+                            }}
+                            size="xs"
+                            isParentMode
+                            titleClassName="!text-[10px]"
+                            subtitleClassName="!text-[8px]"
+                            className="mt-1"
+                            trailing={
+                              <>
+                                {uniqueEval && (
+                                  <TierChip
+                                    tier={uniqueEval.tier}
+                                    title={uniqueEval.explanation}
+                                  />
+                                )}
+                                <span
+                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
+                                  title="Owned but not yet trained"
+                                >
+                                  Untrained
+                                </span>
+                              </>
+                            }
+                          />
+                        )}
                       </div>
                     </button>
                   );

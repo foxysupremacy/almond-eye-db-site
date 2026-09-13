@@ -1,6 +1,17 @@
 import React from "react";
 import { getSkillRarityStyle } from "../../lib/skill-rarity";
 
+/** Unique-skill tier chip colors (S+ → F), shared by picker rows and pedigree slots. */
+export const TIER_CHIP_CLASSES: Record<string, string> = {
+  "S+": "bg-purple-100 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border-purple-400/50",
+  S: "bg-emerald-100 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border-emerald-400/50",
+  A: "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-400/50",
+  B: "bg-sky-100 dark:bg-sky-950/70 text-sky-700 dark:text-sky-300 border-sky-400/50",
+  C: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border-zinc-300 dark:border-zinc-700",
+  D: "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-500 border-zinc-300 dark:border-zinc-700",
+  F: "bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border-red-400/50",
+};
+
 export interface RarityBadgeProps {
   rarity?: number;
   size?: "xs" | "sm";

@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useTransition } from "react";
 import Link from "next/link";
-import { type KyumaruSyncPayload, type KyumaruInventoryDump, type KyumaruVeteranItem } from "@/lib/kyumaru-types";
+import { type KyumaruInventoryDump, type KyumaruVeteranItem } from "@/lib/kyumaru-types";
+import { decodeKyumaruSyncPayload } from "@/lib/kyumaru-decode";
 import { saveVeterans, getVeteransCount } from "@/lib/db/veterans-db";
 
 export default function ImportPage() {
@@ -31,17 +32,8 @@ export default function ImportPage() {
       const b64 = hash.slice(6);
 
       try {
-        // Base64 URL decode (handles URL-safe characters & padding)
-        const unescaped = b64.replace(/-/g, "+").replace(/_/g, "/");
-        const padded = unescaped.padEnd(unescaped.length + ((4 - (unescaped.length % 4)) % 4), "=");
-        const binaryStr = atob(padded);
-        const bytes = Uint8Array.from(binaryStr, (c) => c.charCodeAt(0));
-
-        // Native browser Deflate decompression
-        const stream = new Response(
-          new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate"))
-        );
-        const payload: KyumaruSyncPayload = await stream.json();
+        // Kyumaru emits raw DEFLATE (RFC 1951); see decodeKyumaruSyncPayload
+        const payload = await decodeKyumaruSyncPayload(b64);
 
         if (!payload.cards && !payload.umas) {
           throw new Error("Invalid payload: missing cards or umas");

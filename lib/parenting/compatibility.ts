@@ -117,6 +117,7 @@ function evaluateUnique(
     badge: evalResult.badge,
     badgeClass: evalResult.badgeClass,
     explanation: evalResult.explanation,
+    score: evalResult.score,
   };
 }
 

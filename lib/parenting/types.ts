@@ -33,6 +33,8 @@ export interface LegacyUniqueEval {
   badge: string;
   badgeClass: string;
   explanation: string;
+  /** Raw evaluator score on the selected track/style (absent when unevaluated). */
+  score?: number;
 }
 
 export interface LegacyCandidate {

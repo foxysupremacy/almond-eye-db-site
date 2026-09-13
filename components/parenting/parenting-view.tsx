@@ -297,6 +297,17 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     courseLabel,
   ]);
 
+  // The other fixed uma for the open picker slot: the other parent for P1/P2,
+  // the branch parent for grandparent slots (drives shared-G1 context).
+  const pickerContextParent = useMemo(() => {
+    if (!activePickerSlot) return null;
+    if (activePickerSlot === "p1") return setup.parent2;
+    if (activePickerSlot === "p2") return setup.parent1;
+    if (activePickerSlot.startsWith("p1_gp")) return setup.parent1;
+    if (activePickerSlot.startsWith("p2_gp")) return setup.parent2;
+    return null;
+  }, [activePickerSlot, setup.parent1, setup.parent2]);
+
   const handleSelectCandidate = (candidate: LegacyCandidate) => {
     if (!activePickerSlot) return;
     // Untrained picks are owned Umas — they never consume the run's borrow.
@@ -609,6 +620,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         }
         veterans={veterans}
         characters={characters}
+        contextParent={pickerContextParent}
         onSelectVeteran={handlePickerSelect}
         onSelectCharacterTemplate={handlePickerTemplate}
       />

@@ -119,6 +119,7 @@ function mapEvalResult(
     badge: evalResult.primaryBadge.label,
     badgeClass: evalResult.primaryBadge.badgeClass,
     explanation: evalResult.verdictSummary,
+    score: evalResult.score,
     skillName,
   };
 }
