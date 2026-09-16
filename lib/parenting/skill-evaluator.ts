@@ -8,6 +8,8 @@ import {
 import { skillsById } from "../data/registry";
 import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";
+import { isSkillMatchingFilter } from "../recommendation-engine";
+import { BANNED_DEBUFF_SKILL_IDS } from "../pvp-events";
 
 
 export function runningStyleToNum(
@@ -32,18 +34,20 @@ const TRAP_BADGE_CLASS =
 function computeZonesFor(
   rawSkill: any,
   course: Course,
-  styleNum: RunningStyle
+  styleNum?: RunningStyle,
+  raceParams?: Partial<RaceParameters>
 ): EvaluatorZoneInput[] {
-  const raceParams: RaceParameters = {
+  const params: RaceParameters = {
     skillId: String(rawSkill.id),
-    numUmas: 9,
+    numUmas: raceParams?.numUmas ?? 9,
+    ...raceParams,
   };
   try {
     const computed = computeAllZones(
       course,
       rawSkill.conditionGroups || [],
-      horseForStrategy(styleNum),
-      raceParams
+      styleNum ? horseForStrategy(styleNum) : undefined,
+      params
     );
     return computed.map((c) => ({
       regions: c.regions.map((r) => ({ start: r.start, end: r.end })),
@@ -54,6 +58,107 @@ function computeZonesFor(
     // fallback if condition parsing fails
     return [];
   }
+}
+
+export interface SkillActivationResult {
+  activates: boolean;
+  reason?: string;
+  category?: string;
+  evalResult?: SkillEvaluationResult;
+}
+
+/**
+ * Validates whether a support card skill can activate for a target course and running style.
+ * Returns activates = false if:
+ * - Skill is not found or banned
+ * - Skill fails distance, surface, or running style metadata checks
+ * - Skill has 0 trigger regions on the course geometry
+ * - Skill evaluation returns category "invalid"
+ * - Skill has a style_mismatch or rank_mismatch trap
+ */
+export function evaluateSkillActivation(
+  skillId: number,
+  course: Course | null | undefined,
+  runningStyle: RunningStyle | number | string | null | undefined,
+  raceParams?: Partial<RaceParameters>
+): SkillActivationResult {
+  const rawSkill = skillsById.get(skillId);
+  if (!rawSkill) {
+    return { activates: false, reason: "Skill not found" };
+  }
+
+  // Banned debuffs under PvP rules
+  if (raceParams?.noDebuffs && BANNED_DEBUFF_SKILL_IDS.has(skillId)) {
+    return { activates: false, reason: "Banned debuff in active PvP event" };
+  }
+
+  const styleNum = runningStyleToNum(runningStyle);
+  const distance = course ? (course.distance as number) : null;
+  const surface = course ? (course.terrain as number) : null;
+
+  // Metadata filter (Distance / Surface / Strategy)
+  const filterCheck = isSkillMatchingFilter(skillId, styleNum ?? null, distance, surface);
+  if (!filterCheck.matches) {
+    return { activates: false, reason: "Does not match track distance, surface, or running style" };
+  }
+
+  if (course) {
+    const zones = computeZonesFor(rawSkill, course, styleNum, raceParams);
+    if (!zones.some((z) => z.regions.length > 0)) {
+      return { activates: false, reason: "No trigger regions on course geometry" };
+    }
+
+    const evalResult = evaluateSkillForTrack(
+      rawSkill,
+      course,
+      styleNum,
+      raceParams?.numUmas ?? 9,
+      true, // isParentMode = true
+      zones
+    );
+
+    if (evalResult.category === "invalid") {
+      return {
+        activates: false,
+        reason: evalResult.verdictSummary || "Invalid on course",
+        category: "invalid",
+        evalResult,
+      };
+    }
+
+    // Traps: style mismatch or rank mismatch
+    const trap = evalResult.specialEffects.find(
+      (e) => e.id === "style_mismatch" || e.id === "rank_mismatch"
+    );
+    if (trap) {
+      return {
+        activates: false,
+        reason: trap.title,
+        category: trap.id,
+        evalResult,
+      };
+    }
+
+    return {
+      activates: true,
+      category: evalResult.category,
+      evalResult,
+    };
+  }
+
+  // Fallback when no course is set: check if raw condition requires an incompatible style
+  if (styleNum && rawSkill.conditionGroups) {
+    const allCondStr = rawSkill.conditionGroups.map((g: any) => g.condition || "").join(" ");
+    const styleReqM = /running_style==(\d+)/.exec(allCondStr);
+    if (styleReqM) {
+      const reqStyle = parseInt(styleReqM[1], 10);
+      if (reqStyle !== styleNum) {
+        return { activates: false, reason: "Incompatible running style" };
+      }
+    }
+  }
+
+  return { activates: true };
 }
 
 function mapEvalResult(

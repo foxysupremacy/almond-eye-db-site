@@ -13,8 +13,6 @@ import { RARITY_META } from "../lib/skill-rarity";
 import CardChainSelector from "./card-chain-selector";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import CardSkillsSheet from "./card-skills-sheet";
-import SkillPickerModal from "./skill-picker-modal";
-import { SearchIcon } from "./icons";
 import { useParentingSetup } from "../lib/parenting-state";
 import { findCharConflict } from "../lib/deck/card-constraints";
 import { charactersByCharId } from "../lib/data/registry";
@@ -51,7 +49,6 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
 
   const [openSlot, setOpenSlot] = useState<number | null>(null);
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
-  const [isSkillPickerOpen, setIsSkillPickerOpen] = useState(false);
 
   function pick(card: CardIndexEntry) {
     if (openSlot == null) return;
@@ -80,15 +77,6 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
 
         {isParent && (
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setIsSkillPickerOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/50 dark:border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/70 shadow-xs cursor-pointer transition-colors"
-              title="Search cards granting target speed, current speed, accel, heal, or debuff skills"
-            >
-              <SearchIcon className="h-3.5 w-3.5" />
-              <span>Search by Skill</span>
-            </button>
             {hasMainDeck && (
               <button
                 type="button"
@@ -255,14 +243,6 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
           isOpen={Boolean(inspectCard)}
           onClose={() => setInspectCard(null)}
           mode={mode}
-        />
-      )}
-
-      {/* Skill Search & Effect Picker Modal (Parent mode) */}
-      {isParent && (
-        <SkillPickerModal
-          isOpen={isSkillPickerOpen}
-          onClose={() => setIsSkillPickerOpen(false)}
         />
       )}
     </section>

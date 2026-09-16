@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { evaluateUniqueSkill, runningStyleToNum } from "./skill-evaluator";
+import { evaluateUniqueSkill, evaluateSkillActivation, runningStyleToNum } from "./skill-evaluator";
 import type { Course } from "../skill-engine/types";
 
 const kyoto2200Course: Course = {
@@ -73,5 +73,39 @@ describe("runningStyleToNum", () => {
     expect(runningStyleToNum("oikomi")).toBe(4);
     expect(runningStyleToNum(null)).toBe(undefined);
     expect(runningStyleToNum(undefined)).toBe(undefined);
+  });
+});
+
+describe("evaluateSkillActivation", () => {
+  test("activates a valid skill matching course geometry and style", () => {
+    // 200151: Corner Specialist (コーナー巧者◯) - valid on any course with corners
+    const res = evaluateSkillActivation(200151, kyoto2200Course, 2);
+    expect(res.activates).toBe(true);
+    expect(res.category).toBeDefined();
+  });
+
+  test("rejects a skill with explicit running style mismatch", () => {
+    // 200531: Fortune Favors the Fast (Runner skill) evaluated for Betweener (3)
+    const res = evaluateSkillActivation(200531, kyoto2200Course, 3);
+    expect(res.activates).toBe(false);
+  });
+
+  test("rejects a skill with rank trap for the running style", () => {
+    // 101291: Almond Eye unique evaluated for Chaser (4)
+    const res = evaluateSkillActivation(101291, kyoto2200Course, 4);
+    expect(res.activates).toBe(false);
+  });
+
+  test("rejects banned debuff when noDebuffs is active in raceParams", () => {
+    // 200692: Progress Peek (展開窺い - debuff)
+    const res = evaluateSkillActivation(200692, kyoto2200Course, 3, { noDebuffs: true });
+    expect(res.activates).toBe(false);
+    expect(res.reason).toContain("Banned debuff");
+  });
+
+  test("rejects unknown skill id", () => {
+    const res = evaluateSkillActivation(999999999, kyoto2200Course, 1);
+    expect(res.activates).toBe(false);
+    expect(res.reason).toBe("Skill not found");
   });
 });

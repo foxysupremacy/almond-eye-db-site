@@ -263,7 +263,11 @@ function ruler(course: Course): SVGElement[] {
 }
 
 // ---------- mouse & touch hover ----------
-function attachHover(svg: SVGSVGElement, course: Course): void {
+function attachHover(
+  svg: SVGSVGElement,
+  course: Course,
+  onHover?: (meter: number | null) => void,
+): void {
   const line = svg.querySelector(".mouseoverLine");
   const txt = svg.querySelector(".mouseoverText");
   if (!line || !txt) return;
@@ -277,6 +281,25 @@ function attachHover(svg: SVGSVGElement, course: Course): void {
   const W = inner ? Number(inner.getAttribute("width")) || 960 : 960;
   const H = inner ? Number(inner.getAttribute("height")) || 240 : 240;
 
+  function setMeterPosition(m: number | null) {
+    if (m == null || m < 0 || m > course.length) {
+      ln.setAttribute("x1", "-5");
+      ln.setAttribute("x2", "-5");
+      tx.setAttribute("x", "-5");
+      tx.setAttribute("y", "-5");
+      return;
+    }
+    const u = m / course.length;
+    const x = u * W;
+    ln.setAttribute("x1", String(x));
+    ln.setAttribute("x2", String(x));
+    tx.setAttribute("x", String(x > W - 45 ? x - 45 : x + 5));
+    tx.setAttribute("y", String(H * 0.5));
+    tx.textContent = `${Math.round(m)}m`;
+  }
+
+  (svg as any).__setHoverMeter = setMeterPosition;
+
   function updateHover(clientX: number, clientY: number) {
     if (!inner) return;
     const r = inner.getBoundingClientRect();
@@ -289,6 +312,7 @@ function attachHover(svg: SVGSVGElement, course: Course): void {
     tx.setAttribute("x", String(x > W - 45 ? x - 45 : x + 5));
     tx.setAttribute("y", String(((clientY - r.top) / r.height) * H));
     tx.textContent = `${m}m`;
+    onHover?.(m);
   }
 
   function move(ev: MouseEvent) {
@@ -305,6 +329,7 @@ function attachHover(svg: SVGSVGElement, course: Course): void {
     ln.setAttribute("x2", "-5");
     tx.setAttribute("x", "-5");
     tx.setAttribute("y", "-5");
+    onHover?.(null);
   }
 
   svg.addEventListener("mousemove", move);
@@ -362,7 +387,7 @@ export function renderSkillOverlay(
 export function renderCourse(
   host: HTMLElement,
   course: Course,
-  opts: { zones?: SkillZoneResult[] } = {},
+  opts: { zones?: SkillZoneResult[]; onHover?: (meter: number | null) => void } = {},
 ): SVGSVGElement {
   host.innerHTML = "";
   const W = 960;
@@ -458,7 +483,7 @@ export function renderCourse(
 
   svg.appendChild(inner);
   host.appendChild(svg);
-  attachHover(svg, course);
+  attachHover(svg, course, opts.onHover);
   return svg;
 }
 

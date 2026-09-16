@@ -140,6 +140,7 @@ export function recommendCardsForParent({
   excludeSkillIds,
   tacticalCategories,
   requireFiresOnCourse,
+  chainChoicesMap,
 }: {
   mainDeckSkillIds: Set<number>;
   equippedParentCardIds?: (number | null)[];
@@ -156,6 +157,8 @@ export function recommendCardsForParent({
   tacticalCategories?: readonly SkillTacticalCategory[];
   /** When true, drop skills that don't activate on the course. Requires a course. */
   requireFiresOnCourse?: boolean;
+  /** Active event chain choices for deck cards */
+  chainChoicesMap?: Record<string, number>;
 }): CardRecommendation[] {
   const equippedSet = new Set(equippedParentCardIds.filter((id): id is number => typeof id === "number"));
   const combinedExclusions = excludeSkillIds
@@ -264,16 +267,15 @@ export function recommendCardsForParent({
         );
 
         const hasZones = zones.some((z) => z.regions.length > 0);
-        firesOnCourse = hasZones && evalResult.category !== "invalid" && !isBanned;
+        const isStyleMismatch = evalResult.specialEffects.some((e) => e.id === "style_mismatch");
+        const isRankMismatch = evalResult.specialEffects.some((e) => e.id === "rank_mismatch");
+        firesOnCourse = hasZones && evalResult.category !== "invalid" && !isBanned && !isStyleMismatch && !isRankMismatch;
         tacticalCategory = evalResult.category;
         evalTier = evalResult.tier;
         evalStars = evalResult.stars;
         tacticalLabel = evalResult.primaryBadge.label;
         tacticalBadgeClass = evalResult.primaryBadge.badgeClass;
         evalScore = evalResult.score;
-
-        const isStyleMismatch = evalResult.specialEffects.some((e) => e.id === "style_mismatch");
-        const isRankMismatch = evalResult.specialEffects.some((e) => e.id === "rank_mismatch");
 
         if (isBanned) {
           tacticalBonus = -50;
@@ -434,46 +436,18 @@ export function recommendCardsForParent({
         activeChoices.sort((a, b) => b.totalScore - a.totalScore || b.skills.length - a.skills.length || a.index - b.index);
         const bestChoice = activeChoices[0];
 
-        // Add optimal choice score & realistic skill count
-        score += bestChoice.totalScore;
-        newEventCount += bestChoice.skills.length;
+        const choiceKey = `${cardId}:${ev.eventId}`;
+        const explicitChoiceIndex = chainChoicesMap?.[choiceKey] ?? chainChoicesMap?.[String(cardId)];
+        const selectedChoice = explicitChoiceIndex !== undefined
+          ? (evaluatedChoices.find((c) => c.index === explicitChoiceIndex) ?? bestChoice)
+          : (chainChoicesMap ? bestChoice : null);
 
-        // More than 1 choice branch with matching skills => conflict!
-        const hasConflict = activeChoices.length > 1;
-        const eventAddedSkillIds = new Set<number>();
+        if (selectedChoice) {
+          score += selectedChoice.totalScore;
+          newEventCount += selectedChoice.skills.length;
 
-        // 1. Add optimal choice skills (recommended)
-        for (const item of bestChoice.skills) {
-          const { evalResult, eventMeta } = item;
-          if (eventAddedSkillIds.has(evalResult.sid) || seenSkillIds.has(evalResult.sid)) continue;
-          eventAddedSkillIds.add(evalResult.sid);
-          seenSkillIds.add(evalResult.sid);
-
-          newMatchingSkills.push({
-            id: evalResult.sid,
-            nameEn: evalResult.meta.nameEn || `Skill #${evalResult.sid}`,
-            nameJp: evalResult.meta.nameJp || "",
-            rarity: evalResult.meta.rarity ?? 1,
-            iconId: skillIconMap.get(evalResult.sid) ?? null,
-            source: "event",
-            isSpecialized: evalResult.filterCheck.isSpecialized,
-            firesOnCourse: evalResult.firesOnCourse,
-            originalGoldName: evalResult.originalGoldName,
-            eventMeta,
-            choiceConflict: hasConflict,
-            isRecommendedChoice: true,
-            tacticalCategory: evalResult.tacticalCategory,
-            evalTier: evalResult.evalTier,
-            evalStars: evalResult.evalStars,
-            tacticalLabel: evalResult.tacticalLabel,
-            tacticalBadgeClass: evalResult.tacticalBadgeClass,
-            evalScore: evalResult.evalScore,
-          });
-        }
-
-        // 2. Add alternative choice skills (marked with choice conflict & alternative)
-        for (const altChoice of activeChoices.slice(1)) {
-          for (const item of altChoice.skills) {
+          const eventAddedSkillIds = new Set<number>();
+          for (const item of selectedChoice.skills) {
             const { evalResult, eventMeta } = item;
             if (eventAddedSkillIds.has(evalResult.sid) || seenSkillIds.has(evalResult.sid)) continue;
             eventAddedSkillIds.add(evalResult.sid);
@@ -490,8 +464,8 @@ export function recommendCardsForParent({
               firesOnCourse: evalResult.firesOnCourse,
               originalGoldName: evalResult.originalGoldName,
               eventMeta,
-              choiceConflict: true,
-              isRecommendedChoice: false,
+              choiceConflict: activeChoices.length > 1,
+              isRecommendedChoice: true,
               tacticalCategory: evalResult.tacticalCategory,
               evalTier: evalResult.evalTier,
               evalStars: evalResult.evalStars,
@@ -499,6 +473,74 @@ export function recommendCardsForParent({
               tacticalBadgeClass: evalResult.tacticalBadgeClass,
               evalScore: evalResult.evalScore,
             });
+          }
+        } else {
+          // Add optimal choice score & realistic skill count
+          score += bestChoice.totalScore;
+          newEventCount += bestChoice.skills.length;
+
+          // More than 1 choice branch with matching skills => conflict!
+          const hasConflict = activeChoices.length > 1;
+          const eventAddedSkillIds = new Set<number>();
+
+          // 1. Add optimal choice skills (recommended)
+          for (const item of bestChoice.skills) {
+            const { evalResult, eventMeta } = item;
+            if (eventAddedSkillIds.has(evalResult.sid) || seenSkillIds.has(evalResult.sid)) continue;
+            eventAddedSkillIds.add(evalResult.sid);
+            seenSkillIds.add(evalResult.sid);
+
+            newMatchingSkills.push({
+              id: evalResult.sid,
+              nameEn: evalResult.meta.nameEn || `Skill #${evalResult.sid}`,
+              nameJp: evalResult.meta.nameJp || "",
+              rarity: evalResult.meta.rarity ?? 1,
+              iconId: skillIconMap.get(evalResult.sid) ?? null,
+              source: "event",
+              isSpecialized: evalResult.filterCheck.isSpecialized,
+              firesOnCourse: evalResult.firesOnCourse,
+              originalGoldName: evalResult.originalGoldName,
+              eventMeta,
+              choiceConflict: hasConflict,
+              isRecommendedChoice: true,
+              tacticalCategory: evalResult.tacticalCategory,
+              evalTier: evalResult.evalTier,
+              evalStars: evalResult.evalStars,
+              tacticalLabel: evalResult.tacticalLabel,
+              tacticalBadgeClass: evalResult.tacticalBadgeClass,
+              evalScore: evalResult.evalScore,
+            });
+          }
+
+          // 2. Add alternative choice skills (marked with choice conflict & alternative)
+          for (const altChoice of activeChoices.slice(1)) {
+            for (const item of altChoice.skills) {
+              const { evalResult, eventMeta } = item;
+              if (eventAddedSkillIds.has(evalResult.sid) || seenSkillIds.has(evalResult.sid)) continue;
+              eventAddedSkillIds.add(evalResult.sid);
+              seenSkillIds.add(evalResult.sid);
+
+              newMatchingSkills.push({
+                id: evalResult.sid,
+                nameEn: evalResult.meta.nameEn || `Skill #${evalResult.sid}`,
+                nameJp: evalResult.meta.nameJp || "",
+                rarity: evalResult.meta.rarity ?? 1,
+                iconId: skillIconMap.get(evalResult.sid) ?? null,
+                source: "event",
+                isSpecialized: evalResult.filterCheck.isSpecialized,
+                firesOnCourse: evalResult.firesOnCourse,
+                originalGoldName: evalResult.originalGoldName,
+                eventMeta,
+                choiceConflict: true,
+                isRecommendedChoice: false,
+                tacticalCategory: evalResult.tacticalCategory,
+                evalTier: evalResult.evalTier,
+                evalStars: evalResult.evalStars,
+                tacticalLabel: evalResult.tacticalLabel,
+                tacticalBadgeClass: evalResult.tacticalBadgeClass,
+                evalScore: evalResult.evalScore,
+              });
+            }
           }
         }
       }

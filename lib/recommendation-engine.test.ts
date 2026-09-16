@@ -150,13 +150,13 @@ describe("recommendation-engine", () => {
     const almondEye = recs.find((r) => r.cardId === 30308);
     expect(Boolean(almondEye)).toBe(true);
 
-    // Event 1311 has Choice 2 (200021, Left Turns ◎) which is new
-    const event1311Skills = almondEye!.newMatchingSkills.filter(
-      (s) => s.eventMeta?.eventId === 1311,
+    // Event 1313 has Choice 2 (200021, Left Turns ◎) which is new
+    const event1313Skills = almondEye!.newMatchingSkills.filter(
+      (s) => s.eventMeta?.eventId === 1313,
     );
-    expect(event1311Skills.length).toBeGreaterThan(0);
+    expect(event1313Skills.length).toBeGreaterThan(0);
 
-    const match = event1311Skills[0];
+    const match = event1313Skills[0];
     expect(Boolean(match.eventMeta)).toBe(true);
     expect(match.eventMeta!.eventNameJp).toBe("鳴り響け！エモーション");
     expect(match.eventMeta!.totalChoices).toBe(2);
@@ -235,6 +235,17 @@ describe("recommendation-engine", () => {
       // Realistic event count is 1 (only the single choice obtainable in a run)
       expect(testCard!.newEventCount).toBe(1);
       expect(testCard!.totalNewCount).toBe(1);
+
+      // When chainChoicesMap specifies choice 2, only choice 2 skill should be in newMatchingSkills
+      const recsWithChoice2 = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        style: 1,
+        limit: 600,
+        chainChoicesMap: { [`${testCardId}:8888`]: 2 },
+      });
+      const testCardChoice2 = recsWithChoice2.find((r) => r.cardId === testCardId);
+      expect(testCardChoice2!.newMatchingSkills.length).toBe(1);
+      expect(testCardChoice2!.newMatchingSkills[0].id).toBe(200682);
     } finally {
       delete cardMetaMap[testCardId];
     }

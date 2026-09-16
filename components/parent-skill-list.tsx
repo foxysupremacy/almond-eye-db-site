@@ -16,7 +16,8 @@ import SkillItem from "./skill-item";
 import { StarIcon, AlertTriangleIcon } from "./icons";
 import { getCharacterImageUrl } from "../lib/api";
 import { getCharaIdFromCardId } from "../lib/affinity-engine";
-import { isSkillBanned } from "../lib/pvp-events";
+import { isSkillBanned, getPvpRaceParameters } from "../lib/pvp-events";
+import { evaluateSkillActivation, type SkillActivationResult } from "../lib/parenting/skill-evaluator";
 import { deriveSkillsForDeck } from "../lib/deck/skill-resolver";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import { RARITY_META } from "../lib/skill-rarity";
@@ -79,6 +80,8 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     activePreset,
     skillsByCard,
     mainSkillIdSet,
+    course,
+    runningStyle,
   } = useDeck();
   const { setup } = useParentingSetup();
   const [filter, setFilter] = useState<FilterTab>("all");
@@ -178,12 +181,43 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     return [...cardSkillsMapped, ...lineageUniqueSkills, ...bloodlineFactorSkills];
   }, [parentSkills, lineageUniqueSkills, bloodlineFactorSkills]);
 
+  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+
+  // Precompute activation results for all parent & lineage skills under current course & style
+  const activationMap = useMemo(() => {
+    const map = new Map<number, SkillActivationResult>();
+    const checkSkill = (id: number) => {
+      if (!map.has(id)) {
+        map.set(id, evaluateSkillActivation(id, course, runningStyle, raceParams));
+      }
+    };
+    unifiedSkillList.forEach((s) => checkSkill(s.id));
+    parentCardSkillsMap.forEach((skills) => skills.forEach((s) => checkSkill(s.id)));
+    return map;
+  }, [unifiedSkillList, parentCardSkillsMap, course, runningStyle, raceParams]);
+
+  const isSkillUniqueTarget = (s: { id: number; isUniqueToParent?: boolean; isDuplicateInMain?: boolean }) => {
+    if (s.isDuplicateInMain) return false;
+    if (s.isUniqueToParent === false) return false;
+    const act = activationMap.get(s.id);
+    return act ? act.activates : true;
+  };
+
   const hasParentDeck = parentSlots.some(Boolean);
   const hasLineage = Boolean(setup.parent1 || setup.parent2);
 
-  const uniqueCount = useMemo(() => unifiedSkillList.filter((s) => s.isUniqueToParent).length, [unifiedSkillList]);
-  const duplicateCount = useMemo(() => unifiedSkillList.filter((s) => s.isDuplicateInMain).length, [unifiedSkillList]);
-  const parentDupeCount = useMemo(() => unifiedSkillList.filter((s) => parentCardDuplicateSkillIdSet.has(s.id)).length, [unifiedSkillList, parentCardDuplicateSkillIdSet]);
+  const uniqueCount = useMemo(
+    () => unifiedSkillList.filter((s) => isSkillUniqueTarget(s)).length,
+    [unifiedSkillList, activationMap],
+  );
+  const duplicateCount = useMemo(
+    () => unifiedSkillList.filter((s) => s.isDuplicateInMain).length,
+    [unifiedSkillList],
+  );
+  const parentDupeCount = useMemo(
+    () => unifiedSkillList.filter((s) => parentCardDuplicateSkillIdSet.has(s.id)).length,
+    [unifiedSkillList, parentCardDuplicateSkillIdSet],
+  );
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -196,7 +230,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       if (sourceFilter === "lineage" && (s.source === "hint" || s.source === "event")) return false;
 
       // Tab Filter
-      if (filter === "unique" && !s.isUniqueToParent) return false;
+      if (filter === "unique" && !isSkillUniqueTarget(s)) return false;
       if (filter === "duplicate" && !s.isDuplicateInMain) return false;
       if (filter === "parent_duplicate" && !parentCardDuplicateSkillIdSet.has(s.id)) return false;
       if (filter === "hint" && s.source !== "hint") return false;
@@ -211,7 +245,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       }
       return true;
     });
-  }, [unifiedSkillList, filter, sourceFilter, rarityFilter, hideParentDupes, parentCardDuplicateSkillIdSet, search]);
+  }, [unifiedSkillList, filter, sourceFilter, rarityFilter, hideParentDupes, parentCardDuplicateSkillIdSet, search, activationMap]);
 
   return (
     <section className="mt-8">
@@ -433,8 +467,11 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                 const allCardSkills = parentCardSkillsMap.get(card.id) || [];
                 const cFiltered = allCardSkills.filter((s) => {
                   if (hideParentDupes && parentCardDuplicateSkillIdSet.has(s.id)) return false;
-                  if (filter === "unique" && mainSkillIdSet.has(s.id)) return false;
-                  if (filter === "duplicate" && !mainSkillIdSet.has(s.id)) return false;
+                  const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+                  const canAct = act.activates;
+                  const isDupe = mainSkillIdSet.has(s.id);
+                  if (filter === "unique" && (isDupe || !canAct)) return false;
+                  if (filter === "duplicate" && !isDupe) return false;
                   if (filter === "parent_duplicate" && !parentCardDuplicateSkillIdSet.has(s.id)) return false;
                   if (filter === "hint" && s.source !== "hint") return false;
                   if (filter === "event" && s.source !== "event") return false;
@@ -508,12 +545,21 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                           const isDupeInMain = mainSkillIdSet.has(s.id);
                           const isDupeInParent = parentCardDuplicateSkillIdSet.has(s.id);
                           const mappedGold = s.grants?.find((g) => g.originalGoldSkill)?.originalGoldSkill;
+                          const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+                          const canActivate = activation.activates;
+                          const isUniqueTarget = !isDupeInMain && canActivate;
 
                           return (
                             <li
                               key={`${card.id}-${s.id}-${s.source}`}
                               className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
-                                isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10" : isDupeInMain ? "bg-amber-50/20 dark:bg-amber-950/10" : ""
+                                isBanned
+                                  ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10"
+                                  : !canActivate
+                                    ? "opacity-75 bg-zinc-50/40 dark:bg-zinc-900/40"
+                                    : isDupeInMain
+                                      ? "bg-amber-50/20 dark:bg-amber-950/10"
+                                      : ""
                               }`}
                             >
                               <div className="mt-0.5 flex flex-col gap-1 flex-none">
@@ -536,12 +582,24 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                   isParentMode={true}
                                   trailing={
                                     <div className="flex flex-wrap items-center gap-1.5">
-                                      {!isDupeInMain ? (
+                                      {isUniqueTarget && (
                                         <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
                                           <StarIcon className="h-2.5 w-2.5" />
                                           <span>Unique Target</span>
                                         </span>
-                                      ) : (
+                                      )}
+
+                                      {!canActivate && (
+                                        <span
+                                          className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                                          title={activation.reason || "This skill cannot activate on the selected course or running style"}
+                                        >
+                                          <AlertTriangleIcon className="h-2.5 w-2.5" />
+                                          <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
+                                        </span>
+                                      )}
+
+                                      {isDupeInMain && (
                                         <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
                                           <AlertTriangleIcon className="h-2.5 w-2.5" />
                                           <span>In Main Deck</span>
@@ -657,8 +715,11 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                       ...lineageUniqueSkills.filter((s) => s.sourceLabel.startsWith(label)),
                       ...bloodlineFactorSkills.filter((s) => s.sourceLabel.includes(tag)),
                     ].filter((s) => {
-                      if (filter === "unique" && !s.isUniqueToParent) return false;
-                      if (filter === "duplicate" && !s.isDuplicateInMain) return false;
+                      const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+                      const canAct = act.activates;
+                      const isDupe = mainSkillIdSet.has(s.id);
+                      if (filter === "unique" && (isDupe || !canAct)) return false;
+                      if (filter === "duplicate" && !isDupe) return false;
                       if (filter === "parent_duplicate") return false;
                       if (filter === "hint" || filter === "event") return false;
                       if (filter === "parent_unique" && s.source !== "unique") return false;
@@ -722,12 +783,22 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                           <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                             {parentSkillsList.map((s, idx) => {
                               const isBanned = isSkillBanned(s.id, activePvpEvent);
+                              const isDupeInMain = mainSkillIdSet.has(s.id);
+                              const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+                              const canActivate = activation.activates;
+                              const isUniqueTarget = !isDupeInMain && canActivate;
 
                               return (
                                 <li
                                   key={`${label}-${s.id}-${s.source}-${idx}`}
                                   className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
-                                    isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10" : ""
+                                    isBanned
+                                      ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10"
+                                      : !canActivate
+                                        ? "opacity-75 bg-zinc-50/40 dark:bg-zinc-900/40"
+                                        : isDupeInMain
+                                          ? "bg-amber-50/20 dark:bg-amber-950/10"
+                                          : ""
                                   }`}
                                 >
                                   <div className="mt-0.5 flex flex-col gap-1 flex-none">
@@ -749,10 +820,29 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                       isBanned={isBanned}
                                       isParentMode={true}
                                       trailing={
-                                        <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-                                          <StarIcon className="h-2.5 w-2.5" />
-                                          <span>Unique Target</span>
-                                        </span>
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                          {isUniqueTarget && (
+                                            <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
+                                              <StarIcon className="h-2.5 w-2.5" />
+                                              <span>Unique Target</span>
+                                            </span>
+                                          )}
+                                          {!canActivate && (
+                                            <span
+                                              className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                                              title={activation.reason || "This skill cannot activate on the selected course or running style"}
+                                            >
+                                              <AlertTriangleIcon className="h-2.5 w-2.5" />
+                                              <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
+                                            </span>
+                                          )}
+                                          {isDupeInMain && (
+                                            <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
+                                              <AlertTriangleIcon className="h-2.5 w-2.5" />
+                                              <span>In Main Deck</span>
+                                            </span>
+                                          )}
+                                        </div>
                                       }
                                     >
                                       {s.descEn && (
@@ -787,13 +877,24 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             const mappedGold = s.originalGoldSkill;
             const mappedUnique = s.originalUniqueSkill;
             const isBanned = isSkillBanned(s.id, activePvpEvent);
+            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+            const canActivate = activation.activates;
+            const isUniqueTarget = s.isUniqueToParent && !s.isDuplicateInMain && canActivate;
 
             return (
               <li
                 key={`${s.id}-${s.source}-${idx}`}
                 className={`flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
                   rStyle.borderClass
-                } ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/50" : s.isDuplicateInMain ? "bg-amber-50/20 dark:bg-amber-950/10" : rStyle.bgClass ?? ""}`}
+                } ${
+                  isBanned
+                    ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/50"
+                    : !canActivate
+                      ? "opacity-75 bg-zinc-50/60 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800"
+                      : s.isDuplicateInMain
+                        ? "bg-amber-50/20 dark:bg-amber-950/10"
+                        : rStyle.bgClass ?? ""
+                }`}
               >
                 <div className="mt-0.5 flex flex-col gap-1 flex-none">
                   {isBanned && (
@@ -816,12 +917,24 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                     isParentMode={true}
                     trailing={
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {s.isUniqueToParent ? (
+                        {isUniqueTarget && (
                           <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
                             <StarIcon className="h-2.5 w-2.5" />
                             <span>Unique Target</span>
                           </span>
-                        ) : (
+                        )}
+
+                        {!canActivate && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                            title={activation.reason || "This skill cannot activate on the selected course or running style"}
+                          >
+                            <AlertTriangleIcon className="h-2.5 w-2.5" />
+                            <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
+                          </span>
+                        )}
+
+                        {s.isDuplicateInMain && (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
                             <AlertTriangleIcon className="h-2.5 w-2.5" />
                             <span>In Main Deck</span>

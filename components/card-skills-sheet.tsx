@@ -9,10 +9,12 @@ import SkillIcon from "./skill-icon";
 import { SkillHoverCard } from "./skill-hover-card";
 import SkillItem from "./skill-item";
 import DuplicateSkillBadge, { type DuplicateCardEntry } from "./duplicate-skill-badge";
-import { getSkillRarityStyle } from "../lib/skill-rarity";
-import { isSkillBanned } from "../lib/pvp-events";
+import { getSkillRarityStyle, getInheritableSkillForGold } from "../lib/skill-rarity";
+import { isSkillBanned, getPvpRaceParameters } from "../lib/pvp-events";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 import { AlertTriangleIcon, StarIcon } from "./icons";
+import { evaluateSkillActivation } from "../lib/parenting/skill-evaluator";
+import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
 
 interface CardSkillsSheetProps {
   card: CardIndexEntry;
@@ -23,10 +25,19 @@ interface CardSkillsSheetProps {
 }
 
 export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = "main" }: CardSkillsSheetProps) {
-  const { skillsByCard, mainSkillIdSet, parentSlots, activePvpEvent } = useDeck();
+  const {
+    skillsByCard,
+    mainSkillIdSet,
+    parentSlots,
+    activePvpEvent,
+    course,
+    runningStyle,
+    activePreset,
+  } = useDeck();
   const [loadedSkills, setLoadedSkills] = useState<CardSkills | null>(null);
   const [loading, setLoading] = useState(false);
   const isParent = mode === "parent";
+  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
 
   useBodyScrollLock(isOpen);
 
@@ -106,14 +117,42 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
     const inMainDeck = isParent && mainSkillIdSet.has(s.id);
     const dupEntries = isParent ? parentDuplicateCardsMap.get(s.id) ?? [] : [];
     const isEquipped = parentSlots.some((c) => c?.id === card.id);
-    // Duplicates = other picked parent cards granting the same skill. When the
-    // inspected card isn't equipped yet, a single equipped card holding the
-    // skill already makes it a duplicate pick.
     const otherDupEntries = dupEntries.filter((e) => e.cardId !== card.id);
     const isDupAcrossParents = otherDupEntries.length > 0;
-    // Unique to this card: not in the main deck and no other picked parent
-    // card grants it — farming it here is the only source in the current setup
-    const isUniqueTarget = isParent && !inMainDeck && !isDupAcrossParents;
+
+    // Check activation against course geometry and running style
+    let evalSkillId = s.id;
+    if (isParent && s.rarity === 2) {
+      const mapped = getInheritableSkillForGold(s.id);
+      evalSkillId = mapped ? mapped.whiteId : s.id;
+    }
+    const activation = course
+      ? evaluateSkillActivation(evalSkillId, course, runningStyle, raceParams)
+      : { activates: false, reason: "Select a track to evaluate skill activation" };
+    const canActivate = activation.activates;
+
+    // Check event branch choice
+    let isActiveChoice = true;
+    let isBranchingEvent = false;
+    if (source === "event" && s.eventMeta && card.eventDetails) {
+      const evDetail = card.eventDetails.find((ev) => ev.eventId === s.eventMeta!.eventId);
+      if (evDetail && evDetail.choices && evDetail.choices.length > 1) {
+        isBranchingEvent = true;
+        const choiceKey = `${card.id}:${s.eventMeta.eventId}`;
+        const selectedChoice =
+          activePreset.parentChainChoices?.[choiceKey] ??
+          activePreset.parentChainChoices?.[String(card.id)] ??
+          getDefaultChoiceIndex(
+            evDetail,
+            (id) => skillsByCard[card.id]?.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
+          );
+        isActiveChoice = s.eventMeta.choiceIndex === selectedChoice;
+      }
+    }
+
+    // Unique to this card: not in the main deck, no other parent card has it, activates on track/style, and is on active choice branch
+    const isUniqueTarget = isParent && !inMainDeck && !isDupAcrossParents && canActivate && isActiveChoice;
+
     return (
       <div
         key={`${s.id}-${source}`}
@@ -122,13 +161,15 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
         } ${
           isBanned
             ? "opacity-60 bg-rose-50/40 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/50"
-            : isDupAcrossParents
-              ? "bg-sky-50/40 dark:bg-sky-950/20"
-              : inMainDeck
-                ? "bg-amber-50/40 dark:bg-amber-950/20"
-                : isUniqueTarget
-                  ? "bg-emerald-50/40 dark:bg-emerald-950/20"
-                  : rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
+            : isParent && !canActivate
+              ? "opacity-75 bg-zinc-50/60 dark:bg-zinc-900/60 border-zinc-200 dark:border-zinc-800"
+              : isDupAcrossParents
+                ? "bg-sky-50/40 dark:bg-sky-950/20"
+                : inMainDeck
+                  ? "bg-amber-50/40 dark:bg-amber-950/20"
+                  : isUniqueTarget
+                    ? "bg-emerald-50/40 dark:bg-emerald-950/20"
+                    : rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
         }`}
       >
         <div className="mt-0.5 flex flex-col gap-1 flex-none">
@@ -168,7 +209,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
             showExternalIcon={true}
             isBanned={isBanned}
             trailing={
-              isParent && (inMainDeck || isDupAcrossParents || isUniqueTarget) ? (
+              isParent ? (
                 <div className="mt-1 flex flex-wrap items-center gap-1.5">
                   {isUniqueTarget && (
                     <span
@@ -177,6 +218,23 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
                     >
                       <StarIcon className="h-2.5 w-2.5" />
                       <span>Unique Target</span>
+                    </span>
+                  )}
+                  {!canActivate && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
+                      title={activation.reason || "This skill cannot activate on the selected course or running style"}
+                    >
+                      <AlertTriangleIcon className="h-2.5 w-2.5" />
+                      <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
+                    </span>
+                  )}
+                  {isBranchingEvent && !isActiveChoice && (
+                    <span
+                      className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
+                      title="This skill is from an alternative choice branch and is not currently selected in the event chain"
+                    >
+                      <span>Unselected Choice</span>
                     </span>
                   )}
                   {inMainDeck && (
