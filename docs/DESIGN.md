@@ -46,10 +46,12 @@ Per frontend design craftsmanship guidelines (`design-taste-frontend`), **nested
 
 ### Core Anti-Patterns & Mandates
 1. ❌ **No Nested "Russian Doll" Cards**: Never place a bordered, rounded card inside a container that is itself a bordered, rounded card of the same visual weight.
-2. ✅ **Single Surface with Divider Lines**:
+2. ❌ **No Nested Boxes for Filter Toolbars & Sub-Panels**: Never wrap secondary search or filter controls (e.g. the Multi-Skill Filter in `CardPickerPopover`) in a heavy colored, bordered box (`rounded-xl border border-*-500/30 bg-*-50/40 p-*`).
+3. ✅ **Single Surface with Divider Lines**:
    - Containers (such as card groups in `skill-list.tsx` and `parent-skill-list.tsx`) must be a single surface (`rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900`).
    - Child items within the container must use separator lines (`divide-y divide-zinc-100 dark:divide-zinc-800/80`) or clean table/list rows, NOT individual inner bordered boxes.
-3. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
+   - Secondary filter sections within a popover/modal header must integrate seamlessly, demarcated only by a subtle top divider line (`pt-2.5 mt-2 border-t border-zinc-200/70 dark:border-zinc-800`) rather than an enclosed container box.
+4. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
    - Both **Main Deck** and **Parent Deck** must render the identical clean 6-slot grid (`components/deck-picker.tsx`).
    - Do NOT embed a secondary "reference strip" box containing 6 mini-boxes inside the Parent Deck surface.
 
@@ -170,6 +172,7 @@ To ensure zero dead ends when inspecting support cards:
 | **Main Deck Skill List** | `components/skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Full title block & icon wrapped inside `SkillHoverCard`. |
 | **Parent Deck Skill List** | `components/parent-skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Identical styling to Main Deck for visual consistency. |
 | **Card Skills Sheet** | `components/card-skills-sheet.tsx` | `h-5 w-5 sm:h-6 sm:w-6` | `flex items-center gap-2` | `text-xs font-semibold` | `text-[10px] sm:text-[11px] text-zinc-400` | Modal/bottom-sheet card detail viewer. |
+| **Multi-Skill Filter (Card Picker)** | `components/card-picker-popover.tsx` | `h-3.5 w-3.5` / `h-4 w-4` | `flex items-center gap-1.5` | `text-xs font-bold` | `text-[10px] text-zinc-400` | Flat, non-nested multi-skill filter with tag chips & SVG icons. |
 | **Skill Picker Modal (List)** | `components/skill-picker-modal.tsx` | `h-7 w-7` | `flex items-center gap-2.5` | `text-xs font-bold truncate` | `text-[10px] text-zinc-400 truncate` | Search list items with category pills. |
 | **Skill Picker Modal (Preview)** | `components/skill-picker-modal.tsx` | `h-8 w-8` | `flex items-center gap-2.5` | `text-xs sm:text-sm font-bold` | `text-[11px] text-zinc-400` | Right-side detail preview header. |
 
@@ -257,7 +260,9 @@ Before approving any UI change involving cards, skills, or deck pickers:
 - [ ] **Bilingual Typography**: Is Japanese text muted (`text-zinc-400 dark:text-zinc-500`) and 1-2 font sizes smaller than English?
 - [ ] **Icon Centering**: Is the skill icon vertically centered (`items-center`) against the combined 2-line title block?
 - [ ] **Aspect Ratio**: Does the icon have `flex-none` / `shrink-0` to avoid aspect ratio distortion on narrow viewports?
-- [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes?
+- [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat and divider-based rather than nested cards?
+- [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `components/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
+- [ ] **Multi-Skill Matching Integrity**: In Parent Deck mode, does skill filtering support ANY/ALL toggling and bi-directional Gold <-> White mapping?
 - [ ] **Uniform Card Layout**: Does candidate card row place target-skills badge (parent mode only), ownership chip, type icon & `Skills ↗` top-right, and release date bottom-right?
 - [ ] **Ownership Chip**: Is the ownership chip labeled `Unowned` / `0 LB`–`3 LB` / `MLB` (never `N★`) and rendered fixed-width (`w-11`, `inline-flex items-center justify-center`) so the column aligns across rows?
 - [ ] **Duplicate Indicator**: Does duplicate indicator display `duplicate with {Card Name}` and open a portal popover on hover/touch?
@@ -322,3 +327,52 @@ The desktop skill popover must be positioned relative to its trigger, never cove
 3. **Measured height**: use the real rendered height from `popoverRef` (fallback estimate only on first paint); the card is fixed `w-[340px]` but its height varies.
 4. **Re-measure** via `useLayoutEffect` after mount and after async content loads (height changes).
 5. **Origin-aware scale**: `transform-origin` must track the placement side (`${originX} center` — the edge nearest the trigger), so the enter animation scales *from the trigger*, not from the popover's center.
+
+---
+
+## 14. SVG Icons Over Emojis Standard (Clean UI Typography)
+
+All interface icons, badges, indicators, and buttons MUST use standardized SVG vector icons from `components/icons.tsx`. The use of Unicode emojis in functional UI is **strictly prohibited**.
+
+### Core Rules
+1. ❌ **No Emojis in Functional UI Markup**:
+   - Never use emojis as functional UI icons (e.g. 🎯, ⭐, ✓, ✕). Emojis render inconsistently across OS platforms (macOS, iOS, Windows, Android), clash with the dark/light design system palette, and disrupt visual hierarchy.
+   - ❌ **Anti-Pattern**: `<span>🎯 Filter by Skills</span>`, `<span>✓ Owned Only</span>`, `<button>✕</button>`
+   - ✅ **Standard**: `<TargetIcon className="h-3.5 w-3.5 text-emerald-600" /> Filter by Skills`, `<CheckIcon className="h-3 w-3" /> Owned Only`, `<XIcon className="h-3 w-3" />`
+2. ✅ **HTML `<select>` Options Must Be Plain Text**:
+   - Native HTML `<option>` elements cannot render SVG children.
+   - In `<select>` dropdowns, use clean, polished plain text labels without emojis:
+     - ✅ `Sort: Recommended` (never `Sort: ⭐ Recommended`)
+     - ✅ `Sort: Target Skills` (never `Sort: 🎯 Target Skills`)
+3. ✅ **Component Icon Library**:
+   - All standard icons must be imported from `components/icons.tsx`: `TargetIcon`, `CheckIcon`, `XIcon`, `ChevronDownIcon`, `ChevronUpIcon`, `SearchIcon`, `StarIcon`, `TrophyIcon`, `TimerIcon`, `FlagIcon`, etc.
+   - When a new icon is needed, implement it in `components/icons.tsx` as a standard `IconProps` component before using it in views.
+
+---
+
+## 15. Multi-Skill Search & Filter Specification (Parent Deck Mode)
+
+When picking support cards for the **Parent Deck** to farm inheritance skills:
+
+1. **Integrated Panel (No Standalone Modal or Header Search Button)**:
+   - The skill search capability is integrated directly into the card selection panel (`CardPickerPopover` in `mode="parent"`).
+   - Standalone skill modals (like the legacy `SkillPickerModal`) and extra header buttons on the deck are deprecated in favor of opening the card picker directly on slot tap.
+2. **Flat & Seamless Filter Architecture**:
+   - Filter controls must NOT be wrapped inside nested bordered boxes (`rounded-xl border bg-emerald-50 ... p-*`).
+   - The filter toolbar blends seamlessly into the popover header, separated only by a subtle divider line (`pt-2.5 mt-2 border-t border-zinc-200/70 dark:border-zinc-800`).
+3. **Multi-Skill Tag Chips**:
+   - Users can search and select multiple skills simultaneously.
+   - Selected skills are rendered as removable tag chips with skill icon, rarity badge, and bilingual name.
+4. **Flexible Matching Logic (ANY vs ALL)**:
+   - **ANY (OR) Mode** (Default): Returns cards that grant *at least one* of the selected skills. Cards granting more matched skills are ranked higher at the top of the list.
+   - **ALL (AND) Mode**: Returns only cards that simultaneously grant *all* selected skills.
+5. **Bi-directional Gold <-> White Equivalence**:
+   - In inheritance farming, Gold skills downgrade to White versions upon succession.
+   - When filtering by a White skill, cards granting its parent Gold version must match.
+   - Conversely, selecting a Gold skill matches cards granting either the Gold or equivalent White version.
+6. **Hint & Event Skill Ingestion**:
+   - A card is considered to grant a skill if it appears in `c.hintSkills` or `c.eventSkills`.
+7. **Visual Match Feedback on Card Rows**:
+   - Candidate card rows display a high-contrast match badge: `<CheckIcon className="h-3 w-3" /> {count}/{total} Skills`.
+   - Matched skill pills (`<SkillIcon /> {name}`) are rendered beneath the card title for immediate identification of which target skills the card provides.
+
