@@ -13,8 +13,28 @@ Zero remote API at runtime — all game data ships as pre-processed JSON.
   the vinext + Cloudflare plugins.
 - `bun run dev` → http://localhost:3000 · `bun run build` (vinext prod build) ·
   `bun run start` / `bun run deploy` (wrangler).
+- `bun run cf-typegen` (generates `worker-configuration.d.ts`). Run `bun run cf-typegen` / `npx wrangler types` after changing bindings in `wrangler.jsonc`.
 - Tests: `bun test` (bun:test, 20+ files). Typecheck: `npx tsc --noEmit`.
   Build is the real gate (`vinext build`).
+
+## Cloudflare Workers & Runtime
+
+STOP. Knowledge of Cloudflare Workers APIs and limits may be outdated. Always retrieve current documentation before any Workers, KV, R2, D1, Durable Objects, Queues, Vectorize, AI, or Agents SDK task.
+
+### Docs & Resources
+- **Workers Docs**: https://developers.cloudflare.com/workers/
+- **MCP**: `https://docs.mcp.cloudflare.com/mcp`
+- **Limits & Quotas**: Retrieve from product `/platform/limits/` page (e.g. `/workers/platform/limits`).
+- **Node.js Compatibility**: https://developers.cloudflare.com/workers/runtime-apis/nodejs/
+- **Observability & Errors**: https://developers.cloudflare.com/workers/observability/errors/
+  - **Error 1102** (CPU/Memory exceeded): Retrieve limits from `/workers/platform/limits/`
+- **Product Docs**: Retrieve API references and limits from:
+  `/kv/` · `/r2/` · `/d1/` · `/durable-objects/` · `/queues/` · `/vectorize/` · `/workers-ai/` · `/agents/`
+
+### Best Practices (conditional)
+If the application uses Durable Objects or Workflows, refer to the relevant best practices:
+- **Durable Objects**: https://developers.cloudflare.com/durable-objects/best-practices/rules-of-durable-objects/
+- **Workflows**: https://developers.cloudflare.com/workflows/build/rules-of-workflows/
 
 ## Architecture
 
