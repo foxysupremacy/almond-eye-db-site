@@ -139,22 +139,33 @@ uma-tools `RaceTrack.tsx`). Builds DOM nodes via `createElementNS` (no JSX).
 - Call it from a `"use client"` effect; SVG classes (.racetrackView,
   .mouseoverText, etc.) have minimal styles in `app/globals.css`.
 
-## Design language
+## Design language & UI Guidelines
 
 Warm ink-on-paper editorial-tool palette (from `track_visualizer.html`):
 `--paper: #f5f2ec`, ink `#2b2b2b`, accent `#794016`. Tailwind utilities with
 zinc grays + emerald for "triggerable", amber/sky/violet for rarity. No fancy
 motion — hierarchy + legibility matter here.
 
-### Component Design System (`DESIGN.md`)
-Refer to `DESIGN.md` for UI/UX specifications on skill presentations:
-- **Bilingual Display Hierarchy**: English translated name is always primary on top; original Japanese name is secondary directly underneath (`mt-0.5`, muted `text-zinc-400 dark:text-zinc-500`, smaller font size). Never place them side-by-side.
-- **Icon Centering**: The skill icon must be vertically centered (`items-center`) against the combined 2-line title block, never aligned to the top line (`items-start`).
-- **Interactive Wrapping**: `SkillHoverCard` wraps both the centered icon and the 2-line title container as a single interactive trigger.
-- Shared picker scaffolding lives in `components/shared/` (e.g.
-  `picker-search-bar.tsx`); display metadata shared across pickers lives in
-  lib (`RARITY_META` in `lib/skill-rarity.ts`, `EFFECT_CATEGORIES` in
-  `lib/skill-effects.ts`) — never inside a sibling component.
+### Component Design System & Agent Mandate (`docs/DESIGN.md`)
+
+**MANDATORY**: For any task touching UI components, styling, cards, skills, pickers, modals, or layout, agents **MUST consult and strictly follow [`docs/DESIGN.md`](docs/DESIGN.md)**. All UI work is expected to meet the craftsmanship standards documented there.
+
+Key contracts defined in `docs/DESIGN.md`:
+- **Bilingual Display Hierarchy (Section 1)**: English translated name is always primary on top (`font-semibold text-zinc-900 dark:text-zinc-100`); Japanese original is secondary directly underneath (`mt-0.5`, muted `text-zinc-400 dark:text-zinc-500`, 1-2 sizes smaller). **Never place them side-by-side.**
+- **Icon Geometry & Centering (Sections 2 & 11)**: Skill icons must be vertically centered (`items-center`) against the combined 2-line title block, never top-aligned (`items-start`). Always include `flex-none` / `shrink-0` to prevent distortion.
+- **Surface Flatness & Anti-Slop (Section 3)**: Nested boxes ("Russian Doll" cards inside cards) are prohibited. Use single flat surfaces with divider lines (`divide-y divide-zinc-100 dark:divide-zinc-800/80`). Unified 6-slot grid across Main and Parent decks.
+- **Uniform 2-Row Card Candidate Layout (Section 4)**: Card pickers and candidate sheets follow the exact 2-row layout:
+  - Row 1: `[Portrait] [Rarity] [Card Name] [Badges] -> [+X target skills]* [Ownership] [Type Icon] [Skills ↗]`
+  - Row 2: `[Japanese Subtitle / Title] -> Release: YYYY-MM-DD`
+  - *\*`+X target skills` is rendered in Parent Deck mode only, and strictly counts skills where `firesOnCourse === true`.*
+- **Ownership Chip Contract (Section 4.5)**: Fixed-width `w-11` with `inline-flex items-center justify-center`. Labels must be `Unowned` / `0 LB`–`3 LB` / `MLB` (never `N★` star shorthand).
+- **Duplicate Skill Indicators (Section 5)**: When a skill is duplicated across cards, dynamically show `duplicate with {Card Name}` (or `duplicate ({count})` in unified view). Tapping/hovering opens a breakdown portal popover (`fixed z-[250]`).
+- **Mobile Touch Discipline (Section 6)**: **Never auto-focus search inputs on touch devices.** Always guard `.focus()` with `if (typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches)`.
+- **Card Inspection Sheet (Section 8)**: `CardSkillsSheet` operates at `z-[350]` and dynamically fetches skills for unequipped cards via `api.cardSkills(card.id)` with a loading state (no "No skills found" dead ends).
+- **Interactive Wrapping (Section 10)**: `SkillHoverCard` wraps both the centered icon and the 2-line title container as a single interactive trigger (`group inline-flex items-center gap-2.5 min-w-0 cursor-pointer`).
+- **Motion & Animations (Section 13)**: Powered by `tw-animate-css` (`@theme` easing tokens: `ease-out-expo`, `ease-out-quart`, `ease-in-out-cubic`). Durations ≤ 300ms. Always respect `prefers-reduced-motion`.
+- **Code Review Checklist (Section 12)**: Before finalizing UI changes, agents must verify their work against the checklist in `docs/DESIGN.md#12-checklist-for-code-reviews--future-sessions`.
+- **Shared Scaffolding**: Shared picker UI lives in `components/shared/` (e.g. `picker-search-bar.tsx`); shared display metadata lives in `lib/` (`RARITY_META` in `lib/skill-rarity.ts`, `EFFECT_CATEGORIES` in `lib/skill-effects.ts`) — never inside a sibling component.
 
 ## Data pipeline & external dependencies
 
@@ -197,7 +208,7 @@ Refer to `DESIGN.md` for UI/UX specifications on skill presentations:
 ## Reference material (in `../`, outside this repo)
 
 - `../track_visualizer.html` — the original single-file renderer this app ports.
-- `../docs/references/Uma Musume Race Mechanics.md` — phase/section/condition vocabulary.
+- `docs/references/Uma Musume Race Mechanics.md` — phase/section/condition vocabulary.
 - `../uma-tools/uma-skill-tools/` — the reference engine (Region, ConditionParser,
   ActivationConditions, CourseData, ActivationSamplePolicy).
 - `../skills.json` / `../support_cards.json` — upstream source data.
