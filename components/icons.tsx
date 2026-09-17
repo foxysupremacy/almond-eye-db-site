@@ -4,6 +4,22 @@ export interface IconProps extends React.SVGProps<SVGSVGElement> {
   className?: string;
 }
 
+export function FilterIcon(props: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" {...props}><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="2.5" fill="currentColor" stroke="none" /><circle cx="15" cy="17" r="2.5" fill="currentColor" stroke="none" /></svg>;
+}
+
+export function DeckIcon(props: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x="8" y="5" width="12" height="16" rx="2" /><path d="M5 18H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10M12 10h4M12 14h4" /></svg>;
+}
+
+export function LineageIcon(props: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x="9" y="3" width="6" height="5" rx="1.5" /><rect x="2" y="16" width="6" height="5" rx="1.5" /><rect x="16" y="16" width="6" height="5" rx="1.5" /><path d="M12 8v4M5 16v-4h14v4" /></svg>;
+}
+
+export function LibraryIcon(props: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x="3" y="4" width="5" height="16" rx="1" /><path d="M11 4v16M15 5l4-1 3 15-4 1-3-15ZM4 8h3" /></svg>;
+}
+
 /** Flat Trophy Icon for PvP headers */
 export function TrophyIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return (

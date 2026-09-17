@@ -1,3 +1,4 @@
+import { MobileFilters } from "./shared/mobile-filters";
 import { useMemo, useState, useEffect } from "react";
 import { useDeck } from "./store";
 import { RUNNING_STYLE_OPTIONS } from "../lib/deck/constants";
@@ -138,6 +139,11 @@ export default function SkillList() {
 
   return (
     <section className="mt-8">
+      <div className="mb-3 md:hidden">
+        <h2 className="mb-2 text-lg font-semibold">Deck skills <span className="text-sm font-normal text-zinc-500">({mainSkills.length})</span></h2>
+        <input aria-label="Search skills" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search skills…" className="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900" />
+      </div>
+      <MobileFilters count={Number(sourceFilter !== "all") + Number(rarityFilter !== "all")} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
       {/* Header & Controls */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -173,11 +179,11 @@ export default function SkillList() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search skills…"
-            className="w-36 sm:w-44 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs"
+            className="hidden md:block w-36 sm:w-44 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs"
           />
 
           {/* Rarity Tabs */}
-          <div className="flex overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
+          <div className="flex flex-wrap md:flex-nowrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
             <button
               onClick={() => setRarityFilter("all")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
@@ -275,6 +281,7 @@ export default function SkillList() {
         </div>
       </div>
 
+      </MobileFilters>
       {/* List Body */}
       {loading && !hasDeck ? (
         <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading card index…</p>

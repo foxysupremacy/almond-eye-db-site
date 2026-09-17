@@ -15,14 +15,14 @@ export function LineageAffinityHeader({
   const [showTooltip, setShowTooltip] = useState(false);
 
   return (
-    <div className={`relative z-20 flex items-center justify-between gap-2 mb-2 ${className}`}>
+    <div className={`relative z-20 mb-2 grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] ${className}`}>
       {/* Left Badge */}
       <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/85 dark:bg-zinc-800/85 backdrop-blur-md border border-zinc-200/20 text-white text-xs font-semibold shadow-xs">
         <span>Lineage Planner</span>
       </div>
 
       {/* Center Glowing Compatibility: Affinity : ◎ 383 */}
-      <div className="relative flex items-center gap-1.5">
+      <div className="relative col-span-2 row-start-2 flex items-center justify-self-center gap-1.5 sm:col-span-1 sm:row-start-auto">
         <div className="flex items-baseline gap-1.5">
           <span className="text-xs sm:text-sm font-bold text-amber-500 dark:text-amber-400">
             Affinity :
@@ -41,7 +41,7 @@ export function LineageAffinityHeader({
         <button
           type="button"
           onClick={() => setShowTooltip(!showTooltip)}
-          className="w-5 h-5 rounded-full bg-amber-400/20 hover:bg-amber-400/40 text-amber-600 dark:text-amber-300 text-[11px] font-bold flex items-center justify-center border border-amber-400/40 cursor-pointer transition-colors"
+          className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/40 bg-amber-400/20 text-[11px] font-bold text-amber-600 transition-colors hover:bg-amber-400/40 dark:text-amber-300"
           title="View affinity score breakdown"
         >
           ⓘ
@@ -92,7 +92,7 @@ export function LineageAffinityHeader({
       <button
         type="button"
         onClick={onOpenInheritedSkills}
-        className="flex items-center gap-1 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs active:scale-[0.98] cursor-pointer transition-all"
+        className="flex min-h-10 items-center justify-self-end gap-1 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-emerald-500 active:scale-[0.98]"
       >
         <span>Inherited Skills</span>
       </button>

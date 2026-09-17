@@ -452,7 +452,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       </div>
 
       {/* 2. PEDIGREE SLOTS (Parents + Auto-resolved Grandparents) */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6">
         {/* Parent 1 branch */}
         <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 p-3">
           <div className="flex items-center justify-between mb-2">
@@ -469,7 +469,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               </button>
             )}
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex min-w-0 items-start justify-center gap-2">
             <PedigreeSlotCard
               slotLabel="P1"
               isParentSlot
@@ -485,7 +485,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               aptitudeWarning={getSlotAptitudeWarning(setup.parent1?.card_id)}
               onClick={() => setActivePickerSlot("p1")}
             />
-            <div className="flex gap-1.5">
+            <div className="flex min-w-0 gap-1.5">
               <PedigreeSlotCard
                 slotLabel="GP"
                 cardId={p1_gp1?.card_id}
@@ -524,7 +524,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               </button>
             )}
           </div>
-          <div className="flex items-start gap-2">
+          <div className="flex min-w-0 items-start justify-center gap-2">
             <PedigreeSlotCard
               slotLabel="P2"
               isParentSlot
@@ -540,7 +540,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               aptitudeWarning={getSlotAptitudeWarning(setup.parent2?.card_id)}
               onClick={() => setActivePickerSlot("p2")}
             />
-            <div className="flex gap-1.5">
+            <div className="flex min-w-0 gap-1.5">
               <PedigreeSlotCard
                 slotLabel="GP"
                 cardId={p2_gp1?.card_id}

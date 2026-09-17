@@ -636,12 +636,12 @@ export default function CardPickerPopover({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search cards by English or Japanese name…"
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-emerald-500 dark:focus:border-emerald-500"
+              className="min-h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[13px]"
             />
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 sm:h-auto sm:w-auto sm:p-1.5"
               aria-label="Close"
             >
               <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -654,7 +654,7 @@ export default function CardPickerPopover({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as SortKey)}
-              className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-[13px] text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer"
+              className="min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-2 text-base text-zinc-700 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 sm:min-h-0 sm:flex-none sm:py-1 sm:text-[13px]"
             >
               <option value="recommended">Sort: Recommended</option>
               {mode === "parent" && <option value="targetSkills">Sort: Target Skills</option>}

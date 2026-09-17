@@ -5,6 +5,7 @@
 // Supports mode="main" (default) and mode="parent" (for Parent Deck farming).
 
 import { useState, useMemo } from "react";
+import { MobileSheet } from "./shared/mobile-sheet";
 import type { CardIndexEntry } from "../lib/api";
 import { useDeck } from "./store";
 import { DECK_SIZE } from "../lib/deck/constants";
@@ -47,6 +48,8 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
   const activeSlots = isParent ? parentSlots : mainSlots;
   const onPickCard = isParent ? setParentCard : setMainCard;
 
+  const [mobileSlot, setMobileSlot] = useState<number | null>(null);
+  const mobileCard = mobileSlot !== null ? activeSlots[mobileSlot] : null;
   const [openSlot, setOpenSlot] = useState<number | null>(null);
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
 
@@ -100,8 +103,27 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         )}
       </div>
 
-      {/* 6-Slot Grid */}
-      <div className="grid grid-cols-2 min-[680px]:grid-cols-[repeat(3,208px)] justify-center justify-items-center gap-2 sm:gap-3.5 max-w-[440px] min-[680px]:max-w-none mx-auto">
+      <div className="grid grid-cols-3 gap-2 lg:hidden" aria-label={isParent ? "Parent support deck" : "Main support deck"}>
+        {Array.from({ length: DECK_SIZE }, (_, index) => {
+          const card = activeSlots[index];
+          const conflict = card && (findCharConflict(activeSlots, index, card) || (!isParent && targetChara && (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp)));
+          return <button key={index} type="button" aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`} onClick={() => card ? setMobileSlot(index) : setOpenSlot(index)}
+            className={`relative flex min-h-32 min-w-0 flex-col overflow-hidden rounded-xl border bg-white text-left dark:bg-zinc-900 ${conflict ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"}`}>
+            {card ? <>
+              <div className="relative h-24 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <img src={card.imgUrl} alt="" className="h-full w-full object-cover object-top" />
+                <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
+                <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
+                {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}
+              </div>
+              <div className="w-full min-w-0 p-2"><p className="truncate text-xs font-semibold">{cardLabel(card)}</p><p className="mt-0.5 truncate text-[10px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p></div>
+            </> : <span className="flex flex-1 flex-col items-center justify-center gap-2 self-stretch px-2 py-5 text-zinc-400"><span className="grid h-9 w-9 place-items-center rounded-full border border-dashed border-zinc-300 text-xl dark:border-zinc-700">+</span><span className="text-xs">Slot {index + 1}</span></span>}
+          </button>;
+        })}
+      </div>
+      <p className="-mt-2 text-xs text-zinc-500 lg:hidden">{activeSlots.filter(Boolean).length} of 6 cards · Tap a card for choices and skills</p>
+            {/* 6-Slot Grid */}
+      <div className="hidden lg:grid grid-cols-2 min-[1100px]:grid-cols-[repeat(3,208px)] justify-center justify-items-center gap-2 sm:gap-3.5 max-w-[440px] min-[1100px]:max-w-none mx-auto">
         {Array.from({ length: DECK_SIZE }, (_, i) => i).map((slotIndex) => {
           const card = activeSlots[slotIndex];
           const isInMain = isParent && card && mainCardIdSet.has(card.id);
@@ -226,6 +248,20 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         })}
       </div>
 
+      <MobileSheet open={mobileSlot !== null && Boolean(mobileCard)} onClose={() => setMobileSlot(null)} title={mobileCard ? cardLabel(mobileCard) : "Support card"}>
+        {mobileCard && <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <img src={mobileCard.portraitUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
+            <div className="min-w-0"><p className="font-semibold">{cardLabel(mobileCard)}</p><p className="mt-0.5 text-xs text-zinc-400">{mobileCard.nameJp}</p><p className="mt-1 text-xs text-zinc-500">{RARITY_META[mobileCard.rarity]?.label} · {formatCardType(mobileCard.type)}</p></div>
+          </div>
+          <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800"><p className="mb-3 text-sm font-semibold">Event choices</p><CardChainSelector card={mobileCard} mode={mode} /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" className="min-h-11 rounded-xl border border-zinc-200 px-3 text-sm dark:border-zinc-700" onClick={() => { setInspectCard(mobileCard); setMobileSlot(null); }}>Inspect skills</button>
+            <button type="button" className="min-h-11 rounded-xl bg-emerald-700 px-3 text-sm font-semibold text-white" onClick={() => { setOpenSlot(mobileSlot); setMobileSlot(null); }}>Replace card</button>
+          </div>
+          <button type="button" className="min-h-11 w-full text-sm text-rose-600 dark:text-rose-400" onClick={() => { if (mobileSlot !== null) onPickCard(mobileSlot, null); setMobileSlot(null); }}>Remove from deck</button>
+        </div>}
+      </MobileSheet>
       {/* Support Card Picker Modal */}
       {openSlot !== null && (
         <CardPickerPopover

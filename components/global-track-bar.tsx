@@ -5,12 +5,13 @@
 // Main Deck analysis, and Visualizer racecourse simulation.
 
 import { useState } from "react";
+import { MobileSheet } from "./shared/mobile-sheet";
 import { useDeck } from "./store";
 import { RUNNING_STYLE_OPTIONS, RUNNING_STYLE_LABELS } from "../lib/deck/constants";
 import type { RunningStyle } from "../lib/deck/types";
 import { distanceLabel, terrainLabel, turnLabel } from "../lib/api";
 import { PVP_EVENTS } from "../lib/pvp-events";
-import { TrophyIcon } from "./icons";
+import { TrophyIcon, FlagIcon, ChevronDownIcon } from "./icons";
 
 export default function GlobalTrackBar() {
   const {
@@ -37,52 +38,7 @@ export default function GlobalTrackBar() {
     ? `${trackDetail.nameEn} · ${distanceLabel(activeCourseRow.distance, activeCourseRow.length)} · ${terrainLabel(activeCourseRow.terrain)}`
     : "Select Target Race";
 
-  return (
-    <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/95 dark:bg-zinc-900/90 p-3.5 shadow-xs backdrop-blur-xs transition-colors">
-      {/* Mobile Collapsed Summary Header (<md) */}
-      <div className="flex md:hidden items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" />
-          <div className="min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                Target Race
-              </span>
-              {activePvpEvent && (
-                <span className="rounded bg-purple-100 dark:bg-purple-950/80 px-1.5 py-0.2 text-[9px] font-bold text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800 shrink-0">
-                  {activePvpEvent.shortName}
-                </span>
-              )}
-              {activePvpEvent?.noDebuffs && (
-                <span className="rounded bg-rose-100 dark:bg-rose-950/80 px-1.5 py-0.2 text-[9px] font-bold text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shrink-0">
-                  No Debuff
-                </span>
-              )}
-            </div>
-            <span className="block truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-              {raceTitle}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 shrink-0">
-          {runningStyle && (
-            <span className="rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-1.5 py-0.5 text-[10px] font-medium text-zinc-700 dark:text-zinc-300">
-              {RUNNING_STYLE_LABELS[runningStyle]}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setMobileExpanded((prev) => !prev)}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
-          >
-            {mobileExpanded ? "Done ▴" : "Edit ▾"}
-          </button>
-        </div>
-      </div>
-
-      {/* Full Selectors Grid (Expanded on Mobile or always visible on md+) */}
-      <div className={`mt-3 md:mt-0 flex flex-col gap-2.5 ${mobileExpanded ? "block" : "hidden md:flex"}`}>
+  const controls = (<div className="race-controls flex min-w-0 flex-col gap-3">
         {/* PvP Presets & Conditions Section */}
         <div className="flex flex-col gap-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
           {/* PvP Presets Row */}
@@ -181,7 +137,7 @@ export default function GlobalTrackBar() {
             <select
               value={trackId}
               onChange={(e) => setTrackId(Number(e.target.value))}
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer flex-1"
+              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer min-w-0 flex-1"
             >
               {(tracks ?? []).map((t) => (
                 <option key={t.id} value={t.id} className="dark:bg-zinc-900">
@@ -197,7 +153,7 @@ export default function GlobalTrackBar() {
             <select
               value={courseId}
               onChange={(e) => setCourseId(Number(e.target.value))}
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer max-w-[210px] truncate flex-1"
+              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer w-full min-w-0 truncate flex-1"
             >
               {(trackDetail?.courses ?? []).map((c) => (
                 <option key={c.id} value={c.id} className="dark:bg-zinc-900">
@@ -215,7 +171,7 @@ export default function GlobalTrackBar() {
               onChange={(e) =>
                 setRunningStyle(e.target.value === "" ? null : (Number(e.target.value) as RunningStyle))
               }
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer flex-1"
+              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer min-w-0 flex-1"
             >
               {RUNNING_STYLE_OPTIONS.map((o) => (
                 <option key={o.label} value={o.value ?? ""} className="dark:bg-zinc-900">
@@ -252,7 +208,18 @@ export default function GlobalTrackBar() {
           </div>
         )}
       </div>
-    </div>
-  </div>
-  );
+    </div>);
+  return <>
+    <button type="button" onClick={() => setMobileExpanded(true)} aria-haspopup="dialog" aria-label={`Edit target race: ${raceTitle}`}
+      className="flex min-h-12 w-full min-w-0 items-center gap-2.5 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-left dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+      <FlagIcon className="h-4 w-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-xs font-semibold">{raceTitle}</span>
+        <span className="mt-0.5 block truncate text-[11px] text-zinc-500 dark:text-zinc-400">{runningStyle ? RUNNING_STYLE_LABELS[runningStyle] : "All styles"} · {racerCount} racers{activePvpEvent ? ` · ${activePvpEvent.shortName}` : ""}{activePvpEvent?.noDebuffs ? " · No Debuff" : ""}</span>
+      </span>
+      <ChevronDownIcon className="h-4 w-4 shrink-0 text-zinc-400" />
+    </button>
+    <div className="hidden rounded-2xl border border-zinc-200/80 bg-white/95 p-3.5 dark:border-zinc-800 dark:bg-zinc-900/90 lg:block">{controls}</div>
+    <MobileSheet open={mobileExpanded} onClose={() => setMobileExpanded(false)} title="Target race" description="This profile applies to your decks, lineage, and skill zones.">{controls}</MobileSheet>
+  </>;
 }

@@ -140,7 +140,7 @@ export function CourseMapCanvas({
         if (width > 50 && height > 50) {
           setDimensions({
             width: Math.floor(width),
-            height: Math.floor(Math.max(380, height)),
+            height: Math.floor(Math.max(220, height)),
           });
         }
       }
@@ -200,15 +200,16 @@ export function CourseMapCanvas({
   ]);
 
   // Mouse interaction: Pan
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return; // Left click only
+    e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     offsetStartRef.current = { ...viewOffset };
   }, [viewOffset]);
 
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (isDraggingRef.current) {
         const dx = e.clientX - dragStartRef.current.x;
         const dy = e.clientY - dragStartRef.current.y;
@@ -257,8 +258,9 @@ export function CourseMapCanvas({
     [dimensions, transform, onHover, viewOffset, zoom]
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     isDraggingRef.current = false;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
   }, []);
 
   const handleMouseLeave = useCallback(() => {
@@ -285,8 +287,7 @@ export function CourseMapCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full overflow-hidden rounded-xl border border-border/70 bg-card/60 backdrop-blur select-none ${className}`}
-      style={{ minHeight: "400px" }}
+      className={`relative min-h-[240px] w-full overflow-hidden rounded-xl border border-border/70 bg-card/60 backdrop-blur select-none md:min-h-[400px] ${className}`}
     >
       {/* Top Status Header */}
       <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none">
@@ -294,11 +295,11 @@ export function CourseMapCanvas({
           <CompassIcon className="h-3.5 w-3.5 text-primary" />
           <span>{isLeftTurn ? "Left-handed (Counter-clockwise)" : "Right-handed (Clockwise)"}</span>
         </div>
-        <div className="flex items-center gap-1.5 rounded-md bg-background/85 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur border border-border/50">
+        <div className="hidden items-center gap-1.5 rounded-md bg-background/85 px-2.5 py-1 text-xs font-medium text-muted-foreground shadow-sm backdrop-blur border border-border/50 md:flex">
           <span>Final Straight: Horizontal at bottom</span>
         </div>
         {course.slopes && course.slopes.length > 0 && (
-          <div className="flex items-center gap-1.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1 text-xs font-medium border border-amber-500/20">
+          <div className="hidden items-center gap-1.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-1 text-xs font-medium border border-amber-500/20 md:flex">
             <MountainIcon className="h-3.5 w-3.5" />
             <span>{course.slopes.length} Slopes (2.5D Ramps)</span>
           </div>
@@ -335,24 +336,25 @@ export function CourseMapCanvas({
 
       {/* Canvas */}
       {loading ? (
-        <div className="flex h-[420px] w-full items-center justify-center text-sm text-muted-foreground">
+        <div className="flex h-[240px] w-full items-center justify-center text-sm text-muted-foreground md:h-[420px]">
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
           Loading course shape...
         </div>
       ) : error ? (
-        <div className="flex h-[420px] w-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground">
+        <div className="flex h-[240px] w-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground md:h-[420px]">
           <AlertCircleIcon className="h-6 w-6 text-destructive" />
           <span>{error}</span>
         </div>
       ) : (
         <canvas
           ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           onMouseLeave={handleMouseLeave}
           onWheel={handleWheel}
-          className="block w-full h-[420px] cursor-grab active:cursor-grabbing touch-none"
+          className="block h-[240px] w-full touch-none cursor-grab active:cursor-grabbing md:h-[420px]"
         />
       )}
 

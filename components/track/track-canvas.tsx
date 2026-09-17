@@ -71,7 +71,7 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2.5 sm:p-4 shadow-xs transition-colors">
       {/* Header Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 mb-3">
+      <div className="mb-3 flex flex-col items-stretch justify-between gap-2.5 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
             Course Map & Track Visualizer
@@ -82,12 +82,12 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
         </div>
 
         {/* View Mode Switcher */}
-        <div className="flex items-center gap-1 text-xs">
-          <div className="flex items-center rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700">
+        <div className="flex min-w-0 items-center gap-1 text-xs">
+          <div className="grid w-full grid-cols-3 items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-700 dark:bg-zinc-800 sm:flex sm:w-auto">
             <button
               type="button"
               onClick={() => setViewMode("stacked")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+              className={`flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "stacked"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -100,7 +100,7 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
             <button
               type="button"
               onClick={() => setViewMode("map")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+              className={`flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "map"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
@@ -113,7 +113,7 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
             <button
               type="button"
               onClick={() => setViewMode("1d")}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold transition-colors cursor-pointer ${
+              className={`flex min-h-9 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "1d"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"

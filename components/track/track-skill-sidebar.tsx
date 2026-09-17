@@ -35,7 +35,7 @@ export function TrackSkillSidebar({
   isSkillBanned,
 }: TrackSkillSidebarProps) {
   return (
-    <div className="order-2 md:order-1 flex min-w-0 flex-col md:sticky md:top-20 md:self-start md:max-h-[calc(100vh-6rem)] overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs">
+    <div className="order-2 flex max-h-[420px] min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900 md:order-1 md:sticky md:top-20 md:max-h-[calc(100vh-6rem)] md:self-start">
       <div className="flex flex-col gap-2 border-b border-zinc-100 dark:border-zinc-800 p-3">
         <div className="flex items-center justify-between">
           <div>
@@ -172,7 +172,7 @@ export function TrackSkillSidebar({
                     });
                   }
                 }}
-                className={`flex min-w-[180px] flex-col gap-1 rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
+                className={`flex min-h-11 min-w-0 flex-col gap-1 rounded-xl border p-2.5 text-left transition-all cursor-pointer ${
                   active
                     ? "ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-xs"
                     : rStyle.borderClass

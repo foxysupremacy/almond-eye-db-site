@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback, useId } from "react";
+import { createPortal } from "react-dom";
 import { api, type SkillDetail } from "../lib/api";
 import { useDeck } from "./store";
 import { computeAllZones, horseForStrategy, type SkillZoneResult } from "../lib/skill-engine/zones";
@@ -15,7 +16,8 @@ import {
   FormattedEffectBadges,
   TacticalTimingStrip,
 } from "./highlighted-numbers";
-import { StarRating } from "./icons";
+import { StarRating, XIcon } from "./icons";
+import { createSkillPopoverInteraction, type SkillPopoverMode } from "./shared/skill-popover-interaction";
 
 interface SkillHoverCardProps {
   skillId: number;
@@ -47,7 +49,13 @@ export function SkillHoverCard({
   className = "",
 }: SkillHoverCardProps) {
   const { course, racerCount, runningStyle } = useDeck();
-  const [isOpen, setIsOpen] = useState(false);
+  const [mode, setMode] = useState<SkillPopoverMode>("closed");
+  const interaction = useMemo(() => createSkillPopoverInteraction(setMode), []);
+  const isOpen = mode !== "closed";
+  const isPinned = mode === "pinned";
+  const [present, setPresent] = useState(false);
+  const [keyboardOpened, setKeyboardOpened] = useState(false);
+  const popoverId = useId();
   const [detail, setDetail] = useState<SkillDetail | null>(() => skillDetailCache.get(skillId) ?? null);
   const [loading, setLoading] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number; originX: "left" | "right" }>({
@@ -56,14 +64,30 @@ export function SkillHoverCard({
     originX: "left",
   });
   const [isMobile, setIsMobile] = useState(false);
-  const [isHoveringPopover, setIsHoveringPopover] = useState(false);
-
-  // Lock body scroll if mobile sheet is open, or if desktop popover is actively hovered
-  useBodyScrollLock((isMobile && isOpen) || (!isMobile && isOpen && isHoveringPopover));
+  // Only an explicitly opened mobile sheet is modal. Desktop previews and
+  // pinned panels must never take scrolling away from the page.
+  useBodyScrollLock(isMobile && isPinned);
 
   const triggerRef = useRef<HTMLSpanElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => () => interaction.dispose(), [interaction]);
+
+  // Keep the panel mounted briefly on dismissal so its exit can finish.
+  useEffect(() => {
+    if (isOpen) {
+      setPresent(true);
+      return;
+    }
+    if (!present) return;
+    if (keyboardOpened || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setPresent(false);
+      return;
+    }
+    const timer = setTimeout(() => setPresent(false), 150);
+    return () => clearTimeout(timer);
+  }, [isOpen, present, keyboardOpened]);
 
   // Detect mobile viewport
   useEffect(() => {
@@ -98,6 +122,10 @@ export function SkillHoverCard({
     }
   }, [skillId]);
 
+  useEffect(() => {
+    if (isOpen) void loadDetail();
+  }, [isOpen, loadDetail]);
+
   const updatePosition = useCallback(() => {
     if (!triggerRef.current || isMobile) return;
     const rect = triggerRef.current.getBoundingClientRect();
@@ -128,38 +156,13 @@ export function SkillHoverCard({
     updatePosition();
   }, [isOpen, detail, loading, isMobile, updatePosition]);
 
-  const handleOpen = useCallback(() => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    updatePosition();
-    setIsOpen(true);
-    loadDetail();
-  }, [updatePosition, loadDetail]);
-
-  const handleClose = useCallback(() => {
-    if (isMobile) return; // on mobile, explicit dismiss only
-    closeTimerRef.current = setTimeout(() => {
-      setIsOpen(false);
-      setIsHoveringPopover(false);
-    }, 120);
-  }, [isMobile]);
-
-  const handleToggle = useCallback(() => {
-    if (isOpen) {
-      setIsOpen(false);
-      setIsHoveringPopover(false);
-    } else {
-      handleOpen();
-    }
-  }, [isOpen, handleOpen]);
-
-  // Update position on scroll/resize while open
+  // Scrolling cancels incidental hover, including a pending timer. Pinned
+  // desktop details follow their trigger without locking the underlying page.
   useEffect(() => {
-    if (!isOpen || isMobile) return;
-    function handleScrollOrResize() {
-      updatePosition();
+    function handleScrollOrResize(event: Event) {
+      if (event.target instanceof Node && popoverRef.current?.contains(event.target)) return;
+      interaction.pointerLeave();
+      if (isPinned && !isMobile) updatePosition();
     }
     window.addEventListener("scroll", handleScrollOrResize, true);
     window.addEventListener("resize", handleScrollOrResize);
@@ -167,17 +170,54 @@ export function SkillHoverCard({
       window.removeEventListener("scroll", handleScrollOrResize, true);
       window.removeEventListener("resize", handleScrollOrResize);
     };
-  }, [isOpen, isMobile, updatePosition]);
+  }, [interaction, isPinned, isMobile, updatePosition]);
 
-  // Escape key closes popover/drawer
+  // Dismiss without eating the click intended for another part of the page.
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopPropagation();
+      interaction.close();
+      if (isPinned) triggerRef.current?.focus({ preventScroll: true });
     }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
+    function handleOutsidePointer(e: PointerEvent) {
+      const target = e.target as Node;
+      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
+      interaction.close();
+    }
+    window.addEventListener("keydown", handleKeyDown, true);
+    document.addEventListener("pointerdown", handleOutsidePointer);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      document.removeEventListener("pointerdown", handleOutsidePointer);
+    };
+  }, [isOpen, isPinned, interaction]);
+
+  useEffect(() => {
+    if (!isPinned) return;
+    const panel = popoverRef.current;
+    (isMobile ? closeButtonRef.current : panel)?.focus({ preventScroll: true });
+    return () => {
+      if (panel?.contains(document.activeElement)) triggerRef.current?.focus({ preventScroll: true });
+    };
+  }, [isPinned, isMobile]);
+
+  function dismiss() {
+    interaction.close();
+    triggerRef.current?.focus({ preventScroll: true });
+  }
+
+  function trapMobileFocus(event: React.KeyboardEvent<HTMLDivElement>) {
+    if (!isMobile || event.key !== "Tab") return;
+    const focusable = Array.from(event.currentTarget.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',
+    )).filter((element) => element.getClientRects().length > 0);
+    const first = focusable[0], last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  }
 
   // Compute zones if detail is loaded
   const zones: SkillZoneResult[] = useMemo(() => {
@@ -216,7 +256,7 @@ export function SkillHoverCard({
         <div className="flex items-center gap-2 min-w-0">
           <SkillIcon iconId={iconId} name={nameEn} className="h-5 w-5 object-contain flex-none" />
           <div className="min-w-0">
-            <span className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{nameEn}</span>
+            <span id={`${popoverId}-title`} className="block text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">{nameEn}</span>
             {nameJp && <span className="block text-xs text-zinc-400 dark:text-zinc-500 font-normal truncate">{nameJp}</span>}
           </div>
         </div>
@@ -226,16 +266,15 @@ export function SkillHoverCard({
           >
             {rarityMeta.badgeLabel}
           </span>
-          {isMobile && (
+          {isPinned && (
             <button
+              ref={closeButtonRef}
               type="button"
-              onClick={() => setIsOpen(false)}
-              className="rounded-lg p-1 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 cursor-pointer"
-              aria-label="Close"
+              onClick={dismiss}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800 dark:text-zinc-300 cursor-pointer"
+              aria-label="Close skill details"
             >
-              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
+              <XIcon className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -406,37 +445,55 @@ export function SkillHoverCard({
     <>
       <span
         ref={triggerRef}
-        onMouseEnter={handleOpen}
-        onMouseLeave={handleClose}
-        onFocus={handleOpen}
-        onBlur={handleClose}
-        onClick={(e) => {
-          if (isMobile) {
-            e.stopPropagation();
-            handleToggle();
-          }
+        role="button"
+        tabIndex={0}
+        aria-haspopup="dialog"
+        aria-expanded={isPinned}
+        aria-controls={isPinned ? popoverId : undefined}
+        aria-label={`Inspect ${fallbackSkill?.nameEn || fallbackSkill?.nameJp || `skill ${skillId}`}`}
+        onPointerEnter={(event) => {
+          if (!isPinned) setKeyboardOpened(false);
+          interaction.pointerEnter(event.pointerType, !isMobile && window.matchMedia("(hover: hover) and (pointer: fine)").matches);
         }}
-        className={`inline-block cursor-pointer ${className}`}
+        onPointerLeave={interaction.pointerLeave}
+        onKeyDown={(event) => {
+          if (event.key !== "Enter" && event.key !== " ") return;
+          event.preventDefault();
+          event.stopPropagation();
+          setKeyboardOpened(true);
+          interaction.toggle();
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setKeyboardOpened(e.detail === 0);
+          interaction.toggle();
+        }}
+        className={`inline-block cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 ${className}`}
       >
         {children}
       </span>
 
-      {isOpen && (
+      {(isOpen || present) && typeof document !== "undefined" && createPortal(
         isMobile ? (
           /* Mobile slide-up Bottom Sheet */
           <div
-            className="fixed inset-0 z-[190] flex items-end justify-center bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-            onClick={() => {
-              setIsOpen(false);
-              setIsHoveringPopover(false);
-            }}
-            role="dialog"
-            aria-modal="true"
+            className={`fixed inset-0 z-[400] flex items-end justify-center bg-black/50 backdrop-blur-xs overscroll-none ${!isOpen ? "pointer-events-none" : ""} ${keyboardOpened ? "" : isOpen ? "animate-in fade-in duration-[220ms] motion-reduce:animate-none" : "animate-out fade-out duration-[180ms] motion-reduce:animate-none"}`}
+            style={{ animationTimingFunction: "cubic-bezier(.22, 1, .36, 1)" }}
+            onClick={(event) => { if (event.target === event.currentTarget) dismiss(); }}
+            aria-hidden={!isOpen || undefined}
+            inert={!isOpen}
           >
             <div
               ref={popoverRef}
+              id={popoverId}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`${popoverId}-title`}
+              tabIndex={-1}
+              onKeyDown={trapMobileFocus}
               onClick={(e) => e.stopPropagation()}
-              className="w-full h-[65dvh] max-h-[92dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-t-2xl border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 pb-10 shadow-2xl animate-in slide-in-from-bottom duration-[250ms] ease-out-expo text-left"
+              className={`w-full h-[65dvh] max-h-[92dvh] overflow-y-auto overscroll-contain touch-pan-y rounded-t-2xl border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 pb-[max(2.5rem,env(safe-area-inset-bottom))] shadow-2xl text-left outline-none ${keyboardOpened ? "" : isOpen ? "animate-in slide-in-from-bottom-4 fade-in duration-[220ms] motion-reduce:animate-none" : "animate-out slide-out-to-bottom-4 fade-out duration-[180ms] motion-reduce:animate-none"}`}
+              style={{ animationTimingFunction: "cubic-bezier(.22, 1, .36, 1)" }}
             >
               {/* Drag Indicator Handle */}
               <div className="mx-auto -mt-1 mb-3 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />
@@ -447,26 +504,24 @@ export function SkillHoverCard({
           /* Desktop floating popover */
           <div
             ref={popoverRef}
-            onMouseEnter={() => {
-              setIsHoveringPopover(true);
-              handleOpen();
-            }}
-            onMouseLeave={() => {
-              setIsHoveringPopover(false);
-              handleClose();
-            }}
-            onWheel={(e) => e.stopPropagation()}
+            id={popoverId}
+            tabIndex={isPinned ? -1 : undefined}
+            aria-labelledby={`${popoverId}-title`}
+            aria-hidden={!isOpen || undefined}
+            inert={!isPinned}
+            onClick={(event) => event.stopPropagation()}
             style={{
               top: `${coords.top}px`,
               left: `${coords.left}px`,
               transformOrigin: `${coords.originX} center`,
             }}
-            className="fixed z-[150] w-[340px] max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-2xl dark:shadow-zinc-950/60 animate-in fade-in zoom-in-95 duration-200 ease-out-expo text-left"
-            role="tooltip"
+            className={`fixed z-[400] w-[340px] max-h-[85vh] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3.5 shadow-2xl dark:shadow-zinc-950/60 text-left outline-none ${isPinned ? "pointer-events-auto" : "pointer-events-none"} ${keyboardOpened ? "" : isOpen ? "animate-in fade-in slide-in-from-bottom-1.5 duration-[160ms] ease-out-expo motion-reduce:animate-none" : "animate-out fade-out slide-out-to-bottom-1.5 duration-[120ms] ease-out-quart motion-reduce:animate-none"}`}
+            role={isPinned ? "dialog" : "tooltip"}
           >
             {content}
+            {!isPinned && <p className="mt-3 border-t border-zinc-100 pt-2 text-[11px] text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">Click the skill to keep its details open.</p>}
           </div>
-        )
+        ), document.body,
       )}
     </>
   );
