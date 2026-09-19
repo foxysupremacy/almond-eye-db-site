@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { decodeFactor, calculateLineageBlueStars } from "./factor-decoder";
+import { decodeFactor, calculateLineageBlueStars, extractSlotPrimaryFactors } from "./factor-decoder";
 
 describe("factor-decoder", () => {
   it("decodes blue stat factors properly", () => {
@@ -59,5 +59,27 @@ describe("factor-decoder", () => {
     expect(stars.self).toBe(3);
     expect(stars.parents).toBe(5);
     expect(stars.total).toBe(8);
+  });
+
+  it("extracts primary blue, pink, and green factors for card pill display", () => {
+    const factors = [
+      { factor_id: 103 }, // Speed 3★
+      { factor_id: 1102 }, // Turf 2★
+      { factor_id: 10010103 }, // Unique skill factor 3★ (Special Week Shooting Star)
+      { factor_id: 20011 }, // White skill factor
+    ];
+
+    const { blue, pink, green } = extractSlotPrimaryFactors(factors);
+    expect(blue).toBeDefined();
+    expect(blue?.nameEn).toBe("Speed");
+    expect(blue?.stars).toBe(3);
+
+    expect(pink).toBeDefined();
+    expect(pink?.nameEn).toBe("Turf");
+    expect(pink?.stars).toBe(2);
+
+    expect(green).toBeDefined();
+    expect(green?.stars).toBe(3);
+    expect(green?.type).toBe("green");
   });
 });

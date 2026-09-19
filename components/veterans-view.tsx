@@ -1,15 +1,36 @@
 "use client";
 
 import { useState, useEffect, useMemo, useTransition } from "react";
-import { api, type CharacterIndexEntry, getCharacterImageUrl } from "../lib/api";
+import { api, type CharacterIndexEntry } from "../lib/api";
 import { getAllVeterans, saveVeterans, clearVeterans } from "../lib/db/veterans-db";
 import { type KyumaruVeteranItem } from "../lib/kyumaru-types";
-import { decodeFactor, calculateLineageBlueStars } from "../lib/factor-decoder";
-import { calculateAffinity, getCharaIdFromCardId } from "../lib/affinity-engine";
+import { calculateLineageBlueStars } from "../lib/factor-decoder";
+import { calculateAffinity } from "../lib/affinity-engine";
 import { useParentingSetup } from "../lib/parenting-state";
+import { useDeck } from "./store";
+import { getPvpRaceParameters } from "../lib/pvp-events";
+import {
+  isRankInParentRange,
+  loadParentManualOverrides,
+  saveParentManualOverrides,
+  getVeteranKey,
+  extractActiveParentTargetSkills,
+  evaluateVeteranTargetFactors,
+  type VeteranTargetFactorMatch,
+} from "../lib/parent-factor-matcher";
 import ImportModal from "./import-modal";
+import TrainedUmaModal from "./trained-uma-modal";
+import { TrainedUmaCard } from "./trained-uma-card";
 
-type SortOption = "rank_score" | "affinity" | "speed" | "stamina" | "power" | "blue_stars";
+type SortOption =
+  | "newest"
+  | "rank_score"
+  | "affinity"
+  | "speed"
+  | "stamina"
+  | "power"
+  | "blue_stars"
+  | "target_factors";
 
 export default function VeteransView() {
   const [veterans, setVeterans] = useState<KyumaruVeteranItem[]>([]);
@@ -17,10 +38,16 @@ export default function VeteransView() {
   const [loading, setLoading] = useState(true);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("rank_score");
+  const [sortBy, setSortBy] = useState<SortOption>("newest");
   const [minBlueStars, setMinBlueStars] = useState<number>(0);
+  const [onlyParents, setOnlyParents] = useState(false);
+  const [parentOverrides, setParentOverrides] = useState<Record<string, boolean>>({});
   const [, startTransition] = useTransition();
-  const { setup, setParent1, setParent2 } = useParentingSetup();
+  const { setup } = useParentingSetup();
+  const { parentSkills, course, runningStyle, activePvpEvent } = useDeck();
+
+  const [selectedVeteran, setSelectedVeteran] = useState<KyumaruVeteranItem | null>(null);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -36,6 +63,7 @@ export default function VeteransView() {
 
   useEffect(() => {
     loadData();
+    setParentOverrides(loadParentManualOverrides());
 
     const handleUpdate = () => {
       startTransition(() => {
@@ -49,95 +77,130 @@ export default function VeteransView() {
     };
   }, []);
 
+  const isParent = (vet: KyumaruVeteranItem): boolean => {
+    const key = getVeteranKey(vet);
+    if (parentOverrides[key] !== undefined) {
+      return parentOverrides[key];
+    }
+    return isRankInParentRange(vet.rank, vet.rank_score);
+  };
+
+  const handleToggleParent = (vet: KyumaruVeteranItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const key = getVeteranKey(vet);
+    const currentlyParent = isParent(vet);
+    setParentOverrides((prev) => {
+      const next = { ...prev, [key]: !currentlyParent };
+      saveParentManualOverrides(next);
+      return next;
+    });
+  };
+
+  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+
+  const activeTargetSkillsMap = useMemo(() => {
+    return extractActiveParentTargetSkills(parentSkills, course, runningStyle, raceParams);
+  }, [parentSkills, course, runningStyle, raceParams]);
+
+  const hasTargetSkills = activeTargetSkillsMap.size > 0;
+
+  const targetFactorMatchMap = useMemo(() => {
+    const map = new Map<string, VeteranTargetFactorMatch>();
+    if (activeTargetSkillsMap.size === 0) return map;
+    for (const vet of veterans) {
+      const key = getVeteranKey(vet);
+      map.set(key, evaluateVeteranTargetFactors(vet, activeTargetSkillsMap));
+    }
+    return map;
+  }, [veterans, activeTargetSkillsMap]);
+
+  const parentCount = useMemo(() => {
+    return veterans.filter(isParent).length;
+  }, [veterans, parentOverrides]);
+
   // Character Map for O(1) lookup
   const charaMap = useMemo(() => {
     return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
   }, [characters]);
 
-  const [expandedCharId, setExpandedCharId] = useState<number | null>(null);
-
-  // Group and sort veterans by Uma
-  const unifiedVeterans = useMemo(() => {
+  // Filter and sort individual veteran runs (default: newest trained first)
+  const filteredVeterans = useMemo(() => {
     const q = query.trim().toLowerCase();
 
-    const groupsMap = new Map<number, KyumaruVeteranItem[]>();
-    for (const vet of veterans) {
+    const filtered = veterans.filter((vet) => {
+      if (onlyParents && !isParent(vet)) {
+        return false;
+      }
+
       const chara = charaMap.get(vet.card_id);
-      const charId = getCharaIdFromCardId(vet.card_id);
       const nameEn = (chara?.nameEn || vet.name || "").toLowerCase();
       const nameJp = (chara?.nameJp || "").toLowerCase();
-      const titleEn = (chara?.titleEn || "").toLowerCase();
+      const titleEn = (chara?.titleEn || chara?.titleJp || "").toLowerCase();
 
       if (q && !nameEn.includes(q) && !nameJp.includes(q) && !titleEn.includes(q)) {
-        continue;
+        return false;
       }
 
       if (minBlueStars > 0) {
         const lineage = calculateLineageBlueStars(vet);
-        if (lineage.total < minBlueStars) continue;
+        if (lineage.total < minBlueStars) return false;
       }
 
-      const list = groupsMap.get(charId) ?? [];
-      list.push(vet);
-      groupsMap.set(charId, list);
-    }
-
-    const groups = Array.from(groupsMap.entries()).map(([charId, runs]) => {
-      // Sort runs descending according to active sortBy
-      runs.sort((a, b) => {
-        if (sortBy === "affinity" && setup.targetCharaId) {
-          const aAff = calculateAffinity(a, setup.targetCharaId).total;
-          const bAff = calculateAffinity(b, setup.targetCharaId).total;
-          return bAff - aAff || (b.rank_score || 0) - (a.rank_score || 0);
-        }
-        if (sortBy === "blue_stars") {
-          const aStars = calculateLineageBlueStars(a).total;
-          const bStars = calculateLineageBlueStars(b).total;
-          return bStars - aStars || (b.rank_score || 0) - (a.rank_score || 0);
-        }
-        if (sortBy === "speed") return b.speed - a.speed;
-        if (sortBy === "stamina") return b.stamina - a.stamina;
-        if (sortBy === "power") return b.power - a.power;
-        return (b.rank_score || 0) - (a.rank_score || 0);
-      });
-
-      const bestVet = runs[0];
-      const chara = charaMap.get(bestVet.card_id);
-      const affResult = setup.targetCharaId ? calculateAffinity(bestVet, setup.targetCharaId) : null;
-      const maxBlueStars = Math.max(...runs.map((r) => calculateLineageBlueStars(r).total));
-      const bestRankScore = Math.max(...runs.map((r) => r.rank_score || 0));
-
-      return {
-        charId,
-        cardId: bestVet.card_id,
-        nameEn: chara?.nameEn || bestVet.name || `Chara ${charId}`,
-        nameJp: chara?.nameJp || "",
-        titleEn: chara?.titleEn || chara?.titleJp,
-        avatarUrl: chara ? getCharacterImageUrl(chara.charId, bestVet.card_id) : "",
-        bestVet,
-        runs,
-        runCount: runs.length,
-        maxBlueStars,
-        bestRankScore,
-        affinity: affResult?.total ?? null,
-      };
+      return true;
     });
 
-    groups.sort((a, b) => {
+    filtered.sort((a, b) => {
+      if (sortBy === "target_factors") {
+        const keyA = getVeteranKey(a);
+        const keyB = getVeteranKey(b);
+        const matchA = targetFactorMatchMap.get(keyA)?.count || 0;
+        const matchB = targetFactorMatchMap.get(keyB)?.count || 0;
+        return matchB - matchA || (b.rank_score || 0) - (a.rank_score || 0);
+      }
+
+      if (sortBy === "newest") {
+        const timeA = a.create_time ? new Date(a.create_time.replace(" ", "T")).getTime() : 0;
+        const timeB = b.create_time ? new Date(b.create_time.replace(" ", "T")).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (b.trained_chara_id || 0) - (a.trained_chara_id || 0);
+      }
+
       if (sortBy === "affinity" && setup.targetCharaId) {
-        return (b.affinity || 0) - (a.affinity || 0) || b.bestRankScore - a.bestRankScore;
+        const aAff = calculateAffinity(a, setup.targetCharaId).total;
+        const bAff = calculateAffinity(b, setup.targetCharaId).total;
+        return bAff - aAff || (b.rank_score || 0) - (a.rank_score || 0);
       }
+
       if (sortBy === "blue_stars") {
-        return b.maxBlueStars - a.maxBlueStars || b.bestRankScore - a.bestRankScore;
+        const aStars = calculateLineageBlueStars(a).total;
+        const bStars = calculateLineageBlueStars(b).total;
+        return bStars - aStars || (b.rank_score || 0) - (a.rank_score || 0);
       }
-      if (sortBy === "speed") return b.bestVet.speed - a.bestVet.speed;
-      if (sortBy === "stamina") return b.bestVet.stamina - a.bestVet.stamina;
-      if (sortBy === "power") return b.bestVet.power - a.bestVet.power;
-      return b.bestRankScore - a.bestRankScore;
+
+      if (sortBy === "speed") return b.speed - a.speed;
+      if (sortBy === "stamina") return b.stamina - a.stamina;
+      if (sortBy === "power") return b.power - a.power;
+
+      return (b.rank_score || 0) - (a.rank_score || 0);
     });
 
-    return groups;
-  }, [veterans, charaMap, query, sortBy, minBlueStars, setup.targetCharaId]);
+    return filtered;
+  }, [
+    veterans,
+    charaMap,
+    query,
+    sortBy,
+    minBlueStars,
+    setup.targetCharaId,
+    onlyParents,
+    parentOverrides,
+    targetFactorMatchMap,
+  ]);
+
+  const handleInspectVeteran = (vet: KyumaruVeteranItem) => {
+    setSelectedVeteran(vet);
+    setIsDetailModalOpen(true);
+  };
 
   // Handle direct file drag & drop into empty view
   const handleFileDrop = async (file: File) => {
@@ -317,6 +380,10 @@ export default function VeteransView() {
               onChange={(e) => setSortBy(e.target.value as SortOption)}
               className="w-full sm:w-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer"
             >
+              <option value="newest">Newest Trained First</option>
+              {hasTargetSkills && (
+                <option value="target_factors">Target Factors (High to Low)</option>
+              )}
               <option value="rank_score">Score (High to Low)</option>
               {setup.targetCharaId && (
                 <option value="affinity">Compatibility Affinity (High to Low)</option>
@@ -327,6 +394,29 @@ export default function VeteransView() {
               <option value="power">Power (High to Low)</option>
             </select>
           </div>
+
+          {/* Parent Filter Toggle */}
+          <button
+            type="button"
+            onClick={() => setOnlyParents((prev) => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all shrink-0 ${
+              onlyParents
+                ? "bg-emerald-600 text-white shadow-xs"
+                : "border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 hover:border-emerald-500/50"
+            }`}
+            title="Filter roster to show only Parent candidates (Default rank UF–UC9)"
+          >
+            <span>🧬 Only Parents</span>
+            <span
+              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                onlyParents
+                  ? "bg-emerald-700 text-white"
+                  : "bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300"
+              }`}
+            >
+              {parentCount}
+            </span>
+          </button>
 
           {/* Blue Stars Filter */}
           <div className="flex items-center gap-1 shrink-0 overflow-x-auto">
@@ -349,10 +439,17 @@ export default function VeteransView() {
         </div>
 
         {/* Status Bar */}
-        <div className="flex items-center justify-between pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
-          <span>
-            Showing <strong>{unifiedVeterans.length}</strong> Umas ({veterans.length} Total Runs)
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800 text-xs text-zinc-500">
+          <div className="flex items-center gap-2">
+            <span>
+              Showing <strong>{filteredVeterans.length}</strong> of <strong>{veterans.length}</strong> Trained Umas
+            </span>
+            {hasTargetSkills && (
+              <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold">
+                {activeTargetSkillsMap.size} Target Skills in Parent Deck
+              </span>
+            )}
+          </div>
           <span>
             Top Evaluation:{" "}
             <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
@@ -363,283 +460,25 @@ export default function VeteransView() {
       </div>
 
       {/* Veterans Grid */}
-      {unifiedVeterans.length === 0 ? (
+      {filteredVeterans.length === 0 ? (
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-12 text-center text-zinc-500">
           No trained umas matched your filters.
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {unifiedVeterans.map((group) => {
-            const vet = group.bestVet;
-            const charId = group.charId;
-            const chara = charaMap.get(vet.card_id);
-            const avatarUrl = group.avatarUrl;
-            const lineageStars = calculateLineageBlueStars(vet);
-            const isExpanded = expandedCharId === charId;
-
-            // Decode self blue and pink factors
-            const selfFactors = (vet.factor_info_array || []).map((f) => decodeFactor(f.factor_id));
-            const blueFactor = selfFactors.find((f) => f.type === "blue");
-            const pinkFactor = selfFactors.find((f) => f.type === "pink");
-
-            const rankPadded = String(vet.rank || 0).padStart(2, "0");
-            const rankIconSrc = `/assets/statusrank/utx_ico_statusrank_${rankPadded}.png`;
-
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
+          {filteredVeterans.map((vet) => {
+            const key = getVeteranKey(vet);
             return (
-              <div
-                key={charId}
-                className={`flex flex-col justify-between rounded-2xl border transition-all ${
-                  isExpanded
-                    ? "border-emerald-500/80 bg-emerald-50/10 dark:bg-emerald-950/15 shadow-md"
-                    : "border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/90 shadow-2xs hover:shadow-xs"
-                } p-4`}
-              >
-                <div>
-                  {/* Upper Row: Avatar + Name + Rank Badge */}
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="relative w-14 h-14 shrink-0 flex items-center justify-center">
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt={group.nameEn}
-                          className="h-full w-full object-contain filter drop-shadow-xs"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="h-full w-full rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-xl">
-                          🐎
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 justify-between">
-                        <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                          {group.nameEn}
-                        </h4>
-                        {group.runCount > 1 && (
-                          <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                            {group.runCount} Runs
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                        {group.titleEn || `Costume ${group.cardId}`}
-                      </p>
-
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <img
-                          src={rankIconSrc}
-                          alt={`Rank ${vet.rank}`}
-                          className="h-4 w-auto object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
-                        />
-                        <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 tracking-tight">
-                          {vet.rank_score?.toLocaleString()} pts
-                        </span>
-                        {group.affinity !== null && (
-                          <span className="ml-auto px-1.5 py-0.5 rounded text-[10px] font-extrabold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-                            +{group.affinity} Aff
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* 5 Stats Display */}
-                  <div className="grid grid-cols-5 gap-1.5 mb-3 text-center bg-zinc-50 dark:bg-zinc-800/50 p-2 rounded-xl border border-zinc-100 dark:border-zinc-800">
-                    <div>
-                      <div className="text-[10px] text-zinc-400 uppercase font-bold">SPD</div>
-                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                        {vet.speed}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-400 uppercase font-bold">STA</div>
-                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                        {vet.stamina}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-400 uppercase font-bold">PWR</div>
-                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                        {vet.power}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-400 uppercase font-bold">GUT</div>
-                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                        {vet.guts}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-[10px] text-zinc-400 uppercase font-bold">WIT</div>
-                      <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                        {vet.wiz}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sparks & Factors Summary */}
-                  <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                    {/* Lineage Blue Stars */}
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
-                      <span>🔵</span>
-                      <span>{lineageStars.total}★ Blue Lineage</span>
-                    </span>
-
-                    {/* Self Blue Factor */}
-                    {blueFactor && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300">
-                        <span>{blueFactor.name}</span>
-                        <span className="text-blue-500 font-bold">{"★".repeat(blueFactor.stars)}</span>
-                      </span>
-                    )}
-
-                    {/* Self Pink Factor */}
-                    {pinkFactor && (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-pink-500/10 text-pink-700 dark:text-pink-300 border border-pink-500/20">
-                        <span>🌸 {pinkFactor.name}</span>
-                        <span className="font-bold">{"★".repeat(pinkFactor.stars)}</span>
-                      </span>
-                    )}
-
-                    {/* Learned Skills Count */}
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 ml-auto">
-                      {vet.skill_array?.length || 0} Skills
-                    </span>
-                  </div>
-                </div>
-
-                {/* Footer / Lineage Info & Quick Assign */}
-                <div className="pt-2 mt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-[10px] text-zinc-400">
-                  <div className="flex items-center gap-2">
-                    <span>Parent Blue: {lineageStars.parents}★</span>
-                    <span>Self Blue: {lineageStars.self}★</span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 ml-auto">
-                    {group.runCount > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => setExpandedCharId(isExpanded ? null : charId)}
-                        className="px-2 py-0.5 rounded-md font-semibold text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 cursor-pointer transition-colors"
-                      >
-                        {isExpanded ? "▲ Hide Runs" : `▼ ${group.runCount} Runs`}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setParent1(vet);
-                        alert(`Assigned ${group.nameEn} as Parent 1 in Parenting Hub!`);
-                      }}
-                      className="px-2 py-0.5 rounded-md font-bold bg-blue-500/10 hover:bg-blue-500/20 text-blue-700 dark:text-blue-300 border border-blue-500/30 cursor-pointer transition-colors"
-                      title="Set as Parent 1 in Parenting"
-                    >
-                      + P1
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setParent2(vet);
-                        alert(`Assigned ${group.nameEn} as Parent 2 in Parenting Hub!`);
-                      }}
-                      className="px-2 py-0.5 rounded-md font-bold bg-pink-500/10 hover:bg-pink-500/20 text-pink-700 dark:text-pink-300 border border-pink-500/30 cursor-pointer transition-colors"
-                      title="Set as Parent 2 in Parenting"
-                    >
-                      + P2
-                    </button>
-                  </div>
-                </div>
-
-                {/* Expandable Accordion: All Runs for this Uma */}
-                {isExpanded && group.runCount > 1 && (
-                  <div className="mt-3 pt-3 border-t border-zinc-200 dark:border-zinc-800 flex flex-col gap-2 animate-in fade-in duration-200 ease-out-quart">
-                    <p className="text-[11px] font-bold text-zinc-500 dark:text-zinc-400">
-                      All {group.runCount} Training Runs for {group.nameEn}:
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {group.runs.map((run, idx) => {
-                        const runLineage = calculateLineageBlueStars(run);
-                        const runFactors = (run.factor_info_array || []).map((f) => decodeFactor(f.factor_id));
-                        const runBlue = runFactors.find((f) => f.type === "blue");
-                        const runPink = runFactors.find((f) => f.type === "pink");
-                        const runRankPadded = String(run.rank || 0).padStart(2, "0");
-                        const runRankIcon = `/assets/statusrank/utx_ico_statusrank_${runRankPadded}.png`;
-
-                        return (
-                          <div
-                            key={run.trained_chara_id || idx}
-                            className="p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/60 flex flex-col gap-1.5"
-                          >
-                            <div className="flex items-center justify-between gap-1 text-[11px]">
-                              <div className="flex items-center gap-1.5 font-bold text-zinc-700 dark:text-zinc-300">
-                                <span>Run #{idx + 1}</span>
-                                {idx === 0 && (
-                                  <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400">
-                                    (Top Run)
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-1 ml-1">
-                                  <img
-                                    src={runRankIcon}
-                                    alt={`Rank ${run.rank}`}
-                                    className="h-3.5 w-auto object-contain"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = "none";
-                                    }}
-                                  />
-                                  <span>{run.rank_score?.toLocaleString()} pts</span>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setParent1(run);
-                                    alert(`Assigned ${group.nameEn} (Run #${idx + 1}) as Parent 1!`);
-                                  }}
-                                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-500/10 hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border border-blue-500/25 cursor-pointer"
-                                >
-                                  + P1
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setParent2(run);
-                                    alert(`Assigned ${group.nameEn} (Run #${idx + 1}) as Parent 2!`);
-                                  }}
-                                  className="px-2 py-0.5 rounded text-[10px] font-bold bg-pink-500/10 hover:bg-pink-500/25 text-pink-700 dark:text-pink-300 border border-pink-500/25 cursor-pointer"
-                                >
-                                  + P2
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Run stats mini strip */}
-                            <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                              <span>S:{run.speed}</span>
-                              <span>St:{run.stamina}</span>
-                              <span>P:{run.power}</span>
-                              <span>G:{run.guts}</span>
-                              <span>W:{run.wiz}</span>
-                              <span className="ml-auto font-bold text-blue-600 dark:text-blue-400">
-                                🔵 {runLineage.total}★
-                              </span>
-                              {runBlue && <span>{runBlue.name} {runBlue.stars}★</span>}
-                              {runPink && <span className="text-pink-600 dark:text-pink-400">🌸 {runPink.name}</span>}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
+              <TrainedUmaCard
+                key={key}
+                veteran={vet}
+                character={charaMap.get(vet.card_id)}
+                onClick={() => handleInspectVeteran(vet)}
+                isParent={isParent(vet)}
+                onToggleParent={(e) => handleToggleParent(vet, e)}
+                targetFactorMatch={targetFactorMatchMap.get(key)}
+                hasTargetSkills={hasTargetSkills}
+              />
             );
           })}
         </div>
@@ -647,6 +486,17 @@ export default function VeteransView() {
 
       {/* Import Modal */}
       <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
+
+      {/* Trained Uma Detail Inspection Modal */}
+      <TrainedUmaModal
+        isOpen={isDetailModalOpen}
+        onClose={() => {
+          setIsDetailModalOpen(false);
+          setSelectedVeteran(null);
+        }}
+        veteran={selectedVeteran}
+        character={selectedVeteran ? charaMap.get(selectedVeteran.card_id) : null}
+      />
     </section>
   );
 }

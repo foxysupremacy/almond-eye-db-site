@@ -7,7 +7,12 @@ export interface DecodedFactor {
   factorId: number;
   type: FactorType;
   name: string;
+  nameEn?: string;
+  nameJa?: string;
   stars: number; // 1, 2, or 3
+  category?: string;
+  skillIds?: number[];
+  statType?: number;
 }
 
 const BLUE_STAT_NAMES: Record<number, string> = {
@@ -31,6 +36,19 @@ const PINK_APTITUDE_NAMES: Record<number, string> = {
   34: "Chaser",
 };
 
+import factorsCompactData from "./data/factors-compact.json";
+
+export interface CompactFactorEntry {
+  nameEn: string;
+  nameJa: string;
+  color: "blue" | "pink" | "green" | "white";
+  category: "blue" | "pink" | "green" | "race" | "scenario" | "skill" | "other";
+  skillIds?: number[];
+  statType?: number;
+}
+
+const factorsCompact = factorsCompactData as Record<string, CompactFactorEntry>;
+
 export function decodeFactor(factorId: number): DecodedFactor {
   const str = String(factorId);
   const stars = Number(str.slice(-1)) || 1;
@@ -39,23 +57,46 @@ export function decodeFactor(factorId: number): DecodedFactor {
   if (factorId >= 101 && factorId <= 503) {
     const statIndex = Math.floor(factorId / 100);
     const name = BLUE_STAT_NAMES[statIndex] || "Stat";
-    return { factorId, type: "blue", name, stars };
+    const nameJa = BLUE_STAT_NAMES_JA[statIndex]?.full;
+    return { factorId, type: "blue", name, nameEn: name, nameJa, stars, category: "blue", statType: statIndex };
   }
 
   // 2. Pink Factors (1101..3403)
   if (factorId >= 1101 && factorId <= 3403) {
     const prefix = Math.floor(factorId / 100);
     const name = PINK_APTITUDE_NAMES[prefix] || "Aptitude";
-    return { factorId, type: "pink", name, stars };
+    const nameJa = PINK_APTITUDE_NAMES_JA[prefix];
+    return { factorId, type: "pink", name, nameEn: name, nameJa, stars, category: "pink" };
   }
 
-  // 3. Green Factors (Unique Skills) - typically 7-8 digits matching card_id + 01..03
+  // 3. Try matching against factorsCompact (Green & White: skills, races, scenarios)
+  const base100 = String(Math.floor(factorId / 100));
+  const base10 = String(Math.floor(factorId / 10));
+  const exact = String(factorId);
+
+  const meta = factorsCompact[base100] || factorsCompact[base10] || factorsCompact[exact];
+
+  if (meta) {
+    return {
+      factorId,
+      type: meta.color,
+      name: meta.nameEn,
+      nameEn: meta.nameEn,
+      nameJa: meta.nameJa,
+      stars: (factorId >= 100) ? (factorId % 100 <= 3 ? factorId % 100 : stars) : stars,
+      category: meta.category,
+      skillIds: meta.skillIds,
+      statType: meta.statType,
+    };
+  }
+
+  // 4. Green Factors (Unique Skills) fallback
   if (str.length === 8 && (str.endsWith("01") || str.endsWith("02") || str.endsWith("03"))) {
-    return { factorId, type: "green", name: "Unique", stars };
+    return { factorId, type: "green", name: "Unique", nameEn: "Unique", stars, category: "green" };
   }
 
-  // 4. White Factors (Skills, Races, Scenarios)
-  return { factorId, type: "white", name: "Factor", stars };
+  // 5. White Factors (Skills, Races, Scenarios) fallback
+  return { factorId, type: "white", name: "Factor", nameEn: "Factor", stars, category: "white" };
 }
 
 /** Compute total blue stars for a veteran including self and immediate parents */
@@ -114,6 +155,7 @@ export const PINK_APTITUDE_NAMES_JA: Record<number, string> = {
 
 export interface SlotPrimaryFactor {
   factorId: number;
+  type: "blue" | "pink" | "green";
   nameJa: string;
   nameEn: string;
   shortJa?: string;
@@ -142,6 +184,7 @@ export function extractSlotPrimaryFactors(factorArray?: { factor_id: number }[])
       const meta = BLUE_STAT_NAMES_JA[idx] || { full: "ステータス", short: "ステ" };
       res.blue = {
         factorId: id,
+        type: "blue",
         nameJa: meta.full,
         shortJa: meta.short,
         nameEn: BLUE_STAT_NAMES[idx] || "Stat",
@@ -153,6 +196,7 @@ export function extractSlotPrimaryFactors(factorArray?: { factor_id: number }[])
       const prefix = Math.floor(id / 100);
       res.pink = {
         factorId: id,
+        type: "pink",
         nameJa: PINK_APTITUDE_NAMES_JA[prefix] || "適性",
         nameEn: PINK_APTITUDE_NAMES[prefix] || "Aptitude",
         stars,
@@ -162,6 +206,7 @@ export function extractSlotPrimaryFactors(factorArray?: { factor_id: number }[])
     else if (!res.green && (str.length === 8 && (str.endsWith("01") || str.endsWith("02") || str.endsWith("03")))) {
       res.green = {
         factorId: id,
+        type: "green",
         nameJa: "固有",
         nameEn: "Unique",
         stars,
