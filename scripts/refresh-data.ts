@@ -6,12 +6,14 @@
  *                                  with a notice when they're absent)
  *   2. extract-mdb.ts              master.mdb -> cards.json index merge,
  *                                  affinity.json, careers.json
- *   3. crawl_gametora_cards.py     GameTora -> English names, hints, events for
+ *   3. crawl_gametora_characters.py  new playable characters: mdb index merge,
+ *                                  GameTora merge, skill backfill into skills.json
+ *   4. crawl_gametora_cards.py     GameTora -> English names, hints, events for
  *                                  new/uncrawled cards; recompiles skill-meta.json
- *   4. generate_inherit_skills.py  master.mdb -> skills-inherit.json,
+ *   5. generate_inherit_skills.py  master.mdb -> skills-inherit.json,
  *                                  unique-inherit-map.json
- *   5. clean_card_names.py         strip bracketed title prefixes (idempotent)
- *   6. crawl_card_images.py        GameTora PNG assets (skips existing files)
+ *   6. clean_card_names.py         strip bracketed title prefixes (idempotent)
+ *   7. crawl_card_images.py        GameTora PNG assets (skips existing files)
  *
  * Config (mdb path, icon API key) lives in .env at the repo root — see .env.
  *
@@ -86,7 +88,17 @@ if (fs.existsSync(rawSkills)) {
 // 2. master.mdb extraction (mdb path from .env / $UMAMUSUME_MDB_PATH).
 steps.push({ name: "extract-mdb", cmd: process.execPath, args: tsScript("extract-mdb.ts") });
 
-// 3. GameTora card crawl (incremental) + skill-meta recompile.
+// 3. Playable characters: mdb index merge + GameTora crawl + skill backfill
+//    (must run before the card crawl, which recompiles skill-meta.json from
+//    the updated skills.json).
+steps.push({
+  name: "populate characters (mdb + gametora)",
+  cmd: python,
+  args: py("crawl_gametora_characters.py"),
+  soft: true,
+});
+
+// 4. GameTora card crawl (incremental) + skill-meta recompile.
 steps.push({
   name: "crawl gametora cards (incremental)",
   cmd: python,
@@ -94,13 +106,13 @@ steps.push({
   soft: true,
 });
 
-// 4. Inherited-unique skills from master.mdb.
+// 5. Inherited-unique skills from master.mdb.
 steps.push({ name: "generate inherit skills", cmd: python, args: py("generate_inherit_skills.py") });
 
-// 5. Name cleanup (idempotent).
+// 6. Name cleanup (idempotent).
 steps.push({ name: "clean card names", cmd: python, args: py("clean_card_names.py"), soft: true });
 
-// 6. PNG assets (incremental; skips already-downloaded files).
+// 7. PNG assets (incremental; skips already-downloaded files).
 if (!noImages) {
   steps.push({ name: "crawl card images", cmd: python, args: py("crawl_card_images.py"), soft: true });
 }
