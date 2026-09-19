@@ -8,7 +8,7 @@
 // JP names (text_data cat 75/76/77). English factor names still come from
 // GameTora's factors.json overlay (text_data is Japanese-only).
 //
-// MDB path resolution: $UMAMUSUME_MDB_PATH, else the local CrossOver/Steam install.
+// MDB path resolution: $UMAMUSUME_MDB_PATH (env var or repo-root .env).
 import fs from "fs";
 import path from "path";
 import { DatabaseSync } from "node:sqlite";
@@ -17,9 +17,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const DEFAULT_MDB_PATH =
-  "/Users/fubuki/Library/Application Support/CrossOver/Bottles/Steam/drive_c/Program Files (x86)/Steam/steamapps/common/UmamusumePrettyDerby_Jpn/UmamusumePrettyDerby_Jpn_Data/Persistent/master/master.mdb";
-const MDB_PATH = process.env.UMAMUSUME_MDB_PATH || DEFAULT_MDB_PATH;
+import { loadEnv } from "./env.ts";
+
+loadEnv();
+
+// MDB path comes from $UMAMUSUME_MDB_PATH (env var or repo-root .env) — no
+// machine-specific fallbacks. openMdb() fails with instructions if unset.
+const MDB_PATH = process.env.UMAMUSUME_MDB_PATH || "";
 
 const GAMETORA_DIR = path.resolve(__dirname, "../data-source/gametora");
 const HACHIMI_PATH = path.resolve(__dirname, "../../hachimi_text_data.json");
@@ -53,10 +57,17 @@ interface CourseRow {
 }
 
 function openMdb(): DatabaseSync {
-  if (!fs.existsSync(MDB_PATH)) {
-    throw new Error(
-      `master.mdb not found at ${MDB_PATH} — set $UMAMUSUME_MDB_PATH or launch the game client once.`
+  if (!MDB_PATH) {
+    console.error(
+      "Error: UMAMUSUME_MDB_PATH is not set.\n" +
+      'Put it in .env (repo root) or the environment, e.g.\n' +
+      '  UMAMUSUME_MDB_PATH=E:\\SteamLibrary\\steamapps\\common\\UmamusumePrettyDerby_Jpn\\UmamusumePrettyDerby_Jpn_Data\\Persistent\\master\\master.mdb'
     );
+    process.exit(1);
+  }
+  if (!fs.existsSync(MDB_PATH)) {
+    console.error(`Error: master.mdb not found at ${MDB_PATH} (from $UMAMUSUME_MDB_PATH / .env)`);
+    process.exit(1);
   }
   return new DatabaseSync(MDB_PATH, { readOnly: true });
 }

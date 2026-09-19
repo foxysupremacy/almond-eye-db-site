@@ -30,8 +30,8 @@
 	"scripts": {
 		"bump": "node --experimental-strip-types scripts/bump-version.ts",
 		"build:data": "node --experimental-strip-types scripts/generate-data.ts && node --experimental-strip-types scripts/extract-mdb.ts",
+		"data:refresh": "node --experimental-strip-types scripts/refresh-data.ts",
 		"fetch:gametora": "node --experimental-strip-types scripts/fetch-gametora.ts",
-		"prebuild": "node --experimental-strip-types scripts/generate-data.ts && node --experimental-strip-types scripts/extract-mdb.ts",
 		"dev": "vinext dev",
 		"build": "vinext build",
 		"start": "wrangler dev --config dist/server/wrangler.json",

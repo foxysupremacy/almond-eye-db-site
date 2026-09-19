@@ -1,8 +1,16 @@
 node_modules/
 dist/
 .data/
+.next/
 tsconfig.tsbuildinfo
 .DS_Store
-
+.idea/
+.vscode/
+.vinext/
 # wrangler/miniflare local state
 .wrangler/
+# local pipeline config (mdb path, icon API key)
+.env
+# crawled image assets + python cache (local only)
+/data/
+scripts/__pycache__/
