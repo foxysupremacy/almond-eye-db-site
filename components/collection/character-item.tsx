@@ -25,7 +25,7 @@ export function CharacterItem({
           ? currentStars === 5
             ? "border-sky-500/50 shadow-xs ring-1 ring-sky-500/20"
             : "border-zinc-200 dark:border-zinc-800 shadow-2xs"
-          : "border-dashed border-zinc-200 dark:border-zinc-800/80 opacity-60 hover:opacity-100"
+          : "border-dashed border-zinc-200 dark:border-zinc-800/80 grayscale opacity-50 hover:grayscale-0 hover:opacity-100"
       }`}
     >
       <div>

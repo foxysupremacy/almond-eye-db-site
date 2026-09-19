@@ -146,7 +146,7 @@ export function renderCourseMap(
   ctx.translate(-width / 2, -height / 2);
 
   const totalDistance = transform.totalDistance;
-  const laneWidth = 16;
+  const laneWidth = 32;
   const halfW = laneWidth / 2;
 
   // Compute continuous elevation profile
@@ -157,12 +157,17 @@ export function renderCourseMap(
     draw3DDepthWalls(ctx, transform, course, elevProfile, totalDistance, halfW, isDark);
   }
 
-  // 2. Draw Continuous Elevated Track Surface (4 Phases)
-  drawContinuousPhases(ctx, transform, course, elevProfile, totalDistance, halfW);
+  // 2. Draw Continuous Elevated Track Surface (4 Phases with Section Hover Highlight)
+  drawContinuousPhases(ctx, transform, course, elevProfile, totalDistance, halfW, hoverMeter);
 
-  // 3. Draw Active Slope Intervals Overlay & 2.5D Wireframe Projection Ribs
+  // 3. Draw Active Slope Intervals (45-degree diagonal striping & hover highlight)
   if (course.slopes && course.slopes.length > 0) {
-    drawSlopeIntervals(ctx, transform, course, elevProfile, totalDistance, halfW, isDark);
+    drawSlopeIntervals(ctx, width, height, transform, course, elevProfile, totalDistance, halfW, isDark, hoverMeter);
+  }
+
+  // 3b. Draw Active Corner Intervals (opposite -45-degree diagonal striping & hover highlight)
+  if (course.corners && course.corners.length > 0) {
+    drawCornerIntervals(ctx, width, height, transform, course, elevProfile, totalDistance, halfW, isDark, hoverMeter);
   }
 
   // 4. Draw Continuous Turf Rails along the elevated surface
@@ -173,8 +178,8 @@ export function renderCourseMap(
     drawSkillZones(ctx, transform, course, elevProfile, activeSkillZones, selectedSkillId, halfW);
   }
 
-  // 6. Draw Milestones, Corners, Start Flag, and Finish Line
-  drawMilestonesAndCorners(ctx, transform, course, elevProfile, totalDistance, halfW, isDark);
+  // 6. Draw Milestones, Corners, Start Flag, and Finish Line (with corner hover highlight)
+  drawMilestonesAndCorners(ctx, transform, course, elevProfile, totalDistance, halfW, isDark, hoverMeter);
 
   // 7. Draw Hover Marker Bead & Tooltip HUD
   if (hoverMeter != null && hoverMeter >= 0 && hoverMeter <= totalDistance) {
@@ -264,17 +269,29 @@ function drawContinuousPhases(
   course: Course,
   elevProfile: ElevationProfile,
   totalDist: number,
-  halfW: number
+  halfW: number,
+  hoverMeter: number | null = null
 ) {
   const p0End = totalDist / 6;
   const p1End = (totalDist * 2) / 3;
   const p2End = (totalDist * 5) / 6;
 
+  const hoverPhaseIdx =
+    hoverMeter != null && hoverMeter >= 0 && hoverMeter <= totalDist
+      ? hoverMeter < p0End
+        ? 0
+        : hoverMeter < p1End
+        ? 1
+        : hoverMeter < p2End
+        ? 2
+        : 3
+      : null;
+
   const phases = [
-    { start: 0, end: p0End, color: PHASE_COLORS.phase0 },
-    { start: p0End, end: p1End, color: PHASE_COLORS.phase1 },
-    { start: p1End, end: p2End, color: PHASE_COLORS.phase2 },
-    { start: p2End, end: totalDist, color: PHASE_COLORS.phase3 },
+    { idx: 0, start: 0, end: p0End, color: PHASE_COLORS.phase0 },
+    { idx: 1, start: p0End, end: p1End, color: PHASE_COLORS.phase1 },
+    { idx: 2, start: p1End, end: p2End, color: PHASE_COLORS.phase2 },
+    { idx: 3, start: p2End, end: totalDist, color: PHASE_COLORS.phase3 },
   ];
 
   const stepMeters = 8;
@@ -282,6 +299,9 @@ function drawContinuousPhases(
   for (const phase of phases) {
     if (phase.start >= phase.end) continue;
 
+    const isHovered = hoverPhaseIdx === phase.idx;
+
+    ctx.save();
     ctx.beginPath();
     const leftPts: { x: number; y: number }[] = [];
     const rightPts: { x: number; y: number }[] = [];
@@ -310,7 +330,17 @@ function drawContinuousPhases(
     ctx.closePath();
 
     ctx.fillStyle = phase.color;
+    // When a phase is hovered, other phases dim to 0.65; hovered stays at full 1.0
+    ctx.globalAlpha = hoverPhaseIdx == null ? 1.0 : isHovered ? 1.0 : 0.65;
     ctx.fill();
+
+    // Extra highlight glow outline for hovered section
+    if (isHovered) {
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 
@@ -319,19 +349,26 @@ function drawContinuousPhases(
  */
 function drawSlopeIntervals(
   ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
   transform: CourseTransformResult,
   course: Course,
   elevProfile: ElevationProfile,
   totalDist: number,
   halfW: number,
-  isDark: boolean
+  isDark: boolean,
+  hoverMeter: number | null = null
 ) {
+  const centerX = width / 2;
+  const centerY = height / 2;
+
   for (const slope of course.slopes || []) {
     const startM = slope.start;
     const endM = slope.end;
     const lenM = endM - startM;
     if (lenM <= 10) continue;
 
+    const isHoveredSlope = hoverMeter != null && hoverMeter >= startM && hoverMeter <= endM;
     const isUp = slope.slope > 0;
     const absPercent = Math.abs(slope.slope / 10000);
 
@@ -340,9 +377,7 @@ function drawSlopeIntervals(
 
     const numSteps = Math.max(6, Math.ceil(lenM / 10));
 
-    // A. Draw colored slope overlay on the elevated road surface
-    ctx.save();
-    ctx.beginPath();
+    // A. Collect perimeter points of the slope track polygon
     const leftPts: { x: number; y: number }[] = [];
     const rightPts: { x: number; y: number }[] = [];
 
@@ -361,35 +396,253 @@ function drawSlopeIntervals(
       });
     }
 
+    // B. Draw 45-degree diagonal stripes within the clipped slope surface
+    ctx.save();
+    ctx.beginPath();
     ctx.moveTo(leftPts[0].x, leftPts[0].y);
     for (let i = 1; i < leftPts.length; i++) ctx.lineTo(leftPts[i].x, leftPts[i].y);
     for (let i = rightPts.length - 1; i >= 0; i--) ctx.lineTo(rightPts[i].x, rightPts[i].y);
     ctx.closePath();
 
-    ctx.fillStyle = mainColor;
-    ctx.globalAlpha = 0.82;
-    ctx.fill();
+    // If hovered, give the slope a subtle glowing tint
+    if (isHoveredSlope) {
+      ctx.fillStyle = mainColor;
+      ctx.globalAlpha = 0.22;
+      ctx.fill();
+    }
 
-    // B. Technical wireframe ribs along the slope surface
-    ctx.globalAlpha = 0.55;
-    ctx.strokeStyle = isDark ? "#ffffff" : "#000000";
-    ctx.lineWidth = 1;
+    ctx.clip(); // Restrict all stripes strictly to the slope surface
 
-    for (let i = 0; i <= numSteps; i += 2) {
+    // Draw 45-degree stripes across the slope:
+    // With track width 32px (2 * halfW), a 45-degree angle corresponds to tangent shift of 2 * halfW.
+    const pxSpacing = 16;
+    const meterStep = Math.max(6, Math.round(pxSpacing / (transform.scale || 0.25)));
+    const extendM = meterStep * 2;
+
+    ctx.strokeStyle = mainColor;
+    ctx.lineWidth = isHoveredSlope ? 9 : 7.5;
+    ctx.lineCap = "butt";
+    ctx.globalAlpha = isHoveredSlope ? 0.95 : 0.85;
+
+    if (isHoveredSlope) {
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 10;
+    }
+
+    for (let d = startM - extendM; d <= endM + extendM; d += meterStep) {
+      const clampedD = Math.max(0, Math.min(totalDist, d));
+      const pt = interpolateCoursePoint(transform.points, totalDist, clampedD);
+      const h = getPixelElevation(course, clampedD, elevProfile);
+
+      // 45-degree diagonal vector: from left rail shifted back to right rail shifted forward
+      const pLeftX = pt.x + pt.normalX * halfW - pt.tangentX * halfW + EX * h;
+      const pLeftY = pt.y + pt.normalY * halfW - pt.tangentY * halfW + EY * h;
+      const pRightX = pt.x - pt.normalX * halfW + pt.tangentX * halfW + EX * h;
+      const pRightY = pt.y - pt.normalY * halfW + pt.tangentY * halfW + EY * h;
+
       ctx.beginPath();
-      ctx.moveTo(leftPts[i].x, leftPts[i].y);
-      ctx.lineTo(rightPts[i].x, rightPts[i].y);
+      ctx.moveTo(pLeftX, pLeftY);
+      ctx.lineTo(pRightX, pRightY);
       ctx.stroke();
     }
+    ctx.restore(); // Undo clip
+
+    // C. Clean white boundary lines only at start and end of slope
+    ctx.save();
+    const boundaryColor = isDark ? "rgba(255, 255, 255, 0.9)" : "rgba(255, 255, 255, 0.95)";
+    ctx.strokeStyle = boundaryColor;
+    ctx.lineWidth = isHoveredSlope ? 3.5 : 2.5;
+    ctx.lineCap = "round";
+
+    if (isHoveredSlope) {
+      ctx.shadowColor = "#ffffff";
+      ctx.shadowBlur = 8;
+    }
+
+    // Slope start boundary line
+    ctx.beginPath();
+    ctx.moveTo(leftPts[0].x, leftPts[0].y);
+    ctx.lineTo(rightPts[0].x, rightPts[0].y);
+    ctx.stroke();
+
+    // Slope end boundary line
+    ctx.beginPath();
+    ctx.moveTo(leftPts[numSteps].x, leftPts[numSteps].y);
+    ctx.lineTo(rightPts[numSteps].x, rightPts[numSteps].y);
+    ctx.stroke();
     ctx.restore();
 
-    // C. Slope Badge (% grade and arrow)
-    const midIdx = Math.floor(numSteps / 2);
-    const badgeX = (leftPts[midIdx].x + rightPts[midIdx].x) / 2 + EX * 10;
-    const badgeY = (leftPts[midIdx].y + rightPts[midIdx].y) / 2 + EY * 10;
+    // D. Slope Badge & Leader Line (offset inward toward course interior/infield)
+    const midD = (startM + endM) / 2;
+    const midPt = interpolateCoursePoint(transform.points, totalDist, midD);
+    const midH = getPixelElevation(course, midD, elevProfile);
+
+    // Determine which normal direction points inward toward course center (infield)
+    const testOffset = 30;
+    const pPos = { x: midPt.x + midPt.normalX * testOffset, y: midPt.y + midPt.normalY * testOffset };
+    const pNeg = { x: midPt.x - midPt.normalX * testOffset, y: midPt.y - midPt.normalY * testOffset };
+    const distPos = Math.hypot(pPos.x - centerX, pPos.y - centerY);
+    const distNeg = Math.hypot(pNeg.x - centerX, pNeg.y - centerY);
+    const inwardSign = distPos <= distNeg ? 1 : -1;
+
+    const inwardNx = midPt.normalX * inwardSign;
+    const inwardNy = midPt.normalY * inwardSign;
+
+    const edgeX = midPt.x + inwardNx * halfW + EX * midH;
+    const edgeY = midPt.y + inwardNy * halfW + EY * midH;
+
+    const badgeDist = halfW + (isHoveredSlope ? 25 : 22);
+    const badgeX = midPt.x + inwardNx * badgeDist + EX * midH;
+    const badgeY = midPt.y + inwardNy * badgeDist + EY * midH;
+
+    // Leader line from inner edge to badge
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(edgeX, edgeY);
+    ctx.lineTo(badgeX, badgeY);
+    ctx.strokeStyle = isDark ? mainColor : darkColor;
+    ctx.lineWidth = isHoveredSlope ? 2.5 : 1.5;
+    if (isHoveredSlope) {
+      ctx.shadowColor = mainColor;
+      ctx.shadowBlur = 8;
+    }
+    ctx.stroke();
+
+    // Small anchor dot at track edge
+    ctx.beginPath();
+    ctx.arc(edgeX, edgeY, isHoveredSlope ? 3.5 : 2.5, 0, Math.PI * 2);
+    ctx.fillStyle = isDark ? mainColor : darkColor;
+    ctx.fill();
+    ctx.restore();
 
     const badgeText = `${isUp ? "↗" : "↘"} ${isUp ? "+" : "-"}${absPercent.toFixed(1)}%`;
-    drawSlopeBadge(ctx, badgeX, badgeY, badgeText, mainColor, darkColor);
+    drawSlopeBadge(ctx, badgeX, badgeY, badgeText, mainColor, darkColor, isHoveredSlope);
+  }
+}
+
+/**
+ * 3b. Draws active corner intervals with opposite 45-degree diagonal stripes and hover highlight.
+ */
+function drawCornerIntervals(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  transform: CourseTransformResult,
+  course: Course,
+  elevProfile: ElevationProfile,
+  totalDist: number,
+  halfW: number,
+  isDark: boolean,
+  hoverMeter: number | null = null
+) {
+  if (!course.corners || course.corners.length === 0) return;
+
+  const cornerColor = "#f97316"; // Vivid orange
+
+  for (const corner of course.corners) {
+    const startM = corner.start;
+    const endM = corner.end;
+    const lenM = endM - startM;
+    if (lenM <= 10) continue;
+
+    const isHoveredCorner = hoverMeter != null && hoverMeter >= startM && hoverMeter <= endM;
+    const numSteps = Math.max(6, Math.ceil(lenM / 10));
+
+    // A. Collect perimeter points of the corner track polygon
+    const leftPts: { x: number; y: number }[] = [];
+    const rightPts: { x: number; y: number }[] = [];
+
+    for (let i = 0; i <= numSteps; i++) {
+      const d = startM + (i / numSteps) * lenM;
+      const pt = interpolateCoursePoint(transform.points, totalDist, d);
+      const h = getPixelElevation(course, d, elevProfile);
+
+      leftPts.push({
+        x: pt.x + pt.normalX * halfW + EX * h,
+        y: pt.y + pt.normalY * halfW + EY * h,
+      });
+      rightPts.push({
+        x: pt.x - pt.normalX * halfW + EX * h,
+        y: pt.y - pt.normalY * halfW + EY * h,
+      });
+    }
+
+    // B. Draw opposite 45-degree diagonal stripes within the clipped corner surface
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(leftPts[0].x, leftPts[0].y);
+    for (let i = 1; i < leftPts.length; i++) ctx.lineTo(leftPts[i].x, leftPts[i].y);
+    for (let i = rightPts.length - 1; i >= 0; i--) ctx.lineTo(rightPts[i].x, rightPts[i].y);
+    ctx.closePath();
+
+    // If hovered, subtle tint fill across whole corner
+    if (isHoveredCorner) {
+      ctx.fillStyle = cornerColor;
+      ctx.globalAlpha = 0.22;
+      ctx.fill();
+    }
+
+    ctx.clip(); // Restrict all stripes strictly to the corner surface
+
+    // Opposite 45-degree stripes:
+    // Left rail shifted forward (+tangent * halfW), right rail shifted backward (-tangent * halfW).
+    // Vector = -2 * halfW * normal - 2 * halfW * tangent (slanting in reverse direction to slopes)
+    const pxSpacing = 16;
+    const meterStep = Math.max(6, Math.round(pxSpacing / (transform.scale || 0.25)));
+    const extendM = meterStep * 2;
+
+    ctx.strokeStyle = cornerColor;
+    ctx.lineWidth = isHoveredCorner ? 9 : 7.5;
+    ctx.lineCap = "butt";
+    ctx.globalAlpha = isHoveredCorner ? 0.95 : 0.82;
+
+    if (isHoveredCorner) {
+      ctx.shadowColor = cornerColor;
+      ctx.shadowBlur = 10;
+    }
+
+    for (let d = startM - extendM; d <= endM + extendM; d += meterStep) {
+      const clampedD = Math.max(0, Math.min(totalDist, d));
+      const pt = interpolateCoursePoint(transform.points, totalDist, clampedD);
+      const h = getPixelElevation(course, clampedD, elevProfile);
+
+      // OPPOSITE 45-degree diagonal vector
+      const pLeftX = pt.x + pt.normalX * halfW + pt.tangentX * halfW + EX * h;
+      const pLeftY = pt.y + pt.normalY * halfW + pt.tangentY * halfW + EY * h;
+      const pRightX = pt.x - pt.normalX * halfW - pt.tangentX * halfW + EX * h;
+      const pRightY = pt.y - pt.normalY * halfW - pt.tangentY * halfW + EY * h;
+
+      ctx.beginPath();
+      ctx.moveTo(pLeftX, pLeftY);
+      ctx.lineTo(pRightX, pRightY);
+      ctx.stroke();
+    }
+    ctx.restore(); // Undo clip
+
+    // C. Clean boundary lines only at start and end of corner
+    ctx.save();
+    const boundaryColor = isDark ? "rgba(255, 255, 255, 0.85)" : "rgba(255, 255, 255, 0.9)";
+    ctx.strokeStyle = boundaryColor;
+    ctx.lineWidth = isHoveredCorner ? 3.5 : 2.5;
+    ctx.lineCap = "round";
+
+    if (isHoveredCorner) {
+      ctx.shadowColor = cornerColor;
+      ctx.shadowBlur = 8;
+    }
+
+    // Corner start boundary line
+    ctx.beginPath();
+    ctx.moveTo(leftPts[0].x, leftPts[0].y);
+    ctx.lineTo(rightPts[0].x, rightPts[0].y);
+    ctx.stroke();
+
+    // Corner end boundary line
+    ctx.beginPath();
+    ctx.moveTo(leftPts[numSteps].x, leftPts[numSteps].y);
+    ctx.lineTo(rightPts[numSteps].x, rightPts[numSteps].y);
+    ctx.stroke();
+    ctx.restore();
   }
 }
 
@@ -450,13 +703,18 @@ function drawSlopeBadge(
   y: number,
   text: string,
   bgColor: string,
-  borderColor: string
+  borderColor: string,
+  isHovered = false
 ) {
   ctx.save();
-  ctx.font = "bold 10px Inter, system-ui, sans-serif";
+  if (isHovered) {
+    ctx.shadowColor = bgColor;
+    ctx.shadowBlur = 10;
+  }
+  ctx.font = isHovered ? "bold 11px Inter, system-ui, sans-serif" : "bold 10px Inter, system-ui, sans-serif";
   const metrics = ctx.measureText(text);
-  const pw = metrics.width + 10;
-  const ph = 16;
+  const pw = metrics.width + (isHovered ? 14 : 10);
+  const ph = isHovered ? 19 : 16;
   const rx = x - pw / 2;
   const ry = y - ph / 2;
 
@@ -465,8 +723,8 @@ function drawSlopeBadge(
   roundRect(ctx, rx, ry, pw, ph, 8);
   ctx.fill();
 
-  ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = isHovered ? "#ffffff" : borderColor;
+  ctx.lineWidth = isHovered ? 2 : 1;
   ctx.stroke();
 
   ctx.fillStyle = "#ffffff";
@@ -600,7 +858,8 @@ function drawMilestonesAndCorners(
   elevProfile: ElevationProfile,
   totalDist: number,
   halfW: number,
-  isDark: boolean
+  isDark: boolean,
+  hoverMeter: number | null = null
 ) {
   // A. Start Flag (Red Flag at meter 0)
   const startPt = interpolateCoursePoint(transform.points, totalDist, 0);
@@ -615,6 +874,7 @@ function drawMilestonesAndCorners(
   // C. Corner Badges (Orange circle with corner numbers 1, 2, 3, 4)
   if (course.corners && course.corners.length > 0) {
     for (const corner of course.corners) {
+      const isHoveredCorner = hoverMeter != null && hoverMeter >= corner.start && hoverMeter <= corner.end;
       const midM = (corner.start + corner.end) / 2;
       const pt = interpolateCoursePoint(transform.points, totalDist, midM);
       const h = getPixelElevation(course, midM, elevProfile);
@@ -623,7 +883,7 @@ function drawMilestonesAndCorners(
       const bx = pt.x + pt.normalX * badgeOffset + EX * h;
       const by = pt.y + pt.normalY * badgeOffset + EY * h;
 
-      drawCornerBadge(ctx, bx, by, cornerNum);
+      drawCornerBadge(ctx, bx, by, cornerNum, isHoveredCorner);
     }
   }
 
@@ -739,22 +999,35 @@ function drawFinishFlag(
   ctx.restore();
 }
 
-function drawCornerBadge(ctx: CanvasRenderingContext2D, x: number, y: number, cornerNum: number) {
+function drawCornerBadge(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  cornerNum: number,
+  isHovered = false
+) {
   ctx.save();
-  const radius = 10;
+  const radius = isHovered ? 13 : 10;
+
+  if (isHovered) {
+    ctx.shadowColor = "#f97316";
+    ctx.shadowBlur = 12;
+  }
+
   ctx.beginPath();
   ctx.arc(x, y, radius, 0, Math.PI * 2);
   ctx.fillStyle = "#f97316";
   ctx.fill();
+
   ctx.strokeStyle = "#ffffff";
-  ctx.lineWidth = 1.5;
+  ctx.lineWidth = isHovered ? 2.5 : 1.5;
   ctx.stroke();
 
   ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 10px Inter, system-ui, sans-serif";
+  ctx.font = isHovered ? "bold 11px Inter, system-ui, sans-serif" : "bold 10px Inter, system-ui, sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`C${cornerNum || "?"}`, x, y);
+  ctx.fillText(`C${cornerNum || "?"}`, x, y + 0.5);
   ctx.restore();
 }
 
@@ -867,7 +1140,12 @@ function drawHoverMarker(
     ? `${activeSlope.slope > 0 ? "↗ +" : "↘ -"}${Math.abs(activeSlope.slope / 10000).toFixed(1)}%`
     : "Flat (0%)";
 
-  const hudText = `${Math.round(hoverMeter)}m (${remaining}m left) • ${slopeText}`;
+  const activeCorner = course.corners?.find(
+    (c) => hoverMeter >= c.start && hoverMeter <= c.end
+  );
+  const cornerText = activeCorner ? ` • Corner ${activeCorner.number ?? ""}` : "";
+
+  const hudText = `${Math.round(hoverMeter)}m (${remaining}m left) • ${slopeText}${cornerText}`;
 
   ctx.font = "bold 11px Inter, system-ui, sans-serif";
   const metrics = ctx.measureText(hudText);

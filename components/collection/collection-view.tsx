@@ -5,7 +5,7 @@ import { api, type CardIndexEntry, type CharacterIndexEntry } from "../../lib/ap
 import { useOwnedCards } from "../../lib/use-owned-cards";
 import { useOwnedUmas } from "../../lib/use-owned-umas";
 import ImportModal from "../import-modal";
-import type { SubTab, CardTypeKey, OwnershipFilter } from "./types";
+import type { SubTab, CardTypeKey } from "./types";
 import { CardsCollectionTab } from "./cards-collection-tab";
 import { CharactersCollectionTab } from "./characters-collection-tab";
 
@@ -21,7 +21,6 @@ export default function CollectionView() {
   const [cardType, setCardType] = useState<CardTypeKey>("all");
   const [cardRarity, setCardRarity] = useState<number | "all">("all");
   const [charaRarity, setCharaRarity] = useState<number | "all">("all");
-  const [ownership, setOwnership] = useState<OwnershipFilter>("all");
 
   const {
     getLimitBreak,
@@ -84,15 +83,9 @@ export default function CollectionView() {
         return false;
       }
 
-      // Ownership filter
-      const lb = getLimitBreak(card.id);
-      if (ownership === "owned" && lb === undefined) return false;
-      if (ownership === "unowned" && lb !== undefined) return false;
-      if (ownership === "maxed" && lb !== 4) return false;
-
       return true;
     });
-  }, [cards, query, cardType, cardRarity, ownership, getLimitBreak]);
+  }, [cards, query, cardType, cardRarity]);
 
   // Filtered Characters
   const filteredCharacters = useMemo(() => {
@@ -119,15 +112,9 @@ export default function CollectionView() {
         return false;
       }
 
-      // Ownership filter
-      const details = getUmaDetails(chara.id);
-      if (ownership === "owned" && !details) return false;
-      if (ownership === "unowned" && details) return false;
-      if (ownership === "maxed" && (!details || details[0] !== 5)) return false;
-
       return true;
     });
-  }, [characters, query, charaRarity, ownership, getUmaDetails]);
+  }, [characters, query, charaRarity]);
 
   if (loading) {
     return (
@@ -245,7 +232,7 @@ export default function CollectionView() {
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/70 p-3.5 shadow-2xs backdrop-blur-xs">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           {/* Search Box */}
-          <div className="relative w-full sm:flex-1">
+          <div className="relative w-full">
             <input
               type="text"
               value={query}
@@ -266,31 +253,6 @@ export default function CollectionView() {
                 ✕
               </button>
             )}
-          </div>
-
-          {/* Ownership Filter */}
-          <div className="flex items-center gap-1 shrink-0 overflow-x-auto w-full sm:w-auto">
-            {(
-              [
-                { id: "all", label: "All" },
-                { id: "owned", label: "Owned" },
-                { id: "unowned", label: "Unowned" },
-                { id: "maxed", label: subTab === "cards" ? "MLB Only" : "5★ Only" },
-              ] as const
-            ).map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                onClick={() => setOwnership(f.id)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
-                  ownership === f.id
-                    ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xs font-semibold"
-                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-                }`}
-              >
-                {f.label}
-              </button>
-            ))}
           </div>
         </div>
 

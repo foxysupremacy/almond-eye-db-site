@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { CardIndexEntry } from "../../lib/api";
 import CardTypeIcon, { formatCardType } from "../card-type-icon";
 import { CARD_TYPES, type CardTypeKey } from "./types";
@@ -26,6 +27,14 @@ export function CardsCollectionTab({
   onSetLimitBreak,
   onRemoveCard,
 }: CardsCollectionTabProps) {
+  const ownedCards = useMemo(() => {
+    return filteredCards.filter((c) => getLimitBreak(c.id) !== undefined);
+  }, [filteredCards, getLimitBreak]);
+
+  const unownedCards = useMemo(() => {
+    return filteredCards.filter((c) => getLimitBreak(c.id) === undefined);
+  }, [filteredCards, getLimitBreak]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Secondary Filters: Type & Rarity */}
@@ -79,16 +88,50 @@ export function CardsCollectionTab({
           No cards matched your filter criteria.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-          {filteredCards.map((card) => (
-            <SupportCardItem
-              key={card.id}
-              card={card}
-              limitBreak={getLimitBreak(card.id)}
-              onSetLimitBreak={onSetLimitBreak}
-              onRemoveCard={onRemoveCard}
-            />
-          ))}
+        <div className="flex flex-col gap-6">
+          {/* Owned Cards Section */}
+          {ownedCards.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+              {ownedCards.map((card) => (
+                <SupportCardItem
+                  key={card.id}
+                  card={card}
+                  limitBreak={getLimitBreak(card.id)}
+                  onSetLimitBreak={onSetLimitBreak}
+                  onRemoveCard={onRemoveCard}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Divider between Owned and Unowned */}
+          {ownedCards.length > 0 && unownedCards.length > 0 && (
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700/80" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white dark:bg-zinc-900 px-3 py-1 rounded-full border border-zinc-200/90 dark:border-zinc-800 text-xs font-semibold text-zinc-500 dark:text-zinc-400 shadow-2xs">
+                  Unowned Support Cards ({unownedCards.length})
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Unowned Cards Section */}
+          {unownedCards.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+              {unownedCards.map((card) => (
+                <SupportCardItem
+                  key={card.id}
+                  card={card}
+                  limitBreak={getLimitBreak(card.id)}
+                  onSetLimitBreak={onSetLimitBreak}
+                  onRemoveCard={onRemoveCard}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

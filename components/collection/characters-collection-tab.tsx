@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import type { CharacterIndexEntry } from "../../lib/api";
 import { CharacterItem } from "./character-item";
 
@@ -22,6 +23,14 @@ export function CharactersCollectionTab({
   onSetUmaDetails,
   onRemoveUma,
 }: CharactersCollectionTabProps) {
+  const ownedCharacters = useMemo(() => {
+    return filteredCharacters.filter((c) => getUmaDetails(c.id) !== undefined);
+  }, [filteredCharacters, getUmaDetails]);
+
+  const unownedCharacters = useMemo(() => {
+    return filteredCharacters.filter((c) => getUmaDetails(c.id) === undefined);
+  }, [filteredCharacters, getUmaDetails]);
+
   return (
     <div className="flex flex-col gap-4">
       {/* Secondary Filters: Initial Stars */}
@@ -60,16 +69,50 @@ export function CharactersCollectionTab({
           No characters matched your filter criteria.
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-          {filteredCharacters.map((chara) => (
-            <CharacterItem
-              key={chara.id}
-              character={chara}
-              details={getUmaDetails(chara.id)}
-              onSetUmaDetails={onSetUmaDetails}
-              onRemoveUma={onRemoveUma}
-            />
-          ))}
+        <div className="flex flex-col gap-6">
+          {/* Owned Characters Section */}
+          {ownedCharacters.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+              {ownedCharacters.map((chara) => (
+                <CharacterItem
+                  key={chara.id}
+                  character={chara}
+                  details={getUmaDetails(chara.id)}
+                  onSetUmaDetails={onSetUmaDetails}
+                  onRemoveUma={onRemoveUma}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Divider between Owned and Unowned */}
+          {ownedCharacters.length > 0 && unownedCharacters.length > 0 && (
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700/80" />
+              </div>
+              <div className="relative flex justify-center">
+                <span className="bg-white dark:bg-zinc-900 px-3 py-1 rounded-full border border-zinc-200/90 dark:border-zinc-800 text-xs font-semibold text-zinc-500 dark:text-zinc-400 shadow-2xs">
+                  Unowned Characters ({unownedCharacters.length})
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Unowned Characters Section */}
+          {unownedCharacters.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+              {unownedCharacters.map((chara) => (
+                <CharacterItem
+                  key={chara.id}
+                  character={chara}
+                  details={getUmaDetails(chara.id)}
+                  onSetUmaDetails={onSetUmaDetails}
+                  onRemoveUma={onRemoveUma}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
