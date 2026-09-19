@@ -185,6 +185,11 @@ function mapEvalResult(
       tier = "A";
       break;
     case "late_speed":
+      // Late target-speed boosts stack onto the spurt ceiling (observed max
+      // ~29 m/s), so they must not rank below mid-race speed.
+      tier = "A";
+      break;
+    case "position_accel":
       tier = "B";
       break;
     case "recovery":

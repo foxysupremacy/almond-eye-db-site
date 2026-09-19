@@ -1,4 +1,5 @@
 import type { Course } from "../skill-engine/types";
+import { CourseHelpers } from "../skill-engine/course";
 import type { RunningStyle } from "../deck/types";
 import { getInheritableSkillForGold } from "../skill-rarity";
 import type {
@@ -55,12 +56,7 @@ export function evaluateSkillForTrack(
   let maxAccelVal = 0;
   let maxSpeedVal = 0;
 
-  const rawConditions: string[] = [];
-  const rawPreconditions: string[] = [];
-
   for (const group of skill.conditionGroups ?? []) {
-    if (group.condition) rawConditions.push(group.condition);
-    if (group.precondition) rawPreconditions.push(group.precondition);
     if (group.base_time && group.base_time > maxBaseTime) {
       maxBaseTime = group.base_time;
     }
@@ -186,7 +182,27 @@ export function evaluateSkillForTrack(
   let score = 70;
   let verdictSummary = "";
 
-  const allCondStr = rawConditions.join(" ") + " " + rawPreconditions.join(" ");
+  // Trap checks (style/rank/slope) only consider groups that can actually fire
+  // on this course: a rank gate on a group whose zones are empty must not
+  // poison the whole skill. When the zone array is not aligned 1:1 with
+  // conditionGroups, every group is kept (legacy behavior).
+  const zonesAligned = zones.length === (skill.conditionGroups?.length ?? 0);
+  const trapConditions: string[] = [];
+  const trapPreconditions: string[] = [];
+  (skill.conditionGroups ?? []).forEach((group, idx) => {
+    if (zonesAligned && (zones[idx]?.regions.length ?? 0) === 0) return;
+    if (group.condition) trapConditions.push(group.condition);
+    if (group.precondition) trapPreconditions.push(group.precondition);
+  });
+  const allCondStr = [...trapConditions, ...trapPreconditions].join(" ");
+
+  // Fraction (0–1) of the style's rank envelope covered by the skill's rank window.
+  let positionOverlap: number | undefined;
+
+  // Trap deductions are accumulated here and applied AFTER category
+  // classification: the category branches assign (not add to) the base score,
+  // which would otherwise overwrite the deductions.
+  let trapScorePenalty = 0;
 
   // Check Dynamic 6: Style & Rank Trap
   if (runningStyle) {
@@ -202,16 +218,19 @@ export function evaluateSkillForTrack(
           title: `Requires ${STYLE_NAMES[reqStyle] ?? "Another Style"}`,
           description: `This skill only functions for ${STYLE_NAMES[reqStyle] ?? "another style"}. Ineffective for your selected ${STYLE_NAMES[runningStyle]}.`,
         });
-        score -= 50;
+        trapScorePenalty += 50;
       }
     }
 
-    // Rank check
+    // Rank check — graded against the style's expected rank envelope
+    // (Term 4 of docs/skills-spurt.md): 0 overlap is a hard trap, ≤25% is a
+    // marginal window, ≤50% is partial coverage.
     const { minRank, maxRank, hasOrderCondition } = parseRankRequirements(allCondStr, racerCount);
     if (hasOrderCondition) {
       const [expMin, expMax] = STYLE_EXPECTED_RANKS[runningStyle] ?? [1, racerCount];
-      const overlaps = Math.max(0, Math.min(maxRank, expMax) - Math.max(minRank, expMin) + 1);
-      if (overlaps === 0) {
+      const overlapRanks = Math.max(0, Math.min(maxRank, expMax) - Math.max(minRank, expMin) + 1);
+      positionOverlap = overlapRanks / (expMax - expMin + 1);
+      if (overlapRanks === 0) {
         specialEffects.push({
           id: "rank_mismatch",
           type: "warning",
@@ -219,7 +238,25 @@ export function evaluateSkillForTrack(
           title: `Strict Rank: ${minRank}–${maxRank} (${racerCount} umas)`,
           description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}, which does not overlap this skill's trigger window.`,
         });
-        score -= 25;
+        trapScorePenalty += 25;
+      } else if (positionOverlap <= 0.25) {
+        specialEffects.push({
+          id: "rank_weak",
+          type: "warning",
+          badge: "Weak Position Match",
+          title: `Marginal Rank Window: ${minRank}–${maxRank} (${racerCount} umas)`,
+          description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; only ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window. Low activation odds.`,
+        });
+        trapScorePenalty += 25;
+      } else if (positionOverlap <= 0.5) {
+        specialEffects.push({
+          id: "rank_weak",
+          type: "info",
+          badge: "Partial Position Match",
+          title: `Partial Rank Window: ${minRank}–${maxRank} (${racerCount} umas)`,
+          description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window.`,
+        });
+        trapScorePenalty += 12;
       }
     }
   }
@@ -260,44 +297,46 @@ export function evaluateSkillForTrack(
 
   let accelEvaluated = false;
   if (hasAccel) {
-    // If the skill has multiple condition groups, isolate trigger timing for groups containing acceleration
-    let accelTriggerStart = triggerStartMeters;
-    if (skill.conditionGroups && zones && zones.length === skill.conditionGroups.length) {
-      const accelRegions: Array<{ start: number; end: number }> = [];
-      skill.conditionGroups.forEach((g, idx) => {
+    // Trigger regions of every group that carries acceleration.
+    const accelGroupsAligned =
+      !!skill.conditionGroups && zones.length === (skill.conditionGroups?.length ?? 0);
+    const accelRegions: Array<{ start: number; end: number }> = [];
+    if (accelGroupsAligned) {
+      skill.conditionGroups!.forEach((g, idx) => {
         const hasGroupAccel = (g.effects ?? []).some((e: any) => e.type === 31);
         if (hasGroupAccel && zones[idx]?.regions) {
           accelRegions.push(...zones[idx].regions);
         }
       });
-      if (accelRegions.length > 0) {
-        accelTriggerStart = Math.min(...accelRegions.map((r) => r.start));
-      } else {
-        accelTriggerStart = null;
-      }
+    }
+
+    // Classify by the BEST firing opportunity across accel groups, not merely
+    // the earliest: a skill with one early group and one spurt-perfect group
+    // must not be sunk by the early one.
+    const midRaceStart = CourseHelpers.phaseStart(course, 1);
+    const earliestStartWithin = (lo: number, hi: number) => {
+      const starts = accelRegions.map((r) => r.start).filter((s) => s >= lo && s <= hi);
+      return starts.length > 0 ? Math.min(...starts) : null;
+    };
+    let accelTriggerStart: number | null;
+    if (accelGroupsAligned) {
+      accelTriggerStart =
+        earliestStartWithin(spurtMeters - 15, spurtMeters + 50) ?? // optimal spurt window
+        earliestStartWithin(spurtMeters + 50, spurtMeters + 140) ?? // delayed window
+        earliestStartWithin(midRaceStart, spurtMeters - 15) ?? // pre-spurt positioning window
+        earliestStartWithin(spurtMeters + 140, Number.POSITIVE_INFINITY) ?? // after the accel phase
+        (accelRegions.length > 0
+          ? Math.min(...accelRegions.map((r) => r.start)) // before mid-race: dead early
+          : null); // accel groups all dead on this course → no accel classification
+    } else {
+      accelTriggerStart = triggerStartMeters; // legacy fallback when zones are misaligned
     }
     const accelDelay = accelTriggerStart !== null ? accelTriggerStart - spurtMeters : delayFromSpurt;
 
-    if (accelTriggerStart !== null) {
+    if (accelTriggerStart !== null && accelDelay !== null) {
       accelEvaluated = true;
-      // Ahead of Spurt Point (Pre-late race, with 15m tolerance for course rounding):
-      if (accelDelay !== null && accelDelay < -15) {
-        category = "dead_accel";
-        stars = 1;
-        tier = "F";
-        score = 10;
-        verdictSummary = `Dead Accel: triggers early at ${Math.round(accelTriggerStart)}m, well before the 2/3 spurt line (${spurtMeters}m). Speed is already capped at mid-race speed, completely wasting the acceleration.`;
-        specialEffects.push({
-          id: "dead_accel_dynamic",
-          type: "error",
-          badge: "Dead Accel",
-          title: "Fires Before Spurt Line",
-          description: `Triggers at ${Math.round(accelTriggerStart)}m before late race begins (${spurtMeters}m). Zero effect on sprint acceleration.`,
-          meters: `−${Math.round(spurtMeters - accelTriggerStart)}m early`,
-        });
-      }
       // Right at or closely after the Spurt Point (-15m to 50m):
-      else if (accelDelay !== null && accelDelay >= -15 && accelDelay <= 50) {
+      if (accelDelay >= -15 && accelDelay <= 50) {
         category = "fastest_accel";
         stars = 5;
         tier = "S";
@@ -314,7 +353,7 @@ export function evaluateSkillForTrack(
         });
       }
       // Delayed Accel (51m to 140m):
-      else if (accelDelay !== null && accelDelay > 50 && accelDelay <= 140) {
+      else if (accelDelay > 50 && accelDelay <= 140) {
         category = "delayed_accel";
         stars = 3;
         tier = "C";
@@ -329,20 +368,54 @@ export function evaluateSkillForTrack(
           meters: `+${Math.round(accelDelay)}m delay`,
         });
       }
+      // Position Accel: pre-spurt burst inside the mid-race (after the 1/6 mark).
+      // Adds nothing to sprint acceleration, but the burst wins the position
+      // battle going into the spurt — valuable for every running style.
+      else if (accelDelay < -15 && accelTriggerStart >= midRaceStart) {
+        category = "position_accel";
+        stars = 3;
+        tier = "B";
+        score = 72;
+        verdictSummary = `Position Accel: activates at ${Math.round(accelTriggerStart)}m, ${Math.round(spurtMeters - accelTriggerStart)}m before the 2/3 spurt line. Adds nothing to sprint acceleration, but the mid-race burst helps take or hold position going into the spurt.`;
+        specialEffects.push({
+          id: "position_accel_dynamic",
+          type: "info",
+          badge: "Position Accel",
+          title: "Mid-Race Positioning Burst",
+          description: `Fires ${Math.round(spurtMeters - accelTriggerStart)}m before late race begins (${spurtMeters}m). Useful for the position battle, not for the sprint itself.`,
+          meters: `−${Math.round(spurtMeters - accelTriggerStart)}m early`,
+        });
+      }
+      // Ahead of Spurt Point, before the mid-race (with 15m tolerance for course rounding):
+      else if (accelDelay < -15) {
+        category = "dead_accel";
+        stars = 1;
+        tier = "F";
+        score = 10;
+        verdictSummary = `Dead Accel: triggers early at ${Math.round(accelTriggerStart)}m, well before the 2/3 spurt line (${spurtMeters}m). Speed is already capped at mid-race speed, completely wasting the acceleration.`;
+        specialEffects.push({
+          id: "dead_accel_dynamic",
+          type: "error",
+          badge: "Dead Accel",
+          title: "Fires Before Spurt Line",
+          description: `Triggers at ${Math.round(accelTriggerStart)}m before late race begins (${spurtMeters}m). Zero effect on sprint acceleration.`,
+          meters: `−${Math.round(spurtMeters - accelTriggerStart)}m early`,
+        });
+      }
       // Dead Accel (>140m):
       else {
         category = "dead_accel";
         stars = 1;
         tier = "F";
         score = 15;
-        verdictSummary = `Dead Accel: activates at ${Math.round(accelTriggerStart)}m (+${Math.round(accelDelay ?? 0)}m delay). Acceleration ramp is already complete; top speed is reached, giving this skill near-zero utility.`;
+        verdictSummary = `Dead Accel: activates at ${Math.round(accelTriggerStart)}m (+${Math.round(accelDelay)}m delay). Acceleration ramp is already complete; top speed is reached, giving this skill near-zero utility.`;
         specialEffects.push({
           id: "dead_accel_dynamic",
           type: "error",
           badge: "Dead Accel",
           title: "Fires After Acceleration Phase",
-          description: `Triggers ${Math.round(accelDelay ?? 0)}m after the 2/3 line. The horse has already at maximum sprint speed.`,
-          meters: `+${Math.round(accelDelay ?? 0)}m delay`,
+          description: `Triggers ${Math.round(accelDelay)}m after the 2/3 line. The horse has already at maximum sprint speed.`,
+          meters: `+${Math.round(accelDelay)}m delay`,
         });
       }
     }
@@ -379,7 +452,7 @@ export function evaluateSkillForTrack(
       stars = 4;
       tier = "A";
       score = Math.max(score, 85);
-      verdictSummary = `Late-Race Speed: activates at ${Math.round(triggerStartMeters)}m during the final stretch to boost sprint top speed.`;
+      verdictSummary = `Late-Race Speed: activates at ${Math.round(triggerStartMeters)}m during the final stretch to boost sprint top speed. Raises the spurt target-speed ceiling (observed max ~29 m/s).`;
     } else if (triggerStartMeters !== null && triggerStartMeters < spurtMeters * 0.33) {
       category = "early_speed";
       stars = 3;
@@ -416,6 +489,9 @@ export function evaluateSkillForTrack(
     verdictSummary = "Strategy skill providing lane movement, visibility, or tactical utility.";
   }
   }
+
+  // Apply style/rank trap deductions after category classification (see above).
+  score -= trapScorePenalty;
 
   // 6. Detailed Mathematical Breakdown
   const baseDurationSeconds = maxBaseTime > 0 ? maxBaseTime / 10000 : 0;
@@ -471,6 +547,7 @@ export function evaluateSkillForTrack(
     primaryBadge,
     verdictSummary,
     specialEffects,
+    positionOverlap,
     timingAnalysis: {
       spurtMeters,
       triggerStartMeters,

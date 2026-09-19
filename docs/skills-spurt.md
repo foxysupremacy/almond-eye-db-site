@@ -338,3 +338,19 @@ $$\text{Final Score} = (100.85 \times 0.70) - 30 = 70.60 - 30 = \mathbf{40.60}$$
 | **Alt Top Road** | Joy to the World | All Styles | **`69.50`** | **星3** | Exact Match (星3) |
 | **Fuji Kiseki** | Gloire à toi! | All Styles | **`70.96`** | **星3 / 星4** | Exact Match (星4) |
 | **Xmas Oguri Cap** | 聖夜のミラクルラン！ | All Styles | **`40.60`** | **星2** | Exact Match (星2) |
+---
+
+## 4. Implementation Notes (2026-09)
+
+How this document maps onto the shipped code (`lib/evaluator/`, `lib/parenting/skill-evaluator.ts`, `lib/recommendation-engine.ts`):
+
+- **Chaser envelope widened to 4th–9th** (`STYLE_EXPECTED_RANKS` in `lib/evaluator/constants.ts`) to match the current game version. Runner [1,2], Leader [2,5], Betweener [4,7], Great Escape [1,1] unchanged; room size stays fixed at 9 umas.
+- **Positional Overlap (Term 4) is graded, not binary.** `parseRankRequirements` now also parses `order_rate_inXX` / `order_rate_outXX` and unions repeated `order==N` matches. The evaluator computes `positionOverlap = |R_skill ∩ R_style| / |R_style|` and applies:
+  - `0` → `rank_mismatch` trap — the skill is dropped outright from `evaluateSkillActivation`, unique evaluation (F), and card recommendations.
+  - `≤ 25%` → `rank_weak` warning, −25 score / −6 tactical bonus ("Weak Position Match").
+  - `≤ 50%` → `rank_weak` info, −12 score / −3 tactical bonus ("Partial Position Match").
+  - `> 50%` → no penalty.
+- **Trap checks are zone-aligned**: conditions of groups whose zones are empty on the selected course no longer poison the whole skill (a rank gate on a group that can never fire is ignored).
+- **Position Accel** (new category): acceleration firing before the 2/3 spurt line but after the 1/6 mid-race mark is no longer Dead Accel F for any style. It is reclassified as `position_accel` (3★, tier B, badge "Position Accel") — the mid-race burst wins the position battle going into the spurt even though it contributes nothing to sprint acceleration. Accel firing before the 1/6 mark stays Dead Accel F.
+- **Best-window classification**: skills with multiple accel groups are classified by their best firing opportunity (optimal spurt window → delayed window → positioning window), not by the earliest group — a spurt-perfect group is no longer sunk by an early sibling group.
+- **Late-race speed is not demoted**: `late_speed` maps to tier A in the legacy unique evaluation, because target-speed boosts that are active during the spurt stack onto the ceiling (max observed ~29 m/s).

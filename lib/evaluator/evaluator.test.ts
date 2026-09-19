@@ -90,6 +90,91 @@ describe("skill-evaluator", () => {
     expect(result.specialEffects.some((e) => e.id === "rank_mismatch")).toBe(true);
   });
 
+  it("flags Weak Position Match when the rank window barely overlaps the style envelope", () => {
+    const rankSixSkill = {
+      id: 999994,
+      nameEn: "Sixth Place Speed",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase>=2&corner!=0&order==6",
+          base_time: 24000,
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+
+    const zones = [{ isRandom: false, regions: [{ start: 1467, end: 1550 }], earliestFire: null }];
+
+    // order==6 vs Betweener [4,7]: overlap 1/4 = 25% → warning, not a hard trap
+    const result = evaluateSkillForTrack(rankSixSkill, KYOTO_2200M, 3, 9, false, zones);
+    const weak = result.specialEffects.find((e) => e.id === "rank_weak");
+    expect(weak?.type).toBe("warning");
+    expect(result.positionOverlap).toBe(0.25);
+    expect(result.specialEffects.some((e) => e.id === "rank_mismatch")).toBe(false);
+  });
+
+  it("flags Partial Position Match at 50% envelope coverage", () => {
+    const doberLikeSkill = {
+      id: 999993,
+      nameEn: "Dober-like Window",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase>=2&corner!=0&order_rate>=50&order_rate<=70",
+          base_time: 24000,
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+
+    const zones = [{ isRandom: false, regions: [{ start: 1467, end: 1550 }], earliestFire: null }];
+
+    // Ranks 5–6 vs Betweener [4,7]: overlap 2/4 = 50% → info-level note
+    const result = evaluateSkillForTrack(doberLikeSkill, KYOTO_2200M, 3, 9, false, zones);
+    const weak = result.specialEffects.find((e) => e.id === "rank_weak");
+    expect(weak?.type).toBe("info");
+    expect(result.positionOverlap).toBe(0.5);
+    expect(result.specialEffects.some((e) => e.id === "rank_mismatch")).toBe(false);
+  });
+
+  it("widens the Chaser envelope to 4th–9th (current game version)", () => {
+    const zones = [{ isRandom: false, regions: [{ start: 1467, end: 1550 }], earliestFire: null }];
+
+    // order==4 vs the NEW Chaser envelope [4,9]: no longer a hard trap
+    const rankFourSkill = {
+      id: 999992,
+      nameEn: "Fourth Place Accel",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase>=2&corner!=0&order==4",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+      ],
+    };
+    const asChaser = evaluateSkillForTrack(rankFourSkill, KYOTO_2200M, 4, 9, false, zones);
+    expect(asChaser.specialEffects.some((e) => e.id === "rank_mismatch")).toBe(false);
+    expect(Math.abs((asChaser.positionOverlap ?? 0) - 1 / 6)).toBeLessThan(1e-9);
+
+    // order==1 still cannot overlap [4,9]
+    const rankOneSkill = {
+      id: 999991,
+      nameEn: "First Place Accel",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase>=2&corner!=0&order==1",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+      ],
+    };
+    const trapped = evaluateSkillForTrack(rankOneSkill, KYOTO_2200M, 4, 9, false, zones);
+    expect(trapped.specialEffects.some((e) => e.id === "rank_mismatch")).toBe(true);
+  });
+
   it("detects Carry-Over (終盤接続) for mid-race speed skills on Kyoto downhill", () => {
     const downhillSkill = {
       id: 110591,
@@ -154,6 +239,84 @@ describe("skill-evaluator", () => {
     expect(result.stars).toBe(1);
     expect(result.tier).toBe("F");
     expect(result.specialEffects.some((e) => e.id === "dead_accel_dynamic")).toBe(true);
+  });
+
+  it("reclassifies pre-spurt mid-race accel as Position Accel (tier B) for every style", () => {
+    const midRaceAccel = {
+      id: 999997,
+      nameEn: "Mid-Race Position Accel",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase==1&corner!=0",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+      ],
+    };
+
+    // Mid-race: 1100m is after the 1/6 mark (366.7m) and 367m before the spurt line
+    const zones = [{ isRandom: false, regions: [{ start: 1100, end: 1300 }], earliestFire: null }];
+
+    for (const style of [1, 2, 3, 4] as const) {
+      const result = evaluateSkillForTrack(midRaceAccel, KYOTO_2200M, style, 9, false, zones);
+      expect(result.category).toBe("position_accel");
+      expect(result.tier).toBe("B");
+      expect(result.stars).toBe(3);
+      expect(result.specialEffects.some((e) => e.id === "position_accel_dynamic")).toBe(true);
+    }
+  });
+
+  it("classifies by the best accel window across groups (early group must not sink a spurt-perfect group)", () => {
+    const hybridAccel = {
+      id: 999996,
+      nameEn: "Hybrid Accel",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase==1&corner!=0",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+        {
+          condition: "phase>=2&corner!=0",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+      ],
+    };
+
+    const zones = [
+      { isRandom: false, regions: [{ start: 1100, end: 1300 }], earliestFire: null },
+      { isRandom: false, regions: [{ start: 1467, end: 1550 }], earliestFire: null },
+    ];
+
+    // Previously the earliest group (1100m) dragged the whole skill into Dead Accel F
+    const result = evaluateSkillForTrack(hybridAccel, KYOTO_2200M, 1, 9, false, zones);
+    expect(result.category).toBe("fastest_accel");
+    expect(result.tier).toBe("S");
+  });
+
+  it("keeps Dead Accel F for accel firing before the mid-race (1/6 mark)", () => {
+    const earlyAccel = {
+      id: 999995,
+      nameEn: "Early Race Accel",
+      rarity: 2,
+      conditionGroups: [
+        {
+          condition: "phase==0",
+          base_time: 24000,
+          effects: [{ type: 31, value: 2000 }],
+        },
+      ],
+    };
+
+    // 300m is before the 1/6 mark (366.7m on 2200m)
+    const zones = [{ isRandom: false, regions: [{ start: 300, end: 360 }], earliestFire: null }];
+
+    const result = evaluateSkillForTrack(earlyAccel, KYOTO_2200M, 1, 9, false, zones);
+    expect(result.category).toBe("dead_accel");
+    expect(result.tier).toBe("F");
   });
 
   it("detects Delayed Accel when acceleration triggers 80m late", () => {

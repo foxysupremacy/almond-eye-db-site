@@ -26,7 +26,8 @@ const kyoto2200Course: Course = {
 
 describe("evaluateUniqueSkill — style/position mismatch filter", () => {
   // Almond Eye's unique: clean S with Runner, rank-trapped for Chaser
-  // (its strict rank window never overlaps a Chaser's expected 5th–9th place).
+  // (its accel group requires order<=3, which never overlaps a Chaser's
+  // expected 4th–9th place under the current game version).
   const ALMOND_EYE_UNIQUE = 101291;
 
   test("a unique whose rank window is unreachable under the trainee style is F (rank_invalid)", () => {

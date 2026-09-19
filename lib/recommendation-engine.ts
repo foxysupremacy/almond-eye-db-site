@@ -121,6 +121,7 @@ export const SPEED_TACTICAL_CATEGORIES: readonly SkillTacticalCategory[] = [
   "fastest_accel",
   "carry_over",
   "delayed_accel",
+  "position_accel",
   "dead_accel",
   "current_speed",
   "mid_speed",
@@ -281,9 +282,12 @@ export function recommendCardsForParent({
           tacticalBonus = -50;
           tacticalLabel = "BANNED";
           tacticalBadgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800";
-        } else if (isStyleMismatch) {
-          tacticalBonus = -12;
         } else {
+          // Style/rank traps are dropped outright (parity with
+          // evaluateSkillActivation): a skill that can never trigger under the
+          // trainee's style or rank envelope is dead weight, not a low pick.
+          if (isStyleMismatch || isRankMismatch) return null;
+
           switch (evalResult.category) {
             case "fastest_accel":
               tacticalBonus = source === "hint" ? 18 : 14;
@@ -297,6 +301,9 @@ export function recommendCardsForParent({
             case "late_speed":
             case "mid_speed":
               tacticalBonus = source === "hint" ? 5 : 4;
+              break;
+            case "position_accel":
+              tacticalBonus = source === "hint" ? 4 : 3;
               break;
             case "recovery":
             case "passive":
@@ -316,8 +323,10 @@ export function recommendCardsForParent({
               break;
           }
 
-          if (isRankMismatch) {
-            tacticalBonus -= 4;
+          // Graded position-overlap penalties (mirror the evaluator's rank_weak)
+          const rankWeak = evalResult.specialEffects.find((e) => e.id === "rank_weak");
+          if (rankWeak) {
+            tacticalBonus -= rankWeak.type === "warning" ? 6 : 3;
           }
         }
       }

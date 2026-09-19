@@ -8,6 +8,32 @@ import {
 } from "./recommendation-engine";
 import type { Course } from "./skill-engine/types";
 
+// Kyoto 2200m Outer — spurt line at 1467m, corner 3 spans 1300–1550m
+const KYOTO_2200M_COURSE: Course = {
+  id: 10808,
+  terrain: 1,
+  turn: 1,
+  distance: 3,
+  inout: 3,
+  length: 2200,
+  spurtStart: { meters: 1467 },
+  corners: [
+    { start: 400, end: 600, number: 1 },
+    { start: 600, end: 800, number: 2 },
+    { start: 1300, end: 1550, number: 3 },
+    { start: 1550, end: 1797, number: 4 },
+  ],
+  straights: [
+    { start: 0, end: 400, frontType: 1 },
+    { start: 800, end: 1300, frontType: 2 },
+    { start: 1797, end: 2200, frontType: 1 },
+  ],
+  slopes: [
+    { start: 1050, end: 1375, slope: 10000 },
+    { start: 1375, end: 1525, slope: -20000 },
+  ],
+};
+
 describe("recommendation-engine", () => {
   it("correctly filters skills by running style", () => {
     // 200531: Fortune Favors the Fast (Runner skill) -> styles: [1]
@@ -482,6 +508,137 @@ describe("recommendation-engine", () => {
       expect(trapCard!.score).toBeLessThan(0);
     } finally {
       delete (skillMetaMap as any)[betweenerOnlySkillId];
+      delete (cardMetaMap as any)[testCardId];
+    }
+  });
+
+  it("drops style-trap skills from recommendations when the skill could still fire", () => {
+    const orStyleSkillId = 888004;
+    const testCardId = 888104;
+
+    // OR condition keeps the zones alive for every style (phase>=2 branch),
+    // so the skill evaluates as firing — but the running_style==3 gate is a
+    // hard style trap for a Runner and must be dropped, not just penalized.
+    (skillMetaMap as any)[orStyleSkillId] = {
+      nameEn: "Backline Secret",
+      nameJp: "後方秘術",
+      rarity: 1,
+      styles: [],
+      distances: [],
+      surfaces: [],
+      isGeneric: true,
+      conditions: [
+        { condition: "running_style==3@phase>=2", base_time: 24000, effects: [{ type: 31, value: 2000 }] },
+      ],
+    };
+
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Style Trap Parent Card",
+      nameJp: "罠親カード2",
+      rarity: 3,
+      type: "speed",
+      hints: [orStyleSkillId],
+      events: [],
+    };
+
+    try {
+      const recs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course: KYOTO_2200M_COURSE,
+        style: 1, // Runner
+        limit: 1000,
+      });
+
+      expect(recs.find((r) => r.cardId === testCardId)).toBeUndefined();
+    } finally {
+      delete (skillMetaMap as any)[orStyleSkillId];
+      delete (cardMetaMap as any)[testCardId];
+    }
+  });
+
+  it("drops rank-trap skills from recommendations", () => {
+    const rankTrapSkillId = 888005;
+    const testCardId = 888105;
+
+    (skillMetaMap as any)[rankTrapSkillId] = {
+      nameEn: "First Place Only",
+      nameJp: "一位限定",
+      rarity: 1,
+      styles: [],
+      distances: [],
+      surfaces: [],
+      isGeneric: true,
+      conditions: [
+        { condition: "phase>=2&corner!=0&order==1", base_time: 24000, effects: [{ type: 31, value: 2000 }] },
+      ],
+    };
+
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Rank Trap Parent Card",
+      nameJp: "順位罠親カード",
+      rarity: 3,
+      type: "speed",
+      hints: [rankTrapSkillId],
+      events: [],
+    };
+
+    try {
+      const recs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course: KYOTO_2200M_COURSE,
+        style: 3, // Betweener: order==1 never overlaps [4,7]
+        limit: 1000,
+      });
+
+      expect(recs.find((r) => r.cardId === testCardId)).toBeUndefined();
+    } finally {
+      delete (skillMetaMap as any)[rankTrapSkillId];
+      delete (cardMetaMap as any)[testCardId];
+    }
+  });
+
+  it("recommends Position Accel skills with a moderate bonus", () => {
+    const positionAccelSkillId = 888006;
+    const testCardId = 888106;
+
+    (skillMetaMap as any)[positionAccelSkillId] = {
+      nameEn: "Mid-Race Surge",
+      nameJp: "中盤加速",
+      rarity: 1,
+      styles: [1],
+      distances: [3],
+      surfaces: [1],
+      isGeneric: false,
+      conditions: [
+        { condition: "phase==1&corner!=0", base_time: 24000, effects: [{ type: 31, value: 2000 }] },
+      ],
+    };
+
+    (cardMetaMap as any)[testCardId] = {
+      nameEn: "Position Accel Parent Card",
+      nameJp: "ポジ加速親カード",
+      rarity: 3,
+      type: "speed",
+      hints: [positionAccelSkillId],
+      events: [],
+    };
+
+    try {
+      const recs = recommendCardsForParent({
+        mainDeckSkillIds: new Set(),
+        course: KYOTO_2200M_COURSE,
+        style: 1,
+        limit: 1000,
+      });
+
+      const card = recs.find((r) => r.cardId === testCardId);
+      expect(Boolean(card)).toBe(true);
+      const skill = card!.newMatchingSkills.find((s) => s.id === positionAccelSkillId);
+      expect(skill?.tacticalCategory).toBe("position_accel");
+      expect(skill?.evalTier).toBe("B");
+      expect(card!.score).toBeGreaterThan(0);
+    } finally {
+      delete (skillMetaMap as any)[positionAccelSkillId];
       delete (cardMetaMap as any)[testCardId];
     }
   });

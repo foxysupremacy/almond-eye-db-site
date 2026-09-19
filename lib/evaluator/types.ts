@@ -2,6 +2,7 @@ export type SkillTacticalCategory =
   | "fastest_accel" // Valid Fastest Accel (有効最速加速)
   | "carry_over" // Late-Race Connection (終盤接続)
   | "delayed_accel" // Delayed Accel (遅延加速)
+  | "position_accel" // Mid-race Position Accel (ポジション加速)
   | "dead_accel" // Dead Accel (無効加速)
   | "current_speed" // Instant Current Speed (現在速度)
   | "mid_speed" // Mid-race Position Speed (中盤速度)
@@ -64,6 +65,11 @@ export interface SkillEvaluationResult {
   };
   verdictSummary: string;
   specialEffects: SpecialEffectItem[];
+  /**
+   * Fraction (0–1) of the running style's expected rank envelope covered by the
+   * skill's rank window. Absent when the skill has no rank condition.
+   */
+  positionOverlap?: number;
   timingAnalysis: {
     spurtMeters: number;
     triggerStartMeters: number | null;

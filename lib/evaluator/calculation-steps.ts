@@ -24,6 +24,13 @@ export function getCategoryBadge(category: SkillTacticalCategory): {
           "bg-cyan-100 dark:bg-cyan-950/90 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700 font-bold",
         dotColor: "bg-cyan-500",
       };
+    case "position_accel":
+      return {
+        label: "Position Accel",
+        badgeClass:
+          "bg-violet-100 dark:bg-violet-950/90 text-violet-800 dark:text-violet-300 border-violet-300 dark:border-violet-700 font-semibold",
+        dotColor: "bg-violet-500",
+      };
     case "delayed_accel":
       return {
         label: "Delayed Accel",
@@ -143,6 +150,9 @@ export function buildCalculationBreakdown(p: BuildBreakdownParams): CalculationB
   } else if (p.category === "dead_accel") {
     delayExplanation = `Triggers at ${Math.round(p.triggerStartMeters! * 10) / 10}m (+${p.delayFromSpurtMeters}m delay). Late race acceleration finishes around ${p.accelPhaseEndMeters}m (+130m ramp).`;
     dynamicMathExplanation = `At ${Math.round(p.triggerStartMeters! * 10) / 10}m, the horse is already cruising at maximum sprint speed (~23.4 m/s). Acceleration skills provide zero velocity increase once top speed is already attained, making this skill 100% wasted.`;
+  } else if (p.category === "position_accel") {
+    delayExplanation = `Triggers at ${Math.round(p.triggerStartMeters! * 10) / 10}m, ${p.delayFromSpurtMeters}m before the 2/3 line — a mid-race positioning burst, not a sprint accelerator.`;
+    dynamicMathExplanation = `Mid-race acceleration helps the horse take or hold a favorable position going into the spurt. The sprint itself starts at the ${p.spurtMeters}m line, by which point this boost has already expired.`;
   } else if (p.category === "delayed_accel") {
     const lossPct = Math.min(80, Math.round((p.delayFromSpurt! / 180) * 100));
     delayExplanation = `Triggers at ${Math.round(p.triggerStartMeters! * 10) / 10}m (+${p.delayFromSpurtMeters}m delay). Activates after the horse has already begun accelerating.`;
