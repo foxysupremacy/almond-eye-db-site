@@ -10,8 +10,8 @@ Sources (pick with --source, default: supports for back-compat):
                 -> POST {API_BASE}/{version}/icon/support/{id}/{id}?variant=01
 
   characters    characters.json
-    stand       data/images/character_stands/{card_id}.png
-                -> POST {API_BASE}/{version}/icon/{char-category}/{card_id}/{char_id}?variant=01
+    stand       data/images/character_stands/{card_id}.png  (512x512 full art)
+                -> POST {API_BASE}/{version}/icon/{char-category}/{card_id}/{char_id}?variant=NN
 
 Headers: x-api-key (env ICON_API_KEY or .env), Content-Type: image/png
 Extra:   Cache-Control: public, max-age=31536000, immutable  (1 year)
@@ -265,9 +265,10 @@ def main() -> int:
     )
     ap.add_argument(
         "--char-variant",
-        default="01",
-        help="variant for character stands; bump (02, ...) to get a fresh CDN "
-             "key when old cached images must not be served (upload is idempotent per key)",
+        default="02",
+        help="variant for character stands; bumped to 02 when switching from "
+             "the 128x128 thumbs to 512x512 full art so old cached images are "
+             "not served (upload is idempotent per key)",
     )
     ap.add_argument(
         "--db",

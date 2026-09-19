@@ -58,7 +58,7 @@ Step details (each script is also runnable standalone):
 | `scripts/crawl_gametora_characters.py` | `master.mdb`, `lib/data/{characters,skills}.json`, GameTora | new playable characters into `characters.json` (JP skeleton from mdb, EN names/stats/aptitudes/skill ids from GameTora), missing skills backfilled into `skills.json` from mdb |
 | `scripts/crawl_gametora_cards.py` | `lib/data/cards.json` + `skills.json` + GameTora | updates `cards.json` **in place** (type/nameEn/urlName/hints/eventSkills/eventDetails), writes `skill-meta.json` |
 | `scripts/generate_inherit_skills.py` | `master.mdb` | `skills-inherit.json`, `unique-inherit-map.json` |
-| `scripts/crawl_card_images.py` | `lib/data/{characters,cards}.json` + GameTora | PNGs into `data/images/` (character stands 128×128 + icons 256×256, support card full art; incremental, skips existing) |
+| `scripts/crawl_card_images.py` | `lib/data/{characters,cards}.json` + GameTora | PNGs into `data/images/` (character stands 512×512 full art + icons 256×256, support card full art; incremental, skips existing) |
 | `scripts/upload_card_images.py` | `data/images/` | uploads PNGs to the icon API (R2) using `ICON_API_KEY`/`ICON_API_BASE` from `.env`, records CDN URLs in `data/images/manifest.json` |
 | `scripts/fetch-gametora.ts` | GameTora | `data-source/gametora/factors.json` (EN factor names) |
 
@@ -77,7 +77,9 @@ Step details (each script is also runnable standalone):
 - **Image uploads**: after crawling new character/card images, run
   `python scripts/upload_card_images.py --source all` (requires `ICON_API_KEY`
   and `ICON_API_BASE` in `.env`). Only images missing from
-  `data/images/manifest.json` are uploaded.
+  `data/images/manifest.json` are uploaded. Character stands upload at
+  512×512 under `--char-variant 02` (bump again if cached images must be
+  invalidated; uploads are idempotent per key).
 
 ### master.mdb
 

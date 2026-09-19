@@ -5,9 +5,9 @@ Crawl character and support-card images from Gametora.
 Sources (pick with --source, default: all):
 
   characters      characters.json -> chara_stand_{char_id}_{card_id}.png
-                  https://gametora.com/images/umamusume/characters/{size}/chara_stand_{char_id}_{card_id}.png
+                  https://gametora.com/images/umamusume/characters/chara_stand_{char_id}_{card_id}.png
+                  (full resolution, 512x512)
                   -> data/images/character_stands/{card_id}.png
-                  (--size thumb | "" for full-size)
 
   icons           characters.json -> chr_icon_{char_id}.png (rounded face icons)
                   https://gametora.com/images/umamusume/characters/icons/chr_icon_{char_id}.png
@@ -25,7 +25,7 @@ Sources (pick with --source, default: all):
 Usage:
     python3 scripts/crawl_card_images.py                       # everything
     python3 scripts/crawl_card_images.py --source supports     # support cards only
-    python3 scripts/crawl_card_images.py --source characters --size ""
+    python3 scripts/crawl_card_images.py --source characters
     python3 scripts/crawl_card_images.py --limit 20 --workers 4 --force
 """
 import argparse
@@ -102,7 +102,7 @@ def build_jobs(args) -> list[Job]:
             card_id = int(raw_card)
             char_id = int(item.get("char_id") or item.get("charId") or card_id // 100)  # card_id encodes char_id as prefix
             jobs.append(Job(
-                url=(f"https://gametora.com/images/umamusume/characters/{args.size}/"
+                url=(f"https://gametora.com/images/umamusume/characters/"
                      f"chara_stand_{char_id}_{card_id}.png"),
                 dest=out / f"{card_id}.png",
                 label=str(card_id),
@@ -189,12 +189,6 @@ def main() -> int:
                     default=_default_json("support_cards.json", "cards.json"))
     ap.add_argument("--images-dir", type=Path, default=DEFAULT_IMAGES_DIR,
                     help="base directory for downloaded images")
-    ap.add_argument(
-        "--size",
-        choices=["thumb", "full"],
-        default="thumb",
-        help="character image size (thumb/ or full-size)",
-    )
     ap.add_argument("--workers", type=int, default=8, help="parallel downloads")
     ap.add_argument("--retries", type=int, default=3, help="retries per image")
     ap.add_argument("--delay", type=float, default=0.15, help="delay between starts (seconds)")
@@ -202,7 +196,6 @@ def main() -> int:
     ap.add_argument("--force", action="store_true", help="re-download even if file exists")
     args = ap.parse_args()
 
-    args.size = {"thumb": "thumb", "full": ""}[args.size]  # "" -> full-size URL segment
     jobs = build_jobs(args)
     if not jobs:
         print("nothing to crawl", file=sys.stderr)
