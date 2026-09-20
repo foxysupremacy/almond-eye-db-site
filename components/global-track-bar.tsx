@@ -10,7 +10,7 @@ import { useDeck } from "./store";
 import { RUNNING_STYLE_OPTIONS, RUNNING_STYLE_LABELS } from "../lib/deck/constants";
 import type { RunningStyle } from "../lib/deck/types";
 import { distanceLabel, terrainLabel, turnLabel } from "../lib/api";
-import { PVP_EVENTS } from "../lib/pvp-events";
+import { getActivePvpEvents } from "../lib/pvp-events";
 import { TrophyIcon, FlagIcon, ChevronDownIcon } from "./icons";
 
 export default function GlobalTrackBar() {
@@ -47,7 +47,7 @@ export default function GlobalTrackBar() {
               <TrophyIcon className="h-3.5 w-3.5" />
               <span>PvP:</span>
             </span>
-            {PVP_EVENTS.map((event) => {
+            {getActivePvpEvents().map((event) => {
               const isActive = activePvpEventId === event.id;
               return (
                 <button

@@ -2,6 +2,7 @@ import type { RunningStyle, DistanceType, SurfaceType } from "./types";
 
 export const DECK_SIZE = 6;
 export const PRESETS_STORAGE_KEY = "presets.v2";
+export const ACTIVE_PRESET_STORAGE_KEY = "almondeye_active_preset_id";
 export const VISUALIZER_SAVE_KEY = "visualizer.v1";
 export const CHAIN_CHOICES_STORAGE_KEY = "chain_choices.v1";
 

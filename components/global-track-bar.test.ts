@@ -11,7 +11,7 @@ describe("GlobalTrackBar SSR", () => {
       React.createElement(DeckProvider, null, React.createElement(GlobalTrackBar)),
     );
     expect(html).toContain("Sep CM (Longchamp)");
-    expect(html).toContain("Sep CM (Mile)");
+    expect(html).not.toContain("Sep CM (Mile)");
     expect(html).toContain("Oct CM (Classic)");
     expect(html).toContain("Nov LoH");
     expect(html).toContain("PvP:");

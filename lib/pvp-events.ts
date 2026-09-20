@@ -1,5 +1,14 @@
 import type { RaceParameters } from "./skill-engine/types";
 
+export type PvpEventStage =
+  | "upcoming"
+  | "round1"
+  | "round2"
+  | "team_selection"
+  | "matchmaking"
+  | "finals"
+  | "ended";
+
 export interface PvpEvent {
   id: string;
   name: string;
@@ -21,6 +30,8 @@ export interface PvpEvent {
   gradeNum: number;
   specialRules?: string[];
   noDebuffs?: boolean;
+  startDate?: string;
+  durationDays?: number;
 }
 
 // Banned debuff skills in Champions Meeting Special Rule "No Debuffs" (55 skills)
@@ -83,7 +94,7 @@ export const BANNED_DEBUFF_SKILL_IDS: ReadonlySet<number> = new Set<number>([
 ]);
 
 export const PVP_EVENTS: PvpEvent[] = [
-   {
+  {
     id: "cm-mile-2026-09",
     name: "September Champions Meeting MILE",
     shortName: "Sep CM (Mile)",
@@ -102,6 +113,8 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    startDate: "2026-09-14T12:00:00+09:00",
+    durationDays: 6,
   },
   {
     id: "cm-classic-2026-09",
@@ -124,6 +137,8 @@ export const PVP_EVENTS: PvpEvent[] = [
     gradeNum: 100, // 100: G1
     specialRules: ["No Debuffs"],
     noDebuffs: true,
+    startDate: "2026-09-21T12:00:00+09:00",
+    durationDays: 6,
   },
   {
     id: "cm-classic-2026-10",
@@ -144,6 +159,8 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    startDate: "2026-10-15T12:00:00+09:00",
+    durationDays: 6,
   },
   {
     id: "league-heroes-2026-11",
@@ -164,12 +181,41 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    startDate: "2026-11-10T12:00:00+09:00",
+    durationDays: 6,
   },
 ];
 
 export function getPvpEventById(id: string | null | undefined): PvpEvent | null {
   if (!id) return null;
   return PVP_EVENTS.find((e) => e.id === id) ?? null;
+}
+
+export function getPvpEventStage(event: PvpEvent, now: Date = new Date()): PvpEventStage {
+  if (!event.startDate) return "round1";
+  const start = new Date(event.startDate).getTime();
+  const diffMs = now.getTime() - start;
+  if (diffMs < 0) return "upcoming";
+
+  const hours = diffMs / (1000 * 60 * 60);
+  const totalHours = (event.durationDays ?? 6) * 24;
+
+  if (hours >= totalHours) return "ended";
+
+  // CM specific stages (Day 1-2, Day 3-4, Day 5 team selection & matchmaking, Day 6 finals)
+  if (hours < 48) return "round1";
+  if (hours < 96) return "round2";
+  if (hours < 108) return "team_selection";
+  if (hours < 120) return "matchmaking";
+  return "finals";
+}
+
+export function isPvpEventEnded(event: PvpEvent, now: Date = new Date()): boolean {
+  return getPvpEventStage(event, now) === "ended";
+}
+
+export function getActivePvpEvents(now: Date = new Date()): PvpEvent[] {
+  return PVP_EVENTS.filter((e) => !isPvpEventEnded(e, now));
 }
 
 export function getPvpRaceParameters(event: PvpEvent | null | undefined): Partial<RaceParameters> {

@@ -65,6 +65,13 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
         trackInfo: { ...src.trackInfo },
         mainChainChoices: src.mainChainChoices ? { ...src.mainChainChoices } : undefined,
         parentChainChoices: src.parentChainChoices ? { ...src.parentChainChoices } : undefined,
+        parentingSetup: src.parentingSetup
+          ? {
+              ...src.parentingSetup,
+              gpOverrides: { ...src.parentingSetup.gpOverrides },
+              supportCardIds: [...src.parentingSetup.supportCardIds],
+            }
+          : undefined,
       };
       return {
         presets: [...state.presets, clone],
@@ -125,6 +132,13 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
         },
         mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
         parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
+        parentingSetup: presetData.parentingSetup
+          ? {
+              ...presetData.parentingSetup,
+              gpOverrides: { ...presetData.parentingSetup.gpOverrides },
+              supportCardIds: [...presetData.parentingSetup.supportCardIds],
+            }
+          : p.parentingSetup,
       }));
     }
 
@@ -139,6 +153,7 @@ export function buildImportedPreset(
   name: string,
   presetData: Partial<DeckPreset>
 ): DeckPreset {
+  const base = createDefaultPreset(id, name);
   return {
     id,
     name,
@@ -153,5 +168,12 @@ export function buildImportedPreset(
     },
     mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : undefined,
     parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : undefined,
+    parentingSetup: presetData.parentingSetup
+      ? {
+          ...presetData.parentingSetup,
+          gpOverrides: { ...presetData.parentingSetup.gpOverrides },
+          supportCardIds: [...presetData.parentingSetup.supportCardIds],
+        }
+      : base.parentingSetup,
   };
 }

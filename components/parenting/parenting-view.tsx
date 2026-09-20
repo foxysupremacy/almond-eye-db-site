@@ -41,6 +41,7 @@ import { LineageAffinityHeader } from "./lineage-affinity-header";
 import { TraineeSpotlight } from "./trainee-spotlight";
 import { PedigreeSlotCard } from "./pedigree-slot-card";
 import { resolveGrandparentSlot, buildParticipantsList } from "../../lib/parenting/pedigree-resolvers";
+import { PedigreeSkillsSection } from "./pedigree-skills-section";
 
 export interface ParentingViewProps {
   onNavigateToParentDeck?: () => void;
@@ -587,6 +588,9 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
           </button>
         )}
       </div>
+
+      {/* 4. PEDIGREE INHERITABLE SKILLS (Innate, Awakening, Events, Uniques, Factors) */}
+      <PedigreeSkillsSection />
 
       {/* Trainee Character Picker Modal */}
       <CharacterPickerModal

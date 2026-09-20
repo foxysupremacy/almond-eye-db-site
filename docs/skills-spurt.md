@@ -97,7 +97,7 @@ $$\text{Overlap}(\text{Skill}, \text{Style}) = \frac{|\mathcal{R}_{\text{skill}}
 Runner  [1, 2] :  [1]──[2]                                  (Span = 2)
 Leader  [2, 5] :       [2]──[3]──[4]──[5]                   (Span = 4)
 Between [4, 7] :                 [4]──[5]──[6]──[7]         (Span = 4)
-Chaser  [5, 9] :                      [5]──[6]──[7]──[8]──[9] (Span = 5)
+Chaser  [5, 9] :                 [4]──[5]──[6]──[7]──[8]──[9] (Span = 5)
 ```
 
 #### Overlap Matrix Examples

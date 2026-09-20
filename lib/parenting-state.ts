@@ -1,7 +1,7 @@
 // State persistence and URL serialization for the Parenting Hub.
 // Manages Trainee, Parents, Grandparent overrides, and Parent Support Deck slots.
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useContext } from "react";
 import type { KyumaruVeteranItem } from "./kyumaru-types";
 import {
   readJsonStorage,
@@ -9,6 +9,7 @@ import {
   notifyLocalUpdate,
   subscribeLocalUpdates,
 } from "./persistence";
+import { DeckContext } from "./deck/context";
 
 export interface GrandparentSlot {
   card_id: number;
@@ -136,10 +137,13 @@ export async function serializeParentingToHash(setup: ParentingSetup): Promise<s
 
 /** Hook for reactive subscription to parenting state */
 export function useParentingSetup() {
+  const deckCtx = useContext(DeckContext);
+
   const [setup, setSetup] = useState<ParentingSetup>(DEFAULT_PARENTING_SETUP);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
+    if (deckCtx) return;
     setSetup(loadParentingSetup());
     setLoaded(true);
 
@@ -148,15 +152,19 @@ export function useParentingSetup() {
     };
 
     return subscribeLocalUpdates(EVENT_KEY, handleUpdate);
-  }, []);
+  }, [deckCtx]);
 
   const updateSetup = useCallback((updater: (prev: ParentingSetup) => ParentingSetup) => {
+    if (deckCtx) {
+      deckCtx.setParentingSetup(updater);
+      return;
+    }
     setSetup((prev) => {
       const next = updater(prev);
       saveParentingSetup(next);
       return next;
     });
-  }, []);
+  }, [deckCtx]);
 
   const setTargetCharaId = useCallback((id: number | null) => {
     updateSetup((prev) => ({
@@ -277,13 +285,17 @@ export function useParentingSetup() {
       gpOverrides: {},
       supportCardIds: [null, null, null, null, null, null],
     };
+    if (deckCtx) {
+      deckCtx.setParentingSetup(empty);
+      return;
+    }
     saveParentingSetup(empty);
     setSetup(empty);
-  }, []);
+  }, [deckCtx]);
 
   return {
-    setup,
-    loaded,
+    setup: deckCtx ? deckCtx.parentingSetup : setup,
+    loaded: deckCtx ? !deckCtx.loading : loaded,
     setTargetCharaId,
     setParent1,
     setParent2,

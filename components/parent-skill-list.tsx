@@ -24,7 +24,7 @@ import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import { RARITY_META } from "../lib/skill-rarity";
 import DuplicateSkillBadge, { type DuplicateCardEntry } from "./duplicate-skill-badge";
 
-type FilterTab = "all" | "unique" | "duplicate" | "parent_duplicate" | "hint" | "event" | "parent_unique" | "factor";
+type FilterTab = "all" | "inherit_only" | "unique" | "duplicate" | "parent_duplicate" | "hint" | "event" | "parent_unique" | "factor";
 type SourceFilter = "all" | "cards" | "lineage";
 
 export type { DisplayParentSkill };
@@ -105,7 +105,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
   const [hideParentDupes, setHideParentDupes] = useState(false);
   const [search, setSearch] = useState("");
 
-  const { lineageUniqueSkills, bloodlineFactorSkills, p1Chara, p2Chara } = useLineageSkills();
+  const { lineageUniqueSkills, bloodlineFactorSkills, pedigreeSkills, p1Chara, p2Chara } = useLineageSkills();
 
   // Map each parent card slot to its exact granted skills (respecting chosen chain branches & white downgrade)
   const parentCardSkillsMap = useMemo(() => {
@@ -160,27 +160,54 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     return dupes;
   }, [parentDuplicateCardsMap]);
 
-  // Combine All Skills (Support Cards + Parent Uniques + Bloodline Factors)
+  // Combine All Skills (Support Cards + Full Pedigree Umas + Bloodline Factors)
   const unifiedSkillList: DisplayParentSkill[] = useMemo(() => {
-    const cardSkillsMapped: DisplayParentSkill[] = parentSkills.map((s) => ({
-      id: s.id,
-      nameEn: s.nameEn,
-      nameJp: s.nameJp,
-      descEn: s.descEn,
-      rarity: s.rarity,
-      iconId: s.iconId,
-      source: s.source === "event" ? "event" : "hint",
-      sourceLabel: `Card (${s.cardName})`,
-      isUniqueToParent: s.isUniqueToParent,
-      isDuplicateInMain: s.isDuplicateInMain,
-      parentDuplicateCount: s.parentDuplicateCount,
-      originalGoldSkill: s.originalGoldSkill,
-      grants: s.grants,
-      mainCardGrants: s.mainCardGrants,
-    }));
+    const byId = new Map<number, DisplayParentSkill>();
 
-    return [...cardSkillsMapped, ...lineageUniqueSkills, ...bloodlineFactorSkills];
-  }, [parentSkills, lineageUniqueSkills, bloodlineFactorSkills]);
+    // 1. Support Cards
+    parentSkills.forEach((s) => {
+      const isInheritOnly = !mainSkillIdSet.has(s.id);
+      byId.set(s.id, {
+        id: s.id,
+        nameEn: s.nameEn,
+        nameJp: s.nameJp,
+        descEn: s.descEn,
+        rarity: s.rarity,
+        iconId: s.iconId,
+        source: s.source === "event" ? "event" : "hint",
+        sourceLabel: `Card (${s.cardName})`,
+        isUniqueToParent: s.isUniqueToParent,
+        isDuplicateInMain: s.isDuplicateInMain,
+        isInheritOnly,
+        parentDuplicateCount: s.parentDuplicateCount,
+        originalGoldSkill: s.originalGoldSkill,
+        grants: s.grants,
+        mainCardGrants: s.mainCardGrants,
+      });
+    });
+
+    // 2. Pedigree Umas (Uniques, Innate, Awakening, Event skills, Bloodline Factors)
+    pedigreeSkills.forEach((ps) => {
+      const existing = byId.get(ps.id);
+      if (!existing) {
+        byId.set(ps.id, { ...ps });
+      } else {
+        const combinedGrants = [...(existing.grants ?? [])];
+        for (const g of ps.grants ?? []) {
+          if (!combinedGrants.some((cg) => cg.cardName === g.cardName && cg.source === g.source)) {
+            combinedGrants.push(g);
+          }
+        }
+        existing.grants = combinedGrants;
+        existing.parentDuplicateCount = combinedGrants.length;
+        if (!existing.originalUniqueSkill && ps.originalUniqueSkill) {
+          existing.originalUniqueSkill = ps.originalUniqueSkill;
+        }
+      }
+    });
+
+    return Array.from(byId.values());
+  }, [parentSkills, pedigreeSkills, mainSkillIdSet]);
 
   const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
 
@@ -207,6 +234,10 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
   const hasParentDeck = parentSlots.some(Boolean);
   const hasLineage = Boolean(setup.parent1 || setup.parent2);
 
+  const inheritOnlyCount = useMemo(
+    () => unifiedSkillList.filter((s) => s.isInheritOnly).length,
+    [unifiedSkillList],
+  );
   const uniqueCount = useMemo(
     () => unifiedSkillList.filter((s) => isSkillUniqueTarget(s)).length,
     [unifiedSkillList, activationMap],
@@ -231,6 +262,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       if (sourceFilter === "lineage" && (s.source === "hint" || s.source === "event")) return false;
 
       // Tab Filter
+      if (filter === "inherit_only" && !s.isInheritOnly) return false;
       if (filter === "unique" && !isSkillUniqueTarget(s)) return false;
       if (filter === "duplicate" && !s.isDuplicateInMain) return false;
       if (filter === "parent_duplicate" && !parentCardDuplicateSkillIdSet.has(s.id)) return false;
@@ -374,6 +406,16 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             }`}
           >
             All ({unifiedSkillList.length})
+          </button>
+          <button
+            onClick={() => setFilter("inherit_only")}
+            className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
+              filter === "inherit_only"
+                ? "bg-indigo-600 text-white font-semibold shadow-xs"
+                : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+            }`}
+          >
+            Inherit Only ({inheritOnlyCount})
           </button>
           <button
             onClick={() => setFilter("unique")}
@@ -606,10 +648,17 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                         </span>
                                       )}
 
-                                      {isDupeInMain && (
+                                      {isDupeInMain ? (
                                         <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
                                           <AlertTriangleIcon className="h-2.5 w-2.5" />
                                           <span>In Main Deck</span>
+                                        </span>
+                                      ) : (
+                                        <span
+                                          className="inline-flex items-center gap-1 rounded bg-indigo-100 dark:bg-indigo-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
+                                          title="Inherit Only: Not provided by any card in your active Main Deck"
+                                        >
+                                          <span>Inherit Only</span>
                                         </span>
                                       )}
 
@@ -843,10 +892,17 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                               <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
                                             </span>
                                           )}
-                                          {isDupeInMain && (
+                                          {isDupeInMain ? (
                                             <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
                                               <AlertTriangleIcon className="h-2.5 w-2.5" />
                                               <span>In Main Deck</span>
+                                            </span>
+                                          ) : (
+                                            <span
+                                              className="inline-flex items-center gap-1 rounded bg-indigo-100 dark:bg-indigo-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
+                                              title="Inherit Only: Not provided by any card in your active Main Deck"
+                                            >
+                                              <span>Inherit Only</span>
                                             </span>
                                           )}
                                         </div>
@@ -941,10 +997,17 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                           </span>
                         )}
 
-                        {s.isDuplicateInMain && (
+                        {s.isDuplicateInMain ? (
                           <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
                             <AlertTriangleIcon className="h-2.5 w-2.5" />
                             <span>In Main Deck</span>
+                          </span>
+                        ) : (
+                          <span
+                            className="inline-flex items-center gap-1 rounded bg-indigo-100 dark:bg-indigo-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
+                            title="Inherit Only: Not provided by any card in your active Main Deck"
+                          >
+                            <span>Inherit Only</span>
                           </span>
                         )}
 

@@ -100,7 +100,7 @@ describe("loadStoredPresets", () => {
 });
 
 describe("persistPresetsAndVisualizer", () => {
-  test("writes presets and the visualizer snapshot from the active preset", () => {
+  test("writes presets, activePresetId, and the visualizer snapshot from the active preset", () => {
     const storage = installWindow();
     const preset = createDefaultPreset("a", "A");
     preset.trackInfo = { trackId: 10007, courseId: 10607, runningStyle: 3, racerCount: 14, pvpEventId: null };
@@ -109,8 +109,21 @@ describe("persistPresetsAndVisualizer", () => {
     const saved = JSON.parse(storage._map.get(PRESETS_STORAGE_KEY)!);
     expect(saved).toHaveLength(1);
     expect(saved[0].id).toBe("a");
+    expect(storage._map.get("almondeye_active_preset_id")).toBe("a");
     const viz = JSON.parse(storage._map.get(VISUALIZER_SAVE_KEY)!);
     expect(viz).toEqual({ trackId: 10007, courseId: 10607, racerCount: 14 });
+  });
+
+  test("restores activeId from almondeye_active_preset_id when present", () => {
+    const storage = installWindow();
+    const stored = [
+      { id: "p1", name: "Preset 1" },
+      { id: "p2", name: "Preset 2" },
+    ];
+    storage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(stored));
+    storage.setItem("almondeye_active_preset_id", "p2");
+    const out = loadStoredPresets();
+    expect(out?.activeId).toBe("p2");
   });
 
   test("is a no-op without a window/localStorage", () => {

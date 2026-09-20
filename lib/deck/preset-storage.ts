@@ -4,9 +4,11 @@ import {
   DEFAULT_TRACK_ID,
   DEFAULT_COURSE_ID,
   PRESETS_STORAGE_KEY,
+  ACTIVE_PRESET_STORAGE_KEY,
   VISUALIZER_SAVE_KEY,
 } from "./constants";
 import { cleanChoices } from "./event-choices";
+import { DEFAULT_PARENTING_SETUP, type ParentingSetup } from "../parenting-state";
 
 export function createDefaultPreset(id: string, name: string): DeckPreset {
   return {
@@ -21,6 +23,7 @@ export function createDefaultPreset(id: string, name: string): DeckPreset {
       racerCount: 12,
       pvpEventId: null,
     },
+    parentingSetup: { ...DEFAULT_PARENTING_SETUP },
   };
 }
 
@@ -33,6 +36,16 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
     if (!rawPresets) return null;
     const parsed = JSON.parse(rawPresets);
     if (!Array.isArray(parsed) || parsed.length === 0) return null;
+
+    let legacyParenting: ParentingSetup | null = null;
+    try {
+      const rawLegacy = window.localStorage.getItem("almondeye_parenting_setup");
+      if (rawLegacy) {
+        legacyParenting = JSON.parse(rawLegacy);
+      }
+    } catch {
+      // ignore
+    }
 
     const cleaned: DeckPreset[] = parsed.map((p, idx) => ({
       id: typeof p.id === "string" ? p.id : `preset-${idx + 1}-${Date.now()}`,
@@ -52,10 +65,40 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
       },
       mainChainChoices: cleanChoices(p.mainChainChoices),
       parentChainChoices: cleanChoices(p.parentChainChoices),
+      parentingSetup: p.parentingSetup
+        ? {
+            targetCharaId: p.parentingSetup.targetCharaId ?? null,
+            parent1: p.parentingSetup.parent1 ?? null,
+            parent2: p.parentingSetup.parent2 ?? null,
+            p1IsBorrow: p.parentingSetup.p1IsBorrow ?? false,
+            p2IsBorrow: p.parentingSetup.p2IsBorrow ?? true,
+            gpOverrides: p.parentingSetup.gpOverrides ?? {},
+            supportCardIds: Array.isArray(p.parentingSetup.supportCardIds)
+              ? p.parentingSetup.supportCardIds
+              : [null, null, null, null, null, null],
+          }
+        : idx === 0 && legacyParenting
+        ? {
+            targetCharaId: legacyParenting.targetCharaId ?? null,
+            parent1: legacyParenting.parent1 ?? null,
+            parent2: legacyParenting.parent2 ?? null,
+            p1IsBorrow: legacyParenting.p1IsBorrow ?? false,
+            p2IsBorrow: legacyParenting.p2IsBorrow ?? true,
+            gpOverrides: legacyParenting.gpOverrides ?? {},
+            supportCardIds: Array.isArray(legacyParenting.supportCardIds)
+              ? legacyParenting.supportCardIds
+              : [null, null, null, null, null, null],
+          }
+        : { ...DEFAULT_PARENTING_SETUP },
     }));
 
     if (cleaned.length > 0) {
-      return { presets: cleaned, activeId: cleaned[0].id };
+      const savedActiveId = window.localStorage.getItem(ACTIVE_PRESET_STORAGE_KEY);
+      const activeId =
+        savedActiveId && cleaned.some((p) => p.id === savedActiveId)
+          ? savedActiveId
+          : cleaned[0].id;
+      return { presets: cleaned, activeId };
     }
   } catch {
     /* ignore storage errors */
@@ -67,6 +110,10 @@ export function persistPresetsAndVisualizer(presets: DeckPreset[], activePreset:
   if (typeof window === "undefined" || !window.localStorage) return;
   try {
     window.localStorage.setItem(PRESETS_STORAGE_KEY, JSON.stringify(presets));
+    window.localStorage.setItem(ACTIVE_PRESET_STORAGE_KEY, activePreset.id);
+    if (activePreset.parentingSetup) {
+      window.localStorage.setItem("almondeye_parenting_setup", JSON.stringify(activePreset.parentingSetup));
+    }
     window.localStorage.setItem(
       VISUALIZER_SAVE_KEY,
       JSON.stringify({

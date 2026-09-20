@@ -8,6 +8,7 @@ import type {
 import type { EventSkillMetadata } from "../data-store";
 import type { Course } from "../skill-engine/types";
 import type { PvpEvent } from "../pvp-events";
+import type { ParentingSetup } from "../parenting-state";
 
 /** 1: Runner, 2: Leader, 3: Betweener, 4: Chaser, 5: Runaway */
 export type RunningStyle = 1 | 2 | 3 | 4 | 5;
@@ -34,6 +35,7 @@ export interface DeckPreset {
   trackInfo: TrackInfo;
   mainChainChoices?: Record<string, number>;
   parentChainChoices?: Record<string, number>;
+  parentingSetup?: ParentingSetup;
 }
 
 export interface DeckSkillGrant {
@@ -128,6 +130,10 @@ export interface DeckContextValue {
   activePvpEvent: PvpEvent | null;
   applyPvpPreset: (event: PvpEvent) => void;
   clearPvpPreset: () => void;
+
+  // Parenting Setup
+  parentingSetup: ParentingSetup;
+  setParentingSetup: (updater: ParentingSetup | ((prev: ParentingSetup) => ParentingSetup)) => void;
 
   allCards: CardIndexEntry[] | null;
   skillsByCard: Record<number, CardSkills | null>;

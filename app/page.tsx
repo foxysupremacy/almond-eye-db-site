@@ -18,6 +18,7 @@ import CollectionView from "../components/collection/collection-view";
 import ParentingView from "../components/parenting/parenting-view";
 import VeteransView from "../components/veterans-view";
 import ImportModal from "../components/import-modal";
+import { PvpExpiredModal } from "../components/pvp-expired-modal";
 import { MobileSheet } from "../components/shared/mobile-sheet";
 import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon } from "../components/icons";
 
@@ -238,6 +239,9 @@ export default function Home() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
         />
+
+        {/* Expired PvP Event Resolution Modal */}
+        <PvpExpiredModal />
       </div>
     </DeckProvider>
   );

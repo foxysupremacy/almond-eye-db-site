@@ -65,7 +65,8 @@ import {
   type PresetListState,
 } from "../lib/deck/preset-reducer";
 
-const DeckContext = createContext<DeckContextValue | null>(null);
+import { DeckContext } from "../lib/deck/context";
+import { DEFAULT_PARENTING_SETUP, type ParentingSetup } from "../lib/parenting-state";
 
 export function DeckProvider({ children }: { children: ReactNode }) {
   const [presetState, dispatch] = useReducer(presetReducer, {
@@ -411,6 +412,25 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  // Parenting setup for active preset
+  const parentingSetup = useMemo<ParentingSetup>(() => {
+    return activePreset.parentingSetup ?? DEFAULT_PARENTING_SETUP;
+  }, [activePreset.parentingSetup]);
+
+  const setParentingSetup = useCallback(
+    (updater: ParentingSetup | ((prev: ParentingSetup) => ParentingSetup)) => {
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => {
+          const current = p.parentingSetup ?? DEFAULT_PARENTING_SETUP;
+          const next = typeof updater === "function" ? updater(current) : updater;
+          return { ...p, parentingSetup: next };
+        },
+      });
+    },
+    [],
+  );
+
   // Skill derivation using pure extracted modules
   const mainSkills = useMemo<DeckSkill[]>(
     () => deriveSkillsForDeck(mainSlots, false, skillsByCard, activePreset.mainChainChoices),
@@ -489,6 +509,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       applyPvpPreset,
       clearPvpPreset,
 
+      parentingSetup,
+      setParentingSetup,
+
       allCards: index,
       skillsByCard,
       loading,
@@ -533,6 +556,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       activePvpEvent,
       applyPvpPreset,
       clearPvpPreset,
+      parentingSetup,
+      setParentingSetup,
       index,
       skillsByCard,
       loading,
@@ -542,8 +567,4 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
 }
 
-export function useDeck(): DeckContextValue {
-  const ctx = useContext(DeckContext);
-  if (!ctx) throw new Error("useDeck must be used within <DeckProvider>");
-  return ctx;
-}
+export { useDeck } from "../lib/deck/context";
