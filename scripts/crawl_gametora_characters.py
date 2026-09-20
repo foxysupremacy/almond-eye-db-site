@@ -33,6 +33,9 @@ import re
 import sqlite3
 import sys
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from skill_icons import resolve_skill_icon_id
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -296,7 +299,7 @@ def mdb_skill_backfill(db, characters: list[dict], skills: list[dict]) -> int:
             "descEn": "",
             "descJp": desc_jp,
             "rarity": int(row["rarity"]),
-            "iconId": row["icon_id"],
+            "iconId": resolve_skill_icon_id(row),
             "tags": [],
             "conditionGroups": build_condition_groups(row),
         })

@@ -3,14 +3,15 @@
 import { useState } from "react";
 
 interface SkillIconProps {
-  iconId?: number | null;
+  iconId?: number | string | null;
   name?: string;
   className?: string;
   size?: number;
 }
 
 /**
- * Renders a skill type icon for a given iconId from /assets/skills/[iconId].png.
+ * Renders a skill type icon for a given iconId from /assets/skills/[iconId].png
+ * or fallback /assets/skills/utx_ico_skill_[iconId].png.
  * Gracefully hides itself if the iconId is missing or the image fails to load.
  */
 export default function SkillIcon({
@@ -20,20 +21,40 @@ export default function SkillIcon({
   size,
 }: SkillIconProps) {
   const [hasError, setHasError] = useState(false);
+  const [fallbackAttempted, setFallbackAttempted] = useState(false);
 
-  if (!iconId || hasError) {
+  if (iconId === null || iconId === undefined || iconId === "" || hasError) {
     return null;
   }
 
+  // Normalize iconId (handle numbers, strings, 'utx_ico_skill_' prefix, and '.png' extension)
+  const rawId = String(iconId).trim();
+  const cleanId = rawId.replace(/^utx_ico_skill_/, "").replace(/\.png$/, "");
+  if (!cleanId || cleanId === "0" || cleanId === "00000") {
+    return null;
+  }
+  const displayId = cleanId;
+
+  const src = fallbackAttempted
+    ? `/assets/skills/utx_ico_skill_${displayId}.png`
+    : `/assets/skills/${displayId}.png`;
+
   return (
     <img
-      src={`/assets/skills/${iconId}.png`}
+      key={`${displayId}-${fallbackAttempted}`}
+      src={src}
       alt={name ? `${name} icon` : "Skill icon"}
       title={name}
       width={size}
       height={size}
       loading="lazy"
-      onError={() => setHasError(true)}
+      onError={() => {
+        if (!fallbackAttempted) {
+          setFallbackAttempted(true);
+        } else {
+          setHasError(true);
+        }
+      }}
       className={className}
     />
   );

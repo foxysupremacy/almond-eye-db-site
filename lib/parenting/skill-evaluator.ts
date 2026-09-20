@@ -148,11 +148,13 @@ export function evaluateSkillActivation(
 
   // Fallback when no course is set: check if raw condition requires an incompatible style
   if (styleNum && rawSkill.conditionGroups) {
-    const allCondStr = rawSkill.conditionGroups.map((g: any) => g.condition || "").join(" ");
-    const styleReqM = /running_style==(\d+)/.exec(allCondStr);
-    if (styleReqM) {
-      const reqStyle = parseInt(styleReqM[1], 10);
-      if (reqStyle !== styleNum) {
+    const allCondStr = rawSkill.conditionGroups.map((g: any) => `${g.condition || ""} ${g.precondition || ""}`).join(" ");
+    const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
+      parseInt(m[1], 10)
+    );
+    if (styleReqMatches.length > 0) {
+      const allowedStyles = Array.from(new Set(styleReqMatches));
+      if (!allowedStyles.includes(styleNum)) {
         return { activates: false, reason: "Incompatible running style" };
       }
     }

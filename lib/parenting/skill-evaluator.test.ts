@@ -109,4 +109,30 @@ describe("evaluateSkillActivation", () => {
     expect(res.activates).toBe(false);
     expect(res.reason).toBe("Skill not found");
   });
+
+  test("activates multi-style skill (e.g. Runner & Leader 101411 / 901411) for all matching styles and rejects mismatch", () => {
+    // 101411 (Epiphaneia unique): running_style==1@running_style==2
+    // Runner (1) -> activates
+    const asRunner = evaluateSkillActivation(101411, kyoto2200Course, 1);
+    expect(asRunner.activates).toBe(true);
+
+    // Leader (2) -> activates
+    const asLeader = evaluateSkillActivation(101411, kyoto2200Course, 2);
+    expect(asLeader.activates).toBe(true);
+
+    // Betweener (3) -> does not activate
+    const asBetweener = evaluateSkillActivation(101411, kyoto2200Course, 3);
+    expect(asBetweener.activates).toBe(false);
+
+    // 901411 (Inherit version of Epiphaneia unique)
+    const inheritAsRunner = evaluateSkillActivation(901411, kyoto2200Course, 1);
+    expect(inheritAsRunner.activates).toBe(true);
+
+    const inheritAsLeader = evaluateSkillActivation(901411, kyoto2200Course, 2);
+    expect(inheritAsLeader.activates).toBe(true);
+
+    const inheritAsBetweener = evaluateSkillActivation(901411, kyoto2200Course, 3);
+    expect(inheritAsBetweener.activates).toBe(false);
+  });
 });
+

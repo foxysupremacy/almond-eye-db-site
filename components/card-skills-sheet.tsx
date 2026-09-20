@@ -226,7 +226,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
                       title={activation.reason || "This skill cannot activate on the selected course or running style"}
                     >
                       <AlertTriangleIcon className="h-2.5 w-2.5" />
-                      <span>{activation.reason?.toLowerCase().includes("style") ? "Style Trap" : activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
+                      <span>{activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
                     </span>
                   )}
                   {isBranchingEvent && !isActiveChoice && (

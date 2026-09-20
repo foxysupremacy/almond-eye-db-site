@@ -85,18 +85,17 @@ export default function AceComplementFinder({
   // null = follow the deck's running style; otherwise compare another style
   const [styleOverride, setStyleOverride] = useState<number | null>(null);
   const effectiveStyle = styleOverride ?? runningStyle;
-  // Effect-category filter for the ranked-cards list (empty = show all)
-  const [effectFilter, setEffectFilter] = useState<SkillEffectCategory[]>(() => {
-    if (typeof window === "undefined") return [];
+  // Effect-category multi-filter (empty = all)
+  const [effectFilter, setEffectFilter] = useState<SkillEffectCategory[]>([]);
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(EFFECT_FILTER_STORAGE_KEY);
-      if (!raw) return [];
+      if (!raw) return;
       const allowed = new Set(EFFECT_CATEGORIES.map((c) => c.id));
-      return (JSON.parse(raw) as SkillEffectCategory[]).filter((c) => allowed.has(c));
-    } catch {
-      return [];
-    }
-  });
+      const parsed = (JSON.parse(raw) as SkillEffectCategory[]).filter((c) => allowed.has(c));
+      if (parsed.length > 0) setEffectFilter(parsed);
+    } catch {}
+  }, []);
   useEffect(() => {
     try {
       localStorage.setItem(EFFECT_FILTER_STORAGE_KEY, JSON.stringify(effectFilter));
@@ -104,15 +103,15 @@ export default function AceComplementFinder({
   }, [effectFilter]);
 
   // Card-type filter (null = all types); normalized names from CARD_TYPE_FILTERS
-  const [typeFilter, setTypeFilter] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
+  const [typeFilter, setTypeFilter] = useState<string | null>(null);
+  useEffect(() => {
     try {
       const raw = localStorage.getItem(CARD_TYPE_FILTER_STORAGE_KEY);
-      return raw && (CARD_TYPE_FILTERS as readonly string[]).includes(raw) ? raw : null;
-    } catch {
-      return null;
-    }
-  });
+      if (raw && (CARD_TYPE_FILTERS as readonly string[]).includes(raw)) {
+        setTypeFilter(raw);
+      }
+    } catch {}
+  }, []);
   useEffect(() => {
     try {
       if (typeFilter) localStorage.setItem(CARD_TYPE_FILTER_STORAGE_KEY, typeFilter);

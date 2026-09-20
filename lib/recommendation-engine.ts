@@ -3,10 +3,10 @@
 // that the Main Deck does NOT have, with priority boost for skills that
 // activate on the selected course geometry.
 
-import { cardMetaMap, skillMetaMap, skillIconById, skillsById } from "./data/registry";
+import { cardMetaMap, skillMetaMap, skillIconById, skillsById, uniqueInheritMap } from "./data/registry";
 import type { Course, RaceParameters } from "./skill-engine/types";
 import { computeAllZones, horseForStrategy } from "./skill-engine/zones";
-import { getInheritableSkillForGold } from "./skill-rarity";
+import { getInheritableSkillForGold, EVOL_TO_UNIQUE_MAP } from "./skill-rarity";
 import {
   evaluateSkillForTrack,
   type SkillTacticalCategory,
@@ -58,38 +58,138 @@ export interface CardRecommendation {
   totalNewCount: number;
 }
 
+// Reverse map: inherit unique skill id -> base unique skill id
+let inheritToUniqueMap: Map<number, number> | null = null;
+function getParentUniqueId(inheritId: number): number | undefined {
+  if (!inheritToUniqueMap) {
+    inheritToUniqueMap = new Map();
+    for (const [uStr, iId] of Object.entries(uniqueInheritMap)) {
+      inheritToUniqueMap.set(iId as number, Number(uStr));
+    }
+    for (const [evolStr, uId] of Object.entries(EVOL_TO_UNIQUE_MAP)) {
+      inheritToUniqueMap.set(Number(evolStr), Number(uId));
+    }
+  }
+  return inheritToUniqueMap.get(inheritId);
+}
+
 export function isSkillMatchingFilter(
   skillId: number,
   style: number | null,
   distance: number | null,
   surface: number | null,
 ): { matches: boolean; isSpecialized: boolean } {
-  const meta = skillMetaMap[skillId];
-  if (!meta) return { matches: false, isSpecialized: false };
+  let meta = skillMetaMap[skillId];
+
+  // If this is an inherit unique skill, fallback to the parent unique's meta
+  if (!meta) {
+    const parentUniqueId = getParentUniqueId(skillId);
+    if (parentUniqueId) {
+      meta = skillMetaMap[parentUniqueId];
+    }
+  }
+
+  if (meta) {
+    let isSpecialized = false;
+
+    // Running style check (1=Runner, 2=Leader, 3=Betweener, 4=Chaser, 5=Runaway)
+    if (style !== null) {
+      const checkStyle = style === 5 ? 1 : style; // Runaway uses Runner skills
+      if (meta.styles.length > 0) {
+        if (!meta.styles.includes(checkStyle)) return { matches: false, isSpecialized: false };
+        isSpecialized = true;
+      }
+    }
+
+    // Distance check (1=Sprint, 2=Mile, 3=Medium, 4=Long)
+    if (distance !== null) {
+      if (meta.distances.length > 0) {
+        if (!meta.distances.includes(distance)) return { matches: false, isSpecialized: false };
+        isSpecialized = true;
+      }
+    }
+
+    // Surface check (1=Turf, 2=Dirt)
+    if (surface !== null) {
+      if (meta.surfaces.length > 0) {
+        if (!meta.surfaces.includes(surface)) return { matches: false, isSpecialized: false };
+        isSpecialized = true;
+      }
+    }
+
+    return { matches: true, isSpecialized };
+  }
+
+  // Fallback when no entry exists in skillMetaMap (e.g. unindexed skills or inherits):
+  const rawSkill = skillsById.get(skillId);
+  if (!rawSkill) {
+    return { matches: false, isSpecialized: false };
+  }
 
   let isSpecialized = false;
+  const tags = rawSkill.tags || [];
+  const allCondStr = (rawSkill.conditionGroups || [])
+    .map((g: any) => `${g.condition || ""} ${g.precondition || ""}`)
+    .join(" ");
 
-  // Running style check (1=Runner, 2=Leader, 3=Betweener, 4=Chaser, 5=Runaway)
+  // Running style check
   if (style !== null) {
-    const checkStyle = style === 5 ? 1 : style; // Runaway uses Runner skills
-    if (meta.styles.length > 0) {
-      if (!meta.styles.includes(checkStyle)) return { matches: false, isSpecialized: false };
+    const checkStyle = style === 5 ? 1 : style;
+    const styleTags: number[] = [];
+    if (tags.includes("run")) styleTags.push(1);
+    if (tags.includes("ldr")) styleTags.push(2);
+    if (tags.includes("bet")) styleTags.push(3);
+    if (tags.includes("cha")) styleTags.push(4);
+
+    const styleCondMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
+      parseInt(m[1], 10)
+    );
+
+    const requiredStyles = Array.from(new Set([...styleTags, ...styleCondMatches]));
+    if (requiredStyles.length > 0) {
+      if (!requiredStyles.includes(checkStyle)) {
+        return { matches: false, isSpecialized: false };
+      }
       isSpecialized = true;
     }
   }
 
-  // Distance check (1=Sprint, 2=Mile, 3=Medium, 4=Long)
+  // Distance check
   if (distance !== null) {
-    if (meta.distances.length > 0) {
-      if (!meta.distances.includes(distance)) return { matches: false, isSpecialized: false };
+    const distTags: number[] = [];
+    if (tags.includes("sho")) distTags.push(1);
+    if (tags.includes("mil")) distTags.push(2);
+    if (tags.includes("med")) distTags.push(3);
+    if (tags.includes("lon")) distTags.push(4);
+
+    const distCondMatches = [...allCondStr.matchAll(/distance_type==(\d+)/g)].map((m) =>
+      parseInt(m[1], 10)
+    );
+
+    const requiredDistances = Array.from(new Set([...distTags, ...distCondMatches]));
+    if (requiredDistances.length > 0) {
+      if (!requiredDistances.includes(distance)) {
+        return { matches: false, isSpecialized: false };
+      }
       isSpecialized = true;
     }
   }
 
-  // Surface check (1=Turf, 2=Dirt)
+  // Surface check
   if (surface !== null) {
-    if (meta.surfaces.length > 0) {
-      if (!meta.surfaces.includes(surface)) return { matches: false, isSpecialized: false };
+    const surfTags: number[] = [];
+    if (tags.includes("tur")) surfTags.push(1);
+    if (tags.includes("dir")) surfTags.push(2);
+
+    const surfCondMatches = [...allCondStr.matchAll(/ground_type==(\d+)/g)].map((m) =>
+      parseInt(m[1], 10)
+    );
+
+    const requiredSurfaces = Array.from(new Set([...surfTags, ...surfCondMatches]));
+    if (requiredSurfaces.length > 0) {
+      if (!requiredSurfaces.includes(surface)) {
+        return { matches: false, isSpecialized: false };
+      }
       isSpecialized = true;
     }
   }

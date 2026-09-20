@@ -69,6 +69,52 @@ let hachimiCount = 0;
 let gametoraFallbackCount = 0;
 let jpFallbackCount = 0;
 
+function resolveSkillIconId(s: any, conditionGroups: any[]): number | null {
+  const existing = s.iconid || s.icon_id;
+  if (existing && Number(existing) !== 0) {
+    return Number(existing);
+  }
+
+  const rarity = Number(s.rarity || 1);
+  const suffix = rarity === 1 ? 1 : rarity === 2 ? 2 : rarity === 6 ? 6 : 3;
+
+  let abilityType: number | null = null;
+  let abilityVal = 0;
+  let targetType = 1;
+
+  for (const cg of conditionGroups || []) {
+    for (const eff of cg.effects || []) {
+      if (eff.type) {
+        abilityType = eff.type;
+        abilityVal = eff.value ?? 0;
+        targetType = eff.target ?? 1;
+        break;
+      }
+    }
+    if (abilityType !== null) break;
+  }
+
+  const isDebuff = abilityVal < 0 || (targetType >= 2 && targetType <= 10);
+  if (isDebuff) {
+    if (abilityType === 21 || abilityType === 22 || abilityType === 27) return 30010 + suffix;
+    if (abilityType === 9) return 30050 + suffix;
+    if (abilityType === 31) return 30040 + suffix;
+    return 30010 + suffix;
+  }
+
+  if (abilityType === 21 || abilityType === 22 || abilityType === 27) return 20010 + suffix;
+  if (abilityType === 9) return 20020 + suffix;
+  if (abilityType === 31) return 20040 + suffix;
+  if (abilityType === 28) return 20050 + suffix;
+  if (abilityType === 1) return 10010 + (suffix === 1 ? 4 : suffix);
+  if (abilityType === 2) return 10020 + suffix;
+  if (abilityType === 3) return 10030 + suffix;
+  if (abilityType === 4) return 10040 + suffix;
+  if (abilityType === 5) return 10050 + suffix;
+
+  return 20010 + suffix;
+}
+
 const skills = rawSkills.map((s: any) => {
   const hachimiName = hachimiSkillNames[String(s.id)]?.trim();
   const gametoraName = (s.enname || s.name_en || s.en_name || "").trim();
@@ -104,7 +150,7 @@ const skills = rawSkills.map((s: any) => {
     descEn,
     descJp,
     rarity: Number(s.rarity || 1),
-    iconId: s.iconid || s.icon_id || null,
+    iconId: resolveSkillIconId(s, conditionGroups),
     // Raw effect tags ("run"/"ldr"/"sho"/"mil"/"tur"…) — consumed by the
     // GameTora card crawler to build skill-meta.json tactical tags.
     tags: Array.isArray(s.type) ? s.type : [],

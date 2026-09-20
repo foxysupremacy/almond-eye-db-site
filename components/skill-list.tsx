@@ -51,15 +51,14 @@ export default function SkillList() {
   } = useDeck();
   const [sourceFilter, setSourceFilter] = useState<"all" | "event" | "hint">("all");
   const [rarityFilter, setRarityFilter] = useState<RarityFilterKey>("all");
-  const [viewMode, setViewMode] = useState<"list" | "card">(() => {
-    if (typeof window === "undefined") return "list";
-    try {
-      return localStorage.getItem("almond_skill_view_mode") === "card" ? "card" : "list";
-    } catch {
-      return "list";
-    }
-  });
+  const [viewMode, setViewMode] = useState<"list" | "card">("list");
   // Remember the skill view mode (Unified List / Group by Card) across visits
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("almond_skill_view_mode");
+      if (stored === "card" || stored === "list") setViewMode(stored);
+    } catch {}
+  }, []);
   useEffect(() => {
     try {
       localStorage.setItem("almond_skill_view_mode", viewMode);

@@ -207,16 +207,18 @@ export function evaluateSkillForTrack(
   // Check Dynamic 6: Style & Rank Trap
   if (runningStyle) {
     // Style check
-    const styleReqM = /running_style==(\d+)/.exec(allCondStr);
-    if (styleReqM) {
-      const reqStyle = parseInt(styleReqM[1], 10);
-      if (reqStyle !== runningStyle) {
+    const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
+      parseInt(m[1], 10)
+    );
+    if (styleReqMatches.length > 0) {
+      const allowedStyles = Array.from(new Set(styleReqMatches));
+      if (!allowedStyles.includes(runningStyle)) {
         specialEffects.push({
           id: "style_mismatch",
           type: "error",
-          badge: "Style Trap",
-          title: `Requires ${STYLE_NAMES[reqStyle] ?? "Another Style"}`,
-          description: `This skill only functions for ${STYLE_NAMES[reqStyle] ?? "another style"}. Ineffective for your selected ${STYLE_NAMES[runningStyle]}.`,
+          badge: "No Activation",
+          title: `Requires ${allowedStyles.map((s) => STYLE_NAMES[s] ?? "Style " + s).join(" or ")}`,
+          description: `This skill only functions for ${allowedStyles.map((s) => STYLE_NAMES[s]).join("/")}. Ineffective for your selected ${STYLE_NAMES[runningStyle]}.`,
         });
         trapScorePenalty += 50;
       }

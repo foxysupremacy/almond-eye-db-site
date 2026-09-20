@@ -7,12 +7,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParentingSetup } from "./parenting-state";
 import { useDeck } from "./deck/context";
-import { api, type CharacterIndexEntry, type SkillDetail } from "./api";
-import { getCanonicalFactorName } from "./affinity-engine";
+import { api, type CharacterIndexEntry, type SkillDetail, getCharacterImageUrl } from "./api";
+import { getCanonicalFactorName, getCharaIdFromCardId } from "./affinity-engine";
 import { decodeFactor } from "./factor-decoder";
 import {
   getInheritableSkillForUnique,
   getInheritableSkillForGold,
+  getEvolInheritableSkillForUnique,
 } from "./skill-rarity";
 import { resolveGrandparentSlot } from "./parenting/pedigree-resolvers";
 
@@ -20,8 +21,15 @@ export interface DisplayParentSkillGrant {
   cardName: string;
   source: string;
   slotLabel?: string;
+  slotTag?: string;
+  cardId?: number;
+  charId?: number;
+  avatarUrl?: string;
   eventMeta?: any;
   originalGoldSkill?: { nameEn: string; nameJp?: string; id?: number };
+  isEvolInherit?: boolean;
+  evolSkillAvailable?: boolean;
+  evolSkillId?: number;
 }
 
 export interface DisplayParentSkill {
@@ -39,15 +47,22 @@ export interface DisplayParentSkill {
   parentDuplicateCount?: number;
   originalGoldSkill?: { nameEn: string; nameJp?: string; id?: number };
   originalUniqueSkill?: { nameEn: string; nameJp?: string; id?: number };
+  isEvolInherit?: boolean;
+  evolSkillAvailable?: boolean;
+  evolSkillId?: number;
   grants?: DisplayParentSkillGrant[];
   mainCardGrants?: { cardName: string; source: string }[];
 }
 
 export function useLineageSkills() {
   const { setup } = useParentingSetup();
-  const { mainSkillIdSet } = useDeck();
+  const { mainSkillIdSet, parentSkills } = useDeck();
   const [characters, setCharacters] = useState<CharacterIndexEntry[]>([]);
   const [skillsById, setSkillsById] = useState<Map<number, SkillDetail>>(new Map());
+
+  const parentSkillIdSet = useMemo(() => {
+    return new Set<number>((parentSkills || []).map((s) => s.id));
+  }, [parentSkills]);
 
   useEffect(() => {
     api.listCharacters().then(setCharacters).catch(console.error);
@@ -111,15 +126,33 @@ export function useLineageSkills() {
       grantSource: string,
       slotLabel: string,
       originalGold?: { nameEn: string; nameJp?: string; id?: number },
-      originalUnique?: { nameEn: string; nameJp?: string; id?: number }
+      originalUnique?: { nameEn: string; nameJp?: string; id?: number },
+      fallbackIconId?: number | null,
+      isEvolInherit?: boolean,
+      evolSkillAvailable?: boolean,
+      evolSkillId?: number,
+      slotMeta?: {
+        slotTag?: string;
+        cardId?: number;
+        charId?: number;
+        avatarUrl?: string;
+      }
     ) => {
       const isDupeInMain = mainSkillIdSet.has(skillId);
-      const isInheritOnly = !isDupeInMain;
+      const isDupeInParent = parentSkillIdSet.has(skillId);
+      const isInheritOnly = !isDupeInMain && !isDupeInParent;
       const grant: DisplayParentSkillGrant = {
         cardName: grantCardName,
         source: grantSource,
         slotLabel,
+        slotTag: slotMeta?.slotTag,
+        cardId: slotMeta?.cardId,
+        charId: slotMeta?.charId,
+        avatarUrl: slotMeta?.avatarUrl,
         originalGoldSkill: originalGold,
+        isEvolInherit,
+        evolSkillAvailable,
+        evolSkillId,
       };
 
       const existing = byId.get(skillId);
@@ -127,13 +160,20 @@ export function useLineageSkills() {
         const skill = skillsById.get(skillId);
         if (!skill) return;
 
+        const resolvedIconId =
+          skill.iconId && skill.iconId !== 0
+            ? skill.iconId
+            : fallbackIconId && fallbackIconId !== 0
+            ? fallbackIconId
+            : null;
+
         byId.set(skillId, {
           id: skill.id,
           nameEn: skill.nameEn,
           nameJp: skill.nameJp,
           descEn: skill.descEn,
           rarity: skill.rarity ?? 1,
-          iconId: skill.iconId,
+          iconId: resolvedIconId,
           source,
           sourceLabel,
           isUniqueToParent: true,
@@ -141,6 +181,9 @@ export function useLineageSkills() {
           isInheritOnly,
           originalGoldSkill: originalGold,
           originalUniqueSkill: originalUnique,
+          isEvolInherit,
+          evolSkillAvailable,
+          evolSkillId,
           grants: [grant],
           parentDuplicateCount: 1,
         });
@@ -149,27 +192,53 @@ export function useLineageSkills() {
           existing.grants = [...(existing.grants ?? []), grant];
           existing.parentDuplicateCount = existing.grants.length;
         }
+        if (isEvolInherit) existing.isEvolInherit = true;
+        if (evolSkillAvailable) {
+          existing.evolSkillAvailable = true;
+          existing.evolSkillId = evolSkillId;
+        }
       }
     };
 
     for (const slot of pedigreeSlots) {
       if (!slot.cardId) continue;
       const chara = charaByCardIdMap.get(slot.cardId);
+      const charaId = chara ? chara.charId : getCharaIdFromCardId(slot.cardId);
+      const avatarUrl = charaId && slot.cardId ? getCharacterImageUrl(charaId, slot.cardId) : undefined;
+      const slotMeta = {
+        slotTag: slot.tag,
+        cardId: slot.cardId,
+        charId: charaId,
+        avatarUrl,
+      };
 
       // 1. Unique Skill (Inherit version)
       if (chara?.uniqueSkillId) {
-        const inheritId = getInheritableSkillForUnique(chara.uniqueSkillId);
-        const skillId = inheritId ?? chara.uniqueSkillId;
-        const fullForm = inheritId ? skillsById.get(chara.uniqueSkillId) : null;
+        const whiteInheritId = getInheritableSkillForUnique(chara.uniqueSkillId);
+        const evolInheritId = getEvolInheritableSkillForUnique(chara.uniqueSkillId);
+
+        // Direct parents (P1/P2) use the evolved inherit skill when available; grandparents use standard inherit
+        const isEvolInherit = Boolean(slot.isParent && evolInheritId);
+        const evolAvailable = Boolean(!slot.isParent && evolInheritId);
+        const skillId = isEvolInherit
+          ? evolInheritId!
+          : (whiteInheritId ?? chara.uniqueSkillId);
+
+        const fullForm = (whiteInheritId || evolInheritId) ? skillsById.get(chara.uniqueSkillId) : null;
         pushSkill(
           skillId,
           "unique",
           `${slot.slotLabel}: ${chara.nameEn}`,
           `${chara.nameEn} (${slot.tag})`,
-          "Unique",
+          isEvolInherit ? "Unique (Evolved Inherit)" : "Unique",
           slot.slotLabel,
           undefined,
-          fullForm ? { nameEn: fullForm.nameEn, nameJp: fullForm.nameJp, id: chara.uniqueSkillId } : undefined
+          fullForm ? { nameEn: fullForm.nameEn, nameJp: fullForm.nameJp, id: chara.uniqueSkillId } : undefined,
+          fullForm?.iconId ?? undefined,
+          isEvolInherit,
+          evolAvailable,
+          evolInheritId ?? undefined,
+          slotMeta
         );
       }
 
@@ -178,14 +247,21 @@ export function useLineageSkills() {
         for (const sId of chara.innateSkills) {
           const mapped = getInheritableSkillForGold(sId);
           const targetId = mapped?.whiteId ?? sId;
+          const goldSkill = mapped ? skillsById.get(sId) : null;
           pushSkill(
             targetId,
             "hint",
             `${slot.slotLabel}: ${chara.nameEn} (Innate)`,
             `${chara.nameEn} (${slot.tag})`,
-            "Innate",
+            mapped ? "Innate (Gold Inherit)" : "Innate",
             slot.slotLabel,
-            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined
+            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined,
+            undefined,
+            goldSkill?.iconId ?? undefined,
+            undefined,
+            undefined,
+            undefined,
+            slotMeta
           );
         }
       }
@@ -202,7 +278,13 @@ export function useLineageSkills() {
             `${chara.nameEn} (${slot.tag})`,
             "Awakening",
             slot.slotLabel,
-            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined
+            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            slotMeta
           );
         }
       }
@@ -219,7 +301,13 @@ export function useLineageSkills() {
             `${chara.nameEn} (${slot.tag})`,
             "Event",
             slot.slotLabel,
-            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined
+            mapped ? { nameEn: mapped.goldNameEn, nameJp: mapped.goldNameJp, id: sId } : undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            undefined,
+            slotMeta
           );
         }
       }
@@ -231,11 +319,16 @@ export function useLineageSkills() {
             const stars = Number(String(f.factor_id).slice(-1)) || 1;
             const name = getCanonicalFactorName(f.factor_id) || decodeFactor(f.factor_id).name;
             const isDupeInMain = mainSkillIdSet.has(f.factor_id);
-            const isInheritOnly = !isDupeInMain;
+            const isDupeInParent = parentSkillIdSet.has(f.factor_id);
+            const isInheritOnly = !isDupeInMain && !isDupeInParent;
             const grant: DisplayParentSkillGrant = {
-              cardName: `Factor (${slot.tag})`,
+              cardName: `${chara?.nameEn || "Factor"} (${slot.tag})`,
               source: "Bloodline Factor",
               slotLabel: slot.slotLabel,
+              slotTag: slot.tag,
+              cardId: slot.cardId,
+              charId: charaId,
+              avatarUrl,
             };
 
             const existing = byId.get(f.factor_id);
@@ -256,7 +349,7 @@ export function useLineageSkills() {
                 parentDuplicateCount: 1,
               });
             } else {
-              if (!existing.grants?.some((g) => g.cardName === grant.cardName)) {
+              if (!existing.grants?.some((g) => g.cardName === grant.cardName && g.source === grant.source)) {
                 existing.grants = [...(existing.grants ?? []), grant];
                 existing.parentDuplicateCount = existing.grants.length;
               }
@@ -267,7 +360,7 @@ export function useLineageSkills() {
     }
 
     return Array.from(byId.values());
-  }, [pedigreeSlots, skillsById, characters, charaByCardIdMap, mainSkillIdSet]);
+  }, [pedigreeSlots, skillsById, characters, charaByCardIdMap, mainSkillIdSet, parentSkillIdSet]);
 
   // Backwards compatible unique skills
   const lineageUniqueSkills = useMemo(() => {

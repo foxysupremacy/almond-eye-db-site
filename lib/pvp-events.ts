@@ -113,7 +113,7 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
-    startDate: "2026-09-14T12:00:00+09:00",
+    startDate: "2026-09-18T12:00:00+09:00",
     durationDays: 6,
   },
   {

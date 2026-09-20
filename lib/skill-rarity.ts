@@ -108,6 +108,47 @@ export function getInheritableSkillForUnique(uniqueSkillId: number): number | nu
 }
 
 /**
+ * Evolved inherit skills (rarity 6) mapping for upgraded succession skills (継承進化).
+ * In master.mdb: skill_upgrade_succession_skill
+ * - 901351 (Stay Gold white inherit) -> 91101351 (evol inherit)
+ * - 901411 (Epiphaneia white inherit) -> 91101411 (evol inherit)
+ * - 911091 (Rhein Kraft white inherit) -> 92111091 (evol inherit)
+ */
+export const UNIQUE_TO_EVOL_INHERIT_MAP: Record<number, number> = {
+  101351: 91101351, // Stay Gold (Unique -> Evol Inherit)
+  101411: 91101411, // Epiphaneia (Unique -> Evol Inherit)
+  111091: 92111091, // Rhein Kraft (Unique -> Evol Inherit)
+};
+
+export const WHITE_TO_EVOL_INHERIT_MAP: Record<number, number> = {
+  901351: 91101351, // Stay Gold (White Inherit -> Evol Inherit)
+  901411: 91101411, // Epiphaneia (White Inherit -> Evol Inherit)
+  911091: 92111091, // Rhein Kraft (White Inherit -> Evol Inherit)
+};
+
+export const EVOL_TO_UNIQUE_MAP: Record<number, number> = {
+  91101351: 101351,
+  91101411: 101411,
+  92111091: 111091,
+};
+
+/** Get the evolved inherit skill id for a unique skill, or null if unmapped. */
+export function getEvolInheritableSkillForUnique(uniqueSkillId: number): number | null {
+  return UNIQUE_TO_EVOL_INHERIT_MAP[uniqueSkillId] ?? null;
+}
+
+/** Get the evolved inherit skill id for a white inherit skill, or null if unmapped. */
+export function getEvolInheritableSkillForWhite(whiteInheritId: number): number | null {
+  return WHITE_TO_EVOL_INHERIT_MAP[whiteInheritId] ?? null;
+}
+
+/** Check if a skill id is an evolved inherit or has an evolved inherit version. */
+export function hasEvolInheritSkill(skillId: number): boolean {
+  return skillId in UNIQUE_TO_EVOL_INHERIT_MAP || skillId in WHITE_TO_EVOL_INHERIT_MAP || skillId in EVOL_TO_UNIQUE_MAP;
+}
+
+
+/**
  * Support-card rarity chip metadata (R/SR/SSR), shared by every picker/list UI.
  * Chip values are Tailwind class strings.
  */

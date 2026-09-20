@@ -25,6 +25,9 @@ import re
 import sqlite3
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from skill_icons import resolve_skill_icon_id
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if os.path.isdir(os.path.join(REPO_ROOT, "lib", "data")):
     SITE_LIB_DATA = os.path.join(REPO_ROOT, "lib", "data")       # in-repo layout
@@ -132,6 +135,7 @@ def main():
     gametora_by_id = {s["id"]: s for s in gametora}
     site_skills = load_json(os.path.join(SITE_LIB_DATA, "skills.json")) or []
     site_name_by_id = {s["id"]: s["nameEn"] for s in site_skills}
+    site_icon_by_id = {s["id"]: s["iconId"] for s in site_skills if s.get("iconId")}
 
     con = sqlite3.connect(f"file:{mdb_path}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
@@ -158,6 +162,7 @@ def main():
 
         gene = gametora_by_id.get(orig_id, {}).get("gene_version") or {}
         parent_name_en = site_name_by_id.get(orig_id)
+        parent_icon_id = site_icon_by_id.get(orig_id) or site_icon_by_id.get(base_id)
 
         name_en = pick_name_en(gene, parent_name_en, row["name_text"])
         # hachimi cat 48 inherit entries are stale copies of the full unique's
@@ -168,6 +173,8 @@ def main():
         name_jp = (row["name_text"] or parent_name_en or name_en).strip()
         desc_jp = (row["desc_text"] or "").strip()
 
+        icon_id = resolve_skill_icon_id(row, parent_icon_id=parent_icon_id)
+
         entries.append(
             {
                 "id": inherit_id,
@@ -176,7 +183,7 @@ def main():
                 "descEn": desc_en,
                 "descJp": desc_jp,
                 "rarity": row["rarity"],
-                "iconId": row["icon_id"],
+                "iconId": icon_id,
                 "conditionGroups": build_condition_groups(row),
             }
         )
