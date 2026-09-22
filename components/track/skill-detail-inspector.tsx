@@ -5,7 +5,7 @@ import type { SkillDetail } from "../../lib/api";
 import type { Course } from "../../lib/skill-engine/types";
 import type { SkillZoneResult } from "../../lib/skill-engine/zones";
 import type { SkillEvaluationResult, SpecialEffectItem } from "../../lib/evaluator/types";
-import type { DeckSkill, ParentDeckSkill } from "../../lib/deck/types";
+import type { VisualizerSkill } from "../../lib/visualizer-skills";
 import { conditionBranches, formatEffect } from "../../lib/skill-engine/describe";
 import { ZONE_COLORS } from "../../lib/track-render";
 import SkillIcon from "../skill-icon";
@@ -19,18 +19,19 @@ import {
   CalculationBreakdownPanel,
 } from "../highlighted-numbers";
 import { AlertTriangleIcon, StarRating } from "../icons";
+import { SkillSourceBadges } from "./skill-source-badges";
 
 interface SkillDetailInspectorProps {
   conditionViewerRef?: RefObject<HTMLDivElement | null>;
   skillDetail: SkillDetail | null;
   skillLoading: boolean;
-  selectedSkill: DeckSkill | ParentDeckSkill | null;
+  selectedSkill: VisualizerSkill | null;
   selectedSkillId: number | null;
   zones: SkillZoneResult[] | null;
   course: Course | null;
   racerCount: number;
   evaluation: SkillEvaluationResult | null;
-  activeSkills: Array<DeckSkill | ParentDeckSkill>;
+  activeSkills: VisualizerSkill[];
   isBanned?: boolean;
 }
 
@@ -91,44 +92,14 @@ export function SkillDetailInspector({
                 </div>
               </div>
             )}
-            {(() => {
-              const deckSkill = activeSkills.find((x) => x.id === skillDetail.id);
-              if (!deckSkill) return null;
-              const grants =
-                deckSkill.grants && deckSkill.grants.length > 0
-                  ? deckSkill.grants
-                  : [
-                      {
-                        cardId: deckSkill.cardId,
-                        cardName: deckSkill.cardName,
-                        source: deckSkill.source,
-                      },
-                    ];
-              return (
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                  <span className="text-zinc-400 dark:text-zinc-500">From:</span>
-                  {grants.map((g, idx) => (
-                    <span key={idx} className="inline-flex items-center gap-1">
-                      <span
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                          g.source === "event"
-                            ? "bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300"
-                            : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
-                        }`}
-                      >
-                        {g.source}
-                      </span>
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {g.cardName}
-                      </span>
-                      {idx < grants.length - 1 && (
-                        <span className="text-zinc-300 dark:text-zinc-700">·</span>
-                      )}
-                    </span>
-                  ))}
-                </div>
-              );
-            })()}
+            {selectedSkill?.origins && selectedSkill.origins.length > 0 && (
+              <div className="mt-2.5">
+                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                  Sources
+                </span>
+                <SkillSourceBadges origins={selectedSkill.origins} />
+              </div>
+            )}
             {(() => {
               const { style, text } = splitStylePrefix(skillDetail.descEn);
               return (

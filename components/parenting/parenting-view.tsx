@@ -40,7 +40,7 @@ import type { ParticipantSlot } from "../../lib/parenting/types";
 import { LineageAffinityHeader } from "./lineage-affinity-header";
 import { TraineeSpotlight } from "./trainee-spotlight";
 import { PedigreeSlotCard } from "./pedigree-slot-card";
-import { resolveGrandparentSlot, buildParticipantsList } from "../../lib/parenting/pedigree-resolvers";
+import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "../../lib/parenting/pedigree-resolvers";
 import { PedigreeSkillsSection } from "./pedigree-skills-section";
 
 export interface ParentingViewProps {
@@ -59,7 +59,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
   const {
     setup,
-    setTargetCharaId,
+    setTargetChara,
     setParent1,
     setParent2,
     setP1IsBorrow,
@@ -115,9 +115,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   }, [characters]);
 
   const targetChara = useMemo(() => {
-    if (!setup.targetCharaId) return null;
-    return charaByCharIdMap.get(setup.targetCharaId) || null;
-  }, [setup.targetCharaId, charaByCharIdMap]);
+    return resolveTargetCharacter(setup, charaMap, charaByCharIdMap);
+  }, [setup, charaMap, charaByCharIdMap]);
 
   // Grandparents resolution (auto-fills from Parent veteran training history unless overridden)
   const p1_gp1 = useMemo(
@@ -597,7 +596,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         isOpen={isTraineeModalOpen}
         onClose={() => setIsTraineeModalOpen(false)}
         characters={characters}
-        onSelect={(chara) => setTargetCharaId(chara.charId)}
+        onSelect={(chara) => setTargetChara({ charId: chara.charId, cardId: chara.id })}
         title="Select Target Trainee"
       />
 

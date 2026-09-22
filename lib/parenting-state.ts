@@ -24,6 +24,7 @@ export interface GrandparentSlot {
 
 export interface ParentingSetup {
   targetCharaId: number | null;
+  targetCharaCardId: number | null;
   parent1: KyumaruVeteranItem | null;
   parent2: KyumaruVeteranItem | null;
   p1IsBorrow?: boolean;
@@ -75,6 +76,7 @@ export function getRunBorrowState(
 
 export const DEFAULT_PARENTING_SETUP: ParentingSetup = {
   targetCharaId: null,
+  targetCharaCardId: null,
   parent1: null,
   parent2: null,
   p1IsBorrow: false,
@@ -83,23 +85,32 @@ export const DEFAULT_PARENTING_SETUP: ParentingSetup = {
   supportCardIds: [null, null, null, null, null, null],
 };
 
+/**
+ * Normalize a potentially incomplete parenting setup (e.g. from localStorage
+ * or a legacy save) into a fully populated ParentingSetup with safe defaults.
+ */
+export function normalizeParentingSetup(parsed: Partial<ParentingSetup>): ParentingSetup {
+  return {
+    targetCharaId: typeof parsed.targetCharaId === "number" ? parsed.targetCharaId : null,
+    targetCharaCardId: typeof parsed.targetCharaCardId === "number" ? parsed.targetCharaCardId : null,
+    parent1: parsed.parent1 ?? null,
+    parent2: parsed.parent2 ?? null,
+    p1IsBorrow: parsed.p1IsBorrow ?? false,
+    p2IsBorrow: parsed.p2IsBorrow ?? true,
+    gpOverrides: parsed.gpOverrides ?? {},
+    supportCardIds: Array.isArray(parsed.supportCardIds)
+      ? parsed.supportCardIds
+      : [null, null, null, null, null, null],
+  };
+}
+
 const STORAGE_KEY = "almondeye_parenting_setup";
 const EVENT_KEY = "almondeye_parenting_updated";
 
 export function loadParentingSetup(): ParentingSetup {
   const parsed = readJsonStorage<Partial<ParentingSetup>>(STORAGE_KEY);
   if (!parsed) return DEFAULT_PARENTING_SETUP;
-  return {
-      targetCharaId: parsed.targetCharaId ?? null,
-      parent1: parsed.parent1 ?? null,
-      parent2: parsed.parent2 ?? null,
-      p1IsBorrow: parsed.p1IsBorrow ?? false,
-      p2IsBorrow: parsed.p2IsBorrow ?? true,
-      gpOverrides: parsed.gpOverrides ?? {},
-    supportCardIds: Array.isArray(parsed.supportCardIds)
-      ? parsed.supportCardIds
-      : [null, null, null, null, null, null],
-  };
+  return normalizeParentingSetup(parsed);
 }
 
 export function saveParentingSetup(setup: ParentingSetup): void {
@@ -111,6 +122,7 @@ export function saveParentingSetup(setup: ParentingSetup): void {
 export async function serializeParentingToHash(setup: ParentingSetup): Promise<string> {
   const minimalPayload = {
     t: setup.targetCharaId,
+    tc: setup.targetCharaCardId,
     p1: setup.parent1 ? setup.parent1.trained_chara_id || setup.parent1.card_id : null,
     p2: setup.parent2 ? setup.parent2.trained_chara_id || setup.parent2.card_id : null,
     b1: setup.p1IsBorrow ? 1 : 0,
@@ -172,6 +184,17 @@ export function useParentingSetup() {
       targetCharaId: id,
     }));
   }, [updateSetup]);
+
+  const setTargetChara = useCallback(
+    (selection: { charId: number; cardId: number } | null) => {
+      updateSetup((prev) => ({
+        ...prev,
+        targetCharaId: selection?.charId ?? null,
+        targetCharaCardId: selection?.cardId ?? null,
+      }));
+    },
+    [updateSetup],
+  );
 
   const setParent1 = useCallback((veteran: KyumaruVeteranItem | null) => {
     updateSetup((prev) => ({
@@ -278,6 +301,7 @@ export function useParentingSetup() {
   const resetParenting = useCallback(() => {
     const empty: ParentingSetup = {
       targetCharaId: null,
+      targetCharaCardId: null,
       parent1: null,
       parent2: null,
       p1IsBorrow: false,
@@ -297,6 +321,7 @@ export function useParentingSetup() {
     setup: deckCtx ? deckCtx.parentingSetup : setup,
     loaded: deckCtx ? !deckCtx.loading : loaded,
     setTargetCharaId,
+    setTargetChara,
     setParent1,
     setParent2,
     setParentPair,

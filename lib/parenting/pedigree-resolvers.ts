@@ -81,3 +81,20 @@ export function buildParticipantsList(
     },
   ];
 }
+
+/**
+ * Resolve the exact target character entry for the current parenting setup.
+ * Prefers `targetCharaCardId` (exact selected costume), falls back to
+ * `targetCharaId` (base character lookup) for legacy saves.
+ */
+export function resolveTargetCharacter(
+  setup: ParentingSetup,
+  byCardId: Map<number, CharacterIndexEntry>,
+  byCharId: Map<number, CharacterIndexEntry>,
+): CharacterIndexEntry | null {
+  if (setup.targetCharaCardId) {
+    const exact = byCardId.get(setup.targetCharaCardId);
+    if (exact) return exact;
+  }
+  return setup.targetCharaId ? byCharId.get(setup.targetCharaId) ?? null : null;
+}

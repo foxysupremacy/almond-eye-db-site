@@ -17,6 +17,7 @@ import {
   goldToWhiteMap,
   cardMetaMap,
   skillMetaMap,
+  evolvedSkillsByCharacterCardId,
 } from "./registry";
 
 describe("registry datasets", () => {
@@ -66,5 +67,31 @@ describe("registry datasets", () => {
     expect(goldToWhiteMap["200014"]?.whiteId).toBe(200011);
     expect(Object.keys(cardMetaMap).length).toBe(cards.length);
     expect(Object.keys(skillMetaMap).length).toBeGreaterThan(1000);
+  });
+});
+
+describe("evolvedSkillsByCharacterCardId — costume-specific EVO indexing", () => {
+  test("indexes EVO skills only for their exact character costume", () => {
+    expect(evolvedSkillsByCharacterCardId.get(103302)?.map((s) => s.id)).toEqual([
+      103302111,
+      103302211,
+    ]);
+    expect(evolvedSkillsByCharacterCardId.get(103301)?.map((s) => s.id)).not.toContain(
+      103302111,
+    );
+    for (const [cardId, entries] of evolvedSkillsByCharacterCardId) {
+      expect(charactersById.has(cardId)).toBe(true);
+      for (const skill of entries) {
+        expect(skill.rarity).toBe(6);
+        expect(Math.trunc(skill.id / 1000)).toBe(cardId);
+      }
+    }
+  });
+
+  test("excludes scenario-wide EVOs", () => {
+    // Scenario-wide EVOs have id prefixes like 407, 408, 409, 410
+    for (const cardId of evolvedSkillsByCharacterCardId.keys()) {
+      expect(cardId).toBeGreaterThan(100000);
+    }
   });
 });

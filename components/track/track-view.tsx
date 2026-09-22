@@ -12,12 +12,18 @@ import {
   type SkillZoneResult,
 } from "../../lib/skill-engine/zones";
 import { useDeck } from "../store";
-import { matchesRarityFilter, type RarityFilterKey } from "../../lib/skill-rarity";
+import { type RarityFilterKey } from "../../lib/skill-rarity";
 import { evaluateSkillForTrack } from "../../lib/evaluator";
 import { TrackCanvas } from "./track-canvas";
 import { TrackSkillSidebar } from "./track-skill-sidebar";
 import { SkillDetailInspector } from "./skill-detail-inspector";
 import { isSkillBanned, getPvpRaceParameters } from "../../lib/pvp-events";
+import { useParentingSetup } from "../../lib/parenting-state";
+import {
+  buildVisualizerSkillPools,
+  matchesVisualizerFilter,
+  type VisualizerSkill,
+} from "../../lib/visualizer-skills";
 
 // Persisted visualizer prefs (selected skill).
 const SAVE_KEY = "visualizer.v1";
@@ -38,8 +44,13 @@ export default function TrackView() {
 
   const [visualizerDeck, setVisualizerDeck] = useState<"main" | "parent">("main");
   const [rarityFilter, setRarityFilter] = useState<RarityFilterKey>("all");
-  const activeSkills = visualizerDeck === "main" ? mainSkills : parentSkills;
-  const activeSlots = visualizerDeck === "main" ? mainSlots : parentSlots;
+
+  const { setup } = useParentingSetup();
+  const pools = useMemo(
+    () => buildVisualizerSkillPools({ mainSkills, parentSkills, setup }),
+    [mainSkills, parentSkills, setup],
+  );
+  const activeSkills: VisualizerSkill[] = visualizerDeck === "main" ? pools.main : pools.parent;
 
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
   const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
@@ -178,7 +189,7 @@ export default function TrackView() {
   }, [course, activeSkills, fetchSkillCached, styleHorse, raceParams]);
 
   const selectedSkill = activeSkills.find((s) => s.id === selectedSkillId) ?? null;
-  const hasDeck = activeSlots.some(Boolean);
+  const hasContent = activeSkills.length > 0;
 
   // Whether a skill fires on the current course (null while zones haven't
   // been computed for it yet).
@@ -202,16 +213,18 @@ export default function TrackView() {
   }, [activeSkills, zonesBySkill, firesOnCourse]);
 
   const displayedSkills = useMemo(() => {
-    return sortedSkills.filter((s) => matchesRarityFilter(s.rarity, rarityFilter));
+    return sortedSkills.filter((s) => matchesVisualizerFilter(s, rarityFilter));
   }, [sortedSkills, rarityFilter]);
 
   const isSelectedSkillBanned = Boolean(selectedSkillId && isSkillBanned(selectedSkillId, activePvpEvent));
 
   return (
     <div className="flex flex-col gap-3">
-      {!hasDeck ? (
+      {!hasContent ? (
         <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-sm text-zinc-400 dark:text-zinc-500">
-          Build a deck on the Main Deck tab first - its skills will appear here.
+          {visualizerDeck === "main"
+            ? "Select an exact trainee costume in Parenting or add Main Deck cards."
+            : "Configure parents and grandparents in Parenting or add Parent Deck cards."}
         </div>
       ) : (
         <>

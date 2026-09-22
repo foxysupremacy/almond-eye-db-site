@@ -12,6 +12,7 @@ import { calculateLineageAffinity, getCharaIdFromCardId } from "../lib/affinity-
 import ParentDeckPicker from "./parent-deck-picker";
 import ParentSkillList from "./parent-skill-list";
 import AceComplementFinder from "./ace-complement-finder";
+import { resolveTargetCharacter } from "../lib/parenting/pedigree-resolvers";
 
 interface ParentDeckViewProps {
   onNavigateToParenting: () => void;
@@ -34,9 +35,8 @@ export default function ParentDeckView({ onNavigateToParenting }: ParentDeckView
   }, [characters]);
 
   const targetChara = useMemo(() => {
-    if (!setup.targetCharaId) return null;
-    return charaByCharIdMap.get(setup.targetCharaId) || null;
-  }, [setup.targetCharaId, charaByCharIdMap]);
+    return resolveTargetCharacter(setup, charaByCardIdMap, charaByCharIdMap);
+  }, [setup, charaByCardIdMap, charaByCharIdMap]);
 
   const p1Chara = useMemo(() => {
     if (!setup.parent1) return null;

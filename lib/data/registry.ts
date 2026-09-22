@@ -209,3 +209,47 @@ export const cardMetaMap: Record<string, CardMeta> = Object.fromEntries(
     } satisfies CardMeta,
   ])
 );
+
+// ---------------------------------------------------------------------------
+// Character-specific EVO (rarity 6) skills, indexed by exact costume card id.
+// Scenario-wide EVOs (e.g. id prefixes 407/408/409/410) are excluded because
+// Math.trunc(skill.id / 1000) does not match any playable costume card_id.
+// ---------------------------------------------------------------------------
+
+/** Character-specific EVO skills grouped by costume card id. */
+export const evolvedSkillsByCharacterCardId: Map<number, SkillDetail[]> = (() => {
+  const index = new Map<number, SkillDetail[]>();
+  for (const skill of skillsBase) {
+    if (skill.rarity !== 6) continue;
+    const cardId = Math.trunc(skill.id / 1000);
+    if (!charactersById.has(cardId)) continue;
+    const list = index.get(cardId) ?? [];
+    list.push(skill);
+    index.set(cardId, list);
+  }
+  for (const list of index.values()) list.sort((a, b) => a.id - b.id);
+  return index;
+})();
+
+// ---------------------------------------------------------------------------
+// Parent-only succession EVO skills from master.mdb's
+// skill_upgrade_succession_skill table. These remain visible as planning
+// candidates whenever the exact character costume occupies Parent 1 or 2;
+// account ownership is a game-side eligibility rule, not a visualizer gate.
+// ---------------------------------------------------------------------------
+
+const SUCCESSION_EVO_SKILL_ID_BY_PARENT_CARD_ID = new Map<number, number>([
+  [110902, 92111091], // Rhein Kraft
+  [113501, 91101351], // Stay Gold
+  [114101, 91101411], // Epiphaneia
+]);
+
+/** Exact direct-parent character card id -> succession EVO skill. */
+export const successionEvolvedSkillByParentCardId: Map<number, SkillDetail> = (() => {
+  const index = new Map<number, SkillDetail>();
+  for (const [cardId, skillId] of SUCCESSION_EVO_SKILL_ID_BY_PARENT_CARD_ID) {
+    const skill = skillsById.get(skillId);
+    if (skill) index.set(cardId, skill);
+  }
+  return index;
+})();

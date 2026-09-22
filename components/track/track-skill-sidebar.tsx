@@ -5,15 +5,16 @@ import SkillIcon from "../skill-icon";
 import SkillItem from "../skill-item";
 import { RarityBadge } from "../shared/skill-badges";
 import { getSkillRarityStyle, type RarityFilterKey } from "../../lib/skill-rarity";
-import type { DeckSkill, ParentDeckSkill } from "../../lib/deck/types";
+import type { VisualizerSkill } from "../../lib/visualizer-skills";
+import { SkillSourceBadges } from "./skill-source-badges";
 
 interface TrackSkillSidebarProps {
   visualizerDeck: "main" | "parent";
   onVisualizerDeckChange: (deck: "main" | "parent") => void;
   rarityFilter: RarityFilterKey;
   onRarityFilterChange: (filter: RarityFilterKey) => void;
-  activeSkills: Array<DeckSkill | ParentDeckSkill>;
-  displayedSkills: Array<DeckSkill | ParentDeckSkill>;
+  activeSkills: VisualizerSkill[];
+  displayedSkills: VisualizerSkill[];
   selectedSkillId: number | null;
   onSelectSkill: (id: number) => void;
   firesOnCourse: (id: number) => boolean | null;
@@ -219,35 +220,16 @@ export function TrackSkillSidebar({
                     </div>
                   }
                 >
-                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-zinc-500 dark:text-zinc-400">
-                    {(s.grants && s.grants.length > 0
-                      ? s.grants
-                      : [{ cardId: s.cardId, cardName: s.cardName, source: s.source }]
-                    ).map((g, idx) => (
-                      <span key={idx} className="inline-flex items-center gap-1">
-                        <span
-                          className={`rounded px-1 py-0.5 text-[8px] font-bold uppercase tracking-wide ${
-                            g.source === "event"
-                              ? "bg-violet-100 dark:bg-violet-950/80 text-violet-700 dark:text-violet-300"
-                              : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300"
-                          }`}
-                        >
-                          {g.source}
-                        </span>
-                        <span className="truncate text-zinc-600 dark:text-zinc-400 font-medium">
-                          {g.cardName}
-                        </span>
-                        {g.originalGoldSkill && (
-                          <span className="text-amber-950 dark:text-amber-100 text-[8px] font-bold">
-                            ({g.originalGoldSkill.nameEn})
-                          </span>
-                        )}
-                        {idx < (s.grants?.length ?? 1) - 1 && (
-                          <span className="text-zinc-300 dark:text-zinc-700">·</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
+                  {s.descEn && (
+                    <p className="line-clamp-2 text-[11px] leading-4 text-zinc-700 dark:text-zinc-300">
+                      {s.descEn}
+                    </p>
+                  )}
+                  {s.origins && s.origins.length > 0 && (
+                    <div className="mt-0.5">
+                      <SkillSourceBadges origins={s.origins} compact />
+                    </div>
+                  )}
                 </SkillItem>
               </button>
             );

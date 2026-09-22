@@ -1,9 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { getRunBorrowState, type ParentingSetup } from "./parenting-state";
+import { getRunBorrowState, normalizeParentingSetup, DEFAULT_PARENTING_SETUP, type ParentingSetup } from "./parenting-state";
 
 function makeSetup(overrides: Partial<ParentingSetup> = {}): ParentingSetup {
   return {
     targetCharaId: 1024,
+    targetCharaCardId: null,
     parent1: null,
     parent2: null,
     p1IsBorrow: false,
@@ -62,5 +63,35 @@ describe("getRunBorrowState — 1 borrow per training run", () => {
     });
     expect(getRunBorrowState(setup, "p1_gp1").used).toBe(false);
     expect(getRunBorrowState(setup, "p1_gp2").used).toBe(false);
+  });
+});
+
+describe("normalizeParentingSetup — exact costume and legacy data", () => {
+  test("normalizes an exact target costume without changing the affinity character id", () => {
+    const setup = normalizeParentingSetup({
+      targetCharaId: 1033,
+      targetCharaCardId: 103302,
+    });
+    expect(setup.targetCharaId).toBe(1033);
+    expect(setup.targetCharaCardId).toBe(103302);
+  });
+
+  test("loads legacy parenting data with no exact costume", () => {
+    const setup = normalizeParentingSetup({ targetCharaId: 1033 });
+    expect(setup.targetCharaId).toBe(1033);
+    expect(setup.targetCharaCardId).toBeNull();
+  });
+
+  test("DEFAULT_PARENTING_SETUP has null targetCharaCardId", () => {
+    expect(DEFAULT_PARENTING_SETUP.targetCharaCardId).toBeNull();
+  });
+
+  test("normalizes empty object to full defaults", () => {
+    const setup = normalizeParentingSetup({});
+    expect(setup.targetCharaId).toBeNull();
+    expect(setup.targetCharaCardId).toBeNull();
+    expect(setup.parent1).toBeNull();
+    expect(setup.parent2).toBeNull();
+    expect(setup.supportCardIds).toEqual([null, null, null, null, null, null]);
   });
 });

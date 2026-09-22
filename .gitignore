@@ -15,3 +15,4 @@ tsconfig.tsbuildinfo
 /data/
 scripts/__pycache__/
 /data-source/gametora/.page-cache
+implementation_plan.md

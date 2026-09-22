@@ -16,7 +16,8 @@ import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import CardSkillsSheet from "./card-skills-sheet";
 import { useParentingSetup } from "../lib/parenting-state";
 import { findCharConflict } from "../lib/deck/card-constraints";
-import { charactersByCharId } from "../lib/data/registry";
+import { charactersByCharId, charactersById } from "../lib/data/registry";
+import { resolveTargetCharacter } from "../lib/parenting/pedigree-resolvers";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
@@ -40,9 +41,8 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
 
   const { setup } = useParentingSetup();
   const targetChara = useMemo(() => {
-    if (!setup.targetCharaId) return null;
-    return charactersByCharId.get(setup.targetCharaId) || null;
-  }, [setup.targetCharaId]);
+    return resolveTargetCharacter(setup, charactersById, charactersByCharId);
+  }, [setup]);
 
   const isParent = mode === "parent";
   const activeSlots = isParent ? parentSlots : mainSlots;

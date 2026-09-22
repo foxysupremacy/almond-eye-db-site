@@ -20,7 +20,8 @@ import CardSkillsSheet from "./card-skills-sheet";
 import { getPvpRaceParameters } from "../lib/pvp-events";
 import { useParentingSetup } from "../lib/parenting-state";
 import { cardCharacterKey } from "../lib/deck/card-constraints";
-import { charactersByCharId, skillsById } from "../lib/data/registry";
+import { charactersByCharId, charactersById, skillsById } from "../lib/data/registry";
+import { resolveTargetCharacter } from "../lib/parenting/pedigree-resolvers";
 import { getInheritableSkillForGold, RARITY_META, GOLD_TO_WHITE_MAP, getSkillRarityStyle } from "../lib/skill-rarity";
 import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
 import { evaluateSkillActivation } from "../lib/parenting/skill-evaluator";
@@ -171,9 +172,8 @@ export default function CardPickerPopover({
 
   const { setup } = useParentingSetup();
   const targetChara = useMemo(() => {
-    if (!setup.targetCharaId) return null;
-    return charactersByCharId.get(setup.targetCharaId) || null;
-  }, [setup.targetCharaId]);
+    return resolveTargetCharacter(setup, charactersById, charactersByCharId);
+  }, [setup]);
 
   // Recommendations map for both parent and main deck modes
   const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
