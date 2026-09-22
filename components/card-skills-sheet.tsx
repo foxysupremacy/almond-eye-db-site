@@ -8,13 +8,15 @@ import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import SkillIcon from "./skill-icon";
 import { SkillHoverCard } from "./skill-hover-card";
 import SkillItem from "./skill-item";
-import DuplicateSkillBadge, { type DuplicateCardEntry } from "./duplicate-skill-badge";
+import DuplicateSkillBadge from "./duplicate-skill-badge";
 import { getSkillRarityStyle, getInheritableSkillForGold } from "../lib/skill-rarity";
 import { isSkillBanned, getPvpRaceParameters } from "../lib/pvp-events";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
-import { AlertTriangleIcon, StarIcon } from "./icons";
+import { SkillIndicatorGroup, SkillSourceIcons } from "./shared/skill-badges";
+import { buildDuplicateSkillIndex, type DuplicateSkillIndex } from "../lib/skill-duplicates";
 import { evaluateSkillActivation } from "../lib/parenting/skill-evaluator";
 import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
+import EventChainAttribution from "./event-chain-attribution";
 
 interface CardSkillsSheetProps {
   card: CardIndexEntry;
@@ -72,19 +74,15 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
 
   // Parent mode: map skillId -> every equipped parent card (this one included)
   // that also grants it, so rows can show the "duplicate with N cards" badge
-  const parentDuplicateCardsMap = useMemo(() => {
-    const map = new Map<number, DuplicateCardEntry[]>();
-    if (!isParent) return map;
-    for (const c of parentSlots) {
-      if (!c) continue;
-      const cs = skillsByCard[c.id];
-      if (!cs) continue;
-      const seen = new Set<number>();
-      const addSkill = (s: SkillSummary, source: "hint" | "event") => {
-        if (seen.has(s.id)) return;
-        seen.add(s.id);
-        const entries = map.get(s.id) ?? [];
-        entries.push({
+  const parentDuplicateCardsMap = useMemo<DuplicateSkillIndex>(() => {
+    if (!isParent) return new Map();
+    return buildDuplicateSkillIndex(
+      parentSlots.flatMap((c) => {
+        if (!c) return [];
+        const cs = skillsByCard[c.id];
+        if (!cs) return [];
+        return [{
+          card: {
           cardId: c.id,
           cardName: c.nameEn || c.nameJp || `Card #${c.id}`,
           cardNameJp: c.nameJp,
@@ -92,15 +90,14 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
           type: c.type,
           portraitUrl: c.portraitUrl,
           imgUrl: c.imgUrl,
-          source,
-          eventMeta: s.eventMeta ?? null,
-        });
-        map.set(s.id, entries);
-      };
-      for (const s of cs.eventSkills) addSkill(s, "event");
-      for (const s of cs.hintSkills) addSkill(s, "hint");
-    }
-    return map;
+          },
+          grants: [
+            ...cs.eventSkills.map((s) => ({ id: s.id, source: "event", eventMeta: s.eventMeta ?? null })),
+            ...cs.hintSkills.map((s) => ({ id: s.id, source: "hint", eventMeta: s.eventMeta ?? null })),
+          ],
+        }];
+      })
+    );
   }, [isParent, parentSlots, skillsByCard]);
 
   if (!isOpen) return null;
@@ -172,29 +169,6 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
                     : rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
         }`}
       >
-        <div className="mt-0.5 flex flex-col gap-1 flex-none">
-          {isBanned && (
-            <span
-              className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs text-center"
-              title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
-            >
-              BANNED
-            </span>
-          )}
-          <span className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${rStyle.badgeClass}`}>
-            {rStyle.badgeLabel}
-          </span>
-          <span
-            className={`rounded px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wide border ${
-              source === "event"
-                ? "bg-violet-100 dark:bg-violet-950/80 text-violet-800 dark:text-violet-300 border-violet-200 dark:border-violet-800"
-                : "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800"
-            }`}
-          >
-            {source}
-          </span>
-        </div>
-
         <div className="min-w-0 flex-1">
           <SkillItem
             skill={{
@@ -204,55 +178,31 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
               nameJp: s.nameJp,
               rarity: s.rarity,
               cardName: cardTitle,
+              cardId: card.id,
             }}
             size="sm"
             showExternalIcon={true}
             isBanned={isBanned}
             trailing={
-              isParent ? (
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  {isUniqueTarget && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80"
-                      title="Unique to this card — not in the Main Deck and no other picked parent card grants it. Equipping this card is the only way to farm this skill in the current setup."
-                    >
-                      <StarIcon className="h-2.5 w-2.5" />
-                      <span>Unique Target</span>
-                    </span>
-                  )}
-                  {!canActivate && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
-                      title={activation.reason || "This skill cannot activate on the selected course or running style"}
-                    >
-                      <AlertTriangleIcon className="h-2.5 w-2.5" />
-                      <span>{activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
-                    </span>
-                  )}
-                  {isBranchingEvent && !isActiveChoice && (
-                    <span
-                      className="inline-flex items-center gap-1 rounded bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700"
-                      title="This skill is from an alternative choice branch and is not currently selected in the event chain"
-                    >
-                      <span>Unselected Choice</span>
-                    </span>
-                  )}
-                  {inMainDeck && (
-                    <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
-                      <AlertTriangleIcon className="h-2.5 w-2.5" />
-                      <span>In Main Deck</span>
-                    </span>
-                  )}
-                  {isDupAcrossParents && (
-                    <DuplicateSkillBadge
-                      cards={isEquipped ? dupEntries : otherDupEntries}
-                      currentCardId={isEquipped ? card.id : undefined}
-                      skillName={s.nameEn}
-                      variant="sky"
-                    />
-                  )}
-                </div>
-              ) : undefined
+              <div className={`${isParent ? "mt-1 " : ""}flex flex-wrap items-center gap-1.5`}>
+                {isBanned && <SkillIndicatorGroup indicators={[{ kind: "banned", title: "Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate" }]} />}
+                {isParent && (
+                  <SkillIndicatorGroup density="standard" indicators={[
+                    ...(isUniqueTarget ? [{ kind: "unique-target" as const, title: "Unique to this card — not in the Main Deck and no other picked parent card grants it. Equipping this card is the only way to farm this skill in the current setup." }] : []),
+                    ...(!canActivate ? [{ kind: "no-activation" as const, label: activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : undefined, title: activation.reason || "This skill cannot activate on the selected course or running style" }] : []),
+                    ...(isBranchingEvent && !isActiveChoice ? [{ kind: "unselected-choice" as const, title: "This skill is from an alternative choice branch and is not currently selected in the event chain" }] : []),
+                    ...(inMainDeck ? [{ kind: "in-main-deck" as const }] : []),
+                  ]} />
+                )}
+                {isDupAcrossParents && (
+                  <DuplicateSkillBadge
+                    cards={isEquipped ? dupEntries : otherDupEntries}
+                    currentCardId={isEquipped ? card.id : undefined}
+                    skillName={s.nameEn}
+                    variant="sky"
+                  />
+                )}
+              </div>
             }
           >
             {s.descEn && (
@@ -260,13 +210,12 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
                 {s.descEn}
               </p>
             )}
+            <div className="mt-1">
+              <SkillSourceIcons sources={[{ kind: "card", cardId: card.id, name: cardTitle }]} />
+            </div>
 
             {s.eventMeta && (
-              <div className="mt-1 flex items-center gap-1 text-[10px] text-violet-700 dark:text-violet-400">
-                <span className="font-semibold">Event:</span>
-                <span className="truncate">{s.eventMeta.eventNameEn || s.eventMeta.eventNameJp}</span>
-                <span>(Choice {s.eventMeta.choiceIndex})</span>
-              </div>
+              <div className="mt-1"><EventChainAttribution eventMeta={s.eventMeta} /></div>
             )}
           </SkillItem>
         </div>

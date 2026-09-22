@@ -14,6 +14,10 @@ import {
   turnLabel,
   type CardIndexEntry,
   type CharacterIndexEntry,
+  type CharacterEvolutionDetail,
+  type SupportCardEffectsBlob,
+  type CardEffectEntry,
+  type CardUniqueEffectEntry,
   type SkillSummary,
   type CardSkills,
   type SkillConditionGroup,
@@ -64,6 +68,16 @@ export const api = {
     return s;
   },
 
+  async characterEvolutions(cardId: number): Promise<CharacterEvolutionDetail[]> {
+    const store = await initDataStore();
+    return store.getCharacterEvolutions(cardId);
+  },
+
+  async cardSupportEffects(cardId: number): Promise<SupportCardEffectsBlob | undefined> {
+    const store = await initDataStore();
+    return store.getCardSupportEffects(cardId);
+  },
+
   async listRacetracks(): Promise<Racetrack[]> {
     const store = await initDataStore();
     return store.racetracks.map((t) => ({
@@ -97,6 +111,10 @@ export {
 export type {
   CardIndexEntry,
   CharacterIndexEntry,
+  CharacterEvolutionDetail,
+  SupportCardEffectsBlob,
+  CardEffectEntry,
+  CardUniqueEffectEntry,
   SkillSummary,
   CardSkills,
   SkillConditionGroup,

@@ -202,11 +202,12 @@ export function CourseMapCanvas({
   // Mouse interaction: Pan
   const handlePointerDown = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.button !== 0) return; // Left click only
+    if (zoom <= 1.001) return; // Keep the default map position locked; pan only after zooming in.
     e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingRef.current = true;
     dragStartRef.current = { x: e.clientX, y: e.clientY };
     offsetStartRef.current = { ...viewOffset };
-  }, [viewOffset]);
+  }, [viewOffset, zoom]);
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -284,30 +285,6 @@ export function CourseMapCanvas({
 
   const isLeftTurn = course.turn === 2;
 
-  const totalDist = course.length || transform?.totalDistance || 2000;
-  const hoverPhaseIdx = useMemo(() => {
-    if (hoverMeter == null || hoverMeter < 0) return null;
-    const p0 = totalDist / 6;
-    const p1 = (totalDist * 2) / 3;
-    const p2 = (totalDist * 5) / 6;
-    if (hoverMeter < p0) return 0;
-    if (hoverMeter < p1) return 1;
-    if (hoverMeter < p2) return 2;
-    return 3;
-  }, [hoverMeter, totalDist]);
-
-  const activeSlopeType = useMemo(() => {
-    if (hoverMeter == null || !course.slopes) return null;
-    const s = course.slopes.find((sl) => hoverMeter >= sl.start && hoverMeter <= sl.end);
-    if (!s) return null;
-    return s.slope > 0 ? "up" : "down";
-  }, [hoverMeter, course.slopes]);
-
-  const activeCorner = useMemo(() => {
-    if (hoverMeter == null || !course.corners) return null;
-    return course.corners.find((c) => hoverMeter >= c.start && hoverMeter <= c.end) || null;
-  }, [hoverMeter, course.corners]);
-
   return (
     <div
       ref={containerRef}
@@ -380,94 +357,9 @@ export function CourseMapCanvas({
           onPointerCancel={handlePointerUp}
           onMouseLeave={handleMouseLeave}
           onWheel={handleWheel}
-          className="block h-[240px] w-full touch-none cursor-grab active:cursor-grabbing md:h-[420px]"
+          className={`block h-[240px] w-full touch-none md:h-[420px] ${zoom > 1.001 ? "cursor-grab active:cursor-grabbing" : "cursor-default"}`}
         />
       )}
-
-      {/* Bottom Legend Bar */}
-      <div className="absolute bottom-2.5 left-3 right-3 z-10 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
-        <div className="flex flex-wrap items-center gap-2 rounded-md bg-background/85 px-3 py-1.5 text-[11px] font-medium shadow-sm backdrop-blur border border-border/50 pointer-events-auto">
-          <span className="text-muted-foreground font-semibold mr-1">Phases:</span>
-          <span
-            className={`flex items-center gap-1.5 transition-all duration-150 rounded px-1.5 py-0.5 ${
-              hoverPhaseIdx === 0
-                ? "bg-[#eab308]/20 ring-1.5 ring-[#eab308] font-bold text-foreground"
-                : "text-foreground/90"
-            }`}
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#eab308]" />
-            <span>Early (0–1/6)</span>
-          </span>
-          <span
-            className={`flex items-center gap-1.5 transition-all duration-150 rounded px-1.5 py-0.5 ${
-              hoverPhaseIdx === 1
-                ? "bg-[#8b5cf6]/20 ring-1.5 ring-[#8b5cf6] font-bold text-foreground"
-                : "text-foreground/90"
-            }`}
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#8b5cf6]" />
-            <span>Mid (1/6–2/3)</span>
-          </span>
-          <span
-            className={`flex items-center gap-1.5 transition-all duration-150 rounded px-1.5 py-0.5 ${
-              hoverPhaseIdx === 2
-                ? "bg-[#06b6d4]/20 ring-1.5 ring-[#06b6d4] font-bold text-foreground"
-                : "text-foreground/90"
-            }`}
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#06b6d4]" />
-            <span>Late (2/3–5/6)</span>
-          </span>
-          <span
-            className={`flex items-center gap-1.5 transition-all duration-150 rounded px-1.5 py-0.5 ${
-              hoverPhaseIdx === 3
-                ? "bg-[#ef4444]/20 ring-1.5 ring-[#ef4444] font-bold text-foreground"
-                : "text-foreground/90"
-            }`}
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ef4444]" />
-            <span>Final Stretch</span>
-          </span>
-          <span className="text-muted-foreground/50 mx-0.5">|</span>
-          <span
-            className={`flex items-center gap-1 font-semibold transition-all duration-150 rounded px-1.5 py-0.5 ${
-              activeSlopeType === "up"
-                ? "bg-amber-500/20 ring-1.5 ring-amber-500 text-amber-500 font-bold"
-                : "text-amber-500"
-            }`}
-          >
-            <span>↗ Uphill</span>
-          </span>
-          <span
-            className={`flex items-center gap-1 font-semibold transition-all duration-150 rounded px-1.5 py-0.5 ${
-              activeSlopeType === "down"
-                ? "bg-cyan-500/20 ring-1.5 ring-cyan-500 text-cyan-500 font-bold"
-                : "text-cyan-500"
-            }`}
-          >
-            <span>↘ Downhill</span>
-          </span>
-          {course.corners && course.corners.length > 0 && (
-            <>
-              <span className="text-muted-foreground/50 mx-0.5">|</span>
-              <span
-                className={`flex items-center gap-1 font-semibold transition-all duration-150 rounded px-1.5 py-0.5 ${
-                  activeCorner
-                    ? "bg-orange-500/20 ring-1.5 ring-orange-500 text-orange-500 font-bold"
-                    : "text-orange-500"
-                }`}
-              >
-                <span className="h-2 w-2 rounded-full bg-orange-500" />
-                <span>{activeCorner ? `Corner ${activeCorner.number ?? ""}` : "Corners"}</span>
-              </span>
-            </>
-          )}
-        </div>
-
-        <div className="text-[10px] text-muted-foreground/75 bg-background/80 px-2 py-1 rounded backdrop-blur border border-border/40">
-          Drag to Pan • Wheel to Zoom
-        </div>
-      </div>
     </div>
   );
 }

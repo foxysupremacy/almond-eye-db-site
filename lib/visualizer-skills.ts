@@ -39,6 +39,7 @@ export interface VisualizerSkillOrigin {
   availability: VisualizerAvailability;
   slotLabel?: string;
   originalUniqueSkillId?: number;
+  cardId?: number;
 }
 
 export interface VisualizerSkill {
@@ -103,6 +104,7 @@ function deckSkillToVisualizer(s: DeckSkill | ParentDeckSkill): VisualizerSkill 
       kind: g.source === "event" ? "support-event" : "support-hint",
       label: g.cardName,
       availability: "deck",
+      cardId: g.cardId,
     });
   }
 
@@ -166,6 +168,7 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
           kind: "trainee-unique",
           label: `${target.nameEn} · Trainee Unique`,
           availability: "owned",
+          cardId: target.id,
         }, "unique");
       }
     }
@@ -177,6 +180,7 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
         kind: "trainee-evo",
         label: `${(charactersById.get(setup.targetCharaCardId)?.nameEn) ?? "Trainee"} · EVO`,
         availability: "candidate",
+        cardId: setup.targetCharaCardId,
       }, "evolved");
     }
   }
@@ -209,6 +213,7 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
       label: `${character?.nameEn ?? "Parent"} · ${slot.slotLabel} Succession EVO`,
       slotLabel: slot.slotLabel,
       availability: "candidate",
+      cardId: slot.member.card_id,
     }, "evolved");
   }
 
@@ -245,6 +250,7 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
       slotLabel: slot.slotLabel,
       availability: slot.availability,
       originalUniqueSkillId: character.uniqueSkillId,
+      cardId: character.id,
     }, "unique");
   }
 

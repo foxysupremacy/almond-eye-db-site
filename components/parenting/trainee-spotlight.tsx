@@ -1,7 +1,9 @@
 import React from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "../../lib/api";
 import type { LineageStatBonuses } from "../../lib/factor-decoder";
-import { getStatRankBadge, getAptitudeStyle } from "../../lib/parenting/constants";
+import { getStatRankBadge } from "../../lib/parenting/constants";
+import { Badge } from "../shared/badge";
+import { StatIcon, StatusRankIcon, type StatName } from "../shared/status-icons";
 
 export interface TraineeSpotlightProps {
   targetChara: CharacterIndexEntry | null;
@@ -38,10 +40,10 @@ export function TraineeSpotlight({
                   (e.target as HTMLImageElement).style.opacity = "0.8";
                 }}
               />
-              <div className="absolute bottom-0 px-3 py-0.5 rounded-full bg-emerald-600/90 text-white text-[11px] font-bold shadow-md backdrop-blur-xs flex items-center gap-1.5">
+              <Badge size="standard" tone="emerald" className="absolute bottom-0 bg-emerald-600/90 text-white font-bold shadow-md backdrop-blur-xs">
                 <span>{targetChara.nameEn}</span>
                 <span className="text-[10px] text-emerald-100 font-normal">Target Trainee</span>
-              </div>
+              </Badge>
             </div>
           ) : (
             <div className="w-32 h-44 sm:w-40 sm:h-52 rounded-2xl border-2 border-dashed border-emerald-500/70 bg-emerald-500/10 hover:bg-emerald-500/20 flex flex-col items-center justify-center text-center p-3 transition-all active:scale-[0.98]">
@@ -61,67 +63,72 @@ export function TraineeSpotlight({
       <div className="grid grid-cols-5 gap-1 sm:gap-2 max-w-xl mx-auto mb-1 px-1 text-center">
         {/* Speed Bonus Pill */}
         <div>
-          <span
-            className={`inline-block font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-zinc-900 ${
+          <Badge
+            size="standard"
+            className={`font-black border-2 border-white dark:border-zinc-900 shadow-md ${
               statBonuses.speed > 0
                 ? "bg-[#00c0f0] text-white"
                 : "bg-zinc-400/30 text-zinc-400 text-[10px]"
             }`}
           >
             +{statBonuses.speed}
-          </span>
+          </Badge>
         </div>
 
         {/* Stamina Bonus Pill */}
         <div>
-          <span
-            className={`inline-block font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-zinc-900 ${
+          <Badge
+            size="standard"
+            className={`font-black border-2 border-white dark:border-zinc-900 shadow-md ${
               statBonuses.stamina > 0
                 ? "bg-[#ff3b80] text-white"
                 : "bg-zinc-400/30 text-zinc-400 text-[10px]"
             }`}
           >
             +{statBonuses.stamina}
-          </span>
+          </Badge>
         </div>
 
         {/* Power Bonus Pill */}
         <div>
-          <span
-            className={`inline-block font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-zinc-900 ${
+          <Badge
+            size="standard"
+            className={`font-black border-2 border-white dark:border-zinc-900 shadow-md ${
               statBonuses.power > 0
                 ? "bg-[#00c0f0] text-white"
                 : "bg-zinc-400/30 text-zinc-400 text-[10px]"
             }`}
           >
             +{statBonuses.power}
-          </span>
+          </Badge>
         </div>
 
         {/* Guts Bonus Pill */}
         <div>
-          <span
-            className={`inline-block font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-zinc-900 ${
+          <Badge
+            size="standard"
+            className={`font-black border-2 border-white dark:border-zinc-900 shadow-md ${
               statBonuses.guts > 0
                 ? "bg-[#00c0f0] text-white"
                 : "bg-zinc-400/30 text-zinc-400 text-[10px]"
             }`}
           >
             +{statBonuses.guts}
-          </span>
+          </Badge>
         </div>
 
         {/* Wit Bonus Pill */}
         <div>
-          <span
-            className={`inline-block font-black text-[11px] sm:text-xs px-2 sm:px-2.5 py-0.5 rounded-full shadow-md border-2 border-white dark:border-zinc-900 ${
+          <Badge
+            size="standard"
+            className={`font-black border-2 border-white dark:border-zinc-900 shadow-md ${
               statBonuses.wiz > 0
                 ? "bg-[#ff3b80] text-white"
                 : "bg-zinc-400/30 text-zinc-400 text-[10px]"
             }`}
           >
             +{statBonuses.wiz}
-          </span>
+          </Badge>
         </div>
       </div>
 
@@ -129,11 +136,11 @@ export function TraineeSpotlight({
       <div className="max-w-xl mx-auto rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 shadow-2xs mb-2.5">
         {/* 5-Column Header */}
         <div className="grid grid-cols-5 text-center divide-x divide-zinc-200/80 dark:divide-zinc-800 border-b border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 py-1.5 text-[10px] sm:text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
-          <div>👟 Speed</div>
-          <div>❤️ Stamina</div>
-          <div>💪 Power</div>
-          <div>🔥 Guts</div>
-          <div>🎓 Wit</div>
+          {(["Speed", "Stamina", "Power", "Guts", "Wit"] as StatName[]).map((stat) => (
+            <div key={stat} className="flex items-center justify-center" title={stat}>
+              <StatIcon stat={stat} className="h-4 w-4" />
+            </div>
+          ))}
         </div>
 
         {/* 5-Column Stat Values + Rank Box */}
@@ -148,11 +155,7 @@ export function TraineeSpotlight({
             const badge = getStatRankBadge(stat.val);
             return (
               <div key={i} className="flex items-center justify-center gap-1">
-                <span
-                  className={`px-1.5 py-0.2 rounded font-black text-[10px] shadow-2xs ${badge.bgClass}`}
-                >
-                  {badge.rank}
-                </span>
+                <StatusRankIcon grade={badge.rank} className="h-5 w-5" />
                 <span className="font-bold text-zinc-900 dark:text-zinc-100 text-[11px] sm:text-xs">
                   {stat.val}
                 </span>
@@ -172,23 +175,11 @@ export function TraineeSpotlight({
           <div className="flex-1 grid grid-cols-2 gap-1 sm:gap-2">
             <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 shadow-2xs">
               <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium">Turf</span>
-              <span
-                className={`w-5 h-5 flex items-center justify-center rounded-md text-xs font-black ${getAptitudeStyle(
-                  targetChara?.aptitude?.[0],
-                )}`}
-              >
-                {targetChara?.aptitude?.[0] || "-"}
-              </span>
+                <StatusRankIcon grade={targetChara?.aptitude?.[0]} />
             </div>
             <div className="flex items-center justify-between px-2 py-1 rounded-lg bg-white/80 dark:bg-zinc-800/80 border border-zinc-200/60 dark:border-zinc-700/60 shadow-2xs">
               <span className="text-[11px] text-zinc-700 dark:text-zinc-300 font-medium">Dirt</span>
-              <span
-                className={`w-5 h-5 flex items-center justify-center rounded-md text-xs font-black ${getAptitudeStyle(
-                  targetChara?.aptitude?.[1],
-                )}`}
-              >
-                {targetChara?.aptitude?.[1] || "-"}
-              </span>
+                <StatusRankIcon grade={targetChara?.aptitude?.[1]} />
             </div>
           </div>
         </div>
@@ -212,13 +203,7 @@ export function TraineeSpotlight({
                 <span className="text-[10px] sm:text-[11px] text-zinc-700 dark:text-zinc-300 font-medium truncate">
                   {d.label}
                 </span>
-                <span
-                  className={`w-5 h-5 flex items-center justify-center rounded-md text-xs font-black ${getAptitudeStyle(
-                    d.grade,
-                  )}`}
-                >
-                  {d.grade || "-"}
-                </span>
+                <StatusRankIcon grade={d.grade} />
               </div>
             ))}
           </div>
@@ -243,13 +228,7 @@ export function TraineeSpotlight({
                 <span className="text-[10px] sm:text-[11px] text-zinc-700 dark:text-zinc-300 font-medium truncate">
                   {s.label}
                 </span>
-                <span
-                  className={`w-5 h-5 flex items-center justify-center rounded-md text-xs font-black ${getAptitudeStyle(
-                    s.grade,
-                  )}`}
-                >
-                  {s.grade || "-"}
-                </span>
+                <StatusRankIcon grade={s.grade} />
               </div>
             ))}
           </div>

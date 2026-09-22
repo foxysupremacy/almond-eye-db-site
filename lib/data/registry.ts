@@ -17,26 +17,34 @@ import rawCharactersJson from "./characters.json";
 import rawAffinityJson from "./affinity.json";
 import rawCareersJson from "./careers.json";
 import rawUniqueInheritJson from "./unique-inherit-map.json";
+import rawCharacterEvolutionsJson from "./character-evolutions.json";
+import rawCardEffectsJson from "./card-effects.json";
 import rawGoldToWhiteJson from "../gold-to-white.json";
 import rawSkillMetaJson from "./skill-meta.json";
 
 import type {
   AffinityDataPayload,
+  CardEffectEntry,
   CardIndexEntry,
   CareerG1Race,
   CardMeta,
+  CharacterEvolutionDetail,
   CharacterIndexEntry,
   MappedGoldSkill,
   SkillDetail,
   SkillMeta,
+  SupportCardEffectsBlob,
 } from "./types";
 
 export type {
   AffinityDataPayload,
+  CardEffectEntry,
   CareerG1Race,
   CardMeta,
+  CharacterEvolutionDetail,
   MappedGoldSkill,
   SkillMeta,
+  SupportCardEffectsBlob,
 };
 
 const CDN_BASE: string =
@@ -104,6 +112,7 @@ export const characters: CharacterIndexEntry[] = (rawCharactersJson as any[]).ma
   innateSkills: c.innateSkills || [],
   awakeningSkills: c.awakeningSkills || [],
   eventSkills: c.eventSkills || [],
+  growthRates: c.growthRates || [0, 0, 0, 0, 0],
   imgUrl: getCharacterImageUrl(c.charId, c.id),
 }));
 
@@ -253,3 +262,24 @@ export const successionEvolvedSkillByParentCardId: Map<number, SkillDetail> = ((
   }
   return index;
 })();
+
+/** Character evolutions keyed by card id string. */
+export const characterEvolutions: Record<string, CharacterEvolutionDetail[]> = rawCharacterEvolutionsJson as Record<
+  string,
+  CharacterEvolutionDetail[]
+>;
+
+/** Support card effects keyed by card id string. */
+export const cardEffects: Record<string, SupportCardEffectsBlob> = rawCardEffectsJson as Record<
+  string,
+  SupportCardEffectsBlob
+>;
+
+export function getCharacterEvolutions(cardId: number): CharacterEvolutionDetail[] {
+  return characterEvolutions[String(cardId)] || [];
+}
+
+export function getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined {
+  return cardEffects[String(cardId)];
+}
+

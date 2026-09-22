@@ -9,9 +9,10 @@ import { getSkillRarityStyle, matchesRarityFilter, type RarityFilterKey } from "
 import SkillHoverCard from "../skill-hover-card";
 import SkillIcon from "../skill-icon";
 import SkillItem from "../skill-item";
-import { StarIcon, AlertTriangleIcon, SparklesIcon } from "../icons";
 import { getCharacterImageUrl } from "../../lib/api";
 import { getCharaIdFromCardId } from "../../lib/affinity-engine";
+import { SkillIndicatorGroup, SkillSourceIcons } from "../shared/skill-badges";
+import { Badge } from "../shared/badge";
 
 type PedigreeFilterTab =
   | "all"
@@ -24,44 +25,6 @@ type PedigreeFilterTab =
   | "factor";
 
 type SlotFilter = "all" | "p1" | "p2";
-
-function rarityBadge(rarity?: number) {
-  const meta = getSkillRarityStyle(rarity);
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${meta.badgeClass}`}>
-      {meta.badgeLabel}
-    </span>
-  );
-}
-
-function sourceBadge(source: DisplayParentSkill["source"]) {
-  switch (source) {
-    case "event":
-      return (
-        <span className="rounded bg-violet-100 dark:bg-violet-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80">
-          Event / Awakening
-        </span>
-      );
-    case "hint":
-      return (
-        <span className="rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-          Innate
-        </span>
-      );
-    case "unique":
-      return (
-        <span className="rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-          Parent Unique
-        </span>
-      );
-    case "factor":
-      return (
-        <span className="rounded bg-sky-100 dark:bg-sky-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-700 dark:text-sky-300 border border-sky-300 dark:border-sky-700">
-          Bloodline Factor
-        </span>
-      );
-  }
-}
 
 export function PedigreeSkillsSection() {
   const { course, runningStyle, activePvpEvent, mainSkillIdSet } = useDeck();
@@ -180,9 +143,9 @@ export function PedigreeSkillsSection() {
             <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
               Pedigree Inheritable Skills
             </h3>
-            <span className="rounded-full bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 px-2.5 py-0.5 text-[11px] font-bold">
+            <Badge size="comfortable" tone="indigo" className="font-bold">
               Lineage Pool ({pedigreeSkills.length})
-            </span>
+            </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
             Skills obtainable from Parents and Grandparents.{" "}
@@ -442,15 +405,9 @@ export function PedigreeSkillsSection() {
                   </div>
 
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span
-                      className={`rounded-full font-bold px-2.5 py-0.5 text-xs ${
-                        isP1
-                          ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                          : "bg-blue-500/10 text-blue-700 dark:text-blue-300"
-                      }`}
-                    >
+                    <Badge size="standard" tone={isP1 ? "emerald" : "blue"} className="font-bold">
                       {slotSkills.length} skills inherited
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
@@ -517,20 +474,6 @@ export function PedigreeSkillsSection() {
                               : ""
                           }`}
                         >
-                          {/* Left Column Badges */}
-                          <div className="mt-0.5 flex flex-col gap-1 flex-none">
-                            {isBanned && (
-                              <span
-                                className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs text-center"
-                                title="Banned by Special Rule"
-                              >
-                                BANNED
-                              </span>
-                            )}
-                            {rarityBadge(s.rarity)}
-                            {sourceBadge(s.source)}
-                          </div>
-
                           {/* Right Column: SkillItem */}
                           <div className="min-w-0 flex-1">
                             <SkillItem
@@ -540,57 +483,15 @@ export function PedigreeSkillsSection() {
                               isParentMode={true}
                               trailing={
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                  {(s.isEvolInherit || slotGrant?.isEvolInherit) && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded bg-purple-100 dark:bg-purple-950/70 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-800"
-                                      title="Evolved Inherit: Enhanced succession skill (+0.15 Speed, +0.20 Accel) unlocked via direct Parent"
-                                    >
-                                      <SparklesIcon className="h-2.5 w-2.5" />
-                                      <span>Evolved Inherit</span>
-                                    </span>
-                                  )}
-
-                                  {(s.evolSkillAvailable || slotGrant?.evolSkillAvailable) && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded bg-violet-100 dark:bg-violet-950/70 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-violet-800 dark:text-violet-200 border border-violet-300 dark:border-violet-800 cursor-help"
-                                      title="Evolves to enhanced inherit skill (+0.15 Speed, +0.20 Accel) when placed as direct Parent (P1/P2) and owning this character"
-                                    >
-                                      <SparklesIcon className="h-2.5 w-2.5" />
-                                      <span>Evol Available</span>
-                                    </span>
-                                  )}
-
-                                  {isUniqueTarget && (
-                                    <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-                                      <StarIcon className="h-2.5 w-2.5" />
-                                      <span>Unique Target</span>
-                                    </span>
-                                  )}
-
-                                  {!canActivate && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
-                                      title={activation.reason || "This skill cannot activate on the selected course or running style"}
-                                    >
-                                      <AlertTriangleIcon className="h-2.5 w-2.5" />
-                                      <span>{activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
-                                    </span>
-                                  )}
-
-                                  {isDupeInMain && (
-                                    <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
-                                      <AlertTriangleIcon className="h-2.5 w-2.5" />
-                                      <span>In Main Deck</span>
-                                    </span>
-                                  )}
-                                  {s.isInheritOnly && (
-                                    <span
-                                      className="inline-flex items-center gap-1 rounded bg-indigo-100 dark:bg-indigo-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
-                                      title="Inherit Only: Cannot be obtained from any Support Card in your decks; only inherited from Uma lineage"
-                                    >
-                                      <span>Inherit Only</span>
-                                    </span>
-                                  )}
+                                  <SkillIndicatorGroup density="compact" indicators={[
+                                    ...(isBanned ? [{ kind: "banned" as const, title: "Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate" }] : []),
+                                    ...((s.isEvolInherit || slotGrant?.isEvolInherit) ? [{ kind: "evolved-inherit" as const, title: "Evolved Inherit: Enhanced succession skill (+0.15 Speed, +0.20 Accel) unlocked via direct Parent" }] : []),
+                                    ...((s.evolSkillAvailable || slotGrant?.evolSkillAvailable) ? [{ kind: "evolution-available" as const, title: "Evolves to enhanced inherit skill (+0.15 Speed, +0.20 Accel) when placed as direct Parent (P1/P2) and owning this character" }] : []),
+                                    ...(isUniqueTarget ? [{ kind: "unique-target" as const }] : []),
+                                    ...(!canActivate ? [{ kind: "no-activation" as const, label: activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : undefined, title: activation.reason || "This skill cannot activate on the selected course or running style" }] : []),
+                                    ...(isDupeInMain ? [{ kind: "in-main-deck" as const }] : []),
+                                    ...(s.isInheritOnly ? [{ kind: "inherit-only" as const, title: "Inherit Only: Cannot be obtained from any Support Card in your decks; only inherited from Uma lineage" }] : []),
+                                  ]} />
                                 </div>
                               }
                             >
@@ -600,34 +501,16 @@ export function PedigreeSkillsSection() {
                                 </p>
                               )}
                               <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-zinc-400">
-                                <span>{s.sourceLabel}</span>
-                                {s.originalGoldSkill && (
-                                  <span>· via {s.originalGoldSkill.nameEn} (Gold)</span>
-                                )}
-                                {s.originalUniqueSkill && (
-                                  <span>· via {s.originalUniqueSkill.nameEn} (Unique)</span>
-                                )}
-                                {uniqueOtherGrants.length > 0 && (
-                                  <span className="flex items-center gap-1 flex-wrap">
-                                    <span>· Also in:</span>
-                                    <span className="inline-flex items-center gap-1">
-                                      {uniqueOtherGrants.map((g, gIdx) =>
-                                        g.avatarUrl ? (
-                                          <img
-                                            key={gIdx}
-                                            src={g.avatarUrl}
-                                            alt={g.cardName}
-                                            title={`${g.slotLabel}: ${g.cardName} (${g.sources.join(", ")})`}
-                                            className="h-4.5 w-4.5 rounded-full object-cover object-top bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-2xs hover:scale-110 hover:border-zinc-400 dark:hover:border-zinc-500 transition-transform cursor-pointer"
-                                            loading="lazy"
-                                          />
-                                        ) : null
-                                      )}
-                                    </span>
-                                  </span>
-                                )}
-                                <span>·</span>
-                                <span>#{s.id}</span>
+                                <SkillSourceIcons
+                                  sources={[slotGrant, ...uniqueOtherGrants].filter(Boolean).map((grant) => ({
+                                    kind: "character" as const,
+                                    cardId: grant?.cardId,
+                                    charId: grant?.charId,
+                                    name: grant?.cardName ?? s.sourceLabel,
+                                    label: grant?.slotLabel,
+                                  }))}
+                                />
+                                <span>· #{s.id}</span>
                               </div>
                             </SkillItem>
                           </div>
@@ -662,20 +545,6 @@ export function PedigreeSkillsSection() {
                     : ""
                 }`}
               >
-                {/* Left Column Badges */}
-                <div className="mt-0.5 flex flex-col gap-1 flex-none">
-                  {isBanned && (
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs text-center"
-                      title="Banned by Special Rule"
-                    >
-                      BANNED
-                    </span>
-                  )}
-                  {rarityBadge(s.rarity)}
-                  {sourceBadge(s.source)}
-                </div>
-
                 {/* Right Column: SkillItem */}
                 <div className="min-w-0 flex-1">
                   <SkillItem
@@ -685,57 +554,15 @@ export function PedigreeSkillsSection() {
                     isParentMode={true}
                     trailing={
                       <div className="flex flex-wrap items-center gap-1.5">
-                        {s.isEvolInherit && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded bg-purple-100 dark:bg-purple-950/70 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-purple-800 dark:text-purple-200 border border-purple-300 dark:border-purple-800"
-                            title="Evolved Inherit: Enhanced succession skill (+0.15 Speed, +0.20 Accel) unlocked via direct Parent"
-                          >
-                            <SparklesIcon className="h-2.5 w-2.5" />
-                            <span>Evolved Inherit</span>
-                          </span>
-                        )}
-
-                        {s.evolSkillAvailable && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded bg-violet-100 dark:bg-violet-950/70 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-violet-800 dark:text-violet-200 border border-violet-300 dark:border-violet-800 cursor-help"
-                            title="Evolves to enhanced inherit skill (+0.15 Speed, +0.20 Accel) when placed as direct Parent (P1/P2) and owning this character"
-                          >
-                            <SparklesIcon className="h-2.5 w-2.5" />
-                            <span>Evol Available</span>
-                          </span>
-                        )}
-
-                        {isUniqueTarget && (
-                          <span className="inline-flex items-center gap-1 rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-                            <StarIcon className="h-2.5 w-2.5" />
-                            <span>Unique Target</span>
-                          </span>
-                        )}
-
-                        {!canActivate && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded bg-rose-100 dark:bg-rose-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800"
-                            title={activation.reason || "This skill cannot activate on the selected course or running style"}
-                          >
-                            <AlertTriangleIcon className="h-2.5 w-2.5" />
-                            <span>{activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : "No Activation"}</span>
-                          </span>
-                        )}
-
-                        {isDupeInMain && (
-                          <span className="inline-flex items-center gap-1 rounded bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-amber-950 dark:text-amber-100 border border-amber-400 dark:border-amber-700">
-                            <AlertTriangleIcon className="h-2.5 w-2.5" />
-                            <span>In Main Deck</span>
-                          </span>
-                        )}
-                        {s.isInheritOnly && (
-                          <span
-                            className="inline-flex items-center gap-1 rounded bg-indigo-100 dark:bg-indigo-950/60 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider text-indigo-800 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80"
-                            title="Inherit Only: Cannot be obtained from any Support Card in your decks; only inherited from Uma lineage"
-                          >
-                            <span>Inherit Only</span>
-                          </span>
-                        )}
+                        <SkillIndicatorGroup density="compact" indicators={[
+                          ...(isBanned ? [{ kind: "banned" as const, title: "Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate" }] : []),
+                          ...(s.isEvolInherit ? [{ kind: "evolved-inherit" as const, title: "Evolved Inherit: Enhanced succession skill (+0.15 Speed, +0.20 Accel) unlocked via direct Parent" }] : []),
+                          ...(s.evolSkillAvailable ? [{ kind: "evolution-available" as const, title: "Evolves to enhanced inherit skill (+0.15 Speed, +0.20 Accel) when placed as direct Parent (P1/P2) and owning this character" }] : []),
+                          ...(isUniqueTarget ? [{ kind: "unique-target" as const }] : []),
+                          ...(!canActivate ? [{ kind: "no-activation" as const, label: activation.reason?.toLowerCase().includes("rank") ? "Rank Trap" : undefined, title: activation.reason || "This skill cannot activate on the selected course or running style" }] : []),
+                          ...(isDupeInMain ? [{ kind: "in-main-deck" as const }] : []),
+                          ...(s.isInheritOnly ? [{ kind: "inherit-only" as const, title: "Inherit Only: Cannot be obtained from any Support Card in your decks; only inherited from Uma lineage" }] : []),
+                        ]} />
                       </div>
                     }
                   >
@@ -745,39 +572,16 @@ export function PedigreeSkillsSection() {
                       </p>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-[10px] text-zinc-400">
-                      <span>{s.sourceLabel}</span>
-                      {s.originalGoldSkill && (
-                        <span>· via {s.originalGoldSkill.nameEn} (Gold)</span>
-                      )}
-                      {s.originalUniqueSkill && (
-                        <span>· via {s.originalUniqueSkill.nameEn} (Unique)</span>
-                      )}
-                      {s.grants && s.grants.length > 0 && (
-                        <span className="flex items-center gap-1 flex-wrap">
-                          <span>· Granted by:</span>
-                          <span className="inline-flex items-center gap-1.5 flex-wrap">
-                            {s.grants.map((g, gIdx) => (
-                              <span
-                                key={gIdx}
-                                className="inline-flex items-center gap-1"
-                                title={`${g.slotLabel ?? ""}: ${g.cardName} (${g.source})`}
-                              >
-                                {g.avatarUrl && (
-                                  <img
-                                    src={g.avatarUrl}
-                                    alt={g.cardName}
-                                    className="h-4.5 w-4.5 rounded-full object-cover object-top bg-zinc-100 dark:bg-zinc-800 shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-2xs hover:scale-110 transition-transform cursor-pointer"
-                                    loading="lazy"
-                                  />
-                                )}
-                                <span>{g.cardName} ({g.source})</span>
-                              </span>
-                            ))}
-                          </span>
-                        </span>
-                      )}
-                      <span>·</span>
-                      <span>#{s.id}</span>
+                      <SkillSourceIcons
+                        sources={(s.grants ?? []).map((grant) => ({
+                          kind: "character" as const,
+                          cardId: grant.cardId,
+                          charId: grant.charId,
+                          name: grant.cardName,
+                          label: grant.slotLabel,
+                        }))}
+                      />
+                      <span>· #{s.id}</span>
                     </div>
                   </SkillItem>
                 </div>

@@ -641,7 +641,13 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   }),
 
   // -- course scalar filters -----------------------------------------------------
-  distance_type: valueFilter((course) => course.distance),
+  distance_type: valueFilter((course) => {
+    if (course.distance && course.distance >= 1 && course.distance <= 4) {
+      return course.distance;
+    }
+    const len = course.length || course.distance || 0;
+    return len <= 1400 ? 1 : len <= 1800 ? 2 : len <= 2400 ? 3 : 4;
+  }),
   ground_type: valueFilter((course) => course.terrain),
   rotation: valueFilter((course) => course.turn),
   course_distance: valueFilter((course) => course.length),

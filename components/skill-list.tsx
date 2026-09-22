@@ -15,28 +15,11 @@ import { isSkillBanned } from "../lib/pvp-events";
 import { deriveSkillsForDeck } from "../lib/deck/skill-resolver";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import { RARITY_META } from "../lib/skill-rarity";
-import DuplicateSkillBadge, { type DuplicateCardEntry } from "./duplicate-skill-badge";
-
-function sourceBadge(source: DeckSkill["source"]) {
-  return source === "event" ? (
-    <span className="rounded bg-violet-100 dark:bg-violet-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80">
-      event
-    </span>
-  ) : (
-    <span className="rounded bg-emerald-100 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/80">
-      hint
-    </span>
-  );
-}
-
-function rarityBadge(rarity?: number) {
-  const meta = getSkillRarityStyle(rarity);
-  return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${meta.badgeClass}`}>
-      {meta.badgeLabel}
-    </span>
-  );
-}
+import DuplicateSkillBadge from "./duplicate-skill-badge";
+import { SkillIndicator, SkillSourceIcons } from "./shared/skill-badges";
+import { Badge } from "./shared/badge";
+import { buildDuplicateSkillIndex, getDuplicateSkillIds } from "../lib/skill-duplicates";
+import EventChainAttribution from "./event-chain-attribution";
 
 export default function SkillList() {
   const {
@@ -84,14 +67,11 @@ export default function SkillList() {
 
   // Map skillId -> all deck cards that provide this skill
   const duplicateSkillCardsMap = useMemo(() => {
-    const map = new Map<number, DuplicateCardEntry[]>();
-    mainSlots.forEach((card) => {
-      if (!card) return;
-      const cSkills = cardSkillsMap.get(card.id) || [];
-      cSkills.forEach((s) => {
-        const existing = map.get(s.id) || [];
-        if (!existing.some((e) => e.cardId === card.id)) {
-          existing.push({
+    return buildDuplicateSkillIndex(
+      mainSlots.flatMap((card) => {
+        if (!card) return [];
+        return [{
+          card: {
             cardId: card.id,
             cardName: card.nameEn || card.nameJp || `Card #${card.id}`,
             cardNameJp: card.nameJp,
@@ -99,24 +79,21 @@ export default function SkillList() {
             type: card.type,
             portraitUrl: card.portraitUrl,
             imgUrl: card.imgUrl,
+          },
+          grants: (cardSkillsMap.get(card.id) || []).map((s) => ({
+            id: s.id,
             source: s.source,
             eventMeta: s.grants?.find((g) => g.cardId === card.id)?.eventMeta ?? null,
-            originalGoldSkill: s.grants?.find((g) => g.cardId === card.id)?.originalGoldSkill ?? undefined,
-          });
-          map.set(s.id, existing);
-        }
-      });
-    });
-    return map;
+            originalGoldSkill: s.grants?.find((g) => g.cardId === card.id)?.originalGoldSkill,
+          })),
+        }];
+      })
+    );
   }, [mainSlots, cardSkillsMap]);
 
   // Track skills appearing in more than one support card
   const duplicateSkillIdSet = useMemo(() => {
-    const dupes = new Set<number>();
-    duplicateSkillCardsMap.forEach((cards, id) => {
-      if (cards.length > 1) dupes.add(id);
-    });
-    return dupes;
+    return getDuplicateSkillIds(duplicateSkillCardsMap);
   }, [duplicateSkillCardsMap]);
 
   const whiteCount = useMemo(() => mainSkills.filter((s) => (s.rarity ?? 1) === 1).length, [mainSkills]);
@@ -363,9 +340,9 @@ export default function SkillList() {
                   </div>
 
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
-                    <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-bold px-2.5 py-0.5 text-xs">
+                    <Badge size="standard" tone="emerald" className="font-bold">
                       {cFiltered.length} skills granted
-                    </span>
+                    </Badge>
                   </div>
                 </div>
 
@@ -385,30 +362,29 @@ export default function SkillList() {
                             isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10" : ""
                           }`}
                         >
-                          <div className="mt-0.5 flex flex-col gap-1 flex-none">
-                            {isBanned && (
-                              <span className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs text-center">
-                                BANNED
-                              </span>
-                            )}
-                            {rarityBadge(s.rarity)}
-                            {sourceBadge(s.source)}
-                          </div>
                           <div className="min-w-0 flex-1">
                             <SkillItem
-                              skill={{ ...s, cardName: cardLabel }}
+                              skill={{ ...s, cardName: cardLabel, cardId: card.id }}
                               size="sm"
                               isBanned={isBanned}
                               isParentMode={false}
                               trailing={
-                                isDupe ? (
-                                  <DuplicateSkillBadge
-                                    cards={duplicateSkillCardsMap.get(s.id) || []}
-                                    currentCardId={card.id}
-                                    skillName={s.nameEn}
-                                    variant="amber"
-                                  />
-                                ) : undefined
+                                <div className="flex flex-wrap items-center gap-1.5">
+                                  {isBanned && (
+                                    <SkillIndicator
+                                      kind="banned"
+                                      title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
+                                    />
+                                  )}
+                                  {isDupe && (
+                                    <DuplicateSkillBadge
+                                      cards={duplicateSkillCardsMap.get(s.id) || []}
+                                      currentCardId={card.id}
+                                      skillName={s.nameEn}
+                                      variant="amber"
+                                    />
+                                  )}
+                                </div>
                               }
                             >
                               {s.descEn && (
@@ -440,66 +416,46 @@ export default function SkillList() {
                   rStyle.borderClass
                 } ${rStyle.bgClass ?? ""} ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/50" : ""}`}
               >
-                <div className="mt-0.5 flex flex-col gap-1 flex-none">
-                  {isBanned && (
-                    <span
-                      className="rounded px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs text-center"
-                      title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
-                    >
-                      BANNED
-                    </span>
-                  )}
-                  {rarityBadge(s.rarity)}
-                  {sourceBadge(s.source)}
-                </div>
                 <div className="min-w-0 flex-1">
                   <SkillItem
                     skill={s}
                     size="md"
                     isBanned={isBanned}
                     isParentMode={false}
-                    trailing={
-                      duplicateSkillIdSet.has(s.id) ? (
-                        <DuplicateSkillBadge
-                          cards={duplicateSkillCardsMap.get(s.id) || []}
-                          skillName={s.nameEn}
-                          variant="amber"
-                        />
-                      ) : undefined
+                                trailing={
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    {isBanned && (
+                                      <SkillIndicator
+                                        kind="banned"
+                                        title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
+                                      />
+                                    )}
+                                    {duplicateSkillIdSet.has(s.id) && (
+                          <DuplicateSkillBadge
+                            cards={duplicateSkillCardsMap.get(s.id) || []}
+                            skillName={s.nameEn}
+                            variant="amber"
+                          />
+                        )}
+                      </div>
                     }
                   >
                     {s.descEn && (
                       <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-zinc-700 dark:text-zinc-300">{s.descEn}</p>
                     )}
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                    <span>
-                      via{" "}
-                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                        {s.grants && s.grants.length > 1
-                          ? s.grants.map((g) => `${g.cardName} (${g.source})`).join(", ")
-                          : s.cardName}
-                      </span>
-                    </span>
+                    <SkillSourceIcons
+                      sources={(s.grants?.length ? s.grants : [{ cardId: s.cardId, cardName: s.cardName }]).map((grant) => ({
+                        kind: "card" as const,
+                        cardId: grant.cardId,
+                        name: grant.cardName,
+                      }))}
+                    />
 
                     {s.grants
                       ?.filter((g) => g.eventMeta)
                       .map((g, idx) => {
-                        const em = g.eventMeta!;
-                        const eventTitle = em.eventNameEn || em.eventNameJp;
-                        const choiceText = em.choiceTextEn || em.choiceTextJp;
-                        return (
-                          <span
-                            key={idx}
-                            className="inline-flex items-center gap-1 rounded bg-violet-50 dark:bg-violet-950/50 px-2 py-0.5 text-[10px] font-medium text-violet-800 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80"
-                            title={`Event: ${em.eventNameJp} (${em.eventNameEn})\nChoice ${em.choiceIndex}: ${em.choiceTextJp}`}
-                          >
-                            <span className="font-bold">{eventTitle}</span>
-                            <span className="text-violet-400 dark:text-violet-600">•</span>
-                            <span>
-                              Choice {em.choiceIndex}: <span className="font-semibold text-violet-900 dark:text-violet-200">{choiceText}</span>
-                            </span>
-                          </span>
-                        );
+                        return <EventChainAttribution key={idx} eventMeta={g.eventMeta!} />;
                       })}
 
                     <span>· #{s.id}</span>

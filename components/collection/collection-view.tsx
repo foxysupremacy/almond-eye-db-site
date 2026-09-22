@@ -255,30 +255,30 @@ export default function CollectionView() {
             )}
           </div>
         </div>
-
-        {subTab === "cards" ? (
-          <CardsCollectionTab
-            filteredCards={filteredCards}
-            cardType={cardType}
-            onCardTypeChange={setCardType}
-            cardRarity={cardRarity}
-            onCardRarityChange={setCardRarity}
-            getLimitBreak={getLimitBreak}
-            onSetLimitBreak={setLimitBreak}
-            onRemoveCard={removeCard}
-          />
-        ) : (
-          <CharactersCollectionTab
-            filteredCharacters={filteredCharacters}
-            totalCharactersCount={characters.length}
-            charaRarity={charaRarity}
-            onCharaRarityChange={setCharaRarity}
-            getUmaDetails={getUmaDetails}
-            onSetUmaDetails={setUmaDetails}
-            onRemoveUma={removeUma}
-          />
-        )}
       </div>
+
+      {subTab === "cards" ? (
+        <CardsCollectionTab
+          filteredCards={filteredCards}
+          cardType={cardType}
+          onCardTypeChange={setCardType}
+          cardRarity={cardRarity}
+          onCardRarityChange={setCardRarity}
+          getLimitBreak={getLimitBreak}
+          onSetLimitBreak={setLimitBreak}
+          onRemoveCard={removeCard}
+        />
+      ) : (
+        <CharactersCollectionTab
+          filteredCharacters={filteredCharacters}
+          totalCharactersCount={characters.length}
+          charaRarity={charaRarity}
+          onCharaRarityChange={setCharaRarity}
+          getUmaDetails={getUmaDetails}
+          onSetUmaDetails={setUmaDetails}
+          onRemoveUma={removeUma}
+        />
+      )}
 
       {/* Import Modal */}
       <ImportModal

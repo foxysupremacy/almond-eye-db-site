@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createSkillPopoverInteraction, type SkillPopoverMode } from "./skill-popover-interaction";
+import { createSingleSkillPopoverController, createSkillPopoverInteraction, type SkillPopoverMode } from "./skill-popover-interaction";
 
 const waitForPreview = () => new Promise((resolve) => setTimeout(resolve, 390));
 const waitForLeaveGrace = () => new Promise((resolve) => setTimeout(resolve, 150));
@@ -11,6 +11,20 @@ function setup() {
 }
 
 describe("skill popover interaction", () => {
+  it("replaces the previous detail when another skill becomes active", () => {
+    const changes: Array<[string | null, SkillPopoverMode]> = [];
+    const controller = createSingleSkillPopoverController((key, mode) => changes.push([key, mode]));
+    controller.pin("skill-a");
+    controller.preview("skill-b");
+    controller.closePreview("skill-a");
+    controller.pin("skill-b");
+    expect(changes).toEqual([
+      ["skill-a", "pinned"],
+      ["skill-b", "preview"],
+      ["skill-b", "pinned"],
+    ]);
+  });
+
   it("waits for a deliberate mouse hover before showing a passive preview", async () => {
     const { changes, interaction } = setup();
     interaction.pointerEnter("mouse", true);

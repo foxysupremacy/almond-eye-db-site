@@ -5,33 +5,14 @@ import { createPortal } from "react-dom";
 import { CopyIcon } from "./icons";
 import { getCardImageUrl } from "../lib/data-store";
 import { formatCardType } from "./card-type-icon";
+import type { DuplicateSkillCard } from "../lib/skill-duplicates";
+import { duplicateSkillBadgeClass } from "./shared/skill-badges";
+import EventChainAttribution from "./event-chain-attribution";
 
-export interface DuplicateCardEntry {
-  cardId: number;
-  cardName: string;
-  cardNameJp?: string;
-  rarity?: number;
-  /** Card training type; null while a card awaits its first GameTora crawl. */
-  type?: string | null;
-  portraitUrl?: string;
-  imgUrl?: string;
-  source?: "hint" | "event" | "unique" | "factor" | string;
-  eventMeta?: {
-    eventNameEn?: string;
-    eventNameJp?: string;
-    choiceIndex?: number;
-    choiceTextEn?: string;
-    choiceTextJp?: string;
-  } | null;
-  originalGoldSkill?: {
-    id: number;
-    nameEn: string;
-    nameJp: string;
-  };
-}
+export type { DuplicateSkillCard as DuplicateCardEntry } from "../lib/skill-duplicates";
 
 export interface DuplicateSkillBadgeProps {
-  cards: DuplicateCardEntry[];
+  cards: DuplicateSkillCard[];
   currentCardId?: number;
   skillName?: string;
   variant?: "amber" | "sky";
@@ -152,9 +133,9 @@ export default function DuplicateSkillBadge({
   // Accessible fallback title for native tooltips
   const titleTooltip = useMemo(() => {
     if (currentCardId && otherCards.length > 0) {
-      return `Duplicate with ${otherCards.map((c: DuplicateCardEntry) => c.cardName).join(", ")}:\n${cards
+      return `Duplicate with ${otherCards.map((c: DuplicateSkillCard) => c.cardName).join(", ")}:\n${cards
         .map(
-          (c: DuplicateCardEntry) =>
+          (c: DuplicateSkillCard) =>
             `• ${c.cardName}${c.cardId === currentCardId ? " (This card)" : ""}${
               c.source ? ` [${c.source}]` : ""
             }${c.type ? ` (${c.type})` : ""}`
@@ -163,7 +144,7 @@ export default function DuplicateSkillBadge({
     }
     return `Duplicate Skill (${cards.length} cards):\n${cards
       .map(
-        (c: DuplicateCardEntry) =>
+        (c: DuplicateSkillCard) =>
           `• ${c.cardName}${c.source ? ` [${c.source}]` : ""}${
             c.type ? ` (${c.type})` : ""
           }`
@@ -286,16 +267,8 @@ export default function DuplicateSkillBadge({
                     {c.cardNameJp}
                   </p>
                 )}
-                {c.originalGoldSkill && (
-                  <span className="inline-block mt-0.5 text-[9px] font-medium text-amber-700 dark:text-amber-400">
-                    via {c.originalGoldSkill.nameEn} (Gold)
-                  </span>
-                )}
                 {c.eventMeta && (
-                  <span className="inline-block mt-0.5 text-[9px] text-violet-600 dark:text-violet-400 truncate max-w-[160px]">
-                    Choice {c.eventMeta.choiceIndex}:{" "}
-                    {c.eventMeta.choiceTextEn || c.eventMeta.choiceTextJp}
-                  </span>
+                  <EventChainAttribution eventMeta={c.eventMeta} className="mt-0.5 max-w-[160px]" />
                 )}
               </div>
 
@@ -339,11 +312,7 @@ export default function DuplicateSkillBadge({
         onMouseEnter={handleOpen}
         onMouseLeave={handleClose}
         title={titleTooltip}
-        className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[9px] font-bold tracking-wide transition-colors cursor-pointer shadow-2xs ${
-          isAmber
-            ? "bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 hover:bg-amber-500/25"
-            : "bg-sky-50 dark:bg-sky-950/50 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 hover:bg-sky-100 dark:hover:bg-sky-900/40"
-        } ${className}`}
+        className={`min-h-5 rounded-md ${duplicateSkillBadgeClass(variant)} ${className}`}
       >
         <CopyIcon className="h-2.5 w-2.5 flex-none" />
         {badgeContent}

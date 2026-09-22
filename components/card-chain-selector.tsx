@@ -357,7 +357,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
             </div>
 
             {/* Modal Body - List of Continuous Steps */}
-            <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4">
+            <div className="flex-1 divide-y divide-zinc-100 overflow-y-auto overscroll-contain px-4 dark:divide-zinc-800">
               {chainEvents.map((ev) => {
                 const defaultChoice = getDefaultChoiceIndex(ev, (id) => {
                   const sk = cardSkills?.eventSkills.find((s) => s.id === id);
@@ -368,9 +368,9 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                 const isClimaxStep = stepNumber === chainEvents.length;
 
                 return (
-                  <div key={ev.eventId} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-3 shadow-2xs">
+                  <section key={ev.eventId} className="py-4 first:pt-3 last:pb-3">
                     {/* Step Title Header */}
-                    <div className="flex items-center justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2 mb-2.5">
+                    <div className="mb-2.5 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         <ChainStepBadge step={stepNumber} isClimax={isClimaxStep} />
                         <span className="truncate text-xs font-semibold text-zinc-800 dark:text-zinc-200" title={`${ev.nameEn} (${ev.nameJp})`}>
@@ -382,8 +382,8 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                       </span>
                     </div>
 
-                    {/* Full-width Choice Cards */}
-                    <div className="space-y-2">
+                    {/* Choices share this one flat step surface; selection is conveyed by tint, not nested cards. */}
+                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {ev.choices.map((ch) => {
                         const isSelected = selectedChoice === ch.index;
 
@@ -398,12 +398,12 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                             key={ch.index}
                             type="button"
                             onClick={() => setChainChoice(mode, card.id, ev.eventId, ch.index)}
-                            className={`w-full flex items-start gap-3 rounded-xl border p-2.5 text-left transition-all ease-out-quart duration-150 cursor-pointer active:scale-[0.99] ${
+                            className={`w-full flex items-start gap-3 px-2 py-2.5 text-left transition-colors ease-out-quart duration-150 cursor-pointer ${
                               isSelected
-                                ? "border-emerald-600 dark:border-emerald-500 bg-emerald-50/70 dark:bg-emerald-950/40 shadow-2xs ring-1 ring-emerald-600 dark:ring-emerald-500"
-                                : hasGoldSkill
-                                  ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/30 hover:border-amber-400 dark:hover:border-amber-600"
-                                  : "border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50"
+                                ? "bg-emerald-50/70 dark:bg-emerald-950/40"
+                              : hasGoldSkill
+                                  ? "bg-amber-50/50 dark:bg-amber-950/30 hover:bg-amber-50 dark:hover:bg-amber-950/45"
+                                  : "hover:bg-zinc-50/80 dark:hover:bg-zinc-800/50"
                             }`}
                           >
                             {/* Radio Circle Indicator */}
@@ -481,7 +481,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                         );
                       })}
                     </div>
-                  </div>
+                  </section>
                 );
               })}
             </div>

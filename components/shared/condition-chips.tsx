@@ -3,8 +3,6 @@ import React from "react";
 export interface ConditionChipsProps {
   branches: string[][];
   needsBranches?: string[][] | null;
-  tint: string;
-  muted?: boolean;
   className?: string;
 }
 
@@ -15,8 +13,6 @@ export interface ConditionChipsProps {
 export function ConditionChips({
   branches,
   needsBranches,
-  tint,
-  muted = false,
   className = "",
 }: ConditionChipsProps) {
   const needs = needsBranches && needsBranches.length > 0 ? needsBranches : null;
@@ -29,11 +25,10 @@ export function ConditionChips({
             Needs:
           </span>
           {needs.map((chips, bi) => (
-            <div key={bi} className="mt-0.5 flex flex-wrap items-center gap-1">
-              <span className="inline-block h-2.5 w-2.5 flex-none rounded-sm border border-zinc-300 dark:border-zinc-700 bg-zinc-200 dark:bg-zinc-700" />
+            <div key={bi} className="condition-branch mt-0.5 flex flex-wrap items-center gap-1">
               {bi > 0 && (
                 <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">
-                  or
+                  OR
                 </span>
               )}
               {chips.map((chip, ci) => (
@@ -49,17 +44,10 @@ export function ConditionChips({
         </div>
       )}
       {branches.map((chips, bi) => (
-        <div key={bi} className="flex flex-wrap items-center gap-1">
-          <span
-            className="inline-block h-2.5 w-2.5 flex-none rounded-sm border"
-            style={{
-              background: tint,
-              borderColor: muted ? "#71717a" : "#a1a1aa",
-            }}
-          />
+        <div key={bi} className="condition-branch flex flex-wrap items-center gap-1">
           {bi > 0 && (
             <span className="mr-0.5 text-[10px] font-semibold uppercase text-zinc-400 dark:text-zinc-500">
-              or
+              OR
             </span>
           )}
           {chips.map((chip, ci) => (

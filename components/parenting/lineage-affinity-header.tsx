@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { FullLineageAffinityBreakdown } from "../../lib/affinity-engine";
+import { Badge } from "../shared/badge";
 
 export interface LineageAffinityHeaderProps {
   affinityBreakdown: FullLineageAffinityBreakdown;
@@ -17,9 +18,9 @@ export function LineageAffinityHeader({
   return (
     <div className={`relative z-20 mb-2 grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] ${className}`}>
       {/* Left Badge */}
-      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-zinc-900/85 dark:bg-zinc-800/85 backdrop-blur-md border border-zinc-200/20 text-white text-xs font-semibold shadow-xs">
+      <Badge size="standard" className="bg-zinc-900/85 dark:bg-zinc-800/85 border-zinc-200/20 text-white backdrop-blur-md font-semibold shadow-xs">
         <span>Lineage Planner</span>
-      </div>
+      </Badge>
 
       {/* Center Glowing Compatibility: Affinity : ◎ 383 */}
       <div className="relative col-span-2 row-start-2 flex items-center justify-self-center gap-1.5 sm:col-span-1 sm:row-start-auto">

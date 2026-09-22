@@ -12,6 +12,7 @@ import type { RunningStyle } from "../lib/deck/types";
 import { distanceLabel, terrainLabel, turnLabel } from "../lib/api";
 import { getActivePvpEvents } from "../lib/pvp-events";
 import { TrophyIcon, FlagIcon, ChevronDownIcon } from "./icons";
+import { Badge } from "./shared/badge";
 
 export default function GlobalTrackBar() {
   const {
@@ -198,9 +199,9 @@ export default function GlobalTrackBar() {
         {/* Course Summary Pill (Desktop) */}
         {activeCourseRow && trackDetail && (
           <div className="hidden lg:flex items-center gap-2 text-xs">
-            <span className="rounded-full border border-amber-200 dark:border-amber-800/80 bg-amber-50 dark:bg-amber-950/60 px-2.5 py-0.5 text-[11px] font-semibold text-amber-900 dark:text-amber-300 shadow-2xs">
+            <Badge size="standard" tone="amber" className="font-semibold shadow-2xs">
               {raceTitle}
-            </span>
+            </Badge>
             <span className="flex items-center gap-1 text-[11px] text-zinc-400 dark:text-zinc-500">
               <span className="h-2 w-2 rounded-full bg-emerald-500" />
               <span>Visualizer synced</span>

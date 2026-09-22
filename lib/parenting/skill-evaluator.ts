@@ -352,3 +352,97 @@ export function evaluateUniqueSkill(
 
   return mapEvalResult(best!, rawSkill, course, skillName);
 }
+
+const APTITUDE_GRADE_SCORE: Record<string, number> = {
+  S: 100,
+  A: 80,
+  B: 40,
+  C: 10,
+  D: -20,
+  E: -50,
+  F: -100,
+  G: -300,
+};
+
+export interface CharacterKitInput {
+  aptitude?: string[];
+  uniqueSkillId?: number | null;
+  innateSkills?: number[];
+  awakeningSkills?: number[];
+  eventSkills?: number[];
+}
+
+/**
+ * Automatically detects and recommends the best running style for a character
+ * based on their style aptitudes (Runner, Leader, Betweener, Chaser) and skill kit.
+ */
+export function getRecommendedStyleForKit(
+  character: CharacterKitInput,
+  evolutions: { skillId: number }[] = [],
+  course?: Course | null,
+  raceParams?: Partial<RaceParameters>
+): RunningStyle {
+  const styles: RunningStyle[] = [1, 2, 3, 4];
+  let bestStyle: RunningStyle = 1;
+  let highestScore = -Infinity;
+
+  for (const s of styles) {
+    const aptIndex = s === 1 ? 6 : s === 2 ? 7 : s === 3 ? 8 : 9;
+    const grade = (character.aptitude?.[aptIndex] || "G").toUpperCase();
+    const aptScore = APTITUDE_GRADE_SCORE[grade] ?? 0;
+
+    let kitScore = 0;
+
+    // Unique skill (heaviest weight)
+    if (character.uniqueSkillId) {
+      const res = evaluateSkillActivation(character.uniqueSkillId, course, s, raceParams);
+      if (res.activates) kitScore += 35;
+    }
+
+    // Awakening Lv 3 & 5 Gold Skills
+    if (character.awakeningSkills?.[1]) {
+      const res = evaluateSkillActivation(character.awakeningSkills[1], course, s, raceParams);
+      if (res.activates) kitScore += 20;
+    }
+    if (character.awakeningSkills?.[3]) {
+      const res = evaluateSkillActivation(character.awakeningSkills[3], course, s, raceParams);
+      if (res.activates) kitScore += 20;
+    }
+
+    // Evolved skills
+    for (const ev of evolutions) {
+      const res = evaluateSkillActivation(ev.skillId, course, s, raceParams);
+      if (res.activates) kitScore += 15;
+    }
+
+    // Awakening Lv 2 & 4 White Skills
+    if (character.awakeningSkills?.[0]) {
+      const res = evaluateSkillActivation(character.awakeningSkills[0], course, s, raceParams);
+      if (res.activates) kitScore += 8;
+    }
+    if (character.awakeningSkills?.[2]) {
+      const res = evaluateSkillActivation(character.awakeningSkills[2], course, s, raceParams);
+      if (res.activates) kitScore += 8;
+    }
+
+    // Innate Skills
+    for (const sid of character.innateSkills || []) {
+      const res = evaluateSkillActivation(sid, course, s, raceParams);
+      if (res.activates) kitScore += 5;
+    }
+
+    // Event Skills
+    for (const sid of character.eventSkills || []) {
+      const res = evaluateSkillActivation(sid, course, s, raceParams);
+      if (res.activates) kitScore += 3;
+    }
+
+    const totalScore = aptScore + kitScore;
+    if (totalScore > highestScore) {
+      highestScore = totalScore;
+      bestStyle = s;
+    }
+  }
+
+  return bestStyle;
+}

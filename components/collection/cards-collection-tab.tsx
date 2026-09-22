@@ -1,10 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { CardIndexEntry } from "../../lib/api";
 import CardTypeIcon, { formatCardType } from "../card-type-icon";
 import { CARD_TYPES, type CardTypeKey } from "./types";
 import { SupportCardItem } from "./support-card-item";
+import { SupportCardDetailSheet } from "./support-card-detail-sheet";
+import { Badge } from "../shared/badge";
 
 interface CardsCollectionTabProps {
   filteredCards: CardIndexEntry[];
@@ -27,6 +29,8 @@ export function CardsCollectionTab({
   onSetLimitBreak,
   onRemoveCard,
 }: CardsCollectionTabProps) {
+  const [selectedCard, setSelectedCard] = useState<CardIndexEntry | null>(null);
+
   const ownedCards = useMemo(() => {
     return filteredCards.filter((c) => getLimitBreak(c.id) !== undefined);
   }, [filteredCards, getLimitBreak]);
@@ -97,8 +101,7 @@ export function CardsCollectionTab({
                   key={card.id}
                   card={card}
                   limitBreak={getLimitBreak(card.id)}
-                  onSetLimitBreak={onSetLimitBreak}
-                  onRemoveCard={onRemoveCard}
+                  onSelect={setSelectedCard}
                 />
               ))}
             </div>
@@ -111,9 +114,9 @@ export function CardsCollectionTab({
                 <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700/80" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white dark:bg-zinc-900 px-3 py-1 rounded-full border border-zinc-200/90 dark:border-zinc-800 text-xs font-semibold text-zinc-500 dark:text-zinc-400 shadow-2xs">
+                <Badge size="comfortable" tone="neutral" className="bg-white dark:bg-zinc-900 font-semibold shadow-2xs">
                   Unowned Support Cards ({unownedCards.length})
-                </span>
+                </Badge>
               </div>
             </div>
           )}
@@ -126,14 +129,23 @@ export function CardsCollectionTab({
                   key={card.id}
                   card={card}
                   limitBreak={getLimitBreak(card.id)}
-                  onSetLimitBreak={onSetLimitBreak}
-                  onRemoveCard={onRemoveCard}
+                  onSelect={setSelectedCard}
                 />
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* Support Card Detail Sheet Modal */}
+      <SupportCardDetailSheet
+        card={selectedCard}
+        isOpen={selectedCard !== null}
+        onClose={() => setSelectedCard(null)}
+        limitBreak={selectedCard ? getLimitBreak(selectedCard.id) : undefined}
+        onSetLimitBreak={onSetLimitBreak}
+        onRemoveCard={onRemoveCard}
+      />
     </div>
   );
 }

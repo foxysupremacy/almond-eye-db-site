@@ -3,7 +3,7 @@
 import type { RefObject } from "react";
 import SkillIcon from "../skill-icon";
 import SkillItem from "../skill-item";
-import { RarityBadge } from "../shared/skill-badges";
+import { SkillIndicator } from "../shared/skill-badges";
 import { getSkillRarityStyle, type RarityFilterKey } from "../../lib/skill-rarity";
 import type { VisualizerSkill } from "../../lib/visualizer-skills";
 import { SkillSourceBadges } from "./skill-source-badges";
@@ -167,10 +167,7 @@ export function TrackSkillSidebar({
                 onClick={() => {
                   onSelectSkill(s.id);
                   if (typeof window !== "undefined" && window.innerWidth < 768) {
-                    conditionViewerRef?.current?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "start",
-                    });
+                    conditionViewerRef?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
                   }
                 }}
                 className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer ${
@@ -211,12 +208,7 @@ export function TrackSkillSidebar({
                   }
                   trailing={
                     <div className="flex-none flex items-center gap-1">
-                      {isBanned && (
-                        <span className="rounded bg-rose-600 px-1 py-0.5 text-[8px] font-black uppercase tracking-wider text-white">
-                          BANNED
-                        </span>
-                      )}
-                      <RarityBadge rarity={s.rarity} />
+                      {isBanned && <SkillIndicator kind="banned" density="compact" title="Banned in Special Rule (No Debuffs)" />}
                     </div>
                   }
                 >

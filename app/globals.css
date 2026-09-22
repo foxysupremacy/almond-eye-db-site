@@ -60,6 +60,88 @@ body {
   overflow-x: clip;
 }
 
+/* Skill rarity surfaces: the surface carries the taxonomy so rows do not
+   need a second text chip repeating White/Gold/Unique/Evo. */
+.skill-surface-gold {
+  background-image: linear-gradient(to right, rgb(255 255 239), rgb(255 190 40));
+}
+
+.skill-surface-unique {
+  background-image: linear-gradient(to right, rgb(222 255 214) 0%, rgb(181 215 255) 50%, rgb(255 175 240) 100%);
+}
+
+.skill-surface-evolved {
+  background-image: linear-gradient(to right, rgb(255 238 239), rgb(255 154 211));
+}
+
+.dark .skill-surface-gold {
+  background-image: linear-gradient(to right, rgb(77 58 12 / 0.42), rgb(174 112 11 / 0.34));
+}
+
+.dark .skill-surface-unique {
+  background-image: linear-gradient(to right, rgb(24 66 38 / 0.35), rgb(28 58 102 / 0.36), rgb(102 32 88 / 0.36));
+}
+
+.dark .skill-surface-evolved {
+  background-image: linear-gradient(to right, rgb(92 34 54 / 0.34), rgb(130 44 99 / 0.34));
+}
+
+/* Skill rows keep the title and status badges on one desktop line while
+   moving the complete badge cluster below the description on small screens. */
+.skill-item-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "content trailing"
+    "children children";
+  column-gap: 0.5rem;
+  min-width: 0;
+  align-items: center;
+}
+
+.skill-item-content {
+  grid-area: content;
+  min-width: 0;
+}
+
+.skill-item-trailing {
+  grid-area: trailing;
+  min-width: 0;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.skill-item-children {
+  grid-area: children;
+  min-width: 0;
+  margin-top: 0.25rem;
+}
+
+@media (max-width: 639px) {
+  .skill-item-layout {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "content"
+      "children"
+      "trailing";
+    row-gap: 0.25rem;
+  }
+
+  .skill-item-trailing {
+    justify-content: flex-start;
+    align-items: flex-start;
+    width: 100%;
+  }
+
+  .skill-item-trailing > * {
+    width: 100%;
+    justify-content: flex-start;
+    flex-direction: row-reverse;
+    flex-wrap: wrap;
+  }
+}
+
 :focus-visible {
   outline: 2px solid #059669;
   outline-offset: 2px;

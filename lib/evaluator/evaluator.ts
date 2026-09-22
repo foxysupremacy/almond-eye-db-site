@@ -10,9 +10,15 @@ import type {
   SpecialEffectItem,
   CalculationBreakdown,
 } from "./types";
-import { STYLE_EXPECTED_RANKS, STYLE_NAMES } from "./constants";
+import {
+  STYLE_EXPECTED_RANKS,
+  STYLE_NAMES,
+  STYLE_PHASE_PROFILES,
+  SPURT_ACCEL_TOLERANCE_METERS,
+  HEAVY_TURF_STAMINA_CRITICAL_DISTANCE,
+} from "./constants";
 import { classifyEffect } from "./effects";
-import { parseRankRequirements } from "./rank-parser";
+import { parseRankRequirements, calculateStyleRankOverlap } from "./rank-parser";
 import { getCategoryBadge, buildCalculationBreakdown } from "./calculation-steps";
 
 /**
@@ -24,10 +30,12 @@ export function evaluateSkillForTrack(
   runningStyle: RunningStyle | null | undefined,
   racerCount: number = 9,
   isParentMode: boolean = false,
-  zones: EvaluatorZoneInput[] = []
+  zones: EvaluatorZoneInput[] = [],
+  raceParams?: { groundCondition?: number | string | null }
 ): SkillEvaluationResult {
   const courseLength = course?.length ?? 2000;
   const spurtMeters = course?.spurtStart?.meters ?? Math.round(courseLength * (2 / 3));
+  const accelPhaseEndMeters = Math.round((spurtMeters + 130) * 10) / 10;
 
   // 1. Determine Parent Transformation if in parent deck mode
   let isGoldTransformed = false;
@@ -85,11 +93,6 @@ export function evaluateSkillForTrack(
     }
   }
 
-  const durationSeconds =
-    maxBaseTime > 0 ? (maxBaseTime / 10000) * (courseLength / 1000) : 0;
-  // Approximating distance travelled: standard cruising velocity is ~20m/s
-  const durationMeters = durationSeconds * 20.0;
-
   // 3. Inspect computed zone regions
   const activeRegions = zones.flatMap((z) => z.regions);
   const isRandom = zones.some((z) => z.isRandom);
@@ -101,6 +104,20 @@ export function evaluateSkillForTrack(
     triggerStartMeters = Math.min(...activeRegions.map((r) => r.start));
     triggerEndMeters = Math.max(...activeRegions.map((r) => r.end));
   }
+
+  // Phase-aware velocity model (Early: 18.0 m/s, Mid: 20.5 m/s, Late/Spurt: 26.0 m/s)
+  const phaseVelocity =
+    triggerStartMeters !== null
+      ? triggerStartMeters >= spurtMeters
+        ? 26.0
+        : triggerStartMeters < spurtMeters * 0.33
+          ? 18.0
+          : 20.5
+      : 20.5;
+
+  const durationSeconds =
+    maxBaseTime > 0 ? (maxBaseTime / 10000) * (courseLength / 1000) : 0;
+  const durationMeters = durationSeconds * phaseVelocity;
 
   const specialEffects: SpecialEffectItem[] = [];
 
@@ -187,10 +204,12 @@ export function evaluateSkillForTrack(
   // poison the whole skill. When the zone array is not aligned 1:1 with
   // conditionGroups, every group is kept (legacy behavior).
   const zonesAligned = zones.length === (skill.conditionGroups?.length ?? 0);
+  const activeGroupIndices: number[] = [];
   const trapConditions: string[] = [];
   const trapPreconditions: string[] = [];
   (skill.conditionGroups ?? []).forEach((group, idx) => {
     if (zonesAligned && (zones[idx]?.regions.length ?? 0) === 0) return;
+    activeGroupIndices.push(idx);
     if (group.condition) trapConditions.push(group.condition);
     if (group.precondition) trapPreconditions.push(group.precondition);
   });
@@ -205,11 +224,15 @@ export function evaluateSkillForTrack(
   let trapScorePenalty = 0;
 
   // Check Dynamic 6: Style & Rank Trap
+  const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
+    parseInt(m[1], 10)
+  );
+  const effectiveStyle: number | "neutral" =
+    runningStyle ?? (styleReqMatches.length > 0 ? styleReqMatches[0] : "neutral");
+  const phaseProfile = STYLE_PHASE_PROFILES[effectiveStyle] ?? STYLE_PHASE_PROFILES.neutral;
+
   if (runningStyle) {
     // Style check
-    const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
-      parseInt(m[1], 10)
-    );
     if (styleReqMatches.length > 0) {
       const allowedStyles = Array.from(new Set(styleReqMatches));
       if (!allowedStyles.includes(runningStyle)) {
@@ -224,41 +247,71 @@ export function evaluateSkillForTrack(
       }
     }
 
-    // Rank check — graded against the style's expected rank envelope
-    // (Term 4 of docs/skills-spurt.md): 0 overlap is a hard trap, ≤25% is a
-    // marginal window, ≤50% is partial coverage.
-    const { minRank, maxRank, hasOrderCondition } = parseRankRequirements(allCondStr, racerCount);
-    if (hasOrderCondition) {
-      const [expMin, expMax] = STYLE_EXPECTED_RANKS[runningStyle] ?? [1, racerCount];
-      const overlapRanks = Math.max(0, Math.min(maxRank, expMax) - Math.max(minRank, expMin) + 1);
-      positionOverlap = overlapRanks / (expMax - expMin + 1);
-      if (overlapRanks === 0) {
+    // Rank check — evaluate per active conditionGroup independently so sequential
+    // phases (e.g. Mid-race order_rate>=50 and Final-straight order_rate<=50)
+    // are not merged into an impossible intersection.
+    const [expMin, expMax] = STYLE_EXPECTED_RANKS[runningStyle] ?? [1, racerCount];
+    const groupRankResults: Array<{
+      groupIndex: number;
+      minRank: number;
+      maxRank: number;
+      positionOverlap: number;
+      hasOrderCondition: boolean;
+    }> = [];
+
+    for (const gIdx of activeGroupIndices) {
+      const grp = skill.conditionGroups![gIdx];
+      const grpCondStr = [grp.condition, grp.precondition].filter(Boolean).join(" ");
+      const parsed = calculateStyleRankOverlap(grpCondStr, runningStyle, racerCount);
+      if (parsed.hasOrderCondition) {
+        groupRankResults.push({
+          groupIndex: gIdx,
+          minRank: parsed.minRank,
+          maxRank: parsed.maxRank,
+          positionOverlap: parsed.positionOverlap,
+          hasOrderCondition: true,
+        });
+      }
+    }
+
+    if (groupRankResults.length > 0) {
+      // Check if any active group has a hard rank trap (0 overlap)
+      const zeroOverlapGroup = groupRankResults.find((g) => g.positionOverlap === 0);
+      if (zeroOverlapGroup) {
+        positionOverlap = 0;
         specialEffects.push({
           id: "rank_mismatch",
           type: "warning",
           badge: "Rank Trap",
-          title: `Strict Rank: ${minRank}–${maxRank} (${racerCount} umas)`,
+          title: `Strict Rank: ${zeroOverlapGroup.minRank}–${zeroOverlapGroup.maxRank} (${racerCount} umas)`,
           description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}, which does not overlap this skill's trigger window.`,
         });
         trapScorePenalty += 25;
-      } else if (positionOverlap <= 0.25) {
-        specialEffects.push({
-          id: "rank_weak",
-          type: "warning",
-          badge: "Weak Position Match",
-          title: `Marginal Rank Window: ${minRank}–${maxRank} (${racerCount} umas)`,
-          description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; only ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window. Low activation odds.`,
-        });
-        trapScorePenalty += 25;
-      } else if (positionOverlap <= 0.5) {
-        specialEffects.push({
-          id: "rank_weak",
-          type: "info",
-          badge: "Partial Position Match",
-          title: `Partial Rank Window: ${minRank}–${maxRank} (${racerCount} umas)`,
-          description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window.`,
-        });
-        trapScorePenalty += 12;
+      } else {
+        const bestGroup = groupRankResults.reduce((prev, curr) =>
+          curr.positionOverlap > prev.positionOverlap ? curr : prev
+        );
+        positionOverlap = bestGroup.positionOverlap;
+
+        if (positionOverlap <= 0.25) {
+          specialEffects.push({
+            id: "rank_weak",
+            type: "warning",
+            badge: "Weak Position Match",
+            title: `Marginal Rank Window: ${bestGroup.minRank}–${bestGroup.maxRank} (${racerCount} umas)`,
+            description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; only ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window. Low activation odds.`,
+          });
+          trapScorePenalty += 25;
+        } else if (positionOverlap <= 0.5) {
+          specialEffects.push({
+            id: "rank_weak",
+            type: "info",
+            badge: "Partial Position Match",
+            title: `Partial Rank Window: ${bestGroup.minRank}–${bestGroup.maxRank} (${racerCount} umas)`,
+            description: `${STYLE_NAMES[runningStyle]} typically runs in ranks ${expMin}–${expMax}; ${Math.round(positionOverlap * 100)}% of that envelope satisfies this window.`,
+          });
+          trapScorePenalty += 12;
+        }
       }
     }
   }
@@ -323,8 +376,8 @@ export function evaluateSkillForTrack(
     let accelTriggerStart: number | null;
     if (accelGroupsAligned) {
       accelTriggerStart =
-        earliestStartWithin(spurtMeters - 15, spurtMeters + 50) ?? // optimal spurt window
-        earliestStartWithin(spurtMeters + 50, spurtMeters + 140) ?? // delayed window
+        earliestStartWithin(spurtMeters - 15, spurtMeters + SPURT_ACCEL_TOLERANCE_METERS) ?? // optimal spurt window
+        earliestStartWithin(spurtMeters + SPURT_ACCEL_TOLERANCE_METERS, spurtMeters + 140) ?? // delayed window
         earliestStartWithin(midRaceStart, spurtMeters - 15) ?? // pre-spurt positioning window
         earliestStartWithin(spurtMeters + 140, Number.POSITIVE_INFINITY) ?? // after the accel phase
         (accelRegions.length > 0
@@ -337,8 +390,8 @@ export function evaluateSkillForTrack(
 
     if (accelTriggerStart !== null && accelDelay !== null) {
       accelEvaluated = true;
-      // Right at or closely after the Spurt Point (-15m to 50m):
-      if (accelDelay >= -15 && accelDelay <= 50) {
+      // Right at or closely after the Spurt Point (-15m to SPURT_ACCEL_TOLERANCE_METERS):
+      if (accelDelay >= -15 && accelDelay <= SPURT_ACCEL_TOLERANCE_METERS) {
         category = "fastest_accel";
         stars = 5;
         tier = "S";
@@ -451,29 +504,92 @@ export function evaluateSkillForTrack(
   } else if (hasTargetSpeed) {
     if (triggerStartMeters !== null && triggerStartMeters >= spurtMeters) {
       category = "late_speed";
-      stars = 4;
-      tier = "A";
-      score = Math.max(score, 85);
-      verdictSummary = `Late-Race Speed: activates at ${Math.round(triggerStartMeters)}m during the final stretch to boost sprint top speed. Raises the spurt target-speed ceiling (observed max ~29 m/s).`;
+      stars = phaseProfile.late.stars;
+      tier = phaseProfile.late.tier;
+      score = phaseProfile.late.score;
+      verdictSummary = `${phaseProfile.late.summary} Activates at ${Math.round(triggerStartMeters)}m during the final stretch to boost sprint top speed.`;
+
+      // Warning: Target Speed fires during the acceleration phase (spurtMeters to accelPhaseEndMeters)
+      if (triggerStartMeters < accelPhaseEndMeters) {
+        specialEffects.push({
+          id: "fires_during_accel",
+          type: "warning",
+          badge: "Fires during Acceleration",
+          title: "Triggers in Acceleration Window",
+          description: `Activates at ${Math.round(triggerStartMeters)}m while the horse is still accelerating toward top spurt speed (${Math.round(accelPhaseEndMeters)}m). Target speed buff has reduced effectiveness during this ramp.`,
+          meters: `${Math.round(triggerStartMeters)}m`,
+        });
+      }
+
+      // Warning: Stamina Burn on long tracks (>= 2000m) or high potency (magnitude >= 3500)
+      const isHeavyOrBadGround =
+        raceParams?.groundCondition === 3 ||
+        raceParams?.groundCondition === 4 ||
+        raceParams?.groundCondition === "Heavy" ||
+        raceParams?.groundCondition === "Bad";
+
+      if (courseLength >= HEAVY_TURF_STAMINA_CRITICAL_DISTANCE && isHeavyOrBadGround) {
+        specialEffects.push({
+          id: "heavy_turf_stamina_critical",
+          type: "warning",
+          badge: "Heavy Turf Stamina Penalty",
+          title: "Critical Heavy Turf Consumption",
+          description: `Severe stamina drain on ${courseLength}m heavy/bad turf. HP drain accelerates by 10%–15%. Recovery skills are essential to avoid end-stretch velocity collapse.`,
+        });
+      } else if (courseLength >= 2000 || maxSpeedVal >= 3500) {
+        specialEffects.push({
+          id: "stamina_burn_warning",
+          type: "warning",
+          badge: "High Stamina Demand",
+          title: "Elevated Stamina Consumption",
+          description: `Late-race speed surge on ${courseLength}m increases HP drain non-linearly (v³). Ensure sufficient stamina and recovery skills to avoid end-stretch exhaustion.`,
+        });
+      }
     } else if (triggerStartMeters !== null && triggerStartMeters < spurtMeters * 0.33) {
       category = "early_speed";
-      stars = 3;
-      tier = "B";
-      score = Math.max(score, 72);
-      verdictSummary = `Early Speed: activates at ${Math.round(triggerStartMeters)}m to establish early position before the pack settles.`;
+      stars = phaseProfile.early.stars;
+      tier = phaseProfile.early.tier;
+      score = phaseProfile.early.score;
+      verdictSummary = `${phaseProfile.early.summary} Activates at ${Math.round(triggerStartMeters)}m to establish early position before the pack settles.`;
     } else {
       category = "mid_speed";
-      stars = 4;
-      tier = "A";
-      score = Math.max(score, 82);
-      verdictSummary = `Mid-Race Speed: activates at ${triggerStartMeters !== null ? Math.round(triggerStartMeters) + "m" : "mid-leg"} to contest position before the 2/3 spurt point.`;
+      stars = phaseProfile.mid.stars;
+      tier = phaseProfile.mid.tier;
+      score = phaseProfile.mid.score;
+      verdictSummary = `${phaseProfile.mid.summary} Activates at ${triggerStartMeters !== null ? Math.round(triggerStartMeters) + "m" : "mid-leg"} to contest position before the 2/3 spurt point.`;
     }
   } else if (hasHeal) {
     category = "recovery";
-    stars = 4;
-    tier = "A";
-    score = Math.max(score, 80);
-    verdictSummary = "Stamina Recovery: restores endurance to prevent stamina exhaustion in long stretches.";
+    if (courseLength >= 2000) {
+      stars = 5;
+      tier = "S";
+      score = Math.max(score, 88);
+      verdictSummary = `Stamina Recovery (Long/Medium): restores endurance on ${courseLength}m track, providing critical protection against late-race stamina exhaustion.`;
+      specialEffects.push({
+        id: "stamina_safety",
+        type: "success",
+        badge: "Stamina Safety",
+        title: "Essential Endurance Protection",
+        description: `High stamina demand track (${courseLength}m). Vital for preventing final stretch HP exhaustion and velocity crash.`,
+      });
+    } else if (courseLength <= 1400) {
+      stars = 2;
+      tier = "C";
+      score = 60;
+      verdictSummary = `Stamina Recovery (Sprint): endurance surplus on short ${courseLength}m sprint; stamina is rarely exhausted unless heavily debuffed.`;
+      specialEffects.push({
+        id: "stamina_low_demand",
+        type: "info",
+        badge: "Low Stamina Demand",
+        title: "Surplus Stamina on Sprint",
+        description: `Short course length (${courseLength}m) has minimal stamina consumption. Recovery provides low marginal utility.`,
+      });
+    } else {
+      stars = 4;
+      tier = "A";
+      score = Math.max(score, 80);
+      verdictSummary = "Stamina Recovery: restores endurance to prevent stamina exhaustion in long stretches.";
+    }
   } else if (hasPassive) {
     category = "passive";
     stars = 3;
@@ -492,6 +608,49 @@ export function evaluateSkillForTrack(
   }
   }
 
+  // Multi-group Composite Scoring: when a skill has multiple active groups that
+  // both fire on this course (e.g. Mid-race + Final stretch, or Speed + Accel),
+  // add a composite bonus for secondary active groups.
+  if (activeGroupIndices.length > 1) {
+    let compositeBonus = 0;
+    for (const gIdx of activeGroupIndices) {
+      const g = skill.conditionGroups![gIdx];
+      const gTime = (g.base_time ?? 0) / 10000;
+      const gScaledTime = gTime * (courseLength / 1000);
+      const gDurationFactor = Math.min(1.5, gScaledTime > 0 ? gScaledTime / 5.0 : 1.0);
+
+      let groupValue = 0;
+      for (const rawEff of (g.effects ?? []) as any[]) {
+        const cat = classifyEffect(rawEff);
+        if (cat === "current_speed") groupValue += 10 * gDurationFactor;
+        else if (cat === "target_speed") groupValue += 8 * gDurationFactor;
+        else if (cat === "acceleration") groupValue += 12 * gDurationFactor;
+        else if (cat === "heal") groupValue += 8;
+      }
+      compositeBonus += groupValue;
+    }
+
+    const normalizedBonus = Math.min(15, Math.round(compositeBonus * 0.4));
+    if (normalizedBonus > 0) {
+      score = Math.min(100, score + normalizedBonus);
+      if (score >= 95) {
+        stars = 5;
+        tier = "S";
+      } else if (score >= 85 && stars < 4) {
+        stars = 4;
+        tier = "A";
+      }
+
+      specialEffects.push({
+        id: "multi_stage_synergy",
+        type: "success",
+        badge: "Multi-Stage",
+        title: "Multi-Stage Activation Synergy",
+        description: `Activates across ${activeGroupIndices.length} distinct phases (e.g. mid-race and final stretch), stacking cumulative benefits (+${normalizedBonus} tactical value).`,
+      });
+    }
+  }
+
   // Apply style/rank trap deductions after category classification (see above).
   score -= trapScorePenalty;
 
@@ -500,7 +659,6 @@ export function evaluateSkillForTrack(
   const scaledDurationSeconds = Math.round(durationSeconds * 100) / 100;
   const estimatedDistanceMeters = Math.round(durationMeters * 10) / 10;
   const delayFromSpurtMeters = delayFromSpurt !== null ? Math.round(delayFromSpurt * 10) / 10 : null;
-  const accelPhaseEndMeters = Math.round((spurtMeters + 130) * 10) / 10;
 
   let delayStatus: CalculationBreakdown["delayStatus"] = "mid_race";
   if (category === "fastest_accel") delayStatus = "optimal";
@@ -536,6 +694,7 @@ export function evaluateSkillForTrack(
     maxSpeedVal,
     hasHeal,
     durationMeters,
+    phaseVelocity,
     verdictSummary,
     tier,
     stars,

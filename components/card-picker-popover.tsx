@@ -27,6 +27,7 @@ import { getDefaultChoiceIndex } from "../lib/deck/event-choices";
 import { evaluateSkillActivation } from "../lib/parenting/skill-evaluator";
 import SkillIcon from "./skill-icon";
 import { TargetIcon, CheckIcon, XIcon, ChevronDownIcon } from "./icons";
+import { Badge } from "./shared/badge";
 
 // Rarity label + chip colors. Rarity: 3 = SSR, 2 = SR, 1 = R.
 type SortKey = "recommended" | "release" | "rarity" | "type" | "targetSkills";
@@ -757,9 +758,9 @@ export default function CardPickerPopover({
                     <span>Filter by Skills</span>
                   </span>
                   {selectedSkills.length > 0 && (
-                    <span className="rounded-full bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.2 text-[10px] font-extrabold text-emerald-700 dark:text-emerald-300 shrink-0">
+                    <Badge size="compact" tone="emerald" className="font-extrabold">
                       {selectedSkills.length} selected
-                    </span>
+                    </Badge>
                   )}
                 </div>
 

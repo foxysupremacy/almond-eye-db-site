@@ -19,7 +19,9 @@ import ParentingView from "../components/parenting/parenting-view";
 import VeteransView from "../components/veterans-view";
 import ImportModal from "../components/import-modal";
 import { PvpExpiredModal } from "../components/pvp-expired-modal";
+import { SkillInspectorProvider } from "../components/skill-hover-card";
 import { MobileSheet } from "../components/shared/mobile-sheet";
+import { Badge } from "../components/shared/badge";
 import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon } from "../components/icons";
 
 type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
@@ -38,7 +40,7 @@ const MOBILE_TABS = [
   { id: "parent-deck", label: "Parents", icon: TargetIcon },
   { id: "parenting", label: "Lineage", icon: LineageIcon },
   { id: "visualizer", label: "Race", icon: FlagIcon },
-  { id: "collection", label: "Library", icon: LibraryIcon },
+  { id: "collection", label: "Collection", icon: LibraryIcon },
 ] as const;
 
 export default function Home() {
@@ -83,6 +85,7 @@ export default function Home() {
 
   return (
     <DeckProvider>
+      <SkillInspectorProvider>
       <div className="app-shell flex min-h-[100dvh] min-w-0 flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[400] focus:rounded-lg focus:bg-emerald-700 focus:p-3 focus:text-white">Skip to content</a>
         <header className="border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md sticky top-0 z-40 transition-colors">
@@ -147,15 +150,14 @@ export default function Home() {
                 >
                   <span>{t.label}</span>
                   {t.badge && (
-                    <span
-                      className={`rounded px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider ${
-                        tab === t.id
-                          ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-800 dark:text-emerald-300"
-                          : "bg-zinc-200/70 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400"
-                      }`}
+                    <Badge
+                      size="compact"
+                      uppercase
+                      tone={tab === t.id ? "emerald" : "neutral"}
+                      className={tab === t.id ? "" : "opacity-70"}
                     >
                       {t.badge}
-                    </span>
+                    </Badge>
                   )}
                 </a>
               ))}
@@ -190,7 +192,7 @@ export default function Home() {
         </header>
 
         <main id="main-content" className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-3 py-5 sm:px-6 sm:py-8">
-          {(tab === "collection" || tab === "veterans") && <nav aria-label="Library" className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/60 p-1 dark:bg-zinc-800 lg:hidden">
+          {(tab === "collection" || tab === "veterans") && <nav aria-label="Collection" className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/60 p-1 dark:bg-zinc-800 lg:hidden">
             {([['collection', 'Collection'], ['veterans', 'Trained Umas']] as const).map(([id, label]) => <button key={id} type="button" aria-current={tab === id ? "page" : undefined} onClick={() => handleTabChange(id)} className={`min-h-11 rounded-lg text-sm font-medium ${tab === id ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{label}</button>)}
           </nav>}
           {tab === "main" ? (
@@ -243,6 +245,7 @@ export default function Home() {
         {/* Expired PvP Event Resolution Modal */}
         <PvpExpiredModal />
       </div>
+      </SkillInspectorProvider>
     </DeckProvider>
   );
 }

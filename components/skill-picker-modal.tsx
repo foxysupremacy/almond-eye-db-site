@@ -27,6 +27,7 @@ import { RARITY_META } from "../lib/skill-rarity";
 import { SearchIcon, XIcon, CheckIcon } from "./icons";
 import { useBodyScrollLock } from "../lib/use-body-scroll-lock";
 import { PickerSearchBar } from "./shared/picker-search-bar";
+import { RarityBadge } from "./shared/skill-badges";
 
 type SourceFilter = "all" | "event" | "hint" | "lineage";
 
@@ -425,15 +426,7 @@ export default function SkillPickerModal({
                         interactive={false}
                         trailing={
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`rounded px-1.5 py-0.2 text-[9px] font-bold uppercase ${
-                                s.rarity === 2
-                                  ? "bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300"
-                                  : "bg-zinc-200/80 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-                              }`}
-                            >
-                              {s.rarity === 2 ? "Gold" : "White"}
-                            </span>
+                            <RarityBadge rarity={s.rarity} density="compact" />
                             {parentDeckSkillIdSet.has(s.id) && (
                               <span className="rounded bg-amber-500/15 text-amber-800 dark:text-amber-300 border border-amber-500/30 px-1.5 py-0.2 text-[9px] font-bold">
                                 In Parent Deck

@@ -15,6 +15,7 @@ import SkillIcon from "./skill-icon";
 import SkillHoverCard from "./skill-hover-card";
 import CardTypeIcon, { formatCardType } from "./card-type-icon";
 import { ZapIcon, StarIcon, ChevronDownIcon } from "./icons";
+import { Badge } from "./shared/badge";
 
 const INITIAL_DISPLAY_LIMIT = 4;
 
@@ -103,13 +104,13 @@ export default function RecommendedShelf({
         </div>
 
         {firstEmptySlotIndex !== -1 ? (
-          <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-200/70 dark:border-emerald-800/70">
+          <Badge size="comfortable" tone="emerald" className="font-semibold">
             Next empty slot: Slot {firstEmptySlotIndex + 1}
-          </span>
+          </Badge>
         ) : (
-          <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+          <Badge size="comfortable" tone="neutral" className="font-medium">
             All 6 parent slots filled
-          </span>
+          </Badge>
         )}
       </div>
 

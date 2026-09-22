@@ -1,6 +1,22 @@
-import { describe, expect, it } from "bun:test";
+import { describe, expect, it, test } from "bun:test";
 import { evaluateSkillForTrack } from "./evaluator";
 import type { Course } from "../skill-engine/types";
+import type { SkillDetailInput } from "./types";
+
+function mockCourse(partial: Partial<Course>): Course {
+  return {
+    id: 1,
+    terrain: 1,
+    turn: 1,
+    distance: 2,
+    inout: 0,
+    length: 2000,
+    corners: [],
+    straights: [],
+    slopes: [],
+    ...partial,
+  };
+}
 
 // Mock Kyoto 2200m Outer course
 const KYOTO_2200M: Course = {
@@ -407,5 +423,299 @@ describe("skill-evaluator", () => {
     expect(result.parentMeta?.isParentMode).toBe(true);
     expect(result.parentMeta?.isGoldTransformed).toBe(true);
     expect(result.parentMeta?.inheritedWhiteNameEn).toBe("Corner Recovery ○");
+  });
+
+  it("evaluates multi-group skills (Ring-a-Link) without false rank trap and awards multi-stage synergy", () => {
+    // Ring-a-Link (id: 101431) — Victoire Pisa
+    const pisaSkill = {
+      id: 101431,
+      nameEn: "Ring-a-Link",
+      rarity: 5,
+      conditionGroups: [
+        {
+          precondition: "distance_rate>=16&distance_rate<=18&order_rate>=50",
+          condition: "running_style==3&phase_laterhalf==1",
+          base_time: 50000,
+          effects: [{ type: 22, value: 3500 }],
+        },
+        {
+          precondition: null,
+          condition: "is_activate_other_skill_detail==1&distance_type==3&is_last_straight_onetime==1&order_rate<=50",
+          base_time: 50000,
+          effects: [{ type: 22, value: 1500 }],
+        },
+      ],
+    };
+
+    const TOKYO_2400M = mockCourse({
+      id: 10606,
+      terrain: 1,
+      turn: 2,
+      distance: 3,
+      length: 2400,
+      spurtStart: { meters: 1600 },
+    });
+
+    const zones = [
+      { isRandom: false, regions: [{ start: 1000, end: 1600 }], earliestFire: 384 },
+      { isRandom: false, regions: [{ start: 1875, end: 1885 }], earliestFire: 1000 },
+    ];
+
+    const result = evaluateSkillForTrack(pisaSkill, TOKYO_2400M, 3, 9, false, zones);
+
+    expect(result.tier).toBe("S");
+    expect(result.stars).toBe(5);
+    expect(result.score).toBeGreaterThanOrEqual(95);
+    expect(result.category).toBe("current_speed");
+    expect(result.positionOverlap).toBeGreaterThanOrEqual(0.5);
+    expect(result.specialEffects.some((e) => e.id === "rank_weak" || e.id === "rank_mismatch")).toBe(false);
+    expect(result.specialEffects.some((e) => e.id === "multi_stage_synergy")).toBe(true);
+  });
+
+  it("applies phase-aware velocity (18 m/s early, 20.5 m/s mid, 26 m/s late) for durationMeters", () => {
+    const TOKYO_2400M = mockCourse({
+      id: 10606,
+      length: 2400,
+      spurtStart: { meters: 1600 },
+    });
+
+    // Late-race speed skill at 1800m
+    const lateSpeedSkill = {
+      id: 999901,
+      conditionGroups: [
+        {
+          condition: "phase>=2",
+          base_time: 30000, // 3s * 2.4 = 7.2s
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+    const lateResult = evaluateSkillForTrack(lateSpeedSkill, TOKYO_2400M, 2, 9, false, [
+      { isRandom: false, regions: [{ start: 1800, end: 2400 }], earliestFire: null },
+    ]);
+    // 7.2s * 26.0 m/s = 187.2m
+    expect(lateResult.timingAnalysis.durationMeters).toBeCloseTo(187.2, 1);
+
+    // Mid-race speed skill at 800m
+    const midSpeedSkill = {
+      id: 999902,
+      conditionGroups: [
+        {
+          condition: "phase==1",
+          base_time: 30000, // 7.2s
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+    const midResult = evaluateSkillForTrack(midSpeedSkill, TOKYO_2400M, 2, 9, false, [
+      { isRandom: false, regions: [{ start: 800, end: 1200 }], earliestFire: null },
+    ]);
+    // 7.2s * 20.5 m/s = 147.6m
+    expect(midResult.timingAnalysis.durationMeters).toBeCloseTo(147.6, 1);
+  });
+
+  it("scales recovery skill impact based on course distance (Stamina Safety on long vs Low Demand on sprint)", () => {
+    const healSkill = {
+      id: 200492,
+      conditionGroups: [
+        {
+          condition: "corner!=0",
+          base_time: 0,
+          effects: [{ type: 9, value: 150 }],
+        },
+      ],
+    };
+
+    const longCourse = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const longResult = evaluateSkillForTrack(healSkill, longCourse, 2, 9, false, [
+      { isRandom: false, regions: [{ start: 1600, end: 2400 }], earliestFire: null },
+    ]);
+    expect(longResult.tier).toBe("S");
+    expect(longResult.stars).toBe(5);
+    expect(longResult.score).toBeGreaterThanOrEqual(88);
+    expect(longResult.specialEffects.some((e) => e.badge === "Stamina Safety")).toBe(true);
+
+    const sprintCourse = mockCourse({ length: 1200, distance: 1, spurtStart: { meters: 800 } });
+    const sprintResult = evaluateSkillForTrack(healSkill, sprintCourse, 2, 9, false, [
+      { isRandom: false, regions: [{ start: 800, end: 1200 }], earliestFire: null },
+    ]);
+    expect(sprintResult.tier).toBe("C");
+    expect(sprintResult.stars).toBe(2);
+    expect(sprintResult.score).toBe(60);
+    expect(sprintResult.specialEffects.some((e) => e.badge === "Low Stamina Demand")).toBe(true);
+  });
+
+  it("applies style-aware phase weighting for Early Speed (Runner Tier S vs Betweener Tier C)", () => {
+    const earlySpeedSkill = {
+      id: 201101,
+      conditionGroups: [
+        {
+          condition: "phase==0",
+          base_time: 30000,
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+    const course = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 100, end: 300 }], earliestFire: null }];
+
+    // Runner (1)
+    const runnerRes = evaluateSkillForTrack(earlySpeedSkill, course, 1, 9, false, zones);
+    expect(runnerRes.category).toBe("early_speed");
+    expect(runnerRes.tier).toBe("S");
+    expect(runnerRes.stars).toBe(5);
+    expect(runnerRes.score).toBe(90);
+
+    // Betweener (3)
+    const betweenerRes = evaluateSkillForTrack(earlySpeedSkill, course, 3, 9, false, zones);
+    expect(betweenerRes.category).toBe("early_speed");
+    expect(betweenerRes.tier).toBe("C");
+    expect(betweenerRes.stars).toBe(2);
+    expect(betweenerRes.score).toBe(65);
+  });
+
+  it("applies style-aware phase weighting for Late Speed (Betweener/Chaser Tier S vs Runner Tier B)", () => {
+    const lateSpeedSkill = {
+      id: 200362,
+      conditionGroups: [
+        {
+          condition: "is_lastspurt==1",
+          base_time: 30000,
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+    const course = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 1875, end: 2400 }], earliestFire: null }];
+
+    // Runner (1)
+    const runnerRes = evaluateSkillForTrack(lateSpeedSkill, course, 1, 9, false, zones);
+    expect(runnerRes.category).toBe("late_speed");
+    expect(runnerRes.tier).toBe("B");
+    expect(runnerRes.stars).toBe(3);
+    expect(runnerRes.score).toBe(75);
+
+    // Betweener (3)
+    const betweenerRes = evaluateSkillForTrack(lateSpeedSkill, course, 3, 9, false, zones);
+    expect(betweenerRes.category).toBe("late_speed");
+    expect(betweenerRes.tier).toBe("S");
+    expect(betweenerRes.stars).toBe(5);
+    expect(runnerRes.score).toBeLessThan(betweenerRes.score);
+    expect(betweenerRes.score).toBe(92);
+
+    // Chaser (4)
+    const chaserRes = evaluateSkillForTrack(lateSpeedSkill, course, 4, 9, false, zones);
+    expect(chaserRes.category).toBe("late_speed");
+    expect(chaserRes.tier).toBe("S");
+    expect(chaserRes.score).toBe(95);
+  });
+
+  it("auto-detects style profile for style-gated skills when runningStyle is undefined", () => {
+    const runnerGatedEarlySkill = {
+      id: 200021,
+      conditionGroups: [
+        {
+          condition: "running_style==1&phase==0",
+          base_time: 30000,
+          effects: [{ type: 27, value: 1500 }],
+        },
+      ],
+    };
+    const course = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 100, end: 300 }], earliestFire: null }];
+
+    // Evaluated with runningStyle = undefined -> should auto-detect Runner profile
+    const res = evaluateSkillForTrack(runnerGatedEarlySkill, course, undefined, 9, false, zones);
+    expect(res.category).toBe("early_speed");
+    expect(res.tier).toBe("S");
+    expect(res.stars).toBe(5);
+    expect(res.score).toBe(90);
+  });
+
+  it("flags Fires during Acceleration and High Stamina Demand badges on relevant late speed conditions", () => {
+    const accelZoneSpeedSkill = {
+      id: 201321,
+      conditionGroups: [
+        {
+          condition: "phase==2",
+          base_time: 30000,
+          effects: [{ type: 27, value: 3500 }],
+        },
+      ],
+    };
+    // On 2400m track: spurt starts at 1600m, accel phase ends at 1730m.
+    // Trigger at 1625m is inside the accel window.
+    const course = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 1625, end: 1700 }], earliestFire: null }];
+
+    const res = evaluateSkillForTrack(accelZoneSpeedSkill, course, 2, 9, false, zones);
+    expect(res.category).toBe("late_speed");
+    expect(res.specialEffects.some((e) => e.badge === "Fires during Acceleration")).toBe(true);
+    expect(res.specialEffects.some((e) => e.badge === "High Stamina Demand")).toBe(true);
+  });
+
+  test("ParisLongchamp 2400m geometry: Straight accel at 1617m (+17m from spurt) classifies as Valid Fastest Accel", () => {
+    const straightAccelSkill: SkillDetailInput = {
+      id: 999101,
+      nameEn: "Fausse Ligne Droite Accel",
+      conditionGroups: [
+        {
+          condition: "is_last_straight==1",
+          base_time: 9000,
+          effects: [{ type: 31, value: 4000 }],
+        },
+      ],
+    };
+    // Longchamp 2400m: spurt at 1600m, Fausse Ligne Droite starts at 1617m (+17m)
+    const longchampCourse = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 1617, end: 1867 }], earliestFire: null }];
+
+    const res = evaluateSkillForTrack(straightAccelSkill, longchampCourse, 3, 9, false, zones);
+    expect(res.category).toBe("fastest_accel");
+    expect(res.tier).toBe("S");
+    expect(res.score).toBeGreaterThanOrEqual(94);
+    expect(res.specialEffects.some((e) => e.badge === "Optimal Accel")).toBe(true);
+  });
+
+  test("Tokyo 2400m geometry: Straight accel at 1875m (+275m from spurt) classifies as Dead Accel", () => {
+    const straightAccelSkill: SkillDetailInput = {
+      id: 999102,
+      nameEn: "Tokyo Final Straight Accel",
+      conditionGroups: [
+        {
+          condition: "is_last_straight==1",
+          base_time: 9000,
+          effects: [{ type: 31, value: 4000 }],
+        },
+      ],
+    };
+    // Tokyo 2400m: spurt at 1600m, final straight starts at 1875m (+275m)
+    const tokyoCourse = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 1875, end: 2400 }], earliestFire: null }];
+
+    const res = evaluateSkillForTrack(straightAccelSkill, tokyoCourse, 3, 9, false, zones);
+    expect(res.category).toBe("dead_accel");
+    expect(res.tier).toBe("F");
+    expect(res.score).toBeLessThanOrEqual(15);
+    expect(res.specialEffects.some((e) => e.badge === "Dead Accel")).toBe(true);
+  });
+
+  test("Heavy Turf Stamina Penalty triggers when courseLength >= 2400m and ground is Bad or Heavy", () => {
+    const lateSpeedSkill: SkillDetailInput = {
+      id: 999103,
+      nameEn: "Longchamp Late Speed",
+      conditionGroups: [
+        {
+          condition: "phase>=2",
+          base_time: 30000,
+          effects: [{ type: 27, value: 3500 }],
+        },
+      ],
+    };
+    const course = mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } });
+    const zones = [{ isRandom: false, regions: [{ start: 1800, end: 2400 }], earliestFire: null }];
+
+    const res = evaluateSkillForTrack(lateSpeedSkill, course, 2, 9, false, zones, { groundCondition: "Bad" });
+    expect(res.specialEffects.some((e) => e.badge === "Heavy Turf Stamina Penalty")).toBe(true);
   });
 });

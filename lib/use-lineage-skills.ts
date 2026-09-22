@@ -51,7 +51,7 @@ export interface DisplayParentSkill {
   evolSkillAvailable?: boolean;
   evolSkillId?: number;
   grants?: DisplayParentSkillGrant[];
-  mainCardGrants?: { cardName: string; source: string }[];
+  mainCardGrants?: { cardId?: number; cardName: string; source: string }[];
 }
 
 export function useLineageSkills() {

@@ -19,9 +19,9 @@ export interface RarityStyleMeta {
 
 /**
  * Visual styling rules for skill cards according to specification:
- * - Gold: linear-gradient(to right, rgb(255, 255, 239), rgb(255, 190, 40))
- * - Unique: linear-gradient(to right, rgb(255, 238, 239), rgb(255, 154, 211))
- * - Evolved: linear-gradient(to right, rgb(255, 238, 239), rgb(255, 154, 211)) with purple/fuchsia accents
+ * - Gold: warm ivory-to-amber surface
+ * - Unique: mint-to-blue-to-pink surface
+ * - Evolved: soft rose-to-pink surface
  * - White: clean neutral white background
  */
 export const RARITY_STYLES: Record<"white" | "gold" | "unique" | "evolved", RarityStyleMeta> = {
@@ -39,7 +39,7 @@ export const RARITY_STYLES: Record<"white" | "gold" | "unique" | "evolved", Rari
     badgeLabel: "Gold",
     badgeClass: "bg-amber-200/90 dark:bg-amber-950 text-amber-950 dark:text-amber-100 font-bold border border-amber-400/80 dark:border-amber-700",
     borderClass: "border-amber-300 dark:border-amber-700/80 shadow-xs",
-    bgClass: "bg-amber-50/60 dark:bg-amber-950/30",
+    bgClass: "skill-surface-gold",
   },
   unique: {
     key: "unique",
@@ -47,7 +47,7 @@ export const RARITY_STYLES: Record<"white" | "gold" | "unique" | "evolved", Rari
     badgeLabel: "Unique",
     badgeClass: "bg-pink-100 dark:bg-pink-950 text-pink-950 dark:text-pink-100 font-bold border border-pink-300 dark:border-pink-700/80",
     borderClass: "border-pink-300/80 dark:border-pink-700/80 shadow-xs",
-    bgClass: "bg-pink-50/60 dark:bg-pink-950/30",
+    bgClass: "skill-surface-unique",
   },
   evolved: {
     key: "evolved",
@@ -55,7 +55,7 @@ export const RARITY_STYLES: Record<"white" | "gold" | "unique" | "evolved", Rari
     badgeLabel: "Evo",
     badgeClass: "bg-purple-100 dark:bg-purple-950 text-purple-950 dark:text-purple-100 font-bold border border-purple-300 dark:border-purple-700/80",
     borderClass: "border-purple-300/80 dark:border-purple-700/80 shadow-xs",
-    bgClass: "bg-purple-50/60 dark:bg-purple-950/30",
+    bgClass: "skill-surface-evolved",
   },
 };
 

@@ -93,7 +93,42 @@ export interface CharacterIndexEntry {
   innateSkills?: number[];
   awakeningSkills?: number[];
   eventSkills?: number[];
+  growthRates?: number[];
   imgUrl: string;
+}
+
+export interface CharacterEvolutionDetail {
+  rank: number;
+  baseSkillId: number;
+  skillId: number;
+  nameEn: string;
+  nameJp: string;
+  descEn?: string;
+  descJp?: string;
+  iconId: number | null;
+  branchTag?: string;
+  condition1?: string;
+}
+
+export interface CardEffectEntry {
+  type: number;
+  nameEn: string;
+  nameJp: string;
+  values: number[]; // [0 LB, 1 LB, 2 LB, 3 LB, MLB]
+}
+
+export interface CardUniqueEffectEntry {
+  lv: number;
+  textEn: string;
+  textJp: string;
+  effects: { type: number; nameEn: string; nameJp: string; value: number }[];
+}
+
+export interface SupportCardEffectsBlob {
+  cardId: number;
+  rarity: number;
+  effects: CardEffectEntry[];
+  uniqueEffect?: CardUniqueEffectEntry;
 }
 
 // ---------------------------------------------------------------------------

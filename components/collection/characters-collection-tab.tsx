@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { CharacterIndexEntry } from "../../lib/api";
 import { CharacterItem } from "./character-item";
+import { CharacterDetailSheet } from "./character-detail-sheet";
+import { Badge } from "../shared/badge";
 
 interface CharactersCollectionTabProps {
   filteredCharacters: CharacterIndexEntry[];
@@ -23,6 +25,8 @@ export function CharactersCollectionTab({
   onSetUmaDetails,
   onRemoveUma,
 }: CharactersCollectionTabProps) {
+  const [selectedCharacter, setSelectedCharacter] = useState<CharacterIndexEntry | null>(null);
+
   const ownedCharacters = useMemo(() => {
     return filteredCharacters.filter((c) => getUmaDetails(c.id) !== undefined);
   }, [filteredCharacters, getUmaDetails]);
@@ -78,8 +82,7 @@ export function CharactersCollectionTab({
                   key={chara.id}
                   character={chara}
                   details={getUmaDetails(chara.id)}
-                  onSetUmaDetails={onSetUmaDetails}
-                  onRemoveUma={onRemoveUma}
+                  onSelect={setSelectedCharacter}
                 />
               ))}
             </div>
@@ -92,9 +95,9 @@ export function CharactersCollectionTab({
                 <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700/80" />
               </div>
               <div className="relative flex justify-center">
-                <span className="bg-white dark:bg-zinc-900 px-3 py-1 rounded-full border border-zinc-200/90 dark:border-zinc-800 text-xs font-semibold text-zinc-500 dark:text-zinc-400 shadow-2xs">
+                <Badge size="comfortable" tone="neutral" className="bg-white dark:bg-zinc-900 font-semibold shadow-2xs">
                   Unowned Characters ({unownedCharacters.length})
-                </span>
+                </Badge>
               </div>
             </div>
           )}
@@ -107,14 +110,23 @@ export function CharactersCollectionTab({
                   key={chara.id}
                   character={chara}
                   details={getUmaDetails(chara.id)}
-                  onSetUmaDetails={onSetUmaDetails}
-                  onRemoveUma={onRemoveUma}
+                  onSelect={setSelectedCharacter}
                 />
               ))}
             </div>
           )}
         </div>
       )}
+
+      {/* Character Detail Sheet Modal */}
+      <CharacterDetailSheet
+        character={selectedCharacter}
+        isOpen={selectedCharacter !== null}
+        onClose={() => setSelectedCharacter(null)}
+        details={selectedCharacter ? getUmaDetails(selectedCharacter.id) : undefined}
+        onSetUmaDetails={onSetUmaDetails}
+        onRemoveUma={onRemoveUma}
+      />
     </div>
   );
 }

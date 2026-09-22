@@ -47,7 +47,8 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   // Layout mode: "stacked" (both Map & 1D), "map" (Course map only), "1d" (1D timeline only)
-  const [viewMode, setViewMode] = useState<"stacked" | "map" | "1d">("stacked");
+  // The timeline is the primary planning surface; maps remain opt-in controls.
+  const [viewMode, setViewMode] = useState<"stacked" | "map" | "1d">("1d");
   const [hoverMeter, setHoverMeter] = useState<number | null>(null);
 
   // 1. Render the 1D flat SVG track and hook up hover

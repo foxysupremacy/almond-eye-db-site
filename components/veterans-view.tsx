@@ -21,6 +21,7 @@ import {
 import ImportModal from "./import-modal";
 import TrainedUmaModal from "./trained-uma-modal";
 import { TrainedUmaCard } from "./trained-uma-card";
+import { Badge } from "./shared/badge";
 
 type SortOption =
   | "newest"
@@ -239,9 +240,9 @@ export default function VeteransView() {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4">
         <div className="text-center mb-8">
-          <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-3 py-1 text-xs font-bold uppercase tracking-wider">
+          <Badge size="comfortable" tone="emerald" uppercase className="font-bold">
             Hall of Fame
-          </span>
+          </Badge>
           <h2 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 mt-2 mb-1">
             Trained Umas (Veterans)
           </h2>
@@ -321,9 +322,9 @@ export default function VeteransView() {
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
               Trained Umas (Hall of Fame)
             </h2>
-            <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+            <Badge size="compact" tone="emerald" className="font-bold">
               {veterans.length} Horses
-            </span>
+            </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Locally stored veteran characters with complete 44 attributes, lineage, and inheritance sparks.
@@ -408,13 +409,11 @@ export default function VeteransView() {
           >
             <span>🧬 Only Parents</span>
             <span
-              className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                onlyParents
-                  ? "bg-emerald-700 text-white"
-                  : "bg-zinc-100 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-300"
-              }`}
+              className="contents"
             >
-              {parentCount}
+              <Badge size="compact" tone={onlyParents ? "emerald" : "neutral"} emphasis={onlyParents ? "solid" : "soft"} className="font-bold">
+                {parentCount}
+              </Badge>
             </span>
           </button>
 
@@ -445,9 +444,9 @@ export default function VeteransView() {
               Showing <strong>{filteredVeterans.length}</strong> of <strong>{veterans.length}</strong> Trained Umas
             </span>
             {hasTargetSkills && (
-              <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-semibold">
+              <Badge size="compact" tone="emerald" className="font-semibold">
                 {activeTargetSkillsMap.size} Target Skills in Parent Deck
-              </span>
+              </Badge>
             )}
           </div>
           <span>

@@ -110,8 +110,8 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
           return <button key={index} type="button" aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`} onClick={() => card ? setMobileSlot(index) : setOpenSlot(index)}
             className={`relative flex min-h-32 min-w-0 flex-col overflow-hidden rounded-xl border bg-white text-left dark:bg-zinc-900 ${conflict ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"}`}>
             {card ? <>
-              <div className="relative h-24 w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                <img src={card.imgUrl} alt="" className="h-full w-full object-cover object-top" />
+              <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                <img src={card.imgUrl} alt="" className="block h-auto w-full object-contain" />
                 <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
                 <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
                 {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}

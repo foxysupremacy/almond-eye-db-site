@@ -13,6 +13,7 @@ import ParentDeckPicker from "./parent-deck-picker";
 import ParentSkillList from "./parent-skill-list";
 import AceComplementFinder from "./ace-complement-finder";
 import { resolveTargetCharacter } from "../lib/parenting/pedigree-resolvers";
+import { Badge } from "./shared/badge";
 
 interface ParentDeckViewProps {
   onNavigateToParenting: () => void;
@@ -119,13 +120,13 @@ export default function ParentDeckView({ onNavigateToParenting }: ParentDeckView
                 </div>
 
                 {/* Compatibility Badge */}
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs font-black">
+                <Badge size="comfortable" tone="amber" className="font-black">
                   <span>相性:</span>
                   <span className={affinityBreakdown.rating.textColor}>
                     {affinityBreakdown.rating.symbol}
                   </span>
                   <span>+{affinityBreakdown.totalScore}</span>
-                </div>
+                </Badge>
 
                 {/* Parent 1 */}
                 <div className="flex items-center gap-2">

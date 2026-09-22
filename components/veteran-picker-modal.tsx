@@ -24,6 +24,7 @@ import { useDeck } from "./store";
 import SkillItem from "./skill-item";
 import { PickerSearchBar } from "./shared/picker-search-bar";
 import { TIER_CHIP_CLASSES } from "./shared/skill-badges";
+import { Badge } from "./shared/badge";
 
 export interface PickerRecommendations {
   owned: LegacyCandidate[];
@@ -161,16 +162,9 @@ function sortRecommended(
 }
 
 function TierChip({ tier, title }: { tier: string; title?: string }) {
-  return (
-    <span
-      className={`text-[9px] font-black px-1.5 py-0.5 rounded-full border shrink-0 ${
-        TIER_CHIP_CLASSES[tier] ?? TIER_CHIP_CLASSES.C
-      }`}
-      title={title}
-    >
+  return <Badge size="compact" className={`font-black ${TIER_CHIP_CLASSES[tier] ?? TIER_CHIP_CLASSES.C}`} title={title}>
       {tier}
-    </span>
-  );
+    </Badge>;
 }
 
 function RecommendedRow({
@@ -239,27 +233,17 @@ function RecommendedRow({
           <TierChip tier={candidate.uniqueEval.tier} title={candidate.uniqueEval.explanation} />
         )}
         {isBorrow ? (
-          <span
-            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-              borrowUsed ? "bg-zinc-400/60 text-white" : "bg-amber-500/90 text-white"
-            }`}
-          >
+          <Badge size="compact" emphasis="solid" tone={borrowUsed ? "neutral" : "amber"} className="font-bold">
             Borrow
-          </span>
+          </Badge>
         ) : candidate.isUntrained ? (
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
-            title="Owned but not yet trained — train this Uma to use it here (no borrow needed)"
-          >
+          <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained — train this Uma to use it here (no borrow needed)">
             Untrained
-          </span>
+          </Badge>
         ) : (
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
-            title="Imported Hall of Fame veteran"
-          >
+          <Badge size="compact" emphasis="solid" tone="emerald" className="font-bold" title="Imported Hall of Fame veteran">
             HoF{candidate.blueStarsTotal ? ` · ${candidate.blueStarsTotal}★` : ""}
-          </span>
+          </Badge>
         )}
 
         <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums shrink-0">
@@ -350,15 +334,9 @@ function RecommendedTabContent({
           <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">
             Friend Borrow <span className="text-zinc-400 font-medium">({borrow.length})</span>
           </h4>
-          <span
-            className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
-              borrowUsed
-                ? "bg-zinc-400/60 text-white"
-                : "bg-amber-500/90 text-white"
-            }`}
-          >
+          <Badge size="compact" emphasis="solid" tone={borrowUsed ? "neutral" : "amber"} className="font-bold">
             {borrowBadgeLabel}
-          </span>
+          </Badge>
         </div>
         {borrow.length === 0 ? (
           <p className="text-[11px] text-zinc-400 px-1 py-1.5">
@@ -462,19 +440,13 @@ function OwnedUmaRow({
           <TierChip tier={entry.uniqueEval.tier} title={entry.uniqueEval.explanation} />
         )}
         {entry.hasHofRuns ? (
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
-            title="This Uma also has imported Hall of Fame runs"
-          >
+          <Badge size="compact" emphasis="solid" tone="emerald" className="font-bold" title="This Uma also has imported Hall of Fame runs">
             HoF
-          </span>
+          </Badge>
         ) : (
-          <span
-            className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
-            title="Owned but not yet trained — train this Uma to use it here (no borrow needed)"
-          >
+          <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained — train this Uma to use it here (no borrow needed)">
             Untrained
-          </span>
+          </Badge>
         )}
 
         <span className="text-base font-black text-amber-600 dark:text-amber-400 tabular-nums shrink-0">
@@ -879,13 +851,13 @@ export default function VeteranPickerModal({
               <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                 Select {slotLabel}
               </h3>
-              <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold">
+              <Badge size="compact" tone="emerald" className="font-bold">
                 {activeTab === "veterans"
                   ? `${unifiedVeterans.length} Umas (${veterans.length} Runs)`
                   : activeTab === "owned"
                   ? `${ownedUmaEntries.length} Owned`
                   : `${processedTemplates.length} Characters`}
-              </span>
+              </Badge>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               {targetCharaId
@@ -1057,9 +1029,9 @@ export default function VeteranPickerModal({
                                 </span>
                               )}
                               {group.runCount > 1 && (
-                                <span className="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30">
+                                <Badge size="standard" tone="blue" className="font-bold">
                                   {group.runCount} Runs in HoF
-                                </span>
+                                </Badge>
                               )}
                             </div>
 
@@ -1125,12 +1097,9 @@ export default function VeteranPickerModal({
                                         title={group.uniqueEval.explanation}
                                       />
                                     )}
-                                    <span
-                                      className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-600 text-white shrink-0"
-                                      title="Imported Hall of Fame veteran"
-                                    >
+                                    <Badge size="compact" emphasis="solid" tone="emerald" className="font-bold" title="Imported Hall of Fame veteran">
                                       HoF
-                                    </span>
+                                    </Badge>
                                   </>
                                 }
                               />
@@ -1336,12 +1305,9 @@ export default function VeteranPickerModal({
                                     title={uniqueEval.explanation}
                                   />
                                 )}
-                                <span
-                                  className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/90 text-white shrink-0"
-                                  title="Owned but not yet trained"
-                                >
+                                <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained">
                                   Untrained
-                                </span>
+                                </Badge>
                               </>
                             }
                           />

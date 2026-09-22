@@ -12,6 +12,7 @@ export interface SkillItemData {
   nameEn: string;
   nameJp?: string | null;
   cardName?: string;
+  cardId?: number | null;
   rarity?: number;
   descEn?: string;
 }
@@ -155,6 +156,7 @@ export function SkillItem({
         iconId: parsedIconId,
       }}
       cardName={skill.cardName}
+      cardId={skill.cardId}
       isParentMode={isParentMode}
       className="group inline-flex items-center min-w-0 cursor-pointer"
     >
@@ -177,12 +179,10 @@ export function SkillItem({
   }
 
   return (
-    <div className={`min-w-0 ${className}`}>
-      <div className="flex items-center justify-between gap-2 min-w-0">
-        <div className="min-w-0 flex-1">{interactiveTrigger}</div>
-        {trailing && <div className="flex-none flex items-center gap-1.5">{trailing}</div>}
-      </div>
-      {children && <div className="mt-1">{children}</div>}
+    <div className={`skill-item-layout ${className}`}>
+      <div className="skill-item-content">{interactiveTrigger}</div>
+      {trailing && <div className="skill-item-trailing">{trailing}</div>}
+      {children && <div className="skill-item-children">{children}</div>}
     </div>
   );
 }

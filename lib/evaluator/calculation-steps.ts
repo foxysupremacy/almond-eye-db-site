@@ -131,6 +131,7 @@ export interface BuildBreakdownParams {
   maxSpeedVal: number;
   hasHeal: boolean;
   durationMeters: number;
+  phaseVelocity?: number;
   verdictSummary: string;
   tier: "S" | "A" | "B" | "C" | "D" | "F";
   stars: number;
@@ -188,9 +189,9 @@ export function buildCalculationBreakdown(p: BuildBreakdownParams): CalculationB
     },
     {
       title: "3. Distance Covered (スキルの移動距離)",
-      formula: `${p.scaledDurationSeconds}s × ~20.0 m/s ≈ ${p.estimatedDistanceMeters}m`,
+      formula: `${p.scaledDurationSeconds}s × ~${(p.phaseVelocity ?? 20.0).toFixed(1)} m/s ≈ ${p.estimatedDistanceMeters}m`,
       result: `~${p.estimatedDistanceMeters}m`,
-      explanation: "At standard cruising speed (~20.0 m/s), the horse travels this distance while the skill remains active.",
+      explanation: `At phase velocity (~${(p.phaseVelocity ?? 20.0).toFixed(1)} m/s), the horse travels this distance while the skill remains active.`,
       badgeType: "neutral",
     },
     {
@@ -234,7 +235,7 @@ export function buildCalculationBreakdown(p: BuildBreakdownParams): CalculationB
     scaledDurationSeconds: p.scaledDurationSeconds,
     durationFormula: `${p.baseDurationSeconds.toFixed(2)}s × (${p.courseLength}m / 1,000m) = ${p.scaledDurationSeconds}s`,
     estimatedDistanceMeters: p.estimatedDistanceMeters,
-    distanceFormula: `${p.scaledDurationSeconds}s × ~20.0 m/s ≈ ${p.estimatedDistanceMeters}m`,
+    distanceFormula: `${p.scaledDurationSeconds}s × ~${(p.phaseVelocity ?? 20.0).toFixed(1)} m/s ≈ ${p.estimatedDistanceMeters}m`,
     delayFromSpurtMeters: p.delayFromSpurtMeters,
     delayFormula:
       p.triggerStartMeters !== null

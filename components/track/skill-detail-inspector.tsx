@@ -10,7 +10,7 @@ import { conditionBranches, formatEffect } from "../../lib/skill-engine/describe
 import { ZONE_COLORS } from "../../lib/track-render";
 import SkillIcon from "../skill-icon";
 import SkillItem from "../skill-item";
-import { RarityBadge, splitStylePrefix } from "../shared/skill-badges";
+import { CardSourceIcon, splitStylePrefix } from "../shared/skill-badges";
 import { ConditionChips } from "../shared/condition-chips";
 import { hexToRgba } from "../shared/color-utils";
 import {
@@ -20,22 +20,27 @@ import {
 } from "../highlighted-numbers";
 import { AlertTriangleIcon, StarRating } from "../icons";
 import { SkillSourceBadges } from "./skill-source-badges";
+import { Badge } from "../shared/badge";
+import { StatusRankIcon } from "../shared/status-icons";
 
 interface SkillDetailInspectorProps {
   conditionViewerRef?: RefObject<HTMLDivElement | null>;
   skillDetail: SkillDetail | null;
   skillLoading: boolean;
-  selectedSkill: VisualizerSkill | null;
+  selectedSkill: Pick<VisualizerSkill, "origins"> | null;
   selectedSkillId: number | null;
   zones: SkillZoneResult[] | null;
   course: Course | null;
   racerCount: number;
   evaluation: SkillEvaluationResult | null;
-  activeSkills: VisualizerSkill[];
+  /** Optional card-level provenance for list and picker skill triggers. */
+  cardName?: string;
+  cardId?: number | null;
   isBanned?: boolean;
 }
 
-export function SkillDetailInspector({
+/** Shared detail renderer for the fixed Visualizer pane and floating inspector. */
+export function SkillDetailPanel({
   conditionViewerRef,
   skillDetail,
   skillLoading,
@@ -45,13 +50,14 @@ export function SkillDetailInspector({
   course,
   racerCount,
   evaluation,
-  activeSkills,
+  cardName,
+  cardId,
   isBanned = false,
 }: SkillDetailInspectorProps) {
   return (
     <div
       ref={conditionViewerRef}
-      className="order-1 md:order-2 min-w-0 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm shadow-xs text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden"
+      className="order-1 min-w-0 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm shadow-xs text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2"
     >
       {skillLoading ? (
         <div className="p-4 sm:p-5 text-zinc-400 dark:text-zinc-500">Loading skill…</div>
@@ -69,16 +75,15 @@ export function SkillDetailInspector({
               size="lg"
               interactive={false}
               isBanned={isBanned}
-              trailing={
-                <div className="flex-none flex items-center gap-1.5">
-                  {isBanned && (
+                trailing={
+                  <div className="flex-none flex items-center gap-1.5">
+                    {isBanned && (
                     <span className="rounded bg-rose-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-white shadow-2xs">
-                      BANNED
-                    </span>
-                  )}
-                  <RarityBadge rarity={selectedSkill?.rarity ?? skillDetail.rarity} />
-                </div>
-              }
+                        BANNED
+                      </span>
+                    )}
+                  </div>
+                }
             />
 
             {isBanned && (
@@ -92,28 +97,27 @@ export function SkillDetailInspector({
                 </div>
               </div>
             )}
-            {selectedSkill?.origins && selectedSkill.origins.length > 0 && (
+            {(cardName || (selectedSkill?.origins && selectedSkill.origins.length > 0)) && (
               <div className="mt-2.5">
                 <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                   Sources
                 </span>
-                <SkillSourceBadges origins={selectedSkill.origins} />
+                {selectedSkill?.origins && selectedSkill.origins.length > 0 ? (
+                  <SkillSourceBadges origins={selectedSkill.origins} />
+                ) : (
+                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    <CardSourceIcon cardId={cardId} cardName={cardName} className="h-5 w-5" />
+                    <span className="rounded border border-violet-200/80 bg-violet-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:border-violet-800 dark:bg-violet-950/80 dark:text-violet-300">Event</span>
+                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">{cardName}</span>
+                  </div>
+                )}
               </div>
             )}
             {(() => {
-              const { style, text } = splitStylePrefix(skillDetail.descEn);
+              const { text } = splitStylePrefix(skillDetail.descEn);
               return (
-                <div className="mt-2 flex flex-wrap items-start gap-x-2">
-                  {style && (
-                    <span className="mt-0.5 inline-flex flex-none items-center gap-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-medium leading-4 text-zinc-600 dark:text-zinc-300">
-                      <span
-                        className="inline-block h-1.5 w-1.5 flex-none rounded-full bg-zinc-400 dark:bg-zinc-500"
-                        aria-hidden
-                      />
-                      {style}
-                    </span>
-                  )}
-                  <span className="min-w-0 flex-1 leading-6 text-zinc-600 dark:text-zinc-300">
+                <div className="mt-2">
+                  <span className="leading-6 text-zinc-600 dark:text-zinc-300">
                     {text}
                   </span>
                 </div>
@@ -144,14 +148,12 @@ export function SkillDetailInspector({
                     course?.length ?? 0,
                   );
                   return (
-                    <div key={gi} className="py-3 first:pt-0 last:pb-0 text-xs">
+                    <div
+                      key={gi}
+                      className="rounded-lg px-2.5 py-3 text-xs first:pt-2.5 last:pb-2.5"
+                      style={{ backgroundColor: hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.1) }}
+                    >
                       <div className="flex items-center gap-2 mb-1.5">
-                        <span
-                          className="inline-block h-2.5 w-2.5 flex-none rounded-xs border border-zinc-300 dark:border-zinc-700"
-                          style={{
-                            background: hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.35),
-                          }}
-                        />
                         <span className="font-bold text-zinc-900 dark:text-zinc-100">
                           Trigger {gi + 1}
                         </span>
@@ -167,8 +169,6 @@ export function SkillDetailInspector({
                         <ConditionChips
                           branches={branches}
                           needsBranches={needsBranches}
-                          tint={hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.35)}
-                          muted={false}
                         />
                       </div>
 
@@ -213,9 +213,7 @@ export function SkillDetailInspector({
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
                     <StarRating stars={evaluation.stars} starClassName="h-3.5 w-3.5" />
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                      {evaluation.tier} Tier
-                    </span>
+                    <StatusRankIcon grade={evaluation.tier} className="h-6 w-6" />
                     <span className="text-xs text-zinc-400 dark:text-zinc-500">
                       ({evaluation.score} pts)
                     </span>
@@ -250,21 +248,23 @@ export function SkillDetailInspector({
                 {evaluation.specialEffects.map((eff: SpecialEffectItem) => (
                   <div
                     key={eff.id}
-                    className="flex items-start gap-2.5 py-2.5 first:pt-0 last:pb-0 text-xs"
-                  >
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider flex-none ${
-                        eff.type === "success"
-                          ? "bg-emerald-100 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300"
-                          : eff.type === "warning"
-                          ? "bg-amber-100 dark:bg-amber-950 text-amber-900 dark:text-amber-300"
+                    className={`flex items-start gap-2.5 rounded-md px-2.5 py-2.5 text-xs first:pt-2.5 last:pb-2.5 ${
+                      eff.type === "success"
+                        ? "bg-emerald-50/70 dark:bg-emerald-950/20"
+                        : eff.type === "warning"
+                          ? "bg-amber-50/75 dark:bg-amber-950/20"
                           : eff.type === "error"
-                          ? "bg-rose-100 dark:bg-rose-950 text-rose-800 dark:text-rose-300"
-                          : "bg-blue-100 dark:bg-blue-950 text-blue-800 dark:text-blue-300"
-                      }`}
+                            ? "bg-rose-50/70 dark:bg-rose-950/20"
+                            : "bg-sky-50/70 dark:bg-sky-950/20"
+                    }`}
+                  >
+                    <Badge
+                      size="compact"
+                      tone={eff.type === "success" ? "emerald" : eff.type === "warning" ? "amber" : eff.type === "error" ? "rose" : "sky"}
+                      className="font-bold uppercase"
                     >
                       {eff.badge}
-                    </span>
+                    </Badge>
                     <div className="min-w-0 flex-1">
                       <span className="font-semibold text-zinc-900 dark:text-zinc-100">{eff.title}</span>
                       <p className="mt-0.5 text-[11px] leading-relaxed text-zinc-600 dark:text-zinc-300">
@@ -301,3 +301,6 @@ export function SkillDetailInspector({
     </div>
   );
 }
+
+/** @deprecated Use SkillDetailPanel. Kept as a compatibility export for callers. */
+export const SkillDetailInspector = SkillDetailPanel;

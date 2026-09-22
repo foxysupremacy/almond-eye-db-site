@@ -1,3 +1,52 @@
+import { STYLE_EXPECTED_RANKS } from "./constants";
+import type { RunningStyle } from "../deck/types";
+
+export interface RankOverlapResult {
+  hasOrderCondition: boolean;
+  minRank: number;
+  maxRank: number;
+  expMin: number;
+  expMax: number;
+  overlapRanks: number;
+  positionOverlap: number;
+}
+
+/**
+ * Calculate the position overlap fraction (0-1) between the parsed rank window
+ * and the expected running style envelope.
+ */
+export function calculateStyleRankOverlap(
+  conditionStr: string,
+  runningStyle: RunningStyle,
+  racerCount: number
+): RankOverlapResult {
+  const { minRank, maxRank, hasOrderCondition } = parseRankRequirements(conditionStr, racerCount);
+  const [expMin, expMax] = STYLE_EXPECTED_RANKS[runningStyle] ?? [1, racerCount];
+  if (!hasOrderCondition) {
+    return {
+      hasOrderCondition: false,
+      minRank,
+      maxRank,
+      expMin,
+      expMax,
+      overlapRanks: expMax - expMin + 1,
+      positionOverlap: 1.0,
+    };
+  }
+
+  const overlapRanks = Math.max(0, Math.min(maxRank, expMax) - Math.max(minRank, expMin) + 1);
+  const positionOverlap = overlapRanks / (expMax - expMin + 1);
+  return {
+    hasOrderCondition: true,
+    minRank,
+    maxRank,
+    expMin,
+    expMax,
+    overlapRanks,
+    positionOverlap,
+  };
+}
+
 /**
  * Parse required ranks from a raw condition string.
  */

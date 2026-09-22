@@ -19,6 +19,7 @@ import {
 } from "../lib/parent-factor-matcher";
 import { getInheritableSkillForGold, getInheritableSkillForUnique } from "../lib/skill-rarity";
 import { XIcon } from "./icons";
+import { Badge } from "./shared/badge";
 
 interface TrainedUmaModalProps {
   isOpen: boolean;
@@ -419,9 +420,9 @@ export default function TrainedUmaModal({
               }`}
             >
               <span>Learned Skills</span>
-              <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 text-[10px] font-bold text-zinc-600 dark:text-zinc-300">
+              <Badge size="compact" tone="neutral" className="font-bold">
                 {totalSkillsCount}
-              </span>
+              </Badge>
             </button>
 
             <button
@@ -434,13 +435,13 @@ export default function TrainedUmaModal({
               }`}
             >
               <span>Sparks & Factors</span>
-              <span className="rounded-full bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.2 text-[10px] font-bold text-zinc-600 dark:text-zinc-300">
+              <Badge size="compact" tone="neutral" className="font-bold">
                 {totalFactorsCount}
-              </span>
+              </Badge>
               {targetFactorMatch.count > 0 && (
-                <span className="rounded-full bg-emerald-500 text-white px-1.5 py-0.2 text-[10px] font-black shadow-2xs">
+                <Badge size="compact" tone="emerald" emphasis="solid" className="font-black shadow-2xs">
                   +{targetFactorMatch.count} target
-                </span>
+                </Badge>
               )}
             </button>
           </div>
@@ -525,22 +526,22 @@ export default function TrainedUmaModal({
                         {/* Right Pill: Rarity & Level & Target */}
                         <div className="flex items-center gap-1.5 shrink-0">
                           {isTargetSkill(item.skillId) && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                            <Badge size="compact" tone="emerald" className="font-bold">
                               🎯 Target
-                            </span>
+                            </Badge>
                           )}
                           {isUnique ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 shadow-2xs">
+                            <Badge size="standard" tone="amber" className="font-black shadow-2xs">
                               Lv {item.level}
-                            </span>
+                            </Badge>
                           ) : item.rarity === 2 ? (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/30">
+                            <Badge size="standard" tone="amber" className="font-bold">
                               Gold
-                            </span>
+                            </Badge>
                           ) : (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                            <Badge size="compact" tone="neutral" className="font-medium">
                               White
-                            </span>
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -615,9 +616,9 @@ export default function TrainedUmaModal({
                         </p>
                       </div>
                     </div>
-                    <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-xs font-bold">
+                    <Badge size="standard" tone="emerald" className="font-bold">
                       {targetFactorMatch.count} Matched
-                    </span>
+                    </Badge>
                   </div>
 
                   {targetFactorMatch.count === 0 ? (
@@ -667,9 +668,9 @@ export default function TrainedUmaModal({
                               </div>
                             </div>
 
-                            <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-400/20 text-amber-700 dark:text-amber-300 border border-amber-400/40 shrink-0">
+                            <Badge size="standard" tone="amber" className="font-black">
                               {"★".repeat(m.maxStars)}
-                            </span>
+                            </Badge>
                           </div>
                         );
                       })}
@@ -712,9 +713,9 @@ export default function TrainedUmaModal({
                             </div>
 
                             {/* Stars badge */}
-                            <span className="px-2.5 py-1 rounded-full text-xs font-black bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/30 shrink-0">
+                            <Badge size="comfortable" tone="blue" className="font-black">
                               {"★".repeat(f.stars)}
-                            </span>
+                            </Badge>
                           </div>
                         );
                       })}
@@ -751,9 +752,9 @@ export default function TrainedUmaModal({
                             </p>
                           </div>
 
-                          <span className="px-2.5 py-1 rounded-full text-xs font-black bg-pink-500/15 text-pink-700 dark:text-pink-300 border border-pink-500/30 shrink-0">
+                          <Badge size="comfortable" tone="pink" className="font-black">
                             {"★".repeat(f.stars)}
-                          </span>
+                          </Badge>
                         </div>
                       ))}
                     </div>
@@ -794,16 +795,16 @@ export default function TrainedUmaModal({
                                     </span>
                                   )}
                                   {isTarget && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                    <Badge size="compact" tone="emerald" className="font-bold">
                                       🎯 Target Skill
-                                    </span>
+                                    </Badge>
                                   )}
                                 </div>
                               </div>
 
-                              <span className="px-2.5 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 shrink-0">
+                              <Badge size="comfortable" tone="emerald" className="font-black">
                                 {"★".repeat(f.stars)}
-                              </span>
+                              </Badge>
                             </div>
 
                             {/* Directly display provided skills below factor */}
@@ -886,27 +887,21 @@ export default function TrainedUmaModal({
                                     </span>
                                   )}
                                   {f.category && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400">
+                                    <Badge size="compact" tone="neutral" uppercase className="font-bold">
                                       {f.category}
-                                    </span>
+                                    </Badge>
                                   )}
                                   {isTarget && (
-                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                                    <Badge size="compact" tone="emerald" className="font-bold">
                                       🎯 Target Skill
-                                    </span>
+                                    </Badge>
                                   )}
                                 </div>
                               </div>
 
-                              <span
-                                className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 ${
-                                  isTarget
-                                    ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30"
-                                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-700"
-                                }`}
-                              >
+                              <Badge size="comfortable" tone={isTarget ? "emerald" : "neutral"} className="font-black">
                                 {"★".repeat(f.stars)}
-                              </span>
+                              </Badge>
                             </div>
 
                             {/* If factor provides skill(s), display directly underneath with SkillHoverCard */}

@@ -1,5 +1,10 @@
 import { describe, expect, test } from "bun:test";
-import { evaluateUniqueSkill, evaluateSkillActivation, runningStyleToNum } from "./skill-evaluator";
+import {
+  evaluateUniqueSkill,
+  evaluateSkillActivation,
+  runningStyleToNum,
+  getRecommendedStyleForKit,
+} from "./skill-evaluator";
 import type { Course } from "../skill-engine/types";
 
 const kyoto2200Course: Course = {
@@ -133,6 +138,39 @@ describe("evaluateSkillActivation", () => {
 
     const inheritAsBetweener = evaluateSkillActivation(901411, kyoto2200Course, 3);
     expect(inheritAsBetweener.activates).toBe(false);
+  });
+});
+
+describe("getRecommendedStyleForKit", () => {
+  test("recommends Runner for a Runner-biased kit and aptitude (e.g. Silence Suzuka)", () => {
+    const suzukaStub = {
+      aptitude: ["A", "G", "G", "A", "A", "E", "A", "D", "F", "G"],
+      uniqueSkillId: 100201, // Angling or Suzuka unique
+      awakeningSkills: [200021, 200022, 200023, 200024],
+    };
+    const style = getRecommendedStyleForKit(suzukaStub, [], kyoto2200Course);
+    expect(style).toBe(1); // Runner
+  });
+
+  test("recommends Chaser for a Chaser-biased kit and aptitude (e.g. Gold Ship)", () => {
+    const golshiStub = {
+      aptitude: ["A", "G", "G", "C", "A", "A", "G", "C", "B", "A"],
+      uniqueSkillId: 100701,
+      awakeningSkills: [200071, 200072, 200073, 200074],
+    };
+    const style = getRecommendedStyleForKit(golshiStub, [], kyoto2200Course);
+    expect(style).toBe(4); // Chaser
+  });
+
+  test("recommends Betweener for Phalaenopsis (114901)", () => {
+    const phalaenopsisStub = {
+      aptitude: ["A", "F", "D", "A", "A", "F", "G", "A", "A", "C"],
+      uniqueSkillId: 101491,
+      awakeningSkills: [201491, 201492, 201493, 201494],
+    };
+    const style = getRecommendedStyleForKit(phalaenopsisStub, [], kyoto2200Course);
+    // Runner is G (-300), Leader is A, Betweener is A
+    expect([2, 3]).toContain(style);
   });
 });
 

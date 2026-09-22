@@ -5,6 +5,7 @@ import { type CharacterIndexEntry, getCharacterImageUrl } from "../lib/api";
 import { getCharaIdFromCardId, getCanonicalFactorName } from "../lib/affinity-engine";
 import { decodeFactor } from "../lib/factor-decoder";
 import type { ParticipantSlot } from "../lib/parenting/types";
+import { Badge } from "./shared/badge";
 
 interface InheritedSkillsModalProps {
   isOpen: boolean;
@@ -110,9 +111,9 @@ export default function InheritedSkillsModal({
             }`}
           >
             <span>📜 White Factors</span>
-            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-zinc-200 dark:bg-zinc-800">
+            <Badge size="compact" tone="neutral">
               {aggregatedFactors.length}
-            </span>
+            </Badge>
           </button>
         </div>
 
@@ -194,9 +195,9 @@ export default function InheritedSkillsModal({
                         </div>
                       </div>
 
-                      <div className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black text-[11px]">
+                      <Badge size="standard" tone="amber" className="font-black">
                         <span>{"★".repeat(f.maxStars)}</span>
-                      </div>
+                      </Badge>
                     </div>
                   ))}
                 </div>

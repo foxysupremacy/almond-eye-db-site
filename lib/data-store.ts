@@ -12,6 +12,8 @@ import {
   skills,
   getCardImageUrl,
   getCharacterImageUrl,
+  getCharacterEvolutions,
+  getCardSupportEffects,
 } from "./data/registry";
 
 // Dataset schema — single source of truth in lib/data/types.ts.
@@ -21,6 +23,10 @@ export type {
   EventSkillMetadata,
   CardIndexEntry,
   CharacterIndexEntry,
+  CharacterEvolutionDetail,
+  SupportCardEffectsBlob,
+  CardEffectEntry,
+  CardUniqueEffectEntry,
   SkillSummary,
   CardSkills,
   SkillConditionGroup,
@@ -32,12 +38,19 @@ export type {
 } from "./data/types";
 
 // CDN URL builders live in the registry; re-exported here for compatibility.
-export { getCardImageUrl, getCharacterImageUrl };
+export {
+  getCardImageUrl,
+  getCharacterImageUrl,
+  getCharacterEvolutions,
+  getCardSupportEffects,
+};
 
 import type {
   CardIndexEntry,
   CardSkills,
   CharacterIndexEntry,
+  CharacterEvolutionDetail,
+  SupportCardEffectsBlob,
   CourseRow,
   EventSkillMetadata,
   RacetrackDetail,
@@ -66,6 +79,8 @@ export interface DataStore {
   getTrack(id: number): RacetrackDetail | undefined;
   getCourse(id: number): CourseRow | undefined;
   getCardSkills(cardId: number): CardSkills;
+  getCharacterEvolutions(cardId: number): CharacterEvolutionDetail[];
+  getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined;
 }
 
 let storeInstance: DataStore | null = null;
@@ -175,6 +190,12 @@ export async function initDataStore(): Promise<DataStore> {
           }),
           hintSkills: c.hintSkills.map(resolve),
         };
+      },
+      getCharacterEvolutions(cardId: number) {
+        return getCharacterEvolutions(cardId);
+      },
+      getCardSupportEffects(cardId: number) {
+        return getCardSupportEffects(cardId);
       },
     };
 

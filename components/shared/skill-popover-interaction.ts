@@ -1,5 +1,26 @@
 export type SkillPopoverMode = "closed" | "preview" | "pinned";
 
+/**
+ * Coordinates a single shared detail surface. Replacing its active key is
+ * intentional: a newer hover or click must never leave an older detail open.
+ */
+export function createSingleSkillPopoverController(onChange: (key: string | null, mode: SkillPopoverMode) => void) {
+  let activeKey: string | null = null;
+  let mode: SkillPopoverMode = "closed";
+  const set = (nextKey: string | null, nextMode: SkillPopoverMode) => {
+    if (activeKey === nextKey && mode === nextMode) return;
+    activeKey = nextKey;
+    mode = nextMode;
+    onChange(activeKey, mode);
+  };
+  return {
+    preview(key: string) { set(key, "preview"); },
+    pin(key: string) { set(key, "pinned"); },
+    closePreview(key: string) { if (activeKey === key && mode === "preview") set(null, "closed"); },
+    close(key?: string) { if (!key || activeKey === key) set(null, "closed"); },
+  };
+}
+
 /** Keeps incidental pointer movement separate from deliberate inspection. */
 export function createSkillPopoverInteraction(onChange: (mode: SkillPopoverMode) => void) {
   let mode: SkillPopoverMode = "closed";
@@ -57,4 +78,3 @@ export function createSkillPopoverInteraction(onChange: (mode: SkillPopoverMode)
     dispose: cancelAll,
   };
 }
-

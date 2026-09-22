@@ -42,6 +42,7 @@ import { TraineeSpotlight } from "./trainee-spotlight";
 import { PedigreeSlotCard } from "./pedigree-slot-card";
 import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "../../lib/parenting/pedigree-resolvers";
 import { PedigreeSkillsSection } from "./pedigree-skills-section";
+import { Badge } from "../shared/badge";
 
 export interface ParentingViewProps {
   onNavigateToParentDeck?: () => void;
@@ -407,9 +408,9 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
             <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
               Parenting Hub
             </h2>
-            <span className="rounded-full bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-2.5 py-0.5 text-xs font-bold">
+            <Badge size="standard" tone="emerald" className="font-bold">
               Compatibility
-            </span>
+            </Badge>
           </div>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
             Affinity-ranked legacy recommendations, filtered by unique-skill timing on the selected track.

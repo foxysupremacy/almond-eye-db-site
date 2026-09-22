@@ -16,7 +16,7 @@ import { type RarityFilterKey } from "../../lib/skill-rarity";
 import { evaluateSkillForTrack } from "../../lib/evaluator";
 import { TrackCanvas } from "./track-canvas";
 import { TrackSkillSidebar } from "./track-skill-sidebar";
-import { SkillDetailInspector } from "./skill-detail-inspector";
+import { SkillDetailPanel } from "./skill-detail-inspector";
 import { isSkillBanned, getPvpRaceParameters } from "../../lib/pvp-events";
 import { useParentingSetup } from "../../lib/parenting-state";
 import {
@@ -56,8 +56,8 @@ export default function TrackView() {
   const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
   const [skillLoading, setSkillLoading] = useState(false);
   const [zones, setZones] = useState<SkillZoneResult[] | null>(null);
-
   const conditionViewerRef = useRef<HTMLDivElement>(null);
+
 
   // Restore saved selectedSkillId after client hydration
   useEffect(() => {
@@ -130,7 +130,6 @@ export default function TrackView() {
     setZones(computeAllZones(course, groups, styleHorse, { ...raceParams, skillId: String(skillDetail.id) }));
   }, [course, skillDetail, styleHorse, raceParams]);
 
-  // Tactical evaluation for the currently inspected skill on this course
   const evaluation = useMemo(() => {
     if (!skillDetail) return null;
     return evaluateSkillForTrack(
@@ -140,8 +139,9 @@ export default function TrackView() {
       racerCount,
       visualizerDeck === "parent",
       zones ?? [],
+      raceParams,
     );
-  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, zones]);
+  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, zones, raceParams]);
 
   // Cache skill details so triggerability can be computed for every deck skill
   // without re-fetching on each course change.
@@ -188,7 +188,7 @@ export default function TrackView() {
     };
   }, [course, activeSkills, fetchSkillCached, styleHorse, raceParams]);
 
-  const selectedSkill = activeSkills.find((s) => s.id === selectedSkillId) ?? null;
+  const selectedSkill = activeSkills.find((skill) => skill.id === selectedSkillId) ?? null;
   const hasContent = activeSkills.length > 0;
 
   // Whether a skill fires on the current course (null while zones haven't
@@ -215,7 +215,6 @@ export default function TrackView() {
   const displayedSkills = useMemo(() => {
     return sortedSkills.filter((s) => matchesVisualizerFilter(s, rarityFilter));
   }, [sortedSkills, rarityFilter]);
-
   const isSelectedSkillBanned = Boolean(selectedSkillId && isSkillBanned(selectedSkillId, activePvpEvent));
 
   return (
@@ -228,9 +227,9 @@ export default function TrackView() {
         </div>
       ) : (
         <>
-          <TrackCanvas course={course} zones={zones} />
+          <TrackCanvas course={course} zones={zones} selectedSkillId={selectedSkillId?.toString() ?? null} />
 
-          <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr]">
             <TrackSkillSidebar
               visualizerDeck={visualizerDeck}
               onVisualizerDeckChange={setVisualizerDeck}
@@ -244,8 +243,7 @@ export default function TrackView() {
               conditionViewerRef={conditionViewerRef}
               isSkillBanned={(id) => isSkillBanned(id, activePvpEvent)}
             />
-
-            <SkillDetailInspector
+            <SkillDetailPanel
               conditionViewerRef={conditionViewerRef}
               skillDetail={skillDetail}
               skillLoading={skillLoading}
@@ -255,7 +253,6 @@ export default function TrackView() {
               course={course}
               racerCount={racerCount}
               evaluation={evaluation}
-              activeSkills={activeSkills}
               isBanned={isSelectedSkillBanned}
             />
           </div>
