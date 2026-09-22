@@ -24,6 +24,13 @@ export function getCategoryBadge(category: SkillTacticalCategory): {
           "bg-cyan-100 dark:bg-cyan-950/90 text-cyan-800 dark:text-cyan-300 border-cyan-300 dark:border-cyan-700 font-bold",
         dotColor: "bg-cyan-500",
       };
+    case "zenkai_accel":
+      return {
+        label: "Zenkai Spurt Accel",
+        badgeClass:
+          "bg-teal-100 dark:bg-teal-950/90 text-teal-800 dark:text-teal-300 border-teal-300 dark:border-teal-700 font-bold",
+        dotColor: "bg-teal-500",
+      };
     case "position_accel":
       return {
         label: "Position Accel",
@@ -126,6 +133,8 @@ export interface BuildBreakdownParams {
   accelPhaseEndMeters: number;
   hasAccel: boolean;
   maxAccelVal: number;
+  hasZenkaiAcceleration: boolean;
+  maxZenkaiAccelerationVal: number;
   hasCurrentSpeed: boolean;
   hasTargetSpeed: boolean;
   maxSpeedVal: number;
@@ -148,6 +157,9 @@ export function buildCalculationBreakdown(p: BuildBreakdownParams): CalculationB
     const overlapMeters = Math.round((p.triggerStartMeters! + p.durationMeters - p.spurtMeters) * 10) / 10;
     delayExplanation = `Triggers at ${Math.round(p.triggerStartMeters! * 10) / 10}m and stays active for ${p.scaledDurationSeconds}s (~${p.estimatedDistanceMeters}m), reaching ${Math.round((p.triggerStartMeters! + p.durationMeters) * 10) / 10}m (+${overlapMeters}m past the 2/3 line).`;
     dynamicMathExplanation = `Because this speed boost extends across the ${p.spurtMeters}m line into late-race, the horse enters Phase 2 already cruising at boosted speed (~20.7 m/s instead of ~20.0 m/s). This allows reaching top sprint speed with less acceleration needed!`;
+  } else if (p.category === "zenkai_accel") {
+    delayExplanation = `Activates at ${p.triggerStartMeters !== null ? Math.round(p.triggerStartMeters) + "m" : "the designated zone"} during the Zenkai Spurt window.`;
+    dynamicMathExplanation = `This trigger applies the raw Zenkai Spurt Acceleration effect (+${(p.maxZenkaiAccelerationVal / 10000).toFixed(2)} m/s²). Detailed Power-scaled Zenkai simulation is outside the visualizer's supported mechanics model.`;
   } else if (p.category === "dead_accel") {
     delayExplanation = `Triggers at ${Math.round(p.triggerStartMeters! * 10) / 10}m (+${p.delayFromSpurtMeters}m delay). Late race acceleration finishes around ${p.accelPhaseEndMeters}m (+130m ramp).`;
     dynamicMathExplanation = `At ${Math.round(p.triggerStartMeters! * 10) / 10}m, the horse is already cruising at maximum sprint speed (~23.4 m/s). Acceleration skills provide zero velocity increase once top speed is already attained, making this skill 100% wasted.`;
@@ -244,12 +256,16 @@ export function buildCalculationBreakdown(p: BuildBreakdownParams): CalculationB
     delayStatus: p.delayStatus,
     delayExplanation,
     accelPhaseEndMeters: p.accelPhaseEndMeters,
-    effectMagnitude: p.hasAccel
+    effectMagnitude: p.hasZenkaiAcceleration
+      ? p.maxZenkaiAccelerationVal / 10000
+      : p.hasAccel
       ? p.maxAccelVal / 10000
       : p.hasTargetSpeed || p.hasCurrentSpeed
         ? p.maxSpeedVal / 10000
         : undefined,
-    effectTypeLabel: p.hasAccel
+    effectTypeLabel: p.hasZenkaiAcceleration
+      ? "Zenkai Spurt Acceleration"
+      : p.hasAccel
       ? "Acceleration"
       : p.hasCurrentSpeed
         ? "Current Speed"

@@ -240,6 +240,11 @@ describe("formatEffect", () => {
     expect(line).toBe("+0.40 m/s² Acceleration for 2.4 s");
   });
 
+  test("Zenkai spurt acceleration type 48 with duration", () => {
+    const line = formatEffect([{ type: 48, value: 4000 }], 20000, 2400);
+    expect(line).toBe("+0.40 m/s² Zenkai Spurt Acceleration for 4.8 s");
+  });
+
   test("negative value", () => {
     const line = formatEffect([{ type: 21, value: -2000 }], 24000, 1000);
     expect(line).toBe("−0.20 m/s Current Speed for 2.4 s");

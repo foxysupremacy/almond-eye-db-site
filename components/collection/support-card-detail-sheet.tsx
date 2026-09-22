@@ -22,6 +22,7 @@ import { getPvpRaceParameters, isSkillBanned } from "../../lib/pvp-events";
 import { getSkillRarityStyle, RARITY_META } from "../../lib/skill-rarity";
 import { Badge } from "../shared/badge";
 import EventChainAttribution from "../event-chain-attribution";
+import { ChainArrowIcon } from "../chain-arrow-icon";
 import {
   AlertTriangleIcon,
   CheckIcon,
@@ -106,7 +107,43 @@ export function SupportCardDetailSheet({
   if (!isOpen || !card || !mounted || typeof document === "undefined") return null;
 
   const hintSkills = loadedSkills?.hintSkills || [];
-  const eventSkills = loadedSkills?.eventSkills || [];
+  const baseEventSkills = loadedSkills?.eventSkills || [];
+  const eventSkillById = new Map(baseEventSkills.map((skill) => [skill.id, skill]));
+  const expandedEventSkills: SkillSummary[] = [];
+  const occurrenceIds = new Set<number>();
+
+  // Keep one row per event-choice occurrence. A skill can intentionally be
+  // granted by several choices, so collapsing by skill id would hide valid
+  // branches from the card detail view.
+  for (const event of card.eventDetails ?? []) {
+    for (const choice of event.choices) {
+      for (const skillId of choice.skillIds) {
+        const skill = eventSkillById.get(skillId);
+        if (!skill) continue;
+        occurrenceIds.add(skillId);
+        expandedEventSkills.push({
+          ...skill,
+          eventMeta: {
+            eventId: event.eventId,
+            eventNameEn: event.nameEn,
+            eventNameJp: event.nameJp,
+            choiceIndex: choice.index,
+            choiceTextEn: choice.textEn,
+            choiceTextJp: choice.textJp,
+            totalChoices: event.choices.length,
+            eventType: event.eventType,
+            chainStep: event.chainStep,
+            statSummary: choice.statSummary,
+          },
+        });
+      }
+    }
+  }
+
+  const eventSkills = [
+    ...expandedEventSkills,
+    ...baseEventSkills.filter((skill) => !occurrenceIds.has(skill.id)),
+  ];
   const totalSkillCount = hintSkills.length + eventSkills.length;
 
   function evaluateSkill(skillId: number) {
@@ -124,7 +161,7 @@ export function SupportCardDetailSheet({
     if (evaluateSkill(s.id).activates) activatingSkillCount++;
   }
 
-  function renderSkillRow(s: SkillSummary, source: "hint" | "event") {
+  function renderSkillRow(s: SkillSummary, source: "hint" | "event", showEventMeta = true) {
     const rStyle = getSkillRarityStyle(s.rarity);
     const isBanned = isSkillBanned(s.id, activePvpEvent);
     const evalResult = evaluateSkill(s.id);
@@ -189,7 +226,7 @@ export function SupportCardDetailSheet({
             </p>
           )}
 
-          {s.eventMeta && (
+          {showEventMeta && s.eventMeta && (
             <div className="mt-1 pl-9 flex items-center gap-1.5 text-[10px] text-violet-700 dark:text-violet-400 flex-wrap">
               <EventChainAttribution eventMeta={s.eventMeta} />
               {s.eventMeta.statSummary && (
@@ -233,6 +270,42 @@ export function SupportCardDetailSheet({
     );
   }
 
+  const chainGroups = new Map<
+    string,
+    { step: number; choice: number; choiceText: string; eventId: number; skills: SkillSummary[] }
+  >();
+  const standaloneEventSkills: SkillSummary[] = [];
+
+  for (const skill of eventSkills) {
+    const meta = skill.eventMeta;
+    if (meta?.eventType === "chain" && meta.chainStep) {
+      const key = `${meta.eventId}:${meta.choiceIndex}`;
+      const existing = chainGroups.get(key);
+      if (existing) {
+        // A malformed/duplicated skill id can occur more than once in one
+        // choice. Keep one row within that branch, while preserving the same
+        // skill when it is offered by a different choice.
+        if (!existing.skills.some((groupSkill) => groupSkill.id === skill.id)) {
+          existing.skills.push(skill);
+        }
+      } else {
+        chainGroups.set(key, {
+          step: meta.chainStep,
+          choice: meta.choiceIndex,
+          choiceText: meta.choiceTextEn || meta.choiceTextJp,
+          eventId: meta.eventId,
+          skills: [skill],
+        });
+      }
+    } else {
+      standaloneEventSkills.push(skill);
+    }
+  }
+
+  const orderedChainGroups = [...chainGroups.values()].sort(
+    (a, b) => a.step - b.step || a.choice - b.choice || a.eventId - b.eventId,
+  );
+
   return createPortal(
     <div
       className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart"
@@ -252,11 +325,11 @@ export function SupportCardDetailSheet({
         <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5 min-w-0">
-              <div className="relative aspect-square h-16 w-16 flex-none rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
+              <div className="relative aspect-square h-16 w-16 flex-none overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
                 <img
                   src={card.portraitUrl || card.imgUrl}
                   alt={card.nameEn}
-                  className="h-full w-full object-contain filter drop-shadow-xs"
+                  className="h-full w-full rounded-none object-contain filter drop-shadow-xs"
                 />
               </div>
 
@@ -394,7 +467,20 @@ export function SupportCardDetailSheet({
                 <div className="px-3.5 py-1.5 bg-violet-500/10 dark:bg-violet-950/20 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
                   Event Skills ({eventSkills.length})
                 </div>
-                {eventSkills.map((s) => renderSkillRow(s, "event"))}
+                {orderedChainGroups.map((group) => (
+                  <section key={`${group.eventId}:${group.choice}`}>
+                    <div className="flex min-w-0 items-center gap-1.5 border-b border-violet-200/60 px-3.5 py-2 text-[10px] text-violet-700 dark:border-violet-900/50 dark:text-violet-300">
+                      <span className="shrink-0 font-bold uppercase tracking-wide">Chain {group.step}</span>
+                      <ChainArrowIcon step={group.step} size="sm" className="text-violet-600 dark:text-violet-400" />
+                      <span className="shrink-0 font-semibold">Choice {group.choice}</span>
+                      <span className="min-w-0 truncate text-violet-600/80 dark:text-violet-300/80">{group.choiceText}</span>
+                    </div>
+                    <div className="ml-3 border-l border-violet-200/70 pl-2 dark:border-violet-900/60">
+                      {group.skills.map((skill) => renderSkillRow(skill, "event", false))}
+                    </div>
+                  </section>
+                ))}
+                {standaloneEventSkills.map((s) => renderSkillRow(s, "event"))}
               </div>
             )}
 

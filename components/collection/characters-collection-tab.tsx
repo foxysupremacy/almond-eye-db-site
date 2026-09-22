@@ -16,6 +16,28 @@ interface CharactersCollectionTabProps {
   onRemoveUma: (charaId: number) => void;
 }
 
+type CharacterSortMode = "release" | "distance" | "style";
+
+const APTITUDE_SORT_GROUPS = {
+  distance: [2, 3, 4, 5],
+  style: [6, 7, 8, 9],
+} as const;
+
+function compareByAptitudeGroup(a: CharacterIndexEntry, b: CharacterIndexEntry, indices: readonly number[]) {
+  const key = (character: CharacterIndexEntry) => {
+    const grades = indices.map((index) => (character.aptitude?.[index] || "-").toUpperCase());
+    const aIndex = grades.findIndex((grade) => grade === "A");
+    const bestIndex = aIndex >= 0 ? aIndex : grades.findIndex((grade) => grade !== "-");
+    const gradeRank = { S: 0, A: 1, B: 2, C: 3, D: 4 } as Record<string, number>;
+    const bestGrade = bestIndex >= 0 ? gradeRank[grades[bestIndex]] ?? 9 : 9;
+    return [bestIndex >= 0 ? bestIndex : indices.length, bestGrade] as const;
+  };
+
+  const [aIndex, aGrade] = key(a);
+  const [bIndex, bGrade] = key(b);
+  return aIndex - bIndex || aGrade - bGrade;
+}
+
 export function CharactersCollectionTab({
   filteredCharacters,
   totalCharactersCount,
@@ -26,14 +48,31 @@ export function CharactersCollectionTab({
   onRemoveUma,
 }: CharactersCollectionTabProps) {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterIndexEntry | null>(null);
+  const [sortMode, setSortMode] = useState<CharacterSortMode>("release");
+
+  const sortedCharacters = useMemo(() => {
+    return [...filteredCharacters].sort((a, b) => {
+      if (sortMode === "release") {
+        const releaseOrder = (b.release || "").localeCompare(a.release || "");
+        return releaseOrder || a.nameEn.localeCompare(b.nameEn) || a.id - b.id;
+      }
+
+      const aptitudeOrder = compareByAptitudeGroup(
+        a,
+        b,
+        APTITUDE_SORT_GROUPS[sortMode],
+      );
+      return aptitudeOrder || (b.release || "").localeCompare(a.release || "") || a.nameEn.localeCompare(b.nameEn);
+    });
+  }, [filteredCharacters, sortMode]);
 
   const ownedCharacters = useMemo(() => {
-    return filteredCharacters.filter((c) => getUmaDetails(c.id) !== undefined);
-  }, [filteredCharacters, getUmaDetails]);
+    return sortedCharacters.filter((c) => getUmaDetails(c.id) !== undefined);
+  }, [sortedCharacters, getUmaDetails]);
 
   const unownedCharacters = useMemo(() => {
-    return filteredCharacters.filter((c) => getUmaDetails(c.id) === undefined);
-  }, [filteredCharacters, getUmaDetails]);
+    return sortedCharacters.filter((c) => getUmaDetails(c.id) === undefined);
+  }, [sortedCharacters, getUmaDetails]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -62,8 +101,21 @@ export function CharactersCollectionTab({
           ))}
         </div>
 
-        <div className="text-xs text-zinc-400">
-          Showing {filteredCharacters.length} of {totalCharactersCount} characters
+        <div className="flex items-center gap-2">
+          <label htmlFor="character-sort" className="text-xs text-zinc-400">Sort:</label>
+          <select
+            id="character-sort"
+            value={sortMode}
+            onChange={(event) => setSortMode(event.target.value as CharacterSortMode)}
+            className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+          >
+            <option value="release">Release: Newest</option>
+            <option value="distance">Distance: Aptitude A</option>
+            <option value="style">Style: Aptitude A</option>
+          </select>
+          <span className="text-xs text-zinc-400">
+            {sortedCharacters.length} / {totalCharactersCount}
+          </span>
         </div>
       </div>
 
@@ -76,7 +128,7 @@ export function CharactersCollectionTab({
         <div className="flex flex-col gap-6">
           {/* Owned Characters Section */}
           {ownedCharacters.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
               {ownedCharacters.map((chara) => (
                 <CharacterItem
                   key={chara.id}
@@ -104,7 +156,7 @@ export function CharactersCollectionTab({
 
           {/* Unowned Characters Section */}
           {unownedCharacters.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
               {unownedCharacters.map((chara) => (
                 <CharacterItem
                   key={chara.id}

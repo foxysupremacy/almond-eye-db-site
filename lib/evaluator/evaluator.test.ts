@@ -45,6 +45,110 @@ const KYOTO_2200M: Course = {
 };
 
 describe("skill-evaluator", () => {
+  it("evaluates each Peerless Heroine trigger independently, including Zenkai acceleration", () => {
+    const peerlessHeroine = {
+      id: 101291,
+      nameEn: "Peerless Heroine",
+      rarity: 5,
+      conditionGroups: [
+        {
+          condition: "phase==1&corner!=0&order_rate<=50&ground_type==1",
+          base_time: 30000,
+          effects: [{ type: 22, value: 4500 }],
+        },
+        {
+          condition: "is_activate_other_skill_detail==1&run_at_full_speed_random==1&order<=3&distance_type==3",
+          base_time: 20000,
+          effects: [{ type: 48, value: 4000 }],
+        },
+      ],
+    };
+    const zones = [
+      { isRandom: false, regions: [{ start: 1000, end: 1417 }], earliestFire: null },
+      { isRandom: true, regions: [{ start: 1600, end: 2400 }], earliestFire: 1000 },
+    ];
+
+    const result = evaluateSkillForTrack(peerlessHeroine, mockCourse({ length: 2400, distance: 3, spurtStart: { meters: 1600 } }), 2, 9, false, zones);
+
+    expect(result.triggerEvaluations).toHaveLength(2);
+    expect(result.triggerEvaluations?.[0].evaluation?.category).toBe("current_speed");
+    expect(result.triggerEvaluations?.[1].evaluation?.category).toBe("zenkai_accel");
+    expect(result.triggerEvaluations?.[1].evaluation?.verdictSummary).toContain("Zenkai Spurt Acceleration");
+    expect(result.score).toBeGreaterThan(100);
+    expect(result.specialEffects.some((effect) => effect.id === "multi_stage_synergy")).toBe(true);
+  });
+
+  it("uses the best active path for alternative triggers instead of adding mutually exclusive scores", () => {
+    const alternativeSkill = {
+      id: 999980,
+      conditionGroups: [
+        {
+          condition: "phase==1",
+          base_time: 30000,
+          effects: [{ type: 22, value: 4500 }],
+        },
+        {
+          condition: "phase>=2",
+          base_time: 20000,
+          effects: [{ type: 22, value: 4500 }],
+        },
+      ],
+    };
+
+    const result = evaluateSkillForTrack(
+      alternativeSkill,
+      mockCourse({ length: 2400, spurtStart: { meters: 1600 } }),
+      2,
+      9,
+      false,
+      [
+        { isRandom: false, regions: [{ start: 1000, end: 1200 }], earliestFire: null },
+        { isRandom: false, regions: [{ start: 1700, end: 1900 }], earliestFire: null },
+      ],
+    );
+
+    const triggerScores = result.triggerEvaluations?.flatMap((entry) =>
+      entry.evaluation ? [entry.evaluation.score] : [],
+    ) ?? [];
+    expect(triggerScores).toHaveLength(2);
+    expect(result.score).toBe(Math.max(...triggerScores));
+    expect(result.specialEffects.some((effect) => effect.id === "multi_stage_synergy")).toBe(false);
+    expect(result.verdictSummary).toContain("alternative activation paths");
+  });
+
+  it("ignores inactive trigger paths when aggregating the final verdict", () => {
+    const chainedSkill = {
+      id: 999979,
+      conditionGroups: [
+        {
+          condition: "phase==1",
+          base_time: 30000,
+          effects: [{ type: 22, value: 4500 }],
+        },
+        {
+          condition: "is_activate_other_skill_detail==1&phase>=2",
+          base_time: 20000,
+          effects: [{ type: 48, value: 4000 }],
+        },
+      ],
+    };
+
+    const result = evaluateSkillForTrack(
+      chainedSkill,
+      mockCourse({ length: 2400, spurtStart: { meters: 1600 } }),
+      2,
+      9,
+      false,
+      [
+        { isRandom: false, regions: [{ start: 1000, end: 1200 }], earliestFire: null },
+        { isRandom: false, regions: [], earliestFire: null },
+      ],
+    );
+
+    expect(result.triggerEvaluations?.[1].evaluation).toBeNull();
+    expect(result.score).toBe(result.triggerEvaluations?.[0].evaluation?.score);
+  });
+
   it("evaluates Seiun Sky (Angling) on Runner as Valid Fastest Accel", () => {
     const anglingSkill = {
       id: 100201,

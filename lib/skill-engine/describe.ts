@@ -668,6 +668,7 @@ function renderCondition(str: string, racerCount?: number): string {
 export const EFFECT_LABELS: Record<number, { label: string; unit: string; scale: number }> = {
   27: { label: "Target Speed", unit: "m/s", scale: 10000 },
   31: { label: "Acceleration", unit: "m/s²", scale: 10000 },
+  48: { label: "Zenkai Spurt Acceleration", unit: "m/s²", scale: 10000 },
   22: { label: "Current Speed", unit: "m/s", scale: 10000 },
   21: { label: "Current Speed", unit: "m/s", scale: 10000 },
   9:  { label: "HP", unit: "%", scale: 100 },

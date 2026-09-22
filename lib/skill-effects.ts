@@ -40,6 +40,13 @@ export const EFFECT_CATEGORIES: EffectCategoryMeta[] = [
     description: "Accelerates faster up to target speed (spurt / start)",
   },
   {
+    id: "zenkai_acceleration",
+    label: "Zenkai Spurt Acceleration",
+    badge: "bg-teal-100 text-teal-800 dark:bg-teal-950/80 dark:text-teal-300 border-teal-200 dark:border-teal-800",
+    dotColor: "bg-teal-500",
+    description: "Special acceleration effect during Zenkai Spurt",
+  },
+  {
     id: "heal",
     label: "Recovery (Heal)",
     badge: "bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border-blue-200 dark:border-blue-800",
@@ -187,5 +194,4 @@ export function getAllParentWhiteSkills(
 
   return result;
 }
-
 

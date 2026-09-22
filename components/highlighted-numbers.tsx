@@ -150,12 +150,15 @@ export function FormattedEffectBadges({
         }
 
         const isAccel = e.type === 31;
+        const isZenkaiAccel = e.type === 48;
         const isCurrentSpeed = e.type === 21 || e.type === 22;
         const isTargetSpeed = e.type === 27;
         const isHP = e.type === 9;
 
         const badgeTheme = isAccel
           ? "bg-emerald-100 dark:bg-emerald-950/80 text-emerald-900 dark:text-emerald-200 border-emerald-300 dark:border-emerald-700"
+          : isZenkaiAccel
+          ? "bg-teal-100 dark:bg-teal-950/80 text-teal-900 dark:text-teal-200 border-teal-300 dark:border-teal-700"
           : isCurrentSpeed
           ? "bg-purple-100 dark:bg-purple-950/80 text-purple-900 dark:text-purple-200 border-purple-300 dark:border-purple-700"
           : isTargetSpeed
@@ -287,8 +290,10 @@ export function TacticalTimingStrip({
  */
 export function CalculationBreakdownPanel({
   evaluation,
+  compact = false,
 }: {
   evaluation: SkillEvaluationResult;
+  compact?: boolean;
 }) {
   const [showMathSteps, setShowMathSteps] = useState(false);
   const { calculationBreakdown, timingAnalysis } = evaluation;
@@ -307,41 +312,41 @@ export function CalculationBreakdownPanel({
   return (
     <div className="mt-3 flex flex-col gap-3">
       {/* 4 Clean Metric Cells (De-cluttered and airy) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-zinc-200/80 dark:divide-zinc-800 py-1">
+      <div className="grid grid-cols-2 sm:grid-cols-4 sm:divide-x divide-zinc-200/80 dark:divide-zinc-800 py-1">
         {/* Metric 1: 2/3 Spurt Line */}
         <div className="py-2.5 sm:py-0 sm:pr-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <span className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500`}>
             Spurt Line
           </span>
-          <div className="mt-1 font-mono font-extrabold text-lg sm:text-xl text-zinc-900 dark:text-zinc-100">
+          <div className={`mt-1 font-mono font-extrabold ${compact ? "text-sm sm:text-base" : "text-lg sm:text-xl"} text-zinc-900 dark:text-zinc-100`}>
             {calculationBreakdown.spurtLineMeters.toLocaleString()} m
           </div>
-          <div className="mt-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+          <div className={`mt-1 ${compact ? "text-[9px]" : "text-[11px]"} font-medium text-zinc-500 dark:text-zinc-400`}>
             Phase 2 Start
           </div>
         </div>
 
         {/* Metric 2: Activation Trigger Point */}
         <div className="py-2.5 sm:py-0 sm:px-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <span className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500`}>
             Activation Point
           </span>
-          <div className="mt-1 font-mono font-extrabold text-lg sm:text-xl text-zinc-900 dark:text-zinc-100">
+          <div className={`mt-1 font-mono font-extrabold ${compact ? "text-sm sm:text-base" : "text-lg sm:text-xl"} text-zinc-900 dark:text-zinc-100`}>
             {calculationBreakdown.triggerStartMeters !== null
               ? `${calculationBreakdown.triggerStartMeters.toLocaleString()} m`
               : "No Trigger"}
           </div>
-          <div className="mt-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 font-mono">
+          <div className={`mt-1 ${compact ? "text-[9px]" : "text-[11px]"} font-medium text-emerald-600 dark:text-emerald-400 font-mono`}>
             {timingAnalysis.isRandom ? "Random Zone" : "Deterministic"}
           </div>
         </div>
 
         {/* Metric 3: Spurt Delay (ΔS) */}
         <div className="py-2.5 sm:py-0 sm:px-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <span className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500`}>
             Spurt Offset (ΔS)
           </span>
-          <div className={`mt-1 font-mono font-extrabold text-lg sm:text-xl ${delayTextClass}`}>
+          <div className={`mt-1 font-mono font-extrabold ${compact ? "text-sm sm:text-base" : "text-lg sm:text-xl"} ${delayTextClass}`}>
             {calculationBreakdown.delayFromSpurtMeters !== null
               ? calculationBreakdown.delayFromSpurtMeters === 0
                 ? "+0.0 m"
@@ -350,7 +355,7 @@ export function CalculationBreakdownPanel({
                 : `${calculationBreakdown.delayFromSpurtMeters} m`
               : "N/A"}
           </div>
-          <div className={`mt-1 text-[11px] font-medium ${delayTextClass}`}>
+          <div className={`mt-1 ${compact ? "text-[9px]" : "text-[11px]"} font-medium ${delayTextClass}`}>
             {calculationBreakdown.delayStatus === "optimal"
               ? "Instant Accel"
               : calculationBreakdown.delayStatus === "early_overlap"
@@ -367,15 +372,15 @@ export function CalculationBreakdownPanel({
 
         {/* Metric 4: Course Scaled Duration */}
         <div className="py-2.5 sm:py-0 sm:pl-4 flex flex-col justify-between">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+          <span className={`${compact ? "text-[9px]" : "text-[10px]"} font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500`}>
             Duration & Travel
           </span>
-          <div className="mt-1 font-mono font-extrabold text-lg sm:text-xl text-zinc-900 dark:text-zinc-100">
+          <div className={`mt-1 font-mono font-extrabold ${compact ? "text-sm sm:text-base" : "text-lg sm:text-xl"} text-zinc-900 dark:text-zinc-100`}>
             {calculationBreakdown.scaledDurationSeconds > 0
               ? `${calculationBreakdown.scaledDurationSeconds} s`
               : "Instant"}
           </div>
-          <div className="mt-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">
+          <div className={`mt-1 ${compact ? "text-[9px]" : "text-[11px]"} font-medium text-zinc-500 dark:text-zinc-400`}>
             {calculationBreakdown.estimatedDistanceMeters > 0
               ? `~${calculationBreakdown.estimatedDistanceMeters}m covered`
               : "Instant Velocity Jump"}

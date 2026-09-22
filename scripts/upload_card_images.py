@@ -105,10 +105,13 @@ def load_character_tasks(images_dir: Path, characters_json: Path, category: str,
     out = images_dir / "character_stands"
     tasks = []
     for item in data if isinstance(data, list) else []:
-        if not isinstance(item, dict) or item.get("card_id") is None:
+        if not isinstance(item, dict):
             continue
-        card_id = int(item["card_id"])
-        char_id = int(item.get("char_id") or card_id // 100)  # card_id encodes char_id as prefix
+        raw_card = item.get("card_id") or item.get("id")
+        if raw_card is None:
+            continue
+        card_id = int(raw_card)
+        char_id = int(item.get("char_id") or item.get("charId") or card_id // 100)  # card_id encodes char_id as prefix
         tasks.append(Task(str(card_id), "img", category, card_id, char_id, variant, out / f"{card_id}.png",
                           folder="chara_stand"))
     return tasks
@@ -233,7 +236,10 @@ def apply_manifest_to_db(db_path: Path, manifest_path: Path) -> int:
 
 
 def _default_json(raw_name: str, lib_name: str) -> Path:
-    """Raw sibling-workspace dump if present, else the committed lib/data file."""
+    """Site lib/data file if present, else raw sibling-workspace dump."""
+    site_file = Path(__file__).resolve().parent.parent / "lib" / "data" / lib_name
+    if site_file.exists():
+        return site_file
     raw = ROOT_DIR / raw_name
     if raw.exists():
         return raw

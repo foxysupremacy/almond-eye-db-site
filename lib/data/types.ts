@@ -168,6 +168,35 @@ export interface SkillDetail extends SkillSummary {
 }
 
 // ---------------------------------------------------------------------------
+// Race-impact telemetry aggregate (lib/data/race-impact-priors.json)
+// ---------------------------------------------------------------------------
+
+export type RaceImpactDynamicKey =
+  | "blocked"
+  | "overtake"
+  | "nearby"
+  | "surrounded"
+  | "activate_count"
+  | "other_skill"
+  | "visibility";
+
+export interface RaceImpactPrior {
+  key: RaceImpactDynamicKey;
+  courseId?: number;
+  groundCondition?: number;
+  runningStyle?: number;
+  racerCount?: number;
+  opportunities: number;
+  activations: number;
+}
+
+export interface RaceImpactPriorsPayload {
+  version: 1;
+  generatedAt: string;
+  priors: RaceImpactPrior[];
+}
+
+// ---------------------------------------------------------------------------
 // Racetracks (lib/data/racetracks.json)
 // ---------------------------------------------------------------------------
 

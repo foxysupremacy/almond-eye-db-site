@@ -288,7 +288,7 @@ export function CourseMapCanvas({
   return (
     <div
       ref={containerRef}
-      className={`relative min-h-[240px] w-full overflow-hidden rounded-xl border border-border/70 bg-card/60 backdrop-blur select-none md:min-h-[400px] ${className}`}
+      className={`relative min-h-[240px] w-full overflow-hidden select-none md:min-h-[400px] ${className}`}
     >
       {/* Top Status Header */}
       <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-2 pointer-events-none">

@@ -27,7 +27,7 @@ export function CharacterItem({
           onSelect(character);
         }
       }}
-      className={`group flex flex-col justify-between rounded-2xl border p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
+      className={`group flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
         isOwned
           ? currentStars === 5
             ? "border-sky-500/50 shadow-xs ring-1 ring-sky-500/20 hover:border-sky-500 hover:shadow-md"
@@ -49,28 +49,12 @@ export function CharacterItem({
             }}
           />
 
-          {/* Stars Pill (Aligned to true frame top-left below ears) */}
-          <div className="absolute top-[12%] left-[6%] pointer-events-none">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/75 text-amber-300 backdrop-blur-xs shadow-xs border border-white/10">
-              {"★".repeat(isOwned ? currentStars : character.rarity)}
-            </span>
-          </div>
-
-          {/* Ownership status (Aligned to true frame top-right below ears) */}
-          <div className="absolute top-[12%] right-[6%] pointer-events-none">
-            {isOwned ? (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600/90 text-white shadow-xs border border-emerald-400/30">
-                Lv {currentTalent}
-              </span>
-            ) : (
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-black/75 text-zinc-400 backdrop-blur-xs border border-white/10">
-                Unowned
-              </span>
-            )}
-          </div>
         </div>
 
         {/* Name & Costume Title */}
+        <div className="mb-0.5 text-[10px] font-bold tracking-wide text-amber-500 dark:text-amber-400">
+          {"★".repeat(isOwned ? currentStars : character.rarity)}
+        </div>
         <h4 className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 line-clamp-1 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
           {character.nameEn}
         </h4>

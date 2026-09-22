@@ -10,6 +10,7 @@ export type EffectCategory =
   | "target_speed"
   | "current_speed"
   | "acceleration"
+  | "zenkai_acceleration"
   | "heal"
   | "debuff"
   | "passive"
@@ -38,6 +39,7 @@ export function classifyEffect(eff: RawEffect): EffectCategory | null {
     return "debuff";
   }
   if (type === 31) return "acceleration";
+  if (type === 48) return "zenkai_acceleration";
   if (type === 27) return "target_speed";
   if (type === 21 || type === 22) return "current_speed";
   if (type === 9) return "heal";

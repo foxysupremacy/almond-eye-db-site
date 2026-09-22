@@ -1,6 +1,7 @@
 export type SkillTacticalCategory =
   | "fastest_accel" // Valid Fastest Accel (有効最速加速)
   | "carry_over" // Late-Race Connection (終盤接続)
+  | "zenkai_accel" // Zenkai Spurt Acceleration (全開スパート加速)
   | "delayed_accel" // Delayed Accel (遅延加速)
   | "position_accel" // Mid-race Position Accel (ポジション加速)
   | "dead_accel" // Dead Accel (無効加速)
@@ -81,6 +82,9 @@ export interface SkillEvaluationResult {
     connectsToLateRace: boolean;
   };
   calculationBreakdown: CalculationBreakdown;
+  /** Independent probability, tactical-score, and baseline-vs-skill estimate. */
+  raceImpact?: import("../race-impact").RaceImpactResult;
+  triggerEvaluations?: SkillTriggerEvaluation[];
   parentMeta?: {
     isParentMode: boolean;
     inheritedWhiteId?: number;
@@ -89,6 +93,11 @@ export interface SkillEvaluationResult {
     isGoldTransformed: boolean;
     factorTier: "S" | "A" | "B" | "C";
   };
+}
+
+export interface SkillTriggerEvaluation {
+  triggerIndex: number;
+  evaluation: SkillEvaluationResult | null;
 }
 
 export interface SkillDetailInput {

@@ -50,7 +50,7 @@ export function TrackSkillSidebar({
               </span>
             </p>
           </div>
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/80 p-0.5 text-xs font-medium">
+          <div className="flex items-center gap-1 text-xs font-medium">
             <button
               type="button"
               onClick={() => onVisualizerDeckChange("main")}
@@ -77,7 +77,7 @@ export function TrackSkillSidebar({
         </div>
 
         {/* Rarity Tabs */}
-        <div className="flex flex-wrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-[11px] font-medium shadow-2xs">
+          <div className="flex flex-wrap items-center gap-1 text-[11px] font-medium">
           <button
             type="button"
             onClick={() => onRarityFilterChange("all")}
@@ -212,13 +212,9 @@ export function TrackSkillSidebar({
                     </div>
                   }
                 >
-                  {s.descEn && (
-                    <p className="line-clamp-2 text-[11px] leading-4 text-zinc-700 dark:text-zinc-300">
-                      {s.descEn}
-                    </p>
-                  )}
                   {s.origins && s.origins.length > 0 && (
-                    <div className="mt-0.5">
+                    <div className="mt-1 flex items-center gap-2 text-[10px] text-zinc-400 dark:text-zinc-500">
+                      <span className="font-bold uppercase tracking-wider">Source</span>
                       <SkillSourceBadges origins={s.origins} compact />
                     </div>
                   )}

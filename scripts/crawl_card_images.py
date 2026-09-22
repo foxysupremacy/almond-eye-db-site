@@ -74,7 +74,10 @@ def _load_ids(path: Path) -> list[int]:
 
 
 def _default_json(raw_name: str, lib_name: str) -> Path:
-    """Raw sibling-workspace dump if present, else the committed lib/data file."""
+    """Site lib/data file if present, else raw sibling-workspace dump."""
+    site_file = Path(__file__).resolve().parent.parent / "lib" / "data" / lib_name
+    if site_file.exists():
+        return site_file
     raw = ROOT_DIR / raw_name
     if raw.exists():
         return raw

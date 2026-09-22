@@ -21,6 +21,7 @@ import rawCharacterEvolutionsJson from "./character-evolutions.json";
 import rawCardEffectsJson from "./card-effects.json";
 import rawGoldToWhiteJson from "../gold-to-white.json";
 import rawSkillMetaJson from "./skill-meta.json";
+import rawRaceImpactPriorsJson from "./race-impact-priors.json";
 
 import type {
   AffinityDataPayload,
@@ -34,6 +35,7 @@ import type {
   SkillDetail,
   SkillMeta,
   SupportCardEffectsBlob,
+  RaceImpactPriorsPayload,
 } from "./types";
 
 export type {
@@ -45,6 +47,7 @@ export type {
   MappedGoldSkill,
   SkillMeta,
   SupportCardEffectsBlob,
+  RaceImpactPriorsPayload,
 };
 
 const CDN_BASE: string =
@@ -201,6 +204,9 @@ export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Recor
   SkillMeta
 >;
 
+/** Aggregate race telemetry for the optional Visualizer race-impact model. */
+export const raceImpactPriors = rawRaceImpactPriorsJson as RaceImpactPriorsPayload;
+
 /** Card metadata (grant lists, url names) keyed by card id string — derived
  * from the hydrated cards dataset (formerly a separate card-data.json). */
 export const cardMetaMap: Record<string, CardMeta> = Object.fromEntries(
@@ -282,4 +288,3 @@ export function getCharacterEvolutions(cardId: number): CharacterEvolutionDetail
 export function getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined {
   return cardEffects[String(cardId)];
 }
-

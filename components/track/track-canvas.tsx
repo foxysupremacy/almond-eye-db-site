@@ -84,7 +84,7 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
 
         {/* View Mode Switcher */}
         <div className="flex min-w-0 items-center gap-1 text-xs">
-          <div className="grid w-full grid-cols-3 items-center rounded-lg border border-zinc-200 bg-zinc-100 p-0.5 dark:border-zinc-700 dark:bg-zinc-800 sm:flex sm:w-auto">
+          <div className="grid w-full grid-cols-3 items-center gap-1 sm:flex sm:w-auto">
             <button
               type="button"
               onClick={() => setViewMode("stacked")}
@@ -146,7 +146,7 @@ export function TrackCanvas({ course, zones, selectedSkillId }: TrackCanvasProps
 
           {/* Bottom: 1D Linear Timeline Container */}
           {viewMode !== "map" && (
-            <div className="overflow-hidden rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-2 sm:p-2.5 transition-all">
+            <div className="overflow-hidden p-0.5 sm:p-1 transition-all">
               <div className="flex items-center justify-between mb-1.5 text-[11px] text-zinc-400 dark:text-zinc-500">
                 <span className="font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                   1D Linear Timeline

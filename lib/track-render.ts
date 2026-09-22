@@ -280,6 +280,23 @@ function attachHover(
   const inner = ln.parentElement as SVGSVGElement | null;
   const W = inner ? Number(inner.getAttribute("width")) || 960 : 960;
   const H = inner ? Number(inner.getAttribute("height")) || 240 : 240;
+  const outer = svg;
+  const MAX_ZOOM = 4;
+  let zoom = 1;
+  let panX = 0;
+  let pinchDistance = 0;
+  let pinchStartZoom = 1;
+  let pinchAnchorX = 0;
+
+  function clampPan(nextPan: number, nextZoom: number): number {
+    return Math.min(0, Math.max(W - W * nextZoom, nextPan));
+  }
+
+  function applyZoom(nextZoom: number, nextPan = panX) {
+    zoom = Math.min(MAX_ZOOM, Math.max(1, nextZoom));
+    panX = clampPan(nextPan, zoom);
+    inner?.setAttribute("transform", `translate(${panX} 0) scale(${zoom} 1)`);
+  }
 
   function setMeterPosition(m: number | null) {
     if (m == null || m < 0 || m > course.length) {
@@ -320,8 +337,38 @@ function attachHover(
   }
 
   function touchMove(ev: TouchEvent) {
+    if (ev.touches.length >= 2 && inner) {
+      ev.preventDefault();
+      const first = ev.touches[0];
+      const second = ev.touches[1];
+      const centerX = (first.clientX + second.clientX) / 2;
+      const distance = Math.abs(first.clientX - second.clientX);
+      const outerRect = outer.getBoundingClientRect();
+      const cssScale = outerRect.width / Number(outer.getAttribute("viewBox")?.split(" ")[2] || W);
+      const centerUserX = (centerX - outerRect.left) / cssScale - (Number(inner.getAttribute("x")) || 0);
+      const nextZoom = pinchDistance > 0 ? pinchStartZoom * (distance / pinchDistance) : zoom;
+      applyZoom(nextZoom, centerUserX - pinchAnchorX * Math.min(MAX_ZOOM, Math.max(1, nextZoom)));
+      return;
+    }
     if (!ev.touches[0]) return;
     updateHover(ev.touches[0].clientX, ev.touches[0].clientY);
+  }
+
+  function touchStart(ev: TouchEvent) {
+    if (ev.touches.length < 2 || !inner) return;
+    ev.preventDefault();
+    const first = ev.touches[0];
+    const second = ev.touches[1];
+    const centerX = (first.clientX + second.clientX) / 2;
+    pinchDistance = Math.max(1, Math.abs(first.clientX - second.clientX));
+    pinchStartZoom = zoom;
+    const rect = inner.getBoundingClientRect();
+    pinchAnchorX = ((centerX - rect.left) / rect.width) * W;
+  }
+
+  function touchEnd(ev: TouchEvent) {
+    if (ev.touches.length < 2) pinchDistance = 0;
+    if (ev.touches.length === 0) leave();
   }
 
   function leave() {
@@ -334,9 +381,11 @@ function attachHover(
 
   svg.addEventListener("mousemove", move);
   svg.addEventListener("mouseleave", leave);
-  svg.addEventListener("touchstart", touchMove, { passive: true });
-  svg.addEventListener("touchmove", touchMove, { passive: true });
-  svg.addEventListener("touchend", leave);
+  svg.addEventListener("touchstart", touchStart, { passive: false });
+  svg.addEventListener("touchstart", touchMove, { passive: false });
+  svg.addEventListener("touchmove", touchMove, { passive: false });
+  svg.addEventListener("touchend", touchEnd);
+  svg.addEventListener("touchcancel", touchEnd);
 }
 
 // ---------- skill activation overlay ----------

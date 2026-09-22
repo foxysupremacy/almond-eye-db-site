@@ -204,6 +204,8 @@ a {
    handled by overflow:visible on the band viewports, not by raw size. */
 .racetrackView {
   max-width: 100%;
+  overflow: visible;
+  touch-action: pan-y;
 }
 
 /* Mobile: cap the track to 128px tall. The SVG keeps its 972×256 viewBox, so the

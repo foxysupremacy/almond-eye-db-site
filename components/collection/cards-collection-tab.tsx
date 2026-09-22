@@ -95,7 +95,7 @@ export function CardsCollectionTab({
         <div className="flex flex-col gap-6">
           {/* Owned Cards Section */}
           {ownedCards.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
               {ownedCards.map((card) => (
                 <SupportCardItem
                   key={card.id}
@@ -123,7 +123,7 @@ export function CardsCollectionTab({
 
           {/* Unowned Cards Section */}
           {unownedCards.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
+            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
               {unownedCards.map((card) => (
                 <SupportCardItem
                   key={card.id}

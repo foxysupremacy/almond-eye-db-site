@@ -6,6 +6,7 @@ import type {
   SkillDetailInput,
   EvaluatorZoneInput,
   SkillEvaluationResult,
+  SkillTriggerEvaluation,
   SkillTacticalCategory,
   SpecialEffectItem,
   CalculationBreakdown,
@@ -20,6 +21,20 @@ import {
 import { classifyEffect } from "./effects";
 import { parseRankRequirements, calculateStyleRankOverlap } from "./rank-parser";
 import { getCategoryBadge, buildCalculationBreakdown } from "./calculation-steps";
+import { raceImpactPriors } from "../data/registry";
+import {
+  aggregateRaceImpact,
+  defaultRaceImpactProfile,
+  evaluateTriggerRaceImpact,
+  type RaceImpactProfile,
+  type RaceImpactPriorsPayload,
+} from "../race-impact";
+
+export interface EvaluationOptions {
+  skipTriggerEvaluations?: boolean;
+  raceImpactProfile?: RaceImpactProfile;
+  raceImpactPriors?: RaceImpactPriorsPayload;
+}
 
 /**
  * Primary skill evaluation function.
@@ -31,7 +46,8 @@ export function evaluateSkillForTrack(
   racerCount: number = 9,
   isParentMode: boolean = false,
   zones: EvaluatorZoneInput[] = [],
-  raceParams?: { groundCondition?: number | string | null }
+  raceParams?: { groundCondition?: number | string | null },
+  options?: EvaluationOptions,
 ): SkillEvaluationResult {
   const courseLength = course?.length ?? 2000;
   const spurtMeters = course?.spurtStart?.meters ?? Math.round(courseLength * (2 / 3));
@@ -55,6 +71,7 @@ export function evaluateSkillForTrack(
 
   // 2. Identify effects and base timing across condition groups
   let hasAccel = false;
+  let hasZenkaiAcceleration = false;
   let hasTargetSpeed = false;
   let hasCurrentSpeed = false;
   let hasHeal = false;
@@ -62,6 +79,7 @@ export function evaluateSkillForTrack(
   let hasDebuff = false;
   let maxBaseTime = 0;
   let maxAccelVal = 0;
+  let maxZenkaiAccelerationVal = 0;
   let maxSpeedVal = 0;
 
   for (const group of skill.conditionGroups ?? []) {
@@ -79,6 +97,9 @@ export function evaluateSkillForTrack(
       } else if (cat === "acceleration") {
         hasAccel = true;
         if (val > maxAccelVal) maxAccelVal = val;
+      } else if (cat === "zenkai_acceleration") {
+        hasZenkaiAcceleration = true;
+        if (val > maxZenkaiAccelerationVal) maxZenkaiAccelerationVal = val;
       } else if (cat === "target_speed") {
         hasTargetSpeed = true;
         if (val > maxSpeedVal) maxSpeedVal = val;
@@ -92,6 +113,18 @@ export function evaluateSkillForTrack(
       }
     }
   }
+
+  // Keep legacy aggregate scoring stable when a multi-stage skill also has a
+  // conventional speed effect. Type 48 gets its dedicated verdict when the
+  // evaluated trigger is Zenkai-only (which is the per-trigger path).
+  const zenkaiOnly =
+    hasZenkaiAcceleration &&
+    !hasAccel &&
+    !hasTargetSpeed &&
+    !hasCurrentSpeed &&
+    !hasHeal &&
+    !hasPassive &&
+    !hasDebuff;
 
   // 3. Inspect computed zone regions
   const activeRegions = zones.flatMap((z) => z.regions);
@@ -476,7 +509,23 @@ export function evaluateSkillForTrack(
     }
   }
 
-  if (!accelEvaluated) {
+  if (!accelEvaluated && zenkaiOnly) {
+    category = "zenkai_accel";
+    stars = 4;
+    tier = "A";
+    score = 84;
+    verdictSummary = `Zenkai Spurt Acceleration: activates at ${triggerStartMeters !== null ? Math.round(triggerStartMeters) + "m" : "the designated zone"}. Raw effect is +${(maxZenkaiAccelerationVal / 10000).toFixed(2)} m/s²; detailed Power-scaled Zenkai simulation is not modeled.`;
+    specialEffects.push({
+      id: "zenkai_acceleration_dynamic",
+      type: "info",
+      badge: "Zenkai Accel",
+      title: "Zenkai Spurt Acceleration",
+      description: `Applies the raw +${(maxZenkaiAccelerationVal / 10000).toFixed(2)} m/s² Zenkai acceleration effect during this trigger window.`,
+      meters: triggerStartMeters !== null ? `${Math.round(triggerStartMeters)}m` : undefined,
+    });
+  }
+
+  if (!accelEvaluated && category !== "zenkai_accel") {
     // Check Dynamic 2: Carry-Over (終盤接続) for Speed Skills
     if (connectsToLateRace && (hasTargetSpeed || hasCurrentSpeed)) {
       category = "carry_over";
@@ -608,51 +657,121 @@ export function evaluateSkillForTrack(
   }
   }
 
-  // Multi-group Composite Scoring: when a skill has multiple active groups that
-  // both fire on this course (e.g. Mid-race + Final stretch, or Speed + Accel),
-  // add a composite bonus for secondary active groups.
-  if (activeGroupIndices.length > 1) {
-    let compositeBonus = 0;
-    for (const gIdx of activeGroupIndices) {
-      const g = skill.conditionGroups![gIdx];
-      const gTime = (g.base_time ?? 0) / 10000;
-      const gScaledTime = gTime * (courseLength / 1000);
-      const gDurationFactor = Math.min(1.5, gScaledTime > 0 ? gScaledTime / 5.0 : 1.0);
-
-      let groupValue = 0;
-      for (const rawEff of (g.effects ?? []) as any[]) {
-        const cat = classifyEffect(rawEff);
-        if (cat === "current_speed") groupValue += 10 * gDurationFactor;
-        else if (cat === "target_speed") groupValue += 8 * gDurationFactor;
-        else if (cat === "acceleration") groupValue += 12 * gDurationFactor;
-        else if (cat === "heal") groupValue += 8;
-      }
-      compositeBonus += groupValue;
-    }
-
-    const normalizedBonus = Math.min(15, Math.round(compositeBonus * 0.4));
-    if (normalizedBonus > 0) {
-      score = Math.min(100, score + normalizedBonus);
-      if (score >= 95) {
-        stars = 5;
-        tier = "S";
-      } else if (score >= 85 && stars < 4) {
-        stars = 4;
-        tier = "A";
-      }
-
-      specialEffects.push({
-        id: "multi_stage_synergy",
-        type: "success",
-        badge: "Multi-Stage",
-        title: "Multi-Stage Activation Synergy",
-        description: `Activates across ${activeGroupIndices.length} distinct phases (e.g. mid-race and final stretch), stacking cumulative benefits (+${normalizedBonus} tactical value).`,
-      });
-    }
-  }
-
   // Apply style/rank trap deductions after category classification (see above).
   score -= trapScorePenalty;
+  let primaryBadge = getCategoryBadge(category);
+
+  // Run the transparent per-trigger model before composing multi-trigger skills.
+  // This does not replace category semantics; it contributes an uncapped score
+  // whose factors are exposed in the inspector.
+  let raceImpact = evaluateTriggerRaceImpact(skill, zones, {
+    course,
+    runningStyle,
+    racerCount,
+    raceParams,
+    profile: options?.raceImpactProfile ?? defaultRaceImpactProfile(),
+    priors: options?.raceImpactPriors ?? raceImpactPriors,
+  });
+
+  // Evaluate each firing trigger independently before aggregating the final
+  // verdict. A trigger containing is_activate_other_skill_detail==1 is a
+  // continuation of the previous trigger; otherwise multiple active groups
+  // represent alternative activation paths, not cumulative effects.
+  const triggerEvaluations: SkillTriggerEvaluation[] | undefined =
+    !options?.skipTriggerEvaluations &&
+    !!skill.conditionGroups &&
+    zones.length === skill.conditionGroups.length &&
+    skill.conditionGroups.length > 1
+      ? skill.conditionGroups.map((group, triggerIndex) => ({
+          triggerIndex,
+          evaluation:
+            zones[triggerIndex]?.regions.length
+              ? evaluateSkillForTrack(
+                  { ...skill, conditionGroups: [group] },
+                  course,
+                  runningStyle,
+                  racerCount,
+                  isParentMode,
+                  [zones[triggerIndex]],
+                  raceParams,
+                  { ...options, skipTriggerEvaluations: true },
+                )
+              : null,
+        }))
+      : undefined;
+
+  const activeTriggerResults = (triggerEvaluations ?? [])
+    .map((entry) => entry.evaluation)
+    .filter((entry): entry is SkillEvaluationResult => entry !== null);
+  const hasChainedTrigger = (skill.conditionGroups ?? []).some((group) =>
+    `${group.condition ?? ""}&${group.precondition ?? ""}`.includes("is_activate_other_skill_detail==1"),
+  );
+
+  if (activeTriggerResults.length > 1) {
+    if (hasChainedTrigger) {
+      // Preserve the existing bounded synergy calculation as an explicit
+      // chain bonus, but let the trigger scores themselves accumulate above
+      // 100 when the skill has unusually strong multi-stage impact.
+      let compositeBonus = 0;
+      for (const gIdx of activeGroupIndices) {
+        const g = skill.conditionGroups![gIdx];
+        const gTime = (g.base_time ?? 0) / 10000;
+        const gScaledTime = gTime * (courseLength / 1000);
+        const gDurationFactor = Math.min(1.5, gScaledTime > 0 ? gScaledTime / 5.0 : 1.0);
+
+        for (const rawEff of (g.effects ?? []) as any[]) {
+          const cat = classifyEffect(rawEff);
+          if (cat === "current_speed") compositeBonus += 10 * gDurationFactor;
+          else if (cat === "target_speed") compositeBonus += 8 * gDurationFactor;
+          else if (cat === "acceleration") compositeBonus += 12 * gDurationFactor;
+          else if (cat === "heal") compositeBonus += 8;
+        }
+      }
+
+      const normalizedBonus = Math.min(15, Math.round(compositeBonus * 0.4));
+      score = activeTriggerResults.reduce((total, trigger) => total + trigger.score, 0) + normalizedBonus;
+      raceImpact = aggregateRaceImpact(
+        activeTriggerResults.flatMap((trigger) => trigger.raceImpact ? [trigger.raceImpact] : []),
+        "chain",
+      ) ?? raceImpact;
+
+      if (normalizedBonus > 0) {
+        specialEffects.push({
+          id: "multi_stage_synergy",
+          type: "success",
+          badge: "Multi-Stage",
+          title: "Multi-Stage Activation Synergy",
+          description: `Activates across ${activeTriggerResults.length} chained triggers, stacking cumulative benefits (+${normalizedBonus} tactical value).`,
+        });
+      }
+      verdictSummary = `${verdictSummary} Combined chain verdict includes ${activeTriggerResults.length} active triggers.`;
+    } else {
+      // Alternative condition groups describe different ways to activate the
+      // same skill. Only the best active path contributes to the aggregate.
+      const bestTrigger = activeTriggerResults.reduce((best, current) =>
+        current.score > best.score ? current : best,
+      );
+      score = bestTrigger.score;
+      category = bestTrigger.category;
+      stars = bestTrigger.stars;
+      tier = bestTrigger.tier;
+      primaryBadge = bestTrigger.primaryBadge;
+      verdictSummary = `${bestTrigger.verdictSummary} Best of ${activeTriggerResults.length} alternative activation paths on this course.`;
+      raceImpact = aggregateRaceImpact(
+        activeTriggerResults.flatMap((trigger) => trigger.raceImpact ? [trigger.raceImpact] : []),
+        "alternative",
+      ) ?? raceImpact;
+    }
+
+    // Keep the visible rating consistent with an unbounded tactical score.
+    if (score >= 95) {
+      stars = 5;
+      tier = "S";
+    } else if (score >= 85 && stars < 4) {
+      stars = 4;
+      tier = "A";
+    }
+  }
 
   // 6. Detailed Mathematical Breakdown
   const baseDurationSeconds = maxBaseTime > 0 ? maxBaseTime / 10000 : 0;
@@ -665,8 +784,6 @@ export function evaluateSkillForTrack(
   else if (category === "carry_over") delayStatus = "early_overlap";
   else if (category === "delayed_accel") delayStatus = "delayed";
   else if (category === "dead_accel") delayStatus = "dead";
-
-  const primaryBadge = getCategoryBadge(category);
 
   let factorTier: "S" | "A" | "B" | "C" = "B";
   if (stars >= 5) factorTier = "S";
@@ -689,6 +806,8 @@ export function evaluateSkillForTrack(
     accelPhaseEndMeters,
     hasAccel,
     maxAccelVal,
+    hasZenkaiAcceleration: zenkaiOnly,
+    maxZenkaiAccelerationVal,
     hasCurrentSpeed,
     hasTargetSpeed,
     maxSpeedVal,
@@ -720,6 +839,8 @@ export function evaluateSkillForTrack(
       connectsToLateRace,
     },
     calculationBreakdown,
+    raceImpact,
+    triggerEvaluations,
     parentMeta: isParentMode
       ? {
           isParentMode: true,

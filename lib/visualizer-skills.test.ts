@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { DEFAULT_PARENTING_SETUP } from "./parenting-state";
-import { buildVisualizerSkillPools, matchesVisualizerFilter } from "./visualizer-skills";
+import { buildVisualizerSkillPools, getVisualizerOriginOrder, matchesVisualizerFilter, type VisualizerSkill, type VisualizerSkillOrigin } from "./visualizer-skills";
 
 describe("buildVisualizerSkillPools", () => {
   test("adds the exact trainee costume Unique and EVO candidates to Main", () => {
@@ -17,10 +17,12 @@ describe("buildVisualizerSkillPools", () => {
     expect(pools.main.find((s) => s.id === 110331)?.filterCategory).toBe("unique");
     const evoCandidateIds = pools.main.filter((s) => s.filterCategory === "evolved").map((s) => s.id).sort();
     expect(evoCandidateIds).toEqual([103302111, 103302211]);
+    expect(pools.main.find((s) => s.id === 103302111)?.origins[0].evolvedFrom?.id).toBe(203341);
+    expect(pools.main.find((s) => s.id === 103302211)?.origins[0].evolvedFrom?.id).toBe(203171);
     expect(pools.main.some((s) => s.id === 103301111)).toBe(false);
   });
 
-  test("does not add Unique or EVO when no costume is selected", () => {
+  test("falls back to the selected base character when the exact costume is missing", () => {
     const pools = buildVisualizerSkillPools({
       mainSkills: [],
       parentSkills: [],
@@ -30,7 +32,8 @@ describe("buildVisualizerSkillPools", () => {
         targetCharaCardId: null,
       },
     });
-    expect(pools.main.length).toBe(0);
+    expect(pools.main.find((s) => s.id === 110331)?.filterCategory).toBe("unique");
+    expect(pools.main.filter((s) => s.filterCategory === "evolved").map((s) => s.id).sort()).toEqual([103302111, 103302211]);
   });
 
   test("always adds mapped inherited uniques from both parents and all grandparents", () => {
@@ -56,11 +59,14 @@ describe("buildVisualizerSkillPools", () => {
 
     const parentSkillIds = pools.parent.map((s) => s.id).sort();
     expect(parentSkillIds).toEqual([900011, 900021, 900031, 900041]);
+    expect(pools.main.map((s) => s.id).sort()).toEqual([900011, 900021, 900031, 900041]);
     expect(pools.parent.find((s) => s.id === 900011)?.filterCategory).toBe("unique");
     expect(pools.parent.find((s) => s.id === 900011)?.rarity).toBe(1);
     const origins = pools.parent.find((s) => s.id === 900011)?.origins ?? [];
     expect(origins.some((o) => o.slotLabel === "Parent 1" && o.availability === "guaranteed")).toBe(true);
     expect(origins.some((o) => o.slotLabel === "P2 - GP1" && o.availability === "possible")).toBe(true);
+    const mainOrigins = pools.main.find((s) => s.id === 900011)?.origins ?? [];
+    expect(mainOrigins).toHaveLength(2);
   });
 
   test("keeps valid skills when another lineage slot cannot resolve", () => {
@@ -101,6 +107,7 @@ describe("buildVisualizerSkillPools", () => {
           label: `${entry.name} · ${entry.slotLabel} Succession EVO`,
           slotLabel: entry.slotLabel,
           availability: "candidate",
+          cardId: entry.cardId,
         },
       ]);
       expect(matchesVisualizerFilter(successionEvo!, "evolved")).toBe(true);
@@ -149,5 +156,25 @@ describe("matchesVisualizerFilter", () => {
     expect(matchesVisualizerFilter(inherited, "unique")).toBe(true);
     expect(matchesVisualizerFilter(inherited, "white")).toBe(false);
     expect(matchesVisualizerFilter(inherited, "all")).toBe(true);
+  });
+});
+
+describe("getVisualizerOriginOrder", () => {
+  const skill = (origins: VisualizerSkillOrigin[]): VisualizerSkill => ({
+    id: 1,
+    nameEn: "Test",
+    nameJp: "テスト",
+    rarity: 1,
+    filterCategory: "unique",
+    origins,
+  });
+
+  test("orders trainee, parents, and grandparents in lineage order", () => {
+    expect(getVisualizerOriginOrder(skill([{ kind: "grandparent-unique", label: "GP", slotLabel: "P2 - GP2", availability: "possible" }]))).toBe(6);
+    expect(getVisualizerOriginOrder(skill([
+      { kind: "grandparent-unique", label: "GP", slotLabel: "P1 - GP1", availability: "possible" },
+      { kind: "parent-unique", label: "Parent", slotLabel: "Parent 1", availability: "guaranteed" },
+    ]))).toBe(1);
+    expect(getVisualizerOriginOrder(skill([{ kind: "trainee-unique", label: "Trainee", availability: "owned" }]))).toBe(0);
   });
 });

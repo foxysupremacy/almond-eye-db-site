@@ -30,7 +30,7 @@ export function SupportCardItem({
           onSelect(card);
         }
       }}
-      className={`group flex flex-col justify-between rounded-2xl border p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
+      className={`group flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
         isOwned
           ? lb === 4
             ? "border-amber-500/50 shadow-xs ring-1 ring-amber-500/20 hover:border-amber-500 hover:shadow-md"

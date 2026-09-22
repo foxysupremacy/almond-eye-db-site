@@ -175,6 +175,7 @@ export function SkillInspectorProvider({ children }: { children: React.ReactNode
       cardName={cardName}
       cardId={cardId}
       isBanned={Boolean(active && isSkillBanned(active.skillId, activePvpEvent))}
+      compact
     />
   );
   const panel = active && typeof document !== "undefined" && createPortal(

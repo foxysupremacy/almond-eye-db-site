@@ -14,8 +14,9 @@ import {
   skillsById,
   evolvedSkillsByCharacterCardId,
   successionEvolvedSkillByParentCardId,
+  getCharacterEvolutions,
 } from "./data/registry";
-import { resolveGrandparentSlot } from "./parenting/pedigree-resolvers";
+import { resolveGrandparentSlot, resolveTargetCharacter } from "./parenting/pedigree-resolvers";
 import { getInheritableSkillForUnique, getRarityCategory, type RarityFilterKey } from "./skill-rarity";
 
 // ---------------------------------------------------------------------------
@@ -39,6 +40,12 @@ export interface VisualizerSkillOrigin {
   availability: VisualizerAvailability;
   slotLabel?: string;
   originalUniqueSkillId?: number;
+  evolvedFrom?: {
+    id: number;
+    nameEn: string;
+    nameJp: string;
+    iconId?: number | null;
+  };
   cardId?: number;
 }
 
@@ -149,6 +156,7 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
 
   // --- Main pool ---
   const mainMap = new Map<number, VisualizerSkill>();
+  const parentMap = new Map<number, VisualizerSkill>();
 
   // 1. Support-card skills
   for (const s of mainSkills) {
@@ -158,9 +166,11 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
     }
   }
 
-  // 2. Target trainee costume Unique skill
-  if (setup.targetCharaCardId) {
-    const target = charactersById.get(setup.targetCharaCardId);
+  // 2. Target trainee costume Unique skill and EVO candidates. Resolve the
+  // exact costume first, while retaining the base-character fallback for
+  // legacy setups that only persisted targetCharaId.
+  const target = resolveTargetCharacter(setup, charactersById, charactersByCharId);
+  if (target) {
     if (target?.uniqueSkillId) {
       const uniqueSkill = skillsById.get(target.uniqueSkillId);
       if (uniqueSkill) {
@@ -174,20 +184,30 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
     }
 
     // 3. Character-specific EVO candidates
-    const evoSkills = evolvedSkillsByCharacterCardId.get(setup.targetCharaCardId) ?? [];
+    const evoSkills = evolvedSkillsByCharacterCardId.get(target.id) ?? [];
     for (const evo of evoSkills) {
+      const evolutionMeta = getCharacterEvolutions(target.id).find((entry) => entry.skillId === evo.id);
+      const baseSkill = evolutionMeta ? skillsById.get(evolutionMeta.baseSkillId) : undefined;
       upsertSkill(mainMap, evo, {
         kind: "trainee-evo",
-        label: `${(charactersById.get(setup.targetCharaCardId)?.nameEn) ?? "Trainee"} · EVO`,
+        label: `${target.nameEn} · EVO`,
         availability: "candidate",
-        cardId: setup.targetCharaCardId,
+        ...(baseSkill
+          ? {
+              evolvedFrom: {
+                id: baseSkill.id,
+                nameEn: baseSkill.nameEn,
+                nameJp: baseSkill.nameJp,
+                iconId: baseSkill.iconId,
+              },
+            }
+          : {}),
+        cardId: target.id,
       }, "evolved");
     }
   }
 
   // --- Parent pool ---
-  const parentMap = new Map<number, VisualizerSkill>();
-
   // 1. Support-card skills
   for (const s of parentSkills) {
     const viz = deckSkillToVisualizer(s);
@@ -244,14 +264,19 @@ export function buildVisualizerSkillPools(input: BuildVisualizerPoolsInput): Vis
     if (!inheritId) continue;
     const inherited = skillsById.get(inheritId);
     if (!inherited) continue;
-    upsertSkill(parentMap, inherited, {
+    const origin = {
       kind: slot.availability === "guaranteed" ? "parent-unique" : "grandparent-unique",
       label: `${character.nameEn} · ${slot.slotLabel}`,
       slotLabel: slot.slotLabel,
       availability: slot.availability,
       originalUniqueSkillId: character.uniqueSkillId,
       cardId: character.id,
-    }, "unique");
+    } satisfies VisualizerSkillOrigin;
+
+    // Lineage skills are useful in both views: Main is the trainee's full
+    // build-planning pool, while Parent remains the dedicated lineage view.
+    upsertSkill(mainMap, inherited, origin, "unique");
+    upsertSkill(parentMap, inherited, origin, "unique");
   }
 
   // Sort deterministically by nameEn, then id
@@ -274,4 +299,25 @@ export function matchesVisualizerFilter(
   filter: RarityFilterKey,
 ): boolean {
   return filter === "all" || skill.filterCategory === filter;
+}
+
+/**
+ * Stable lineage display order used by the Unique/Evo tabs:
+ * trainee, Parent 1, Parent 2, then the four grandparent slots.
+ * A merged skill uses its earliest origin so duplicate lineage grants stay
+ * near the first slot that can provide them.
+ */
+export function getVisualizerOriginOrder(skill: VisualizerSkill): number {
+  return Math.min(
+    ...skill.origins.map((origin) => {
+      if (origin.kind === "trainee-unique" || origin.kind === "trainee-evo") return 0;
+      if (origin.slotLabel === "Parent 1") return 1;
+      if (origin.slotLabel === "Parent 2") return 2;
+      if (origin.slotLabel === "P1 - GP1") return 3;
+      if (origin.slotLabel === "P1 - GP2") return 4;
+      if (origin.slotLabel === "P2 - GP1") return 5;
+      if (origin.slotLabel === "P2 - GP2") return 6;
+      return 99;
+    }),
+  );
 }

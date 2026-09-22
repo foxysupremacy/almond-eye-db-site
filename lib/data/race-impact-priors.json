@@ -1,0 +1,250 @@
+{
+  "version": 1,
+  "generatedAt": "2026-09-22T17:43:50.447Z",
+  "priors": [
+    {
+      "key": "blocked",
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 14347,
+      "activations": 314
+    },
+    {
+      "key": "blocked",
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 5130,
+      "activations": 18
+    },
+    {
+      "key": "blocked",
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 14045,
+      "activations": 202
+    },
+    {
+      "key": "blocked",
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 2503,
+      "activations": 19
+    },
+    {
+      "key": "blocked",
+      "courseId": 10808,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 3463,
+      "activations": 59
+    },
+    {
+      "key": "blocked",
+      "courseId": 10808,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 1466,
+      "activations": 4
+    },
+    {
+      "key": "blocked",
+      "courseId": 10808,
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 736,
+      "activations": 0
+    },
+    {
+      "key": "blocked",
+      "courseId": 11203,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 10884,
+      "activations": 255
+    },
+    {
+      "key": "blocked",
+      "courseId": 11203,
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 4394,
+      "activations": 18
+    },
+    {
+      "key": "blocked",
+      "courseId": 11203,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 12579,
+      "activations": 198
+    },
+    {
+      "key": "blocked",
+      "courseId": 11203,
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 2503,
+      "activations": 19
+    },
+    {
+      "key": "nearby",
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 29068,
+      "activations": 24980
+    },
+    {
+      "key": "nearby",
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 4756,
+      "activations": 2068
+    },
+    {
+      "key": "nearby",
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 18632,
+      "activations": 14233
+    },
+    {
+      "key": "nearby",
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 4276,
+      "activations": 2800
+    },
+    {
+      "key": "nearby",
+      "courseId": 10808,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 6926,
+      "activations": 6170
+    },
+    {
+      "key": "nearby",
+      "courseId": 10808,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 2196,
+      "activations": 1628
+    },
+    {
+      "key": "nearby",
+      "courseId": 10808,
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 552,
+      "activations": 150
+    },
+    {
+      "key": "nearby",
+      "courseId": 11203,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 22142,
+      "activations": 18810
+    },
+    {
+      "key": "nearby",
+      "courseId": 11203,
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 4204,
+      "activations": 1918
+    },
+    {
+      "key": "nearby",
+      "courseId": 11203,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 16436,
+      "activations": 12605
+    },
+    {
+      "key": "nearby",
+      "courseId": 11203,
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 4276,
+      "activations": 2800
+    },
+    {
+      "key": "overtake",
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 9079,
+      "activations": 429
+    },
+    {
+      "key": "overtake",
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 2007,
+      "activations": 22
+    },
+    {
+      "key": "overtake",
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 6481,
+      "activations": 215
+    },
+    {
+      "key": "overtake",
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 2138,
+      "activations": 52
+    },
+    {
+      "key": "overtake",
+      "courseId": 10808,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 2190,
+      "activations": 102
+    },
+    {
+      "key": "overtake",
+      "courseId": 10808,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 914,
+      "activations": 22
+    },
+    {
+      "key": "overtake",
+      "courseId": 11203,
+      "runningStyle": 3,
+      "racerCount": 9,
+      "opportunities": 6889,
+      "activations": 327
+    },
+    {
+      "key": "overtake",
+      "courseId": 11203,
+      "runningStyle": 1,
+      "racerCount": 9,
+      "opportunities": 2007,
+      "activations": 22
+    },
+    {
+      "key": "overtake",
+      "courseId": 11203,
+      "runningStyle": 2,
+      "racerCount": 9,
+      "opportunities": 5567,
+      "activations": 193
+    },
+    {
+      "key": "overtake",
+      "courseId": 11203,
+      "runningStyle": 4,
+      "racerCount": 9,
+      "opportunities": 2138,
+      "activations": 52
+    }
+  ]
+}

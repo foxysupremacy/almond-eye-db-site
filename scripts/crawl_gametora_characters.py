@@ -333,7 +333,7 @@ def main() -> None:
     elif args.all:
         to_crawl = characters
     else:
-        to_crawl = [c for c in characters if not c.get("nameEn")]
+        to_crawl = [c for c in characters if not c.get("nameEn") or c.get("nameEn") == c.get("nameJp")]
 
     if to_crawl:
         slugs = scrape_character_slugs()

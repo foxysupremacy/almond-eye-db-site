@@ -6,6 +6,7 @@ import type { Course } from "../../lib/skill-engine/types";
 import type { SkillZoneResult } from "../../lib/skill-engine/zones";
 import type { SkillEvaluationResult, SpecialEffectItem } from "../../lib/evaluator/types";
 import type { VisualizerSkill } from "../../lib/visualizer-skills";
+import type { RaceImpactResult } from "../../lib/race-impact";
 import { conditionBranches, formatEffect } from "../../lib/skill-engine/describe";
 import { ZONE_COLORS } from "../../lib/track-render";
 import SkillIcon from "../skill-icon";
@@ -37,6 +38,7 @@ interface SkillDetailInspectorProps {
   cardName?: string;
   cardId?: number | null;
   isBanned?: boolean;
+  compact?: boolean;
 }
 
 /** Shared detail renderer for the fixed Visualizer pane and floating inspector. */
@@ -53,11 +55,12 @@ export function SkillDetailPanel({
   cardName,
   cardId,
   isBanned = false,
+  compact = false,
 }: SkillDetailInspectorProps) {
   return (
     <div
       ref={conditionViewerRef}
-      className="order-1 min-w-0 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-sm shadow-xs text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2"
+      className={`order-1 min-w-0 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 ${compact ? "text-xs" : "text-sm"} shadow-xs text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
     >
       {skillLoading ? (
         <div className="p-4 sm:p-5 text-zinc-400 dark:text-zinc-500">Loading skill…</div>
@@ -72,7 +75,7 @@ export function SkillDetailPanel({
                 nameEn: skillDetail.nameEn,
                 nameJp: skillDetail.nameJp,
               }}
-              size="lg"
+              size={compact ? "md" : "lg"}
               interactive={false}
               isBanned={isBanned}
                 trailing={
@@ -97,18 +100,44 @@ export function SkillDetailPanel({
                 </div>
               </div>
             )}
+            {(() => {
+              const evolvedFrom = selectedSkill?.origins?.find((origin) => origin.evolvedFrom)?.evolvedFrom;
+              if (!evolvedFrom) return null;
+              return (
+                <div className="mt-2 flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    Evolves from
+                  </span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <SkillIcon
+                      iconId={evolvedFrom.iconId}
+                      name={evolvedFrom.nameEn}
+                      className="h-5 w-5 flex-none object-contain"
+                    />
+                    <span className="truncate font-semibold text-zinc-700 dark:text-zinc-300" title={`${evolvedFrom.nameEn} · ${evolvedFrom.nameJp}`}>
+                      {evolvedFrom.nameEn}
+                    </span>
+                    {evolvedFrom.nameJp && (
+                      <span className="truncate text-[10px] text-zinc-400 dark:text-zinc-500">
+                        {evolvedFrom.nameJp}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
             {(cardName || (selectedSkill?.origins && selectedSkill.origins.length > 0)) && (
-              <div className="mt-2.5">
-                <span className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                   Sources
                 </span>
                 {selectedSkill?.origins && selectedSkill.origins.length > 0 ? (
                   <SkillSourceBadges origins={selectedSkill.origins} />
                 ) : (
-                  <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+                  <div className="flex min-w-0 items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
                     <CardSourceIcon cardId={cardId} cardName={cardName} className="h-5 w-5" />
                     <span className="rounded border border-violet-200/80 bg-violet-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-violet-700 dark:border-violet-800 dark:bg-violet-950/80 dark:text-violet-300">Event</span>
-                    <span className="font-semibold text-zinc-700 dark:text-zinc-300">{cardName}</span>
+                    <span className="truncate font-semibold text-zinc-700 dark:text-zinc-300">{cardName}</span>
                   </div>
                 )}
               </div>
@@ -135,6 +164,9 @@ export function SkillDetailPanel({
                 {(skillDetail.conditionGroups ?? []).map((g, gi) => {
                   const z = zones[gi];
                   if (!z || !z.regions.length) return null;
+                  const triggerEvaluation = evaluation?.triggerEvaluations?.find(
+                    (entry) => entry.triggerIndex === gi,
+                  )?.evaluation;
                   const wins = z.regions
                     .map((r) => `${Math.round(r.start)}-${Math.round(r.end)}m`)
                     .join(", ");
@@ -185,6 +217,38 @@ export function SkillDetailPanel({
                           </span>
                         )}
                       </div>
+
+                      {triggerEvaluation && (
+                        <div className="mt-3 border-t border-zinc-200/70 pt-2.5 dark:border-zinc-700/70">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                                Trigger Verdict
+                              </span>
+                              <StarRating
+                                stars={triggerEvaluation.stars}
+                                starClassName="h-3 w-3"
+                              />
+                              <StatusRankIcon grade={triggerEvaluation.tier} className="h-5 w-5" />
+                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                                {triggerEvaluation.score} pts
+                              </span>
+                            </div>
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] ${triggerEvaluation.primaryBadge.badgeClass}`}
+                            >
+                              <span className={`h-1.5 w-1.5 rounded-full ${triggerEvaluation.primaryBadge.dotColor}`} />
+                              {triggerEvaluation.primaryBadge.label}
+                            </span>
+                          </div>
+                          <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-200">
+                            <HighlightText text={triggerEvaluation.verdictSummary} />
+                          </p>
+                          {triggerEvaluation.raceImpact && (
+                            <RaceImpactSummary impact={triggerEvaluation.raceImpact} compact />
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -233,8 +297,10 @@ export function SkillDetailPanel({
                 <HighlightText text={evaluation.verdictSummary} />
               </p>
 
+              {evaluation.raceImpact && <RaceImpactSummary impact={evaluation.raceImpact} />}
+
               {/* Highlighted Calculation Breakdown Panel & Math Steps */}
-              <CalculationBreakdownPanel evaluation={evaluation} />
+              <CalculationBreakdownPanel evaluation={evaluation} compact={compact} />
             </div>
           )}
 
@@ -304,3 +370,42 @@ export function SkillDetailPanel({
 
 /** @deprecated Use SkillDetailPanel. Kept as a compatibility export for callers. */
 export const SkillDetailInspector = SkillDetailPanel;
+
+function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResult; compact?: boolean }) {
+  const probability = Math.round(impact.activation.activationRate * 100);
+  const impactText = impact.expectedBashin === null
+    ? "Physics pending"
+    : `${impact.expectedBashin.toFixed(2)} bashin expected`;
+  const factorRows = [
+    ["Activation", `${probability}%`],
+    ["Effect", `${impact.tactical.effect} pts`],
+    ["Timing", `${impact.tactical.timing} pts`],
+    ["Duration", `${impact.tactical.duration} pts`],
+    ["Coverage", `${impact.tactical.coverage} pts`],
+  ];
+  const activationFormula = [
+    `geometry ${Math.round(impact.activation.geometryRate * 100)}%`,
+    `wisdom ${Math.round(impact.activation.wisdomRate * 100)}%`,
+    impact.activation.rankRate < 1 ? `style/rank ${Math.round(impact.activation.rankRate * 100)}%` : null,
+    impact.activation.dynamicRate < 1 ? `dynamic ${Math.round(impact.activation.dynamicRate * 100)}%` : null,
+  ].filter((part): part is string => part !== null).join(" × ");
+  return (
+    <div className={`mt-3 border-t border-zinc-200/80 pt-2.5 dark:border-zinc-700/80 ${compact ? "text-[10px]" : "text-[11px]"}`}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="font-bold uppercase tracking-wider text-sky-700 dark:text-sky-400">Race impact</span>
+        <span className="font-mono font-semibold text-zinc-700 dark:text-zinc-200">{impactText}</span>
+      </div>
+      <div className="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 sm:grid-cols-5">
+        {factorRows.map(([label, value]) => (
+          <span key={label} className="flex justify-between gap-1 text-zinc-500 dark:text-zinc-400 sm:block">
+            <span>{label}</span> <strong className="font-mono text-zinc-700 dark:text-zinc-200">{value}</strong>
+          </span>
+        ))}
+      </div>
+      <p className="mt-1.5 leading-relaxed text-zinc-500 dark:text-zinc-400">
+        Activation: {activationFormula || "no probability gates"}{impact.activation.dependsOnPreviousTrigger ? "; conditional on the prior trigger firing" : ""}. {impact.activation.priorSource === "manual" ? "Dynamic assumptions use the neutral fallback or your override." : `${impact.activation.priorSource === "track" ? "Track" : "Global"} telemetry: ${impact.activation.priorSamples} samples (${impact.activation.confidence} confidence).`}
+        {impact.physicsNote ? ` ${impact.physicsNote}` : " Baseline-vs-skill estimate; not a win-probability forecast."}
+      </p>
+    </div>
+  );
+}

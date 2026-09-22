@@ -94,6 +94,12 @@ def resolve_skill_icon_id(
     2. Derived from parent_icon_id prefix (for inherit/evolved skills)
     3. Derived from ability_type_1_1, rarity, ability_value, target_type
     """
+    if not isinstance(row_or_dict, dict):
+        try:
+            row_or_dict = dict(row_or_dict)
+        except Exception:
+            pass
+
     existing_icon = row_or_dict.get("icon_id") or row_or_dict.get("iconId")
     if existing_icon and int(existing_icon) != 0:
         return int(existing_icon)

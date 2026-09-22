@@ -469,18 +469,29 @@ export function CharacterDetailSheet({
               )}
             </div>
 
-            {/* Aptitudes */}
-            <div className="flex items-center gap-1.5 flex-wrap text-[10px]">
-              <span className="text-zinc-500 font-semibold mr-1">Aptitude:</span>
-              {APTITUDE_LABELS.map((lbl, idx) => {
-                const grade = character.aptitude?.[idx] || "-";
-                return (
-                  <span key={lbl} className="inline-flex items-center gap-1 rounded-md bg-zinc-100/80 dark:bg-zinc-800/80 px-1.5 py-0.5">
-                    <span className="text-zinc-500">{lbl}</span>
-                    <StatusRankIcon grade={grade} className="h-4.5 w-4.5" />
+            {/* Aptitudes: three flat, scannable rows on mobile */}
+            <div className="flex flex-col gap-1 text-[10px]">
+              {[
+                { label: "Aptitude", start: 0, end: 2 },
+                { label: "Distance", start: 2, end: 6 },
+                { label: "Style", start: 6, end: 10 },
+              ].map((group) => (
+                <div key={group.label} className="grid min-w-0 grid-cols-[4.5rem_repeat(4,minmax(0,1fr))] items-center gap-1">
+                  <span className="font-semibold text-zinc-500 dark:text-zinc-400">
+                    {group.label}
                   </span>
-                );
-              })}
+                  {APTITUDE_LABELS.slice(group.start, group.end).map((lbl, offset) => {
+                    const idx = group.start + offset;
+                    const grade = character.aptitude?.[idx] || "-";
+                    return (
+                      <span key={lbl} className="inline-flex min-w-0 items-center justify-between gap-1 rounded-md bg-zinc-100/80 px-1.5 py-0.5 dark:bg-zinc-800/80">
+                        <span className="truncate text-zinc-500">{lbl}</span>
+                        <StatusRankIcon grade={grade} className="h-4.5 w-4.5 shrink-0" />
+                      </span>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
         </div>
@@ -519,7 +530,7 @@ export function CharacterDetailSheet({
               <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                 Eval Style:
               </span>
-              <div className="inline-flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700/60">
+              <div className="inline-flex items-center gap-0.5">
                 {([
                   { id: 1 as RunningStyle, name: "Runner", aptIdx: 6 },
                   { id: 2 as RunningStyle, name: "Leader", aptIdx: 7 },

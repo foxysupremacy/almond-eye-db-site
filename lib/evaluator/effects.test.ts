@@ -12,6 +12,7 @@ describe("classifyEffect — single effect table", () => {
     expect(classifyEffect({ type: 21, value: 500 })).toBe("current_speed");
     expect(classifyEffect({ type: 22, value: 500 })).toBe("current_speed");
     expect(classifyEffect({ type: 31, value: 2000 })).toBe("acceleration");
+    expect(classifyEffect({ type: 48, value: 4000 })).toBe("zenkai_acceleration");
   });
 
   test("heal / passive", () => {
@@ -44,6 +45,14 @@ describe("classifySkillEffects — agrees with the shared table", () => {
       ],
     } as never);
     expect(cats.sort()).toEqual(["acceleration", "target_speed"]);
+  });
+
+  test("Zenkai acceleration remains a distinct category", () => {
+    expect(
+      classifySkillEffects({
+        conditionGroups: [{ condition: null, effects: [{ type: 48, value: 4000 }] }],
+      } as never),
+    ).toEqual(["zenkai_acceleration"]);
   });
 
   test("unknown effects bucket as other; empty groups yield other", () => {

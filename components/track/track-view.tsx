@@ -18,12 +18,22 @@ import { TrackCanvas } from "./track-canvas";
 import { TrackSkillSidebar } from "./track-skill-sidebar";
 import { SkillDetailPanel } from "./skill-detail-inspector";
 import { isSkillBanned, getPvpRaceParameters } from "../../lib/pvp-events";
+import {
+  defaultRaceImpactProfile,
+  dynamicConditionKeys,
+  loadRaceImpactProfile,
+  saveRaceImpactProfile,
+  subscribeRaceImpactProfile,
+  type RaceImpactProfile,
+} from "../../lib/race-impact";
 import { useParentingSetup } from "../../lib/parenting-state";
 import {
   buildVisualizerSkillPools,
+  getVisualizerOriginOrder,
   matchesVisualizerFilter,
   type VisualizerSkill,
 } from "../../lib/visualizer-skills";
+import { RaceImpactProfilePanel } from "./race-impact-profile-panel";
 
 // Persisted visualizer prefs (selected skill).
 const SAVE_KEY = "visualizer.v1";
@@ -56,6 +66,7 @@ export default function TrackView() {
   const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
   const [skillLoading, setSkillLoading] = useState(false);
   const [zones, setZones] = useState<SkillZoneResult[] | null>(null);
+  const [raceImpactProfile, setRaceImpactProfile] = useState<RaceImpactProfile>(() => defaultRaceImpactProfile());
   const conditionViewerRef = useRef<HTMLDivElement>(null);
 
 
@@ -72,6 +83,17 @@ export default function TrackView() {
     } catch {
       /* ignore */
     }
+  }, []);
+
+  useEffect(() => {
+    const sync = () => setRaceImpactProfile(loadRaceImpactProfile());
+    sync();
+    return subscribeRaceImpactProfile(sync);
+  }, []);
+
+  const updateRaceImpactProfile = useCallback((next: RaceImpactProfile) => {
+    setRaceImpactProfile(next);
+    saveRaceImpactProfile(next);
   }, []);
 
   // Horse used to gate running_style conditions; undefined = default (Nige).
@@ -140,8 +162,9 @@ export default function TrackView() {
       visualizerDeck === "parent",
       zones ?? [],
       raceParams,
+      { raceImpactProfile },
     );
-  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, zones, raceParams]);
+  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, zones, raceParams, raceImpactProfile]);
 
   // Cache skill details so triggerability can be computed for every deck skill
   // without re-fetching on each course change.
@@ -213,9 +236,25 @@ export default function TrackView() {
   }, [activeSkills, zonesBySkill, firesOnCourse]);
 
   const displayedSkills = useMemo(() => {
-    return sortedSkills.filter((s) => matchesVisualizerFilter(s, rarityFilter));
+    const filtered = sortedSkills.filter((s) => matchesVisualizerFilter(s, rarityFilter));
+    if (rarityFilter !== "unique" && rarityFilter !== "evolved") return filtered;
+    return [...filtered].sort((a, b) =>
+      getVisualizerOriginOrder(a) - getVisualizerOriginOrder(b)
+      || a.nameEn.localeCompare(b.nameEn)
+      || a.id - b.id,
+    );
   }, [sortedSkills, rarityFilter]);
   const isSelectedSkillBanned = Boolean(selectedSkillId && isSkillBanned(selectedSkillId, activePvpEvent));
+  const selectedDynamicKeys = useMemo(
+    () => Array.from(new Set(
+      (skillDetail?.conditionGroups ?? [])
+        .flatMap((group) => dynamicConditionKeys(group.condition, group.precondition))
+        // A previous-detail marker is a skill-internal chain dependency, not
+        // an uncertain race state the user should override.
+        .filter((key) => key !== "other_skill"),
+    )),
+    [skillDetail],
+  );
 
   return (
     <div className="flex flex-col gap-3">
@@ -228,6 +267,12 @@ export default function TrackView() {
       ) : (
         <>
           <TrackCanvas course={course} zones={zones} selectedSkillId={selectedSkillId?.toString() ?? null} />
+
+          <RaceImpactProfilePanel
+            profile={raceImpactProfile}
+            dynamicKeys={selectedDynamicKeys}
+            onChange={updateRaceImpactProfile}
+          />
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr]">
             <TrackSkillSidebar
