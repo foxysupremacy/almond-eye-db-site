@@ -68,6 +68,7 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
       parentingSetup: p.parentingSetup
         ? {
             targetCharaId: p.parentingSetup.targetCharaId ?? null,
+            targetCharaCardId: p.parentingSetup.targetCharaCardId ?? null,
             parent1: p.parentingSetup.parent1 ?? null,
             parent2: p.parentingSetup.parent2 ?? null,
             p1IsBorrow: p.parentingSetup.p1IsBorrow ?? false,
@@ -80,6 +81,7 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
         : idx === 0 && legacyParenting
         ? {
             targetCharaId: legacyParenting.targetCharaId ?? null,
+            targetCharaCardId: legacyParenting.targetCharaCardId ?? null,
             parent1: legacyParenting.parent1 ?? null,
             parent2: legacyParenting.parent2 ?? null,
             p1IsBorrow: legacyParenting.p1IsBorrow ?? false,

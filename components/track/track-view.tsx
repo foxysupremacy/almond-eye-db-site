@@ -266,7 +266,13 @@ export default function TrackView() {
         </div>
       ) : (
         <>
-          <TrackCanvas course={course} zones={zones} selectedSkillId={selectedSkillId?.toString() ?? null} />
+          <TrackCanvas
+            course={course}
+            zones={zones}
+            selectedSkillId={selectedSkillId?.toString() ?? null}
+            evaluation={evaluation}
+            skillDetail={skillDetail}
+          />
 
           <RaceImpactProfilePanel
             profile={raceImpactProfile}

@@ -12,6 +12,7 @@ import type {
   TacticalScoreBreakdown,
 } from "./types";
 import { dynamicConditionKeys, lookupDynamicPrior } from "./prior";
+import { generateRaceTrace, computeGainDistribution } from "./trace";
 
 const BASHIN_METERS = 2.5;
 
@@ -160,6 +161,20 @@ export function evaluateTriggerRaceImpact(
   const meanDistance = samples.length ? samples.reduce((total, sample) => total + sample.distanceGainMeters, 0) / samples.length : null;
   const meanTime = samples.length ? samples.reduce((total, sample) => total + sample.timeGainSeconds, 0) / samples.length : null;
   const physicsStatus = hasZenkai ? "provisional" : samples.length ? "modeled" : effects.length ? "partial" : "not-modeled";
+  const trace = generateRaceTrace(skill, {
+    course: context.course,
+    profile: context.profile,
+    runningStyle: context.runningStyle,
+    racerCount: context.racerCount,
+  }, null, zones);
+
+  const distribution = computeGainDistribution(skill, zones, {
+    course: context.course,
+    profile: context.profile,
+    runningStyle: context.runningStyle,
+    racerCount: context.racerCount,
+  }, activation);
+
   return {
     activation,
     tactical,
@@ -176,6 +191,8 @@ export function evaluateTriggerRaceImpact(
     physicsNote: hasZenkai
       ? "Zenkai Spurt Acceleration is shown as a provisional raw effect; its Power-scaled mechanics are not simulated."
       : samples.length ? undefined : "This effect has tactical value but is outside the direct velocity/acceleration physics model.",
+    trace,
+    distribution,
   };
 }
 
@@ -237,5 +254,7 @@ export function aggregateRaceImpact(
     samples: impacts.flatMap((impact) => impact.samples),
     physicsStatus: impacts.some((impact) => impact.physicsStatus === "provisional") ? "provisional" : impacts.some((impact) => impact.physicsStatus === "partial") ? "partial" : "modeled",
     physicsNote: mode === "chain" ? "Aggregate impact requires every chained trigger to activate." : "Aggregate impact is a probability-weighted mixture of alternative trigger paths.",
+    trace: primary.trace ?? impacts.find((i) => i.trace)?.trace,
+    distribution: primary.distribution ?? impacts.find((i) => i.distribution)?.distribution,
   };
 }

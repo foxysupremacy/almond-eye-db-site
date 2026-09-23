@@ -140,7 +140,7 @@ export interface SkillSummary {
   nameJp: string;
   nameEn: string;
   descEn?: string;
-  rarity: 1 | 2 | 3;
+  rarity: number;
   isRCard?: 0 | 1;
   eventMeta?: EventSkillMetadata;
   iconId?: number | null;

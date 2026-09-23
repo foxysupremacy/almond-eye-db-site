@@ -16,3 +16,5 @@ tsconfig.tsbuildinfo
 scripts/__pycache__/
 /data-source/gametora/.page-cache
 implementation_plan.md
+output/pdf/phan-tich-u-tools-race-impact.pdf
+docs/race-visualizer-three-board-plan.md

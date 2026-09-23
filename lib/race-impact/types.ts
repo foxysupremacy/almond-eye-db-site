@@ -73,6 +73,48 @@ export interface RaceImpactSample {
   bashin: number;
 }
 
+export interface RaceTracePoint {
+  timeSeconds: number;
+  baselineMeter: number;
+  baselineSpeed: number;
+  skillMeter: number;
+  skillSpeed: number;
+  phase: number;
+}
+
+export interface RaceEffectTrace {
+  version: 1;
+  points: RaceTracePoint[];
+  activationMeter: number;
+  activationTimeSeconds: number;
+  effectEndTimeSeconds: number;
+  totalTimeSeconds: number;
+  timeGainSeconds: number;
+  distanceGainMeters: number;
+  bashinGain: number;
+  physicsStatus: "modeled" | "partial" | "provisional" | "not-modeled";
+}
+
+export interface ActivationMeterSample {
+  meter: number;
+  gainMeters: number;
+  bashin: number;
+  eligible: boolean;
+  activationRate: number;
+  usefulRate: number;
+  zoneIndex?: number;
+}
+
+export interface RaceEffectDistribution {
+  version: 1;
+  samples: ActivationMeterSample[];
+  maxGainMeters: number;
+  minGainMeters: number;
+  optimalMeter: number | null;
+  optimalGainMeters: number | null;
+  eligibleRangeDescription: string;
+}
+
 export interface RaceImpactResult {
   activation: ActivationEstimate;
   tactical: TacticalScoreBreakdown;
@@ -88,4 +130,6 @@ export interface RaceImpactResult {
   samples: RaceImpactSample[];
   physicsStatus: "modeled" | "partial" | "provisional" | "not-modeled";
   physicsNote?: string;
+  trace?: RaceEffectTrace;
+  distribution?: RaceEffectDistribution;
 }

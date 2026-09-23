@@ -71,7 +71,7 @@ interface CourseMapCanvasProps {
   activeSkillZones?: SkillZoneResult[] | null;
   selectedSkillId?: string | null;
   hoverMeter?: number | null;
-  onHover?: (meter: number | null) => void;
+  onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void;
   className?: string;
 }
 
@@ -251,7 +251,7 @@ export function CourseMapCanvas({
       // Active hover threshold (scaled with zoom)
       const threshold = 42;
       if (closestDist <= threshold && closestMeter != null) {
-        onHover(closestMeter);
+        onHover(closestMeter, { clientX: e.clientX, clientY: e.clientY });
       } else {
         onHover(null);
       }

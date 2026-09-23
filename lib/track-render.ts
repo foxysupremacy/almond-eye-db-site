@@ -8,6 +8,7 @@
 
 import type { Course } from "./skill-engine/types";
 import type { SkillZoneResult } from "./skill-engine/zones";
+import type { RaceEffectDistribution } from "./race-impact";
 
 // ---------- constants ----------
 const SURF: Record<number, string> = { 1: "Turf", 2: "Dirt" };
@@ -266,7 +267,8 @@ function ruler(course: Course): SVGElement[] {
 function attachHover(
   svg: SVGSVGElement,
   course: Course,
-  onHover?: (meter: number | null) => void,
+  onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void,
+  onUpdateBenefitDot?: (meter: number | null) => void,
 ): void {
   const line = svg.querySelector(".mouseoverLine");
   const txt = svg.querySelector(".mouseoverText");
@@ -274,12 +276,12 @@ function attachHover(
   const ln = line as SVGElement;
   const tx = txt as SVGElement;
   // The hover line/text live inside the nested "inner" <svg>, whose user units
-  // are the track's nominal size (960×240). The outer svg can be scaled down by
+  // are the track's nominal size (960×294). The outer svg can be scaled down by
   // CSS (.racetrackView max-width:100%), so convert mouse pixels to inner user
   // units via the inner rect instead of the outer one to avoid drift.
   const inner = ln.parentElement as SVGSVGElement | null;
   const W = inner ? Number(inner.getAttribute("width")) || 960 : 960;
-  const H = inner ? Number(inner.getAttribute("height")) || 240 : 240;
+  const H = inner ? Number(inner.getAttribute("height")) || 294 : 294;
   const outer = svg;
   const MAX_ZOOM = 4;
   let zoom = 1;
@@ -299,6 +301,7 @@ function attachHover(
   }
 
   function setMeterPosition(m: number | null) {
+    onUpdateBenefitDot?.(m);
     if (m == null || m < 0 || m > course.length) {
       ln.setAttribute("x1", "-5");
       ln.setAttribute("x2", "-5");
@@ -311,7 +314,7 @@ function attachHover(
     ln.setAttribute("x1", String(x));
     ln.setAttribute("x2", String(x));
     tx.setAttribute("x", String(x > W - 45 ? x - 45 : x + 5));
-    tx.setAttribute("y", String(H * 0.5));
+    tx.setAttribute("y", String(120));
     tx.textContent = `${Math.round(m)}m`;
   }
 
@@ -329,7 +332,8 @@ function attachHover(
     tx.setAttribute("x", String(x > W - 45 ? x - 45 : x + 5));
     tx.setAttribute("y", String(((clientY - r.top) / r.height) * H));
     tx.textContent = `${m}m`;
-    onHover?.(m);
+    onUpdateBenefitDot?.(m);
+    onHover?.(m, { clientX, clientY });
   }
 
   function move(ev: MouseEvent) {
@@ -376,6 +380,7 @@ function attachHover(
     ln.setAttribute("x2", "-5");
     tx.setAttribute("x", "-5");
     tx.setAttribute("y", "-5");
+    onUpdateBenefitDot?.(null);
     onHover?.(null);
   }
 
@@ -430,17 +435,155 @@ export function renderSkillOverlay(
   inner.appendChild(overlay);
 }
 
+// ---------- benefit lane (Gain Δx curve) ----------
+function buildPathString(points: { x: number; y: number }[], yZero: number): string {
+  if (!points.length) return "";
+  let d = `M ${points[0].x.toFixed(1)} ${yZero} L ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 1; i < points.length; i++) {
+    d += ` L ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)}`;
+  }
+  return d;
+}
+
+function buildBenefitLane(
+  course: Course,
+  distribution: RaceEffectDistribution | null | undefined,
+  zones: SkillZoneResult[] | null | undefined,
+  W: number = 960,
+  H: number = 46,
+): { element: SVGElement; updateHoverDot: (meter: number | null) => void } {
+  const g = el("g", { class: "benefitLaneGroup" });
+  const yZero = 34;
+
+  // Background surface
+  g.appendChild(el("rect", { x: "0", y: "0", width: "100%", height: String(H), fill: "rgba(241, 245, 249, 0.45)", class: "benefitLaneBg" }));
+  // Top border separator line
+  g.appendChild(el("line", { x1: "0", y1: "0", x2: "100%", y2: "0", stroke: "rgba(148, 163, 184, 0.5)", "stroke-width": "1" }));
+  // Zero baseline
+  g.appendChild(el("line", { x1: "0", y1: String(yZero), x2: "100%", y2: String(yZero), stroke: "rgba(148, 163, 184, 0.4)", "stroke-width": "1", "stroke-dasharray": "3 3" }));
+
+  // Axis labels
+  g.appendChild(svgText("Δx (m)", "6", "11", { anchor: "start", size: "9px", fill: "rgb(15, 118, 110)", className: "benefitAxisLabel" }));
+  g.appendChild(svgText("0m", "6", String(yZero + 3), { anchor: "start", size: "8px", fill: "rgba(100, 116, 139, 0.75)", className: "benefitZeroLabel" }));
+
+  // Tinted trigger regions
+  if (zones && zones.length > 0) {
+    zones.forEach((z, gi) => {
+      const color = ZONE_COLORS[gi % ZONE_COLORS.length];
+      z.regions.forEach((reg) => {
+        const x = (reg.start / course.length) * 100;
+        const w = ((reg.end - reg.start) / course.length) * 100;
+        g.appendChild(
+          el("rect", {
+            x: `${x}%`,
+            y: "0",
+            width: `${w}%`,
+            height: String(H),
+            fill: color,
+            "fill-opacity": "0.08",
+            stroke: color,
+            "stroke-width": "0.5",
+            "stroke-dasharray": z.isRandom ? "2 2" : "",
+          }),
+        );
+      });
+    });
+  }
+
+  const hoverDot = el("circle", { cx: "-20", cy: "-20", r: "3.5", fill: "#059669", stroke: "#ffffff", "stroke-width": "1.5", class: "benefitHoverDot" });
+  const maxGain = distribution?.maxGainMeters && distribution.maxGainMeters > 0 ? distribution.maxGainMeters : 0;
+  const samples = distribution?.samples ?? [];
+
+  if (maxGain > 0 && samples.length > 0) {
+    g.appendChild(svgText(`+${maxGain.toFixed(1)}m`, "99%", "11", { anchor: "end", size: "9px", fill: "rgb(15, 118, 110)" }));
+
+    const yTop = 10;
+    const gainToY = (gain: number) => yZero - (Math.max(0, gain) / Math.max(0.1, maxGain)) * (yZero - yTop);
+
+    // Group samples into continuous segments
+    const segments: { x: number; y: number }[][] = [];
+    let curSeg: { x: number; y: number }[] = [];
+
+    for (const s of samples) {
+      if (s.eligible && s.gainMeters > 0) {
+        const x = (s.meter / course.length) * W;
+        const y = gainToY(s.gainMeters);
+        curSeg.push({ x, y });
+      } else {
+        if (curSeg.length > 0) {
+          segments.push(curSeg);
+          curSeg = [];
+        }
+      }
+    }
+    if (curSeg.length > 0) {
+      segments.push(curSeg);
+    }
+
+    for (const seg of segments) {
+      const strokeD = buildPathString(seg, yZero);
+      const fillD = `${strokeD} L ${seg[seg.length - 1].x.toFixed(1)} ${yZero} Z`;
+      g.appendChild(el("path", { d: fillD, fill: "rgba(16, 185, 129, 0.14)", class: "benefitArea" }));
+      g.appendChild(el("path", { d: strokeD, fill: "none", stroke: "#059669", "stroke-width": "1.8", "stroke-linecap": "round", class: "benefitStroke" }));
+    }
+
+    // Optimal peak marker
+    if (distribution?.optimalMeter != null && distribution.optimalGainMeters != null) {
+      const optX = (distribution.optimalMeter / course.length) * W;
+      const optY = gainToY(distribution.optimalGainMeters);
+      g.appendChild(el("circle", { cx: String(optX), cy: String(optY), r: "2.5", fill: "#059669", stroke: "#ffffff", "stroke-width": "1" }));
+    }
+  } else {
+    g.appendChild(svgText("Select a modeled skill to view activation gain curve", "50%", "24", {
+      anchor: "middle",
+      size: "10px",
+      fill: "rgba(100, 116, 139, 0.75)",
+      className: "benefitPlaceholder",
+    }));
+  }
+
+  g.appendChild(hoverDot);
+
+  function updateHoverDot(m: number | null) {
+    if (m == null || maxGain <= 0 || !samples.length) {
+      hoverDot.setAttribute("cx", "-20");
+      hoverDot.setAttribute("cy", "-20");
+      return;
+    }
+    const sample = samples.find((s) => Math.abs(s.meter - m) <= 15 && s.eligible);
+    if (sample && sample.gainMeters > 0) {
+      const x = (m / course.length) * W;
+      const y = yZero - (sample.gainMeters / maxGain) * (yZero - 10);
+      hoverDot.setAttribute("cx", String(x));
+      hoverDot.setAttribute("cy", String(y));
+    } else {
+      hoverDot.setAttribute("cx", "-20");
+      hoverDot.setAttribute("cy", "-20");
+    }
+  }
+
+  return { element: g, updateHoverDot };
+}
+
+export interface RenderCourseOptions {
+  zones?: SkillZoneResult[];
+  distribution?: RaceEffectDistribution | null;
+  onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void;
+}
+
 // ---------- top-level render ----------
-// Builds the full SVG (bands + ruler + hover + optional zone overlay) and appends
-// it to `host`, replacing any prior render. Title/header/chips are the caller's job.
+// Builds the full SVG (bands + ruler + benefit lane + hover + optional zone overlay) and appends
+// it to `host`, replacing any prior render.
 export function renderCourse(
   host: HTMLElement,
   course: Course,
-  opts: { zones?: SkillZoneResult[]; onHover?: (meter: number | null) => void } = {},
+  opts: RenderCourseOptions = {},
 ): SVGSVGElement {
   host.innerHTML = "";
   const W = 960;
-  const H = 240;
+  const H_track = 240;
+  const H_benefit = 46;
+  const H_total = H_track + H_benefit + 6;
   const xOff = 12;
   const yOff = 6;
   const yExtra = 10;
@@ -448,19 +591,20 @@ export function renderCourse(
   const svg = el("svg", {
     version: "1.1",
     width: String(W + xOff),
-    height: String(H + yOff + yExtra),
-    viewBox: `0 0 ${W + xOff} ${H + yOff + yExtra}`,
+    height: String(H_total + yOff + yExtra),
+    viewBox: `0 0 ${W + xOff} ${H_total + yOff + yExtra}`,
     xmlns: "http://www.w3.org/2000/svg",
     class: "racetrackView",
     "data-courseid": String(course.id),
   }) as SVGSVGElement;
 
-  const inner = el("svg", { x: String(xOff), y: String(yOff), width: String(W), height: String(H) }) as SVGSVGElement;
+  const innerWrap = el("svg", { x: String(xOff), y: String(yOff), width: String(W), height: String(H_total) }) as SVGSVGElement;
+  const innerTrack = el("svg", { x: "0", y: "0", width: String(W), height: String(H_track) }) as SVGSVGElement;
 
   // band 1: elevation
-  elevationBand(course).forEach((e) => inner.appendChild(e));
+  elevationBand(course).forEach((e) => innerTrack.appendChild(e));
   // band 2: slope tints
-  inner.appendChild(
+  innerTrack.appendChild(
     el("svg", { x: "0", y: "28%", width: "100%", height: "18%", class: "sectionsBg" }, [
       el("rect", { x: "0", y: "0", height: "90%", width: "100%", fill: "rgb(239,229,241)" }),
       el("rect", { x: "0", y: "90%", height: "10%", width: "100%", fill: "rgb(163,106,175)" }),
@@ -478,7 +622,7 @@ export function renderCourse(
     const altDown = (downi - 1) % 2 === 0;
     const body = up ? (altUp ? "rgb(234,207,147)" : "rgb(229,196,120)") : altDown ? "rgb(82,195,184)" : "rgb(116,206,198)";
     const edge = up ? (altUp ? "rgb(191,143,37)" : "rgb(175,132,33)") : altDown ? "rgb(42,123,115)" : "rgb(50,142,134)";
-    inner.appendChild(
+    innerTrack.appendChild(
       el("svg", { x, y: "28%", width: w, height: "18%", class: "slope" }, [
         el("rect", { x: "0", y: "0", height: "90%", width: "100%", fill: body }),
         el("rect", { x: "0", y: "90%", height: "10%", width: "100%", fill: edge }),
@@ -492,10 +636,10 @@ export function renderCourse(
     slopeBounds.push(s.end);
   });
   const slopeUniq = [...new Set(slopeBounds)].sort((a, b) => a - b);
-  distanceMarkers(course, 42, slopeUniq).forEach((e) => inner.appendChild(e));
+  distanceMarkers(course, 42, slopeUniq).forEach((e) => innerTrack.appendChild(e));
 
   // band 3: straight/corner
-  sectionsBand(course).forEach((e) => inner.appendChild(e));
+  sectionsBand(course).forEach((e) => innerTrack.appendChild(e));
   const secBounds: number[] = [];
   course.straights.forEach((s) => {
     secBounds.push(s.start);
@@ -506,33 +650,38 @@ export function renderCourse(
     secBounds.push(c.end);
   });
   const secUniq = [...new Set(secBounds)].sort((a, b) => a - b);
-  distanceMarkers(course, 60, secUniq).forEach((e) => inner.appendChild(e));
+  distanceMarkers(course, 60, secUniq).forEach((e) => innerTrack.appendChild(e));
 
   // band 4: phases
-  phasesBand(course).forEach((e) => inner.appendChild(e));
+  phasesBand(course).forEach((e) => innerTrack.appendChild(e));
   const phBounds: number[] = [];
   (course.phases || []).forEach((p) => {
     phBounds.push(p.start);
     phBounds.push(p.end);
   });
-  // Phase boundaries are shared between adjacent legs; dedupe so each meter
-  // label shows once (not twice at the same boundary).
   const phUniq = [...new Set(phBounds)].sort((a, b) => a - b);
-  distanceMarkers(course, 78, phUniq).forEach((e) => inner.appendChild(e));
+  distanceMarkers(course, 78, phUniq).forEach((e) => innerTrack.appendChild(e));
 
   // band 5: ruler
-  ruler(course).forEach((e) => inner.appendChild(e));
+  ruler(course).forEach((e) => innerTrack.appendChild(e));
 
-  // mouseover elements
-  inner.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "var(--track-hover-line, #0284c7)", "stroke-width": "2" }));
-  inner.appendChild(el("text", { class: "mouseoverText", x: "-5", y: "-5", fill: "var(--track-hover-line, #0284c7)" }));
+  // skill zone overlay onto ruler
+  if (opts.zones) renderSkillOverlay(innerTrack, course, opts.zones);
 
-  // skill zone overlay
-  if (opts.zones) renderSkillOverlay(inner, course, opts.zones);
+  innerWrap.appendChild(innerTrack);
 
-  svg.appendChild(inner);
+  // band 6: benefit lane (Gain Δx curve)
+  const { element: benefitEl, updateHoverDot } = buildBenefitLane(course, opts.distribution, opts.zones, W, H_benefit);
+  const benefitSvg = el("svg", { x: "0", y: String(H_track + 4), width: String(W), height: String(H_benefit), class: "benefitLane" }, [benefitEl]);
+  innerWrap.appendChild(benefitSvg);
+
+  // mouseover line across all bands
+  innerWrap.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "var(--track-hover-line, #0284c7)", "stroke-width": "2" }));
+  innerWrap.appendChild(el("text", { class: "mouseoverText", x: "-5", y: "-5", fill: "var(--track-hover-line, #0284c7)" }));
+
+  svg.appendChild(innerWrap);
   host.appendChild(svg);
-  attachHover(svg, course, opts.onHover);
+  attachHover(svg, course, opts.onHover, updateHoverDot);
   return svg;
 }
 
