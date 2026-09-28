@@ -46,13 +46,13 @@ export function RaceEffectGraph({
 
   // Coordinates helpers
   const totalTime = trace?.totalTimeSeconds ?? 130;
-  const minSpeed = 15;
+  const minSpeed = 0;
   const maxSpeed = 28;
 
   // Chart dimensions
   const W = 620;
-  const H1 = 150; // Speed-Time
-  const H2 = 140; // Gain-Meter
+  const H1 = 166; // Speed-Time, including readable time-axis labels
+  const H2 = 154; // Gain-Meter, including course-position labels
   const H3 = 110; // Rate-Meter
 
   // Time to X on Chart 1
@@ -71,19 +71,31 @@ export function RaceEffectGraph({
     if (!trace || !trace.points.length) return null;
     let baseD = "";
     let skillD = "";
+    let cruiseD = "";
+    let skillTargetD = "";
 
     for (let i = 0; i < trace.points.length; i++) {
       const p = trace.points[i];
       const x = timeToX(p.timeSeconds);
       const yBase = speedToY(p.baselineSpeed);
       const ySkill = speedToY(p.skillSpeed);
+      const yCruise = speedToY(p.baselineTargetSpeed);
+      const ySkillTarget = speedToY(p.skillTargetSpeed);
 
       if (i === 0) {
         baseD += `M ${x.toFixed(1)} ${yBase.toFixed(1)}`;
-        skillD += `M ${x.toFixed(1)} ${ySkill.toFixed(1)}`;
+        cruiseD += `M ${x.toFixed(1)} ${yCruise.toFixed(1)}`;
+        if (trace.activationMeter != null) {
+          skillTargetD += `M ${x.toFixed(1)} ${ySkillTarget.toFixed(1)}`;
+          if (p.timeSeconds <= trace.totalTimeSeconds - trace.timeGainSeconds + 0.01) skillD += `M ${x.toFixed(1)} ${ySkill.toFixed(1)}`;
+        }
       } else {
         baseD += ` L ${x.toFixed(1)} ${yBase.toFixed(1)}`;
-        skillD += ` L ${x.toFixed(1)} ${ySkill.toFixed(1)}`;
+        cruiseD += ` L ${x.toFixed(1)} ${yCruise.toFixed(1)}`;
+        if (trace.activationMeter != null) {
+          skillTargetD += ` L ${x.toFixed(1)} ${ySkillTarget.toFixed(1)}`;
+          if (p.timeSeconds <= trace.totalTimeSeconds - trace.timeGainSeconds + 0.01) skillD += ` L ${x.toFixed(1)} ${ySkill.toFixed(1)}`;
+        }
       }
     }
 
@@ -111,7 +123,7 @@ export function RaceEffectGraph({
     const tPhase2 = meterToBaselineTime((courseLength * 2) / 3, trace);
     const tSpurt = meterToBaselineTime(spurt, trace);
 
-    return { baseD, skillD, effectAreaD, tPhase1, tPhase2, tSpurt };
+    return { baseD, skillD, cruiseD, skillTargetD, effectAreaD, tPhase1, tPhase2, tSpurt };
   }, [trace, timeToX, speedToY, courseLength, spurt]);
 
   // Chart 2: Gain vs Meter path
@@ -129,14 +141,8 @@ export function RaceEffectGraph({
     let curPoints: { x: number; y: number }[] = [];
 
     for (const s of dist.samples) {
-      if (s.eligible && s.gainMeters > 0) {
-        curPoints.push({ x: meterToX(s.meter), y: gainToY(s.gainMeters) });
-      } else {
-        if (curPoints.length > 0) {
-          segments.push(buildSvgSegment(curPoints, yZero));
-          curPoints = [];
-        }
-      }
+      // Keep ineligible positions on the zero baseline so the full course remains legible.
+      curPoints.push({ x: meterToX(s.meter), y: gainToY(s.eligible ? s.gainMeters : 0) });
     }
     if (curPoints.length > 0) {
       segments.push(buildSvgSegment(curPoints, yZero));
@@ -227,10 +233,10 @@ export function RaceEffectGraph({
 
   // Status badge config
   const statusConfig = {
-    modeled: { label: "Modeled Physics", color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-500/30" },
-    provisional: { label: "Provisional", color: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-500/30" },
-    partial: { label: "Partial Physics", color: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-500/30" },
-    "not-modeled": { label: "Not Modeled", color: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700" },
+    modeled: { label: "Estimated", color: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border-emerald-500/30" },
+    provisional: { label: "Provisional estimate", color: "bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-300 border-sky-500/30" },
+    partial: { label: "Partial estimate", color: "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border-amber-500/30" },
+    "not-modeled": { label: "No physics estimate", color: "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 border-zinc-200 dark:border-zinc-700" },
   }[physicsStatus];
 
   return (
@@ -259,7 +265,7 @@ export function RaceEffectGraph({
             </button>
           </div>
           <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
-            Speed Trajectory (m/s) · Gain by Activation Position · Eligibility Density
+            Simplified estimate · Speed vs elapsed time · Cruising target assumes distance aptitude A
           </p>
         </div>
 
@@ -308,7 +314,7 @@ export function RaceEffectGraph({
           </div>
           <p className="mt-1 leading-relaxed text-[11px]">
             {impact?.physicsNote ??
-              "Velocity curves are simulated using official phase target speeds and stat bonuses (Speed, Power, Guts). Gain represents the net meters gained if activated at that position."}
+              "A simplified baseline-vs-skill estimate using course distance, phase, running style, stats, effect duration and direct speed/acceleration effects. It does not simulate stamina, HP or opponents. Distance gain is estimated from finish-time difference × course base speed."}
           </p>
           <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-zinc-500 dark:text-zinc-400">
             <span>• Bashin scale: 1 bashin = 2.5m</span>
@@ -322,17 +328,33 @@ export function RaceEffectGraph({
       <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
         {/* Sub-Chart 1: Speed vs Time */}
         <div className="rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/60 p-2.5 sm:p-3">
-          <div className="mb-1.5 flex items-center justify-between text-[11px]">
+        <div className="mb-1.5 flex flex-col gap-1 text-[11px] sm:flex-row sm:items-center sm:justify-between">
             <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-              1. Trajectory Speed (m/s vs. Time)
+              1. Estimated speed (m/s vs. elapsed time)
             </span>
-            <div className="flex items-center gap-3 text-[10px]">
+            <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[10px]">
               <span className="inline-flex items-center gap-1 text-zinc-500">
                 <span className="h-0.5 w-3 border-t border-dashed border-zinc-400" /> Baseline
               </span>
-              <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                <span className="h-0.5 w-3 bg-emerald-600 dark:bg-emerald-400" /> Skill Active
+              <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                <span className="h-0.5 w-3 border-t border-dashed border-amber-600" /> Cruise target
               </span>
+              {trace?.activationMeter != null && (
+                <>
+                  <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                    <span className="h-3 border-l border-dashed border-amber-500" /> Activate
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-700 dark:text-emerald-400">
+                    <span className="h-3 border-l border-dashed border-emerald-500" /> Effect end
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-violet-600 dark:text-violet-400">
+                    <span className="h-0.5 w-3 border-t border-dashed border-violet-600" /> Skill target
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                    <span className="h-0.5 w-3 bg-emerald-600 dark:bg-emerald-400" /> Skill at sweet spot
+                  </span>
+                </>
+              )}
             </div>
           </div>
 
@@ -381,14 +403,29 @@ export function RaceEffectGraph({
               <text x="6" y={speedToY(26) - 4} fontSize="9" fill="rgba(148,163,184,0.8)">26 m/s (Spurt)</text>
               <text x="6" y={speedToY(20.5) - 4} fontSize="9" fill="rgba(148,163,184,0.8)">20.5 m/s (Middle)</text>
               <text x="6" y={speedToY(18) - 4} fontSize="9" fill="rgba(148,163,184,0.8)">18 m/s</text>
+              <text x="6" y={speedToY(0) - 3} fontSize="8" fill="rgba(148,163,184,0.8)">0</text>
+              {[0, 0.5, 1].map((fraction) => {
+                const x = fraction * W;
+                return <g key={fraction}><line x1={x} y1={H1 - 17} x2={x} y2={H1 - 12} stroke="rgba(148,163,184,0.5)" /><text x={x} y={H1 - 2} textAnchor={fraction === 0 ? "start" : fraction === 1 ? "end" : "middle"} fontSize="8" fill="rgba(148,163,184,0.8)">{(totalTime * fraction).toFixed(0)}s</text></g>;
+              })}
 
               {/* Curves */}
               {speedPaths && (
                 <>
+                  <line x1={timeToX(speedPaths.tSpurt)} y1="0" x2={timeToX(speedPaths.tSpurt)} y2={H1 - 12} stroke="#d946ef" strokeWidth="1" strokeDasharray="4 3" />
+                  <text x={Math.min(W - 48, timeToX(speedPaths.tSpurt) + 4)} y="12" fontSize="9" fill="#d946ef">Spurt</text>
+                  {trace && trace.activationMeter != null && (
+                    <line x1={timeToX(trace.activationTimeSeconds)} y1="18" x2={timeToX(trace.activationTimeSeconds)} y2={H1 - 12} stroke="#f59e0b" strokeWidth="1" strokeDasharray="2 3" />
+                  )}
+                  {trace && trace.effectEndTimeSeconds > trace.activationTimeSeconds && (
+                    <line x1={timeToX(trace.effectEndTimeSeconds)} y1="18" x2={timeToX(trace.effectEndTimeSeconds)} y2={H1 - 12} stroke="#10b981" strokeWidth="1" strokeDasharray="2 3" />
+                  )}
                   {speedPaths.effectAreaD && (
                     <path d={speedPaths.effectAreaD} fill="rgba(16,185,129,0.18)" />
                   )}
                   <path d={speedPaths.baseD} fill="none" stroke="#71717a" strokeWidth="1.6" strokeDasharray="4 3" />
+                  <path d={speedPaths.cruiseD} fill="none" stroke="#d97706" strokeWidth="1.2" strokeDasharray="4 3" />
+                  <path d={speedPaths.skillTargetD} fill="none" stroke="#8b5cf6" strokeWidth="1.2" strokeDasharray="2 3" />
                   <path d={speedPaths.skillD} fill="none" stroke="#059669" strokeWidth="2.2" strokeLinecap="round" />
                 </>
               )}
@@ -412,7 +449,7 @@ export function RaceEffectGraph({
         <div className="rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/60 p-2.5 sm:p-3">
           <div className="mb-1.5 flex items-center justify-between text-[11px]">
             <span className="font-semibold text-zinc-700 dark:text-zinc-300">
-              2. Distance Gain by Activation Position
+              2. Estimated Δx by activation position
             </span>
             {dist?.optimalGainMeters != null && dist.optimalGainMeters > 0 && (
               <span className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
@@ -458,8 +495,8 @@ export function RaceEffectGraph({
                   <text x="6" y="14" fontSize="9" fill="rgb(15,118,110)" fontWeight="600">
                     +{gainPaths.maxGain.toFixed(1)} {unit === "bashin" ? "bashin" : "m"}
                   </text>
-                  <text x="6" y={gainPaths.yZero - 3} fontSize="8" fill="rgba(148,163,184,0.8)">
-                    0m
+              <text x="6" y={gainPaths.yZero - 3} fontSize="8" fill="rgba(148,163,184,0.8)">
+                    0 {unit === "bashin" ? "バ" : "m"}
                   </text>
                 </>
               )}
@@ -477,6 +514,12 @@ export function RaceEffectGraph({
               {gainPaths && gainPaths.optX != null && gainPaths.optY != null && (
                 <circle cx={gainPaths.optX} cy={gainPaths.optY} r="3" fill="#059669" stroke="#ffffff" strokeWidth="1.5" />
               )}
+
+              {[0, 0.25, 0.5, 0.75, 1].map((fraction) => {
+                const x = fraction * W;
+                return <g key={fraction}><line x1={x} y1={gainPaths?.yZero ?? H2 - 20} x2={x} y2={H2 - 13} stroke="rgba(148,163,184,0.5)" /><text x={x} y={H2 - 2} textAnchor={fraction === 0 ? "start" : fraction === 1 ? "end" : "middle"} fontSize="8" fill="rgba(148,163,184,0.8)">{Math.round(courseLength * fraction)}m</text></g>;
+              })}
+              <line x1={meterToX(spurt)} y1="0" x2={meterToX(spurt)} y2={H2 - 13} stroke="#d946ef" strokeWidth="1" strokeDasharray="4 3" />
 
               {/* Meter Crosshair Line */}
               {hoverX_meter != null && (

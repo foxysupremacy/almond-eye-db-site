@@ -260,28 +260,34 @@ pipeline có thể đo các state frame xác nhận được (blocked/nearby/sur
 overtake); state không decode được đáng tin cậy sẽ fallback manual thay vì
 tuyên bố đó là xác suất thật.
 
-## 7. Baseline-vs-skill physics
+## 7. Baseline-vs-skill estimate
 
-Physics v1 chỉ mô hình effect trực tiếp:
+Race Impact chạy baseline và skill-on theo bước thời gian 1/15 giây. Reference
+target speed lấy BaseSpeed theo cự ly và hệ số phase/style trong tài liệu
+mechanics; target late race có Speed stat, target spurt có thêm Speed/Guts.
+Distance aptitude mặc định A (1.0). Mô hình vẫn giản lược: chưa xét HP để quyết
+định last spurt, stamina drain, địa hình dốc hay đối thủ.
 
-| Effect | Conditional distance gain |
-|---|---|
-| Current Speed | `Δv × duration` |
-| Target Speed | `Δv × duration × 0.55` trong accel window, ngược lại `× 0.85` |
-| Acceleration | `0.5 × a × min(duration, 5)² × timingQuality` |
-
-Mỗi random region lấy start/mid/end làm representative samples. Với mỗi sample:
+Current Speed tạo bước đổi vận tốc tại activation; Target Speed nâng target
+trong thời lượng skill; Acceleration cộng vào gia tốc trong thời lượng đó.
+Skill được mô phỏng lại tại các mẫu vị trí hợp lệ. Sweet spot là mẫu có Δx ước
+tính lớn nhất trong activation zones; speed-vs-time và speed-vs-distance cùng
+dùng trace tại điểm đó. SVG track dưới ruler hiển thị speed theo cự ly và các
+zone; chart Δx riêng của Race Impact vẫn cho thấy toàn bộ phân phối theo vị trí.
 
 ```text
-timeGain = distanceGain / phaseVelocity
-bashin   = distanceGain / 2.5m
+Δt = finishTime(baseline) − finishTime(skill-on)
+Δx = max(0, Δt × BaseSpeed(course))
+bashin = Δx / 2.5m
 expected = conditional mean × P(activation)
 ```
 
-UI có thể hiển thị min/mean/median/max sample, expected time/distance/bashin và
-`usefulRate`. Heal, passive, debuff và Zenkai vẫn có tactical impact nhưng
-không có direct physical estimate hoàn chỉnh; UI nói rõ `partial` hoặc
-`provisional`.
+Đây là mô hình so sánh giản lược, không phải port đầy đủ game simulator.
+Distance aptitude A và cách biểu diễn current speed là giả định; HP/stamina,
+địa hình dốc, hành vi đối thủ và các tương tác phức tạp chưa được mô phỏng.
+Heal/passive/debuff không có direct physical estimate (`partial`); Zenkai
+type 48 vẫn `provisional` vì cơ chế Power-scaled chưa được mô phỏng. UI gọi kết
+quả là estimate và không diễn giải thành xác suất thắng.
 
 ## 8. Thứ tự ưu tiên khi đọc UI
 

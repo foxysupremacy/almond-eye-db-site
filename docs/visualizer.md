@@ -989,7 +989,7 @@ These are simulation internals — interesting but not relevant to a skill activ
 | Topic | Why excluded |
 |-------|-------------|
 | Full stat calculation pipeline (raw→base→adjusted) | Stats are inputs, not outputs of our tool |
-| Target speed / acceleration formulas | We show WHERE skills fire, not how fast horses run |
+| Full target speed / acceleration simulation | Race Impact shows a simplified estimated speed trace and cruising target; stamina/HP, slopes and opponents remain out of scope |
 | HP consumption / stamina formulas | Only relevant as trigger conditions (already handled) |
 | Position keeping AI modes | AI behavior, not skill conditions |
 | Spot struggle / dueling / compete mechanics | AI mechanics, not skill conditions |
@@ -998,7 +998,7 @@ These are simulation internals — interesting but not relevant to a skill activ
 | Start delay mechanics | Only affects first 0.1s |
 | Overtake / lane change logic | AI pathfinding |
 
-**Boundary:** The mechanics doc tells us how the simulation works. We only need the parts that affect (a) when/where skills activate, (b) how skill values are scaled for display, and (c) track geometry verification.
+**Boundary:** The activation-zone renderer shows where skills can fire. The separate Race Impact estimate uses documented phase/style target-speed formulas to compare a baseline with one modeled skill; it is not the full game simulation. Distance aptitude defaults to A, and stamina/HP, slopes, opponents and complex interactions remain outside that estimate.
 
 #### 5th Anniversary Changes (from 5th Anniversary Reference)
 

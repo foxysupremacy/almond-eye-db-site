@@ -77,15 +77,27 @@ export interface RaceTracePoint {
   timeSeconds: number;
   baselineMeter: number;
   baselineSpeed: number;
+  baselineTargetSpeed: number;
   skillMeter: number;
   skillSpeed: number;
+  skillTargetSpeed: number;
   phase: number;
+}
+
+export interface RaceTraceSpatialPoint {
+  meter: number;
+  baselineSpeed: number;
+  baselineTargetSpeed: number;
+  skillSpeed: number;
+  skillTargetSpeed: number;
 }
 
 export interface RaceEffectTrace {
   version: 1;
   points: RaceTracePoint[];
-  activationMeter: number;
+  spatialPoints: RaceTraceSpatialPoint[];
+  activationMeter: number | null;
+  effectEndMeter: number | null;
   activationTimeSeconds: number;
   effectEndTimeSeconds: number;
   totalTimeSeconds: number;

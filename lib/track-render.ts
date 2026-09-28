@@ -8,7 +8,7 @@
 
 import type { Course } from "./skill-engine/types";
 import type { SkillZoneResult } from "./skill-engine/zones";
-import type { RaceEffectDistribution } from "./race-impact";
+import type { RaceEffectTrace } from "./race-impact";
 
 // ---------- constants ----------
 const SURF: Record<number, string> = { 1: "Turf", 2: "Dirt" };
@@ -435,144 +435,95 @@ export function renderSkillOverlay(
   inner.appendChild(overlay);
 }
 
-// ---------- benefit lane (Gain Δx curve) ----------
-function buildPathString(points: { x: number; y: number }[], yZero: number): string {
-  if (!points.length) return "";
-  let d = `M ${points[0].x.toFixed(1)} ${yZero} L ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  for (let i = 1; i < points.length; i++) {
-    d += ` L ${points[i].x.toFixed(1)} ${points[i].y.toFixed(1)}`;
-  }
-  return d;
-}
-
-function buildBenefitLane(
+// ---------- speed by course position lane ----------
+function buildSpeedLane(
   course: Course,
-  distribution: RaceEffectDistribution | null | undefined,
+  trace: RaceEffectTrace | null | undefined,
   zones: SkillZoneResult[] | null | undefined,
   W: number = 960,
-  H: number = 46,
+  H: number = 82,
 ): { element: SVGElement; updateHoverDot: (meter: number | null) => void } {
-  const g = el("g", { class: "benefitLaneGroup" });
-  const yZero = 34;
+  const g = el("g", { class: "speedLaneGroup" });
+  const yTop = 19;
+  const yBottom = 59;
+  const ySpeed = (speed: number) => yBottom - (Math.max(0, Math.min(30, speed)) / 30) * (yBottom - yTop);
+  const xMeter = (meter: number) => (meter / Math.max(1, course.length)) * W;
 
-  // Background surface
-  g.appendChild(el("rect", { x: "0", y: "0", width: "100%", height: String(H), fill: "rgba(241, 245, 249, 0.45)", class: "benefitLaneBg" }));
-  // Top border separator line
-  g.appendChild(el("line", { x1: "0", y1: "0", x2: "100%", y2: "0", stroke: "rgba(148, 163, 184, 0.5)", "stroke-width": "1" }));
-  // Zero baseline
-  g.appendChild(el("line", { x1: "0", y1: String(yZero), x2: "100%", y2: String(yZero), stroke: "rgba(148, 163, 184, 0.4)", "stroke-width": "1", "stroke-dasharray": "3 3" }));
+  g.appendChild(el("rect", { x: "0", y: "0", width: "100%", height: String(H), fill: "#ffffff", class: "speedLaneBg" }));
+  g.appendChild(el("line", { x1: "0", y1: "0", x2: "100%", y2: "0", stroke: "rgba(100, 116, 139, 0.45)", "stroke-width": "1" }));
+  g.appendChild(svgText("Speed (m/s)", "6", "12", { anchor: "start", size: "9px", fill: "#334155", className: "speedAxisLabel" }));
+  g.appendChild(svgText("30", "6", String(yTop + 8), { anchor: "start", size: "8px", fill: "#64748b" }));
+  g.appendChild(el("line", { x1: "0", y1: String(ySpeed(20)), x2: "100%", y2: String(ySpeed(20)), stroke: "rgba(100, 116, 139, 0.18)", "stroke-width": "1", "stroke-dasharray": "3 3" }));
+  g.appendChild(svgText("20", "6", String(ySpeed(20) - 2), { anchor: "start", size: "8px", fill: "#64748b" }));
+  g.appendChild(svgText("0", "6", String(yBottom + 2), { anchor: "start", size: "8px", fill: "#64748b" }));
+  g.appendChild(svgText("0m", "0%", "77", { anchor: "start", size: "8px", fill: "#64748b" }));
+  g.appendChild(svgText(`${course.length}m`, "100%", "77", { anchor: "end", size: "8px", fill: "#64748b" }));
 
-  // Axis labels
-  g.appendChild(svgText("Δx (m)", "6", "11", { anchor: "start", size: "9px", fill: "rgb(15, 118, 110)", className: "benefitAxisLabel" }));
-  g.appendChild(svgText("0m", "6", String(yZero + 3), { anchor: "start", size: "8px", fill: "rgba(100, 116, 139, 0.75)", className: "benefitZeroLabel" }));
-
-  // Tinted trigger regions
   if (zones && zones.length > 0) {
     zones.forEach((z, gi) => {
       const color = ZONE_COLORS[gi % ZONE_COLORS.length];
       z.regions.forEach((reg) => {
         const x = (reg.start / course.length) * 100;
         const w = ((reg.end - reg.start) / course.length) * 100;
-        g.appendChild(
-          el("rect", {
-            x: `${x}%`,
-            y: "0",
-            width: `${w}%`,
-            height: String(H),
-            fill: color,
-            "fill-opacity": "0.08",
-            stroke: color,
-            "stroke-width": "0.5",
-            "stroke-dasharray": z.isRandom ? "2 2" : "",
-          }),
-        );
+        g.appendChild(el("rect", {
+          x: `${x}%`, y: String(yTop), width: `${w}%`, height: String(yBottom - yTop),
+          fill: color, "fill-opacity": "0.09", stroke: color, "stroke-width": "0.5",
+          "stroke-dasharray": z.isRandom ? "2 2" : "",
+        }));
       });
     });
   }
 
-  const hoverDot = el("circle", { cx: "-20", cy: "-20", r: "3.5", fill: "#059669", stroke: "#ffffff", "stroke-width": "1.5", class: "benefitHoverDot" });
-  const maxGain = distribution?.maxGainMeters && distribution.maxGainMeters > 0 ? distribution.maxGainMeters : 0;
-  const samples = distribution?.samples ?? [];
-
-  if (maxGain > 0 && samples.length > 0) {
-    g.appendChild(svgText(`+${maxGain.toFixed(1)}m`, "99%", "11", { anchor: "end", size: "9px", fill: "rgb(15, 118, 110)" }));
-
-    const yTop = 10;
-    const gainToY = (gain: number) => yZero - (Math.max(0, gain) / Math.max(0.1, maxGain)) * (yZero - yTop);
-
-    // Group samples into continuous segments
-    const segments: { x: number; y: number }[][] = [];
-    let curSeg: { x: number; y: number }[] = [];
-
-    for (const s of samples) {
-      if (s.eligible && s.gainMeters > 0) {
-        const x = (s.meter / course.length) * W;
-        const y = gainToY(s.gainMeters);
-        curSeg.push({ x, y });
-      } else {
-        if (curSeg.length > 0) {
-          segments.push(curSeg);
-          curSeg = [];
-        }
+  const hoverDot = el("circle", { cx: "-20", cy: "-20", r: "3.5", fill: "#059669", stroke: "#ffffff", "stroke-width": "1.5", class: "speedHoverDot" });
+  const spatial = trace?.spatialPoints ?? [];
+  if (spatial.length > 1) {
+    const pathFor = (field: "baselineSpeed" | "baselineTargetSpeed" | "skillSpeed" | "skillTargetSpeed") => spatial
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${xMeter(point.meter).toFixed(1)} ${ySpeed(point[field]).toFixed(1)}`)
+      .join(" ");
+    g.appendChild(el("path", { d: pathFor("baselineTargetSpeed"), fill: "none", stroke: "#d97706", "stroke-width": "1.3", "stroke-dasharray": "4 3", class: "cruisingTargetPath" }));
+    g.appendChild(el("path", { d: pathFor("baselineSpeed"), fill: "none", stroke: "#64748b", "stroke-width": "1.4", "stroke-dasharray": "3 3", class: "baselineSpeedPath" }));
+    if (trace?.activationMeter != null) {
+      g.appendChild(el("path", { d: pathFor("skillTargetSpeed"), fill: "none", stroke: "#8b5cf6", "stroke-width": "1.2", "stroke-dasharray": "2 3", class: "skillTargetSpeedPath" }));
+      g.appendChild(el("path", { d: pathFor("skillSpeed"), fill: "none", stroke: "#059669", "stroke-width": "2", "stroke-linecap": "round", class: "skillSpeedPath" }));
+      const activationX = xMeter(trace.activationMeter);
+      g.appendChild(el("line", { x1: String(activationX), y1: String(yTop), x2: String(activationX), y2: String(yBottom), stroke: "#d97706", "stroke-width": "1", "stroke-dasharray": "2 2", class: "skillActivationMarker" }));
+      g.appendChild(svgText(`Sweet spot · ${trace.activationMeter}m`, String(activationX), String(yTop - 3), { anchor: activationX > W * 0.78 ? "end" : "start", size: "8px", fill: "#047857" }));
+      if (trace.effectEndMeter != null && trace.effectEndMeter < course.length) {
+        const endX = xMeter(trace.effectEndMeter);
+        g.appendChild(el("line", { x1: String(endX), y1: String(yTop), x2: String(endX), y2: String(yBottom), stroke: "#059669", "stroke-width": "1", "stroke-dasharray": "3 3", class: "skillEffectEndMarker" }));
       }
+    } else {
+      g.appendChild(svgText("No positive modeled gain in activation zone", "50%", "43", { size: "10px", fill: "#64748b" }));
     }
-    if (curSeg.length > 0) {
-      segments.push(curSeg);
-    }
-
-    for (const seg of segments) {
-      const strokeD = buildPathString(seg, yZero);
-      const fillD = `${strokeD} L ${seg[seg.length - 1].x.toFixed(1)} ${yZero} Z`;
-      g.appendChild(el("path", { d: fillD, fill: "rgba(16, 185, 129, 0.14)", class: "benefitArea" }));
-      g.appendChild(el("path", { d: strokeD, fill: "none", stroke: "#059669", "stroke-width": "1.8", "stroke-linecap": "round", class: "benefitStroke" }));
-    }
-
-    // Optimal peak marker
-    if (distribution?.optimalMeter != null && distribution.optimalGainMeters != null) {
-      const optX = (distribution.optimalMeter / course.length) * W;
-      const optY = gainToY(distribution.optimalGainMeters);
-      g.appendChild(el("circle", { cx: String(optX), cy: String(optY), r: "2.5", fill: "#059669", stroke: "#ffffff", "stroke-width": "1" }));
-    }
+    g.appendChild(svgText("Cruising target · A aptitude", "99%", "12", { anchor: "end", size: "8px", fill: "#b45309" }));
   } else {
-    g.appendChild(svgText("Select a modeled skill to view activation gain curve", "50%", "24", {
-      anchor: "middle",
-      size: "10px",
-      fill: "rgba(100, 116, 139, 0.75)",
-      className: "benefitPlaceholder",
+    g.appendChild(svgText("Select a modeled skill to view the speed estimate", "50%", "43", {
+      anchor: "middle", size: "10px", fill: "rgba(100, 116, 139, 0.75)", className: "speedPlaceholder",
     }));
   }
 
   g.appendChild(hoverDot);
-
   function updateHoverDot(m: number | null) {
-    if (m == null || maxGain <= 0 || !samples.length) {
+    if (m == null || !spatial.length || trace?.activationMeter == null) {
       hoverDot.setAttribute("cx", "-20");
       hoverDot.setAttribute("cy", "-20");
       return;
     }
-    const sample = samples.find((s) => Math.abs(s.meter - m) <= 15 && s.eligible);
-    if (sample && sample.gainMeters > 0) {
-      const x = (m / course.length) * W;
-      const y = yZero - (sample.gainMeters / maxGain) * (yZero - 10);
-      hoverDot.setAttribute("cx", String(x));
-      hoverDot.setAttribute("cy", String(y));
-    } else {
-      hoverDot.setAttribute("cx", "-20");
-      hoverDot.setAttribute("cy", "-20");
-    }
+    const sample = spatial.reduce((nearest, point) => Math.abs(point.meter - m) < Math.abs(nearest.meter - m) ? point : nearest, spatial[0]);
+    hoverDot.setAttribute("cx", String(xMeter(m)));
+    hoverDot.setAttribute("cy", String(ySpeed(sample.skillSpeed)));
   }
-
   return { element: g, updateHoverDot };
 }
 
 export interface RenderCourseOptions {
   zones?: SkillZoneResult[];
-  distribution?: RaceEffectDistribution | null;
+  trace?: RaceEffectTrace | null;
   onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void;
 }
 
 // ---------- top-level render ----------
-// Builds the full SVG (bands + ruler + benefit lane + hover + optional zone overlay) and appends
+// Builds the full SVG (bands + ruler + speed lane + hover + optional zone overlay) and appends
 // it to `host`, replacing any prior render.
 export function renderCourse(
   host: HTMLElement,
@@ -582,8 +533,8 @@ export function renderCourse(
   host.innerHTML = "";
   const W = 960;
   const H_track = 240;
-  const H_benefit = 46;
-  const H_total = H_track + H_benefit + 6;
+  const H_speed = 82;
+  const H_total = H_track + H_speed + 6;
   const xOff = 12;
   const yOff = 6;
   const yExtra = 10;
@@ -670,10 +621,10 @@ export function renderCourse(
 
   innerWrap.appendChild(innerTrack);
 
-  // band 6: benefit lane (Gain Δx curve)
-  const { element: benefitEl, updateHoverDot } = buildBenefitLane(course, opts.distribution, opts.zones, W, H_benefit);
-  const benefitSvg = el("svg", { x: "0", y: String(H_track + 4), width: String(W), height: String(H_benefit), class: "benefitLane" }, [benefitEl]);
-  innerWrap.appendChild(benefitSvg);
+  // band 6: estimated speed by course position
+  const { element: speedEl, updateHoverDot } = buildSpeedLane(course, opts.trace, opts.zones, W, H_speed);
+  const speedSvg = el("svg", { x: "0", y: String(H_track + 4), width: String(W), height: String(H_speed), class: "speedLane" }, [speedEl]);
+  innerWrap.appendChild(speedSvg);
 
   // mouseover line across all bands
   innerWrap.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "var(--track-hover-line, #0284c7)", "stroke-width": "2" }));

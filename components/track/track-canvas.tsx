@@ -110,17 +110,17 @@ export function TrackCanvas({
     setIsPinned(false);
   }, [selectedSkillId]);
 
-  // 1. Render the 1D flat SVG track with benefit lane and hook up synchronized hover
+  // 1. Render the 1D flat SVG track with its speed lane and synchronized hover
   useEffect(() => {
     if (!hostRef.current || !course) return;
 
     const svg = renderCourse(hostRef.current, course, {
       zones: zones ?? [],
-      distribution: impact?.distribution ?? null,
+      trace: impact?.trace ?? null,
       onHover: handleHover,
     });
     svgRef.current = svg;
-  }, [course, zones, impact?.distribution, handleHover]);
+  }, [course, zones, impact?.trace, handleHover]);
 
   // 2. Update 1D SVG hover line when hoverMeter changes from Course Map or Effect Graphs
   useEffect(() => {
@@ -143,7 +143,7 @@ export function TrackCanvas({
             </span>
           </div>
           <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            Course Map 2.5D · 1D Linear Timeline with Benefit Lane · Race / Skill Effect Graph
+            Course Map 2.5D · 1D Linear Timeline with Speed Estimate · Race / Skill Effect Graph
           </span>
         </div>
 
@@ -247,7 +247,7 @@ export function TrackCanvas({
             </div>
           )}
 
-          {/* Board 2: 1D Linear Timeline with Benefit Lane */}
+          {/* Board 2: 1D Linear Timeline with Speed Estimate */}
           {(viewMode === "all" || viewMode === "timeline-graph" || viewMode === "1d") && (
             <div className="overflow-hidden rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 sm:p-3 transition-all">
               <div className="flex items-center justify-between mb-2 text-[11px]">
@@ -256,11 +256,11 @@ export function TrackCanvas({
                     Board 2 · 1D Linear Timeline
                   </span>
                   <span className="rounded bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.2 text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-                    Benefit Lane Active
+                    Speed Estimate
                   </span>
                 </div>
                 <span className="text-zinc-400 dark:text-zinc-500 hidden sm:inline">
-                  Elevation · Slopes · Straights/Corners · Phase Bands · 24 Sections · Benefit Curve
+                  Elevation · Slopes · Straights/Corners · Phase Bands · 24 Sections · Speed by Distance
                 </span>
               </div>
               <div ref={hostRef} className="w-full overflow-x-auto" />

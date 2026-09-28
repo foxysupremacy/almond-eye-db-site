@@ -14,8 +14,6 @@ import type {
 import { dynamicConditionKeys, lookupDynamicPrior } from "./prior";
 import { generateRaceTrace, computeGainDistribution } from "./trace";
 
-const BASHIN_METERS = 2.5;
-
 function clamp(value: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, value));
 }
@@ -135,50 +133,43 @@ export function evaluateTriggerRaceImpact(
   tactical.total = tactical.activation + tactical.effect + tactical.timing + tactical.duration + tactical.coverage;
 
   const hasZenkai = effects.some((effect) => classifyEffect(effect) === "zenkai_acceleration");
-  const modelable = effects.filter((effect) => {
-    const category = classifyEffect(effect);
-    return category === "current_speed" || category === "target_speed" || category === "acceleration";
-  });
-  const samples: RaceImpactSample[] = [];
-  if (start !== null && modelable.length) {
-    const representativeMeters = regions.flatMap((region) => region.start === region.end ? [region.start] : [region.start, (region.start + region.end) / 2, region.end]);
-    for (const meter of representativeMeters) {
-      const velocity = phaseVelocity(meter, spurt);
-      let distanceGain = 0;
-      for (const effect of modelable) {
-        const value = (effect.value ?? 0) / 10_000;
-        const category = classifyEffect(effect);
-        if (category === "current_speed") distanceGain += value * durationSeconds;
-        else if (category === "target_speed") distanceGain += value * durationSeconds * (meter < spurt + 130 ? 0.55 : 0.85);
-        else if (category === "acceleration") distanceGain += 0.5 * value * Math.min(durationSeconds, 5) ** 2 * timingQuality;
-      }
-      const timeGain = distanceGain / Math.max(1, velocity);
-      samples.push({ activationMeter: Math.round(meter), timeGainSeconds: timeGain, distanceGainMeters: distanceGain, bashin: distanceGain / BASHIN_METERS });
-    }
-  }
-  const bashin = samples.map((sample) => sample.bashin);
-  const meanBashin = bashin.length ? bashin.reduce((total, value) => total + value, 0) / bashin.length : null;
-  const meanDistance = samples.length ? samples.reduce((total, sample) => total + sample.distanceGainMeters, 0) / samples.length : null;
-  const meanTime = samples.length ? samples.reduce((total, sample) => total + sample.timeGainSeconds, 0) / samples.length : null;
-  const physicsStatus = hasZenkai ? "provisional" : samples.length ? "modeled" : effects.length ? "partial" : "not-modeled";
-  const trace = generateRaceTrace(skill, {
-    course: context.course,
-    profile: context.profile,
-    runningStyle: context.runningStyle,
-    racerCount: context.racerCount,
-  }, null, zones);
-
   const distribution = computeGainDistribution(skill, zones, {
     course: context.course,
     profile: context.profile,
     runningStyle: context.runningStyle,
     racerCount: context.racerCount,
   }, activation);
+  const modelable = effects.some((effect) => {
+    const category = classifyEffect(effect);
+    return category === "current_speed" || category === "target_speed" || category === "acceleration";
+  });
+  const baseSpeed = Math.max(1, 20 - ((course?.length ?? 2_000) - 2_000) / 1_000);
+  const samples: RaceImpactSample[] = distribution.samples.filter((sample) => sample.eligible && modelable).map((sample) => ({
+    activationMeter: sample.meter,
+    distanceGainMeters: sample.gainMeters,
+    timeGainSeconds: sample.gainMeters / baseSpeed,
+    bashin: sample.bashin,
+  }));
+  const bashin = samples.map((sample) => sample.bashin);
+  const meanBashin = bashin.length ? bashin.reduce((total, value) => total + value, 0) / bashin.length : null;
+  const meanDistance = samples.length ? samples.reduce((total, sample) => total + sample.distanceGainMeters, 0) / samples.length : null;
+  const meanTime = samples.length ? samples.reduce((total, sample) => total + sample.timeGainSeconds, 0) / samples.length : null;
+  const eligibleSamples = distribution.samples.filter((sample) => sample.eligible);
+  const usefulSampleRate = eligibleSamples.length
+    ? eligibleSamples.filter((sample) => sample.gainMeters > 0.05).length / eligibleSamples.length
+    : 0;
+  const physicsStatus = hasZenkai ? "provisional" : modelable && samples.length ? "modeled" : effects.length ? "partial" : "not-modeled";
+  const trace = generateRaceTrace(skill, {
+    course: context.course,
+    profile: context.profile,
+    runningStyle: context.runningStyle,
+    racerCount: context.racerCount,
+  }, distribution.optimalGainMeters != null && distribution.optimalGainMeters > 0 ? distribution.optimalMeter : null, zones);
 
   return {
     activation,
     tactical,
-    usefulRate: samples.length ? activation.activationRate : 0,
+    usefulRate: usefulSampleRate * activation.activationRate,
     expectedTimeGainSeconds: meanTime === null ? null : meanTime * activation.activationRate,
     expectedDistanceGainMeters: meanDistance === null ? null : meanDistance * activation.activationRate,
     expectedBashin: meanBashin === null ? null : meanBashin * activation.activationRate,

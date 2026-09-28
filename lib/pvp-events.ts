@@ -137,7 +137,7 @@ export const PVP_EVENTS: PvpEvent[] = [
     gradeNum: 100, // 100: G1
     specialRules: ["No Debuffs"],
     noDebuffs: true,
-    startDate: "2026-09-21T12:00:00+09:00",
+    startDate: "2026-09-29T12:00:00+09:00",
     durationDays: 6,
   },
   {

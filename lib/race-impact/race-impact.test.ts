@@ -40,8 +40,14 @@ describe("race-impact evaluation", () => {
     });
     expect(result.activation.wisdomRate).toBeCloseTo(0.95);
     expect(result.expectedDistanceGainMeters).not.toBeNull();
+    const eligibleGains = result.distribution!.samples.filter((sample) => sample.eligible).map((sample) => sample.gainMeters);
+    const conditionalMean = eligibleGains.reduce((sum, gain) => sum + gain, 0) / eligibleGains.length;
+    expect(result.expectedDistanceGainMeters).toBeCloseTo(conditionalMean * result.activation.activationRate, 2);
+    expect(result.usefulRate).toBeGreaterThan(0);
     expect(result.tactical.total).toBeGreaterThan(100);
     expect(result.physicsStatus).toBe("modeled");
+    expect(result.distribution!.optimalGainMeters).toBeGreaterThan(0);
+    expect(result.trace!.activationMeter).toBe(result.distribution!.optimalMeter);
   });
 
   test("keeps Zenkai separate from conventional acceleration physics", () => {

@@ -3,6 +3,7 @@ import { defaultRaceImpactProfile } from "./profile";
 import {
   computeGainDistribution,
   generateRaceTrace,
+  getCruisingTargetSpeed,
   getPhaseAtMeter,
   meterToBaselineTime,
   timeToBaselineMeter,
@@ -23,6 +24,16 @@ const course = {
 };
 
 describe("race trace physics simulation", () => {
+  test("uses mechanics target-speed equations for cruise and spurt references", () => {
+    const stats = defaultRaceImpactProfile().stats;
+    const base = 20 - (2400 - 2000) / 1000;
+    expect(getCruisingTargetSpeed(1, 2400, stats, 2)).toBeCloseTo(base * 0.991);
+    expect(getCruisingTargetSpeed(2, 2400, stats, 2)).toBeCloseTo(base * 0.975 + Math.sqrt(500 * stats.speed) * 0.002);
+    expect(getCruisingTargetSpeed(3, 2400, stats, 2)).toBeCloseTo(
+      (base * 0.991 + 0.01 * base) * 1.05 + Math.sqrt(500 * stats.speed) * 0.002 + Math.pow(450 * stats.guts, 0.597) * 0.0001,
+    );
+  });
+
   test("generates monotonic baseline trajectory from start to finish", () => {
     const trace = generateRaceTrace(null, {
       course,
@@ -110,6 +121,71 @@ describe("race trace physics simulation", () => {
     const earlySample = dist.samples.find((s) => s.meter === 1000);
     const spurtSample = dist.samples.find((s) => s.meter === 1600);
     expect(earlySample?.gainMeters ?? 0).toBeLessThan(spurtSample?.gainMeters ?? 1);
+  });
+
+  test("scales skill duration by course distance and carries a pre-spurt speed effect into the spurt", () => {
+    const skill = { id: 109, conditionGroups: [{ condition: "phase==2", base_time: 10_000, effects: [{ type: 27, value: 3_500 }] }] };
+    const trace = generateRaceTrace(skill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1550);
+    expect(trace.activationTimeSeconds).toBeGreaterThan(50);
+    expect(trace.effectEndTimeSeconds - trace.activationTimeSeconds).toBeCloseTo(2.4, 1);
+    const crossing = trace.points.find((point) => point.baselineMeter >= 1600);
+    expect(crossing).toBeDefined();
+    expect(crossing!.skillSpeed).toBeGreaterThanOrEqual(crossing!.baselineSpeed);
+  });
+
+  test("exposes spatial baseline and skill curves and models current-speed as an activation jump", () => {
+    const skill = { id: 112, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 21, value: 4_500 }] }] };
+    const trace = generateRaceTrace(skill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1000);
+    expect(trace.spatialPoints.length).toBeGreaterThan(100);
+    const before = trace.spatialPoints.find((point) => point.meter === 960)!;
+    const after = trace.spatialPoints.find((point) => point.meter === 1008)!;
+    expect(before.skillSpeed).toBeCloseTo(before.baselineSpeed, 1);
+    expect(after.skillSpeed - after.baselineSpeed).toBeGreaterThan(0.3);
+  });
+
+  test("raises target speed during the skill window and applies acceleration without a target jump", () => {
+    const targetSkill = { id: 113, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 27, value: 3_500 }] }] };
+    const targetTrace = generateRaceTrace(targetSkill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1000);
+    const targetPoint = targetTrace.spatialPoints.find((point) => point.meter >= 1024)!;
+    expect(targetPoint.skillTargetSpeed - targetPoint.baselineTargetSpeed).toBeCloseTo(0.35, 1);
+
+    const accelSkill = { id: 114, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 31, value: 4_000 }] }] };
+    const accelTrace = generateRaceTrace(accelSkill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1000);
+    const accelPoint = accelTrace.spatialPoints.find((point) => point.meter >= 1024)!;
+    expect(accelPoint.skillTargetSpeed).toBeCloseTo(accelPoint.baselineTargetSpeed, 1);
+    expect(accelPoint.skillSpeed).toBeGreaterThan(accelPoint.baselineSpeed);
+  });
+
+  test("null activation leaves an unmodified trace and no sweet-spot marker", () => {
+    const skill = { id: 115, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 21, value: 4_500 }] }] };
+    const trace = generateRaceTrace(skill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, null);
+    expect(trace.activationMeter).toBeNull();
+    expect(trace.spatialPoints[50].skillSpeed).toBeCloseTo(trace.spatialPoints[50].baselineSpeed, 1);
+  });
+
+  test("distribution includes the full course, zero baseline and separates multiple eligible regions", () => {
+    const skill = { id: 110, conditionGroups: [{ condition: "random", base_time: 10_000, effects: [{ type: 21, value: 4_500 }] }] };
+    const activation = { activationRate: 0.5 } as never;
+    const distribution = computeGainDistribution(skill, [
+      { regions: [{ start: 400, end: 460 }, { start: 1500, end: 1540 }], isRandom: true },
+    ], { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, activation);
+    expect(distribution.samples[0].meter).toBe(0);
+    expect(distribution.samples[0].eligible).toBe(false);
+    expect(distribution.samples[0].gainMeters).toBe(0);
+    expect(distribution.samples.some((sample) => sample.eligible && sample.meter >= 400 && sample.meter <= 460)).toBe(true);
+    expect(distribution.samples.some((sample) => sample.eligible && sample.meter >= 1500 && sample.meter <= 1540)).toBe(true);
+    expect(distribution.samples.find((sample) => sample.meter === 1000)?.eligible).toBe(false);
+  });
+
+  test("activation near the finish clips distance benefit instead of extending past the course", () => {
+    const skill = { id: 111, conditionGroups: [{ condition: "phase==3", base_time: 50_000, effects: [{ type: 21, value: 4_500 }] }] };
+    const distribution = computeGainDistribution(skill, [{ regions: [{ start: 2370, end: 2400 }], isRandom: false }],
+      { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, { activationRate: 1 } as never);
+    const nearFinish = distribution.samples.find((sample) => sample.meter === 2380)!;
+    expect(nearFinish.eligible).toBe(true);
+    expect(nearFinish.gainMeters).toBeGreaterThanOrEqual(0);
+    expect(nearFinish.gainMeters).toBeLessThan(distribution.maxGainMeters);
+    expect(distribution.samples.find((sample) => sample.meter === 2400)?.gainMeters).toBe(0);
   });
 
   test("coordinates conversion between baseline time and meter works seamlessly", () => {
