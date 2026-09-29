@@ -45,9 +45,10 @@ export default function TrackView() {
     mainSkills,
     parentSkills,
     activePvpEvent,
+    activeRaceParameters,
   } = useDeck();
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   const [visualizerDeck, setVisualizerDeck] = useState<"main" | "parent">("main");
   const [rarityFilter, setRarityFilter] = useState<RarityFilterKey>("all");

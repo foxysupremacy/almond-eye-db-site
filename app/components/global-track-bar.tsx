@@ -29,6 +29,13 @@ export default function GlobalTrackBar() {
     setRacerCount,
     activePvpEventId,
     activePvpEvent,
+    activePreset,
+    masterChallengeEvents,
+    activeMasterChallengeEvent,
+    activeMasterChallengeRace,
+    selectMasterChallengeRace,
+    clearMasterChallenge,
+    racetrackDetails,
     applyPvpPreset,
     clearPvpPreset,
   } = useDeck();
@@ -38,6 +45,29 @@ export default function GlobalTrackBar() {
   const raceTitle = activeCourseRow && trackDetail
     ? `${trackDetail.nameEn} · ${distanceLabel(activeCourseRow.distance, activeCourseRow.length)} · ${terrainLabel(activeCourseRow.terrain)}`
     : "Select Target Race";
+
+  const masterChallengeSelection = activePreset.trackInfo.masterChallengeSelection ?? null;
+  const selectedMasterChallengeEvent = masterChallengeEvents.find((event) => event.eventId === masterChallengeSelection?.eventId) ?? null;
+  const selectedMasterChallengeRace = selectedMasterChallengeEvent?.races.find((race) => race.eventSubId === masterChallengeSelection?.eventSubId) ?? null;
+
+  function courseLabel(courseId: number): string {
+    const track = racetrackDetails.find((entry) => entry.courses.some((course) => course.id === courseId));
+    const course = track?.courses.find((entry) => entry.id === courseId);
+    if (!track || !course) return `Course ${courseId}`;
+    return `${track.nameEn} · ${distanceLabel(course.distance, course.length)} · ${terrainLabel(course.terrain)}${turnLabel(course.turn) ? ` · ${turnLabel(course.turn)}` : ""}`;
+  }
+
+  function handleMasterChallengeEventChange(value: string) {
+    const eventId = Number(value);
+    const event = masterChallengeEvents.find((entry) => entry.eventId === eventId);
+    if (!event) {
+      clearMasterChallenge();
+      return;
+    }
+    const preferredRace = event.races.find((race) => race.raceCourseSetId === courseId)
+      ?? [...event.races].sort((a, b) => a.eventSubId - b.eventSubId || a.raceCourseSetId - b.raceCourseSetId)[0];
+    if (preferredRace) selectMasterChallengeRace(event.eventId, preferredRace.eventSubId);
+  }
 
   const controls = (<div className="race-controls flex min-w-0 flex-col gap-3">
         {/* PvP Presets & Conditions Section */}
@@ -72,7 +102,57 @@ export default function GlobalTrackBar() {
                 </button>
               );
             })}
+            <label className="flex min-h-8 items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50/80 px-2 dark:border-violet-900/70 dark:bg-violet-950/40">
+              <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">Master Challenge</span>
+              <select
+                aria-label="Master Challenge event"
+                value={masterChallengeSelection?.eventId ?? ""}
+                onChange={(event) => handleMasterChallengeEventChange(event.target.value)}
+                className="max-w-[220px] bg-transparent text-xs font-semibold text-violet-950 outline-none dark:text-violet-100"
+              >
+                <option value="" className="dark:bg-zinc-900">Choose event</option>
+                {masterChallengeEvents.map((event) => (
+                  <option key={event.eventId} value={event.eventId} className="dark:bg-zinc-900">
+                    Master Challenge #{event.eventId} · {event.schedule}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex min-h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50/90 px-2 dark:border-zinc-700/80 dark:bg-zinc-800/80">
+              <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">Race</span>
+              <select
+                aria-label="Master Challenge race"
+                value={selectedMasterChallengeRace?.eventSubId ?? ""}
+                onChange={(event) => {
+                  const eventSubId = Number(event.target.value);
+                  if (selectedMasterChallengeEvent && Number.isInteger(eventSubId)) {
+                    selectMasterChallengeRace(selectedMasterChallengeEvent.eventId, eventSubId);
+                  }
+                }}
+                disabled={!selectedMasterChallengeEvent}
+                className="max-w-[300px] bg-transparent text-xs font-semibold text-zinc-800 outline-none disabled:text-zinc-400 dark:text-zinc-100"
+              >
+                <option value="" className="dark:bg-zinc-900">Choose race</option>
+                {(selectedMasterChallengeEvent?.races ?? []).map((race) => (
+                  <option key={race.eventSubId} value={race.eventSubId} className="dark:bg-zinc-900">
+                    {courseLabel(race.raceCourseSetId)} · Race {race.eventSubId}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
+
+          {activeMasterChallengeEvent && activeMasterChallengeRace && (
+            <div className="flex flex-wrap items-center gap-1.5 text-[11px]" aria-live="polite">
+              <Badge size="standard" tone="purple" className="font-semibold">
+                Master Challenge #{activeMasterChallengeEvent.eventId} · Race #{activeMasterChallengeRace.eventSubId}
+              </Badge>
+              <span className="text-zinc-500 dark:text-zinc-400">
+                Season {activeMasterChallengeRace.season} · Weather {activeMasterChallengeRace.weather} · Ground {activeMasterChallengeRace.ground} · Time {activeMasterChallengeRace.timezone} · {activeMasterChallengeRace.entryCount} racers
+              </span>
+            </div>
+          )}
 
           {/* Active Event Conditions Badges (Below PvP Selector) */}
           {activePvpEvent && (

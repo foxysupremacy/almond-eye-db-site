@@ -22,6 +22,7 @@ export function createDefaultPreset(id: string, name: string): DeckPreset {
       runningStyle: null,
       racerCount: 12,
       pvpEventId: null,
+      masterChallengeSelection: null,
     },
     parentingSetup: { ...DEFAULT_PARENTING_SETUP },
   };
@@ -62,6 +63,14 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
         runningStyle: [1, 2, 3, 4, 5].includes(p.trackInfo?.runningStyle) ? p.trackInfo.runningStyle : null,
         racerCount: typeof p.trackInfo?.racerCount === "number" ? p.trackInfo.racerCount : 12,
         pvpEventId: typeof p.trackInfo?.pvpEventId === "string" ? p.trackInfo.pvpEventId : null,
+        masterChallengeSelection:
+          Number.isInteger(p.trackInfo?.masterChallengeSelection?.eventId) && p.trackInfo.masterChallengeSelection.eventId > 0 &&
+          Number.isInteger(p.trackInfo?.masterChallengeSelection?.eventSubId) && p.trackInfo.masterChallengeSelection.eventSubId >= 0
+            ? {
+                eventId: p.trackInfo.masterChallengeSelection.eventId,
+                eventSubId: p.trackInfo.masterChallengeSelection.eventSubId,
+              }
+            : null,
       },
       mainChainChoices: cleanChoices(p.mainChainChoices),
       parentChainChoices: cleanChoices(p.parentChainChoices),

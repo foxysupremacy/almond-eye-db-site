@@ -96,10 +96,10 @@ export default function Home() {
           <div className="hidden flex-wrap items-center justify-between gap-3 lg:flex">
                 <div>
                   <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-                    AlmondEye DB
+                    Almond Eye Database
                   </p>
                   <p className="mt-0.5 text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-                    Deck Builder + Skill Zones
+                    Universal Game Helper
                   </p>
                 </div>
 

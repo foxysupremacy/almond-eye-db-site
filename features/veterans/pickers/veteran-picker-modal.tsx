@@ -60,6 +60,8 @@ interface VeteranPickerModalProps {
   onSelectCharacterTemplate?: (chara: CharacterIndexEntry) => void;
   onSelectCandidate?: (candidate: LegacyCandidate) => void;
   recommendations?: PickerRecommendations;
+  recommendationsLoading?: boolean;
+  recommendationsError?: string | null;
   targetCharaId: number | null;
   excludedCharId?: number | null;
   slotLabel: string;
@@ -413,12 +415,16 @@ function OwnedUmaRow({
 
 function OwnedTabContent({
   entries,
+  hasMore,
   hasTarget,
   onSelect,
+  onShowMore,
 }: {
   entries: OwnedUmaEntry[];
+  hasMore: boolean;
   hasTarget: boolean;
   onSelect: (entry: OwnedUmaEntry) => void;
+  onShowMore: () => void;
 }) {
   if (!hasTarget) {
     return (
@@ -445,7 +451,20 @@ function OwnedTabContent({
           <OwnedUmaRow key={entry.chara.id} entry={entry} onSelect={() => onSelect(entry)} />
         ))}
       </div>
+      {hasMore && <ShowMoreButton onClick={onShowMore} />}
     </div>
+  );
+}
+
+function ShowMoreButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
+    >
+      Show more
+    </button>
   );
 }
 
@@ -456,6 +475,8 @@ export default function VeteranPickerModal({
   onSelectCharacterTemplate,
   onSelectCandidate,
   recommendations,
+  recommendationsLoading = false,
+  recommendationsError = null,
   targetCharaId,
   excludedCharId,
   slotLabel,
@@ -467,12 +488,17 @@ export default function VeteranPickerModal({
   const [initialPickerPreferences] = useState(() => ({ initialTab: loadTab(), initialSort: loadSort() }));
   const pickerInput = {
     ...initialPickerPreferences,
-    recommendationsAvailable: Boolean(recommendations),
+    recommendationsAvailable: Boolean(recommendations || recommendationsLoading || recommendationsError),
   };
   const { state: pickerState, view: pickerView, dispatch } = usePickerController(veteranPickerAdapter, pickerInput);
   const { search, sortBy } = pickerState;
   const activeTab = pickerView.activeTab;
   const normalizedSearch = pickerView.normalizedSearch;
+  const [visibleLimit, setVisibleLimit] = useState(36);
+
+  useEffect(() => {
+    setVisibleLimit(36);
+  }, [activeTab, normalizedSearch]);
 
   // Remember the last-used tab across visits; fall back when the saved tab is
   // unavailable in this context (e.g. "recommended" with no recommendations).
@@ -483,9 +509,14 @@ export default function VeteranPickerModal({
         return;
       }
       const saved = loadTab();
-      dispatch({ type: "tabSelected", tab: saved === "recommended" && !recommendations ? "veterans" : saved });
+      dispatch({
+        type: "tabSelected",
+        tab: saved === "recommended" && !recommendations && !recommendationsLoading && !recommendationsError
+          ? "veterans"
+          : saved,
+      });
     }
-  }, [isOpen, initialTab, recommendations, dispatch]);
+  }, [isOpen, initialTab, dispatch]);
 
   useEffect(() => {
     try {
@@ -514,7 +545,7 @@ export default function VeteranPickerModal({
   // selected; deduped by white skill id since variants share the same unique.
   const uniqueEvalByCardId = useMemo(() => {
     const map = new Map<number, LegacyUniqueEval>();
-    if (!isOpen || !course) return map;
+    if (!isOpen || !course || !["veterans", "templates", "owned"].includes(activeTab)) return map;
     const styleNum = runningStyleToNum(runningStyle);
     const evalByWhiteId = new Map<number, LegacyUniqueEval>();
     const addCard = (cardId: number) => {
@@ -528,7 +559,9 @@ export default function VeteranPickerModal({
       }
       map.set(cardId, e);
     };
-    for (const vet of veterans) addCard(vet.card_id);
+    if (activeTab === "veterans") {
+      for (const vet of veterans) addCard(vet.card_id);
+    }
     if (activeTab === "templates") {
       for (const c of characters) addCard(c.id);
     } else if (activeTab === "owned") {
@@ -551,7 +584,7 @@ export default function VeteranPickerModal({
   };
 
   const ownedUmaEntries = useMemo(
-    () => projectOwnedUmaEntries({
+    () => !isOpen || activeTab !== "owned" ? [] : projectOwnedUmaEntries({
       ownedUmas,
       charactersByCardId: charaMap,
       veterans,
@@ -563,7 +596,7 @@ export default function VeteranPickerModal({
       uniqueEvalByCardId,
       dependencies: projectionDependencies,
     }),
-    [ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, uniqueEvalByCardId],
   );
 
   const handleSelectOwnedUma = (entry: OwnedUmaEntry) => {
@@ -593,7 +626,7 @@ export default function VeteranPickerModal({
   // Each tab has its own projection because the available metrics and fallback
   // sort rules differ by data source.
   const unifiedVeterans = useMemo(
-    () => projectVeteranGroups({
+    () => !isOpen || activeTab !== "veterans" ? [] : projectVeteranGroups({
       veterans,
       charactersByCardId: charaMap,
       targetCharaId,
@@ -603,11 +636,11 @@ export default function VeteranPickerModal({
       uniqueEvalByCardId,
       dependencies: projectionDependencies,
     }),
-    [veterans, charaMap, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, veterans, charaMap, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
   );
 
   const processedTemplates = useMemo(
-    () => projectCharacterTemplates({
+    () => !isOpen || activeTab !== "templates" ? [] : projectCharacterTemplates({
       characters,
       targetCharaId,
       excludedCharId,
@@ -616,7 +649,7 @@ export default function VeteranPickerModal({
       uniqueEvalByCardId,
       calculateAffinity: (cardId, targetId) => calculateAffinity({ card_id: cardId }, targetId).total,
     }),
-    [characters, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, characters, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
   );
 
   if (!isOpen) return null;
@@ -657,7 +690,7 @@ export default function VeteranPickerModal({
         {/* Source Tabs & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
           <div className="flex items-center gap-1.5 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1">
-            {recommendations && (
+            {(recommendations || recommendationsLoading || recommendationsError) && (
               <button
                 type="button"
                 onClick={() => dispatch({ type: "tabSelected", tab: "recommended" })}
@@ -749,11 +782,22 @@ export default function VeteranPickerModal({
                 }
               }}
             />
+          ) : activeTab === "recommended" && recommendationsLoading ? (
+            <div className="flex items-center justify-center gap-3 py-16 text-xs text-zinc-500" role="status">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+              Ranking candidates for this slot…
+            </div>
+          ) : activeTab === "recommended" && recommendationsError ? (
+            <div className="py-16 text-center text-xs text-rose-600 dark:text-rose-400" role="alert">
+              {recommendationsError}
+            </div>
           ) : activeTab === "owned" ? (
             <OwnedTabContent
-              entries={ownedUmaEntries}
+              entries={ownedUmaEntries.slice(0, visibleLimit)}
+              hasMore={ownedUmaEntries.length > visibleLimit}
               hasTarget={targetCharaId !== null}
               onSelect={handleSelectOwnedUma}
+              onShowMore={() => setVisibleLimit((count) => count + 36)}
             />
           ) : activeTab === "veterans" ? (
             unifiedVeterans.length === 0 ? (
@@ -762,7 +806,7 @@ export default function VeteranPickerModal({
               </div>
             ) : (
               <div className="flex flex-col gap-3">
-                {unifiedVeterans.map((group) => {
+                {unifiedVeterans.slice(0, visibleLimit).map((group) => {
                   const vet = group.bestVet;
                   const charId = group.charId;
                   const avatarUrl = group.avatarUrl;
@@ -997,6 +1041,9 @@ export default function VeteranPickerModal({
                     </div>
                   );
                 })}
+                {unifiedVeterans.length > visibleLimit && (
+                  <ShowMoreButton onClick={() => setVisibleLimit((count) => count + 36)} />
+                )}
               </div>
             )
           ) : (
@@ -1006,7 +1053,7 @@ export default function VeteranPickerModal({
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {processedTemplates.map((chara) => {
+                {processedTemplates.slice(0, visibleLimit).map((chara) => {
                   const avatarUrl = getCharacterImageUrl(chara.charId, chara.id);
                   const affResult = targetCharaId
                     ? calculateAffinity({ card_id: chara.id }, targetCharaId)
@@ -1091,6 +1138,11 @@ export default function VeteranPickerModal({
                     </button>
                   );
                 })}
+                {processedTemplates.length > visibleLimit && (
+                  <div className="col-span-full">
+                    <ShowMoreButton onClick={() => setVisibleLimit((count) => count + 36)} />
+                  </div>
+                )}
               </div>
             )
           )}

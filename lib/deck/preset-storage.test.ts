@@ -41,6 +41,10 @@ describe("createDefaultPreset", () => {
     expect(DEFAULT_PRESET.id).toBe("default-1");
     expect(DEFAULT_PRESET.name).toBe("Default Build");
   });
+
+  test("default track info has no Master Challenge selection", () => {
+    expect(createDefaultPreset("id-2", "Build").trackInfo.masterChallengeSelection).toBeNull();
+  });
 });
 
 describe("loadStoredPresets", () => {
@@ -65,8 +69,32 @@ describe("loadStoredPresets", () => {
     expect(out?.activeId).toBe("a");
     expect(out?.presets[0].trackInfo.runningStyle).toBe(2);
     expect(out?.presets[0].trackInfo.pvpEventId).toBe("pvp-1");
+    expect(out?.presets[0].trackInfo.masterChallengeSelection).toBeNull();
     expect(out?.presets[0].mainChainChoices).toEqual({ "1:5": 2 });
     expect(out?.presets[1].name).toBe("Second");
+  });
+
+  test("round-trips a valid Master Challenge event and race selection", () => {
+    const stored = [{
+      id: "mc",
+      name: "Master Challenge",
+      trackInfo: {
+        trackId: 10008,
+        courseId: 10808,
+        runningStyle: 2,
+        racerCount: 18,
+        pvpEventId: null,
+        masterChallengeSelection: { eventId: 1009, eventSubId: 1044 },
+      },
+    }];
+    installWindow().setItem(PRESETS_STORAGE_KEY, JSON.stringify(stored));
+    expect(loadStoredPresets()?.presets[0].trackInfo.masterChallengeSelection).toEqual({ eventId: 1009, eventSubId: 1044 });
+  });
+
+  test("drops malformed Master Challenge selections", () => {
+    const stored = [{ id: "bad", name: "Bad", trackInfo: { masterChallengeSelection: { eventId: -1, eventSubId: 0 } } }];
+    installWindow().setItem(PRESETS_STORAGE_KEY, JSON.stringify(stored));
+    expect(loadStoredPresets()?.presets[0].trackInfo.masterChallengeSelection).toBeNull();
   });
 
   test("sanitizes malformed entries instead of throwing", () => {

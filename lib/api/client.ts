@@ -25,6 +25,9 @@ import {
   type RacetrackDetail,
   type CourseRow,
   type CourseDataBlob,
+  type PvpRaceFitAssistance,
+  type PvpRecommendedRace,
+  type RecommendedPvpSkill,
 } from "./data-store";
 import { flattenCourse, distanceLabel, terrainLabel, turnLabel } from "./course-format";
 
@@ -125,6 +128,9 @@ export type {
   RacetrackDetail,
   CourseRow,
   CourseDataBlob,
+  PvpRaceFitAssistance,
+  PvpRecommendedRace,
+  RecommendedPvpSkill,
 };
 
 export type { DataStore } from "./data-store";

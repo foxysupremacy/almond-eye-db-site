@@ -62,6 +62,7 @@ export default function CardPickerPopover({
     distance,
     surface,
     activePvpEvent,
+    activeRaceParameters,
     activePreset,
   } = useDeck();
   const { state, view, dispatch } = usePickerController(cardPickerAdapter, mode);
@@ -154,7 +155,7 @@ export default function CardPickerPopover({
   }, [setup]);
 
   // Recommendations map for both parent and main deck modes
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   const recommendationsMap = useMemo(() => {
     const isParent = mode === "parent";

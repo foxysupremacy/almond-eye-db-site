@@ -36,11 +36,12 @@ export default function RecommendedShelf({
     surface,
     allCards,
     activePvpEvent,
+    activeRaceParameters,
   } = useDeck();
 
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   // Recommendations calculated via pure engine with course geometry simulation and skill-evaluator
   const recommendations = useMemo<CardRecommendation[]>(() => {

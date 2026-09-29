@@ -129,6 +129,10 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
               : p.trackInfo.runningStyle,
           racerCount: presetData.trackInfo?.racerCount ?? p.trackInfo.racerCount,
           pvpEventId: presetData.trackInfo?.pvpEventId ?? p.trackInfo.pvpEventId,
+          masterChallengeSelection:
+            presetData.trackInfo?.masterChallengeSelection !== undefined
+              ? presetData.trackInfo.masterChallengeSelection
+              : p.trackInfo.masterChallengeSelection,
         },
         mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
         parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
@@ -165,6 +169,7 @@ export function buildImportedPreset(
       runningStyle: presetData.trackInfo?.runningStyle ?? null,
       racerCount: presetData.trackInfo?.racerCount ?? 12,
       pvpEventId: presetData.trackInfo?.pvpEventId ?? null,
+      masterChallengeSelection: presetData.trackInfo?.masterChallengeSelection ?? null,
     },
     mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : undefined,
     parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : undefined,

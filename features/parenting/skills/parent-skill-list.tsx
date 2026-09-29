@@ -74,6 +74,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     mainSlots,
     loading,
     activePvpEvent,
+    activeRaceParameters,
     activePreset,
     skillsByCard,
     mainSkillIdSet,
@@ -144,7 +145,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     [parentSkills, pedigreeSkills],
   );
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   // Precompute activation results for all parent & lineage skills under current course & style
   const activationMap = useMemo(() => {

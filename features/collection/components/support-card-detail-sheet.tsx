@@ -50,8 +50,8 @@ export function SupportCardDetailSheet({
   onSetLimitBreak,
   onRemoveCard,
 }: SupportCardDetailSheetProps) {
-  const { course, runningStyle, activePvpEvent, trackDetail } = useDeck();
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
+  const raceParams = activeRaceParameters;
 
   useBodyScrollLock(isOpen);
 

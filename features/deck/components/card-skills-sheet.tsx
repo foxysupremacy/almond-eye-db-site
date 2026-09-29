@@ -32,6 +32,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
     mainSkillIdSet,
     parentSlots,
     activePvpEvent,
+    activeRaceParameters,
     course,
     runningStyle,
     activePreset,
@@ -39,7 +40,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
   const [loadedSkills, setLoadedSkills] = useState<CardSkills | null>(null);
   const [loading, setLoading] = useState(false);
   const isParent = mode === "parent";
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   useBodyScrollLock(isOpen);
 

@@ -4,9 +4,12 @@ import type {
   Racetrack,
   RacetrackDetail,
   CourseRow,
+  PvpRaceFitAssistance,
+  PvpRecommendedRace,
 } from "../api";
 import type { EventSkillMetadata } from "../api";
 import type { Course } from "../skill-engine/types";
+import type { RaceParameters } from "../skill-engine/types";
 import type { PvpEvent } from "../pvp/events";
 import type { ParentingSetup } from "../parenting/state";
 
@@ -25,6 +28,7 @@ export interface TrackInfo {
   runningStyle: RunningStyle | null;
   racerCount: number;
   pvpEventId?: string | null;
+  masterChallengeSelection?: { eventId: number; eventSubId: number } | null;
 }
 
 export interface DeckPreset {
@@ -128,8 +132,16 @@ export interface DeckContextValue {
   // PvP Event Presets
   activePvpEventId: string | null;
   activePvpEvent: PvpEvent | null;
+  activeRaceParameters: Partial<RaceParameters>;
   applyPvpPreset: (event: PvpEvent) => void;
   clearPvpPreset: () => void;
+  masterChallengeEvents: PvpRaceFitAssistance[];
+  pvpRecommendationEvents: PvpRaceFitAssistance[];
+  activeMasterChallengeEvent: PvpRaceFitAssistance | null;
+  activeMasterChallengeRace: PvpRecommendedRace | null;
+  selectMasterChallengeRace: (eventId: number, eventSubId: number) => boolean;
+  clearMasterChallenge: () => void;
+  racetrackDetails: RacetrackDetail[];
 
   // Parenting Setup
   parentingSetup: ParentingSetup;

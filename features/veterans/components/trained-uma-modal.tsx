@@ -42,7 +42,7 @@ export default function TrainedUmaModal({
   character,
 }: TrainedUmaModalProps) {
   const { setParent1, setParent2 } = useParentingSetup();
-  const { parentSkills, course, runningStyle, activePvpEvent } = useDeck();
+  const { parentSkills, course, runningStyle, activeRaceParameters } = useDeck();
   const [parentNotice, setParentNotice] = useState<string | null>(null);
   const [activeRunIndex, setActiveRunIndex] = useState(initialRunIndex);
   const [activeTab, setActiveTab] = useState<ModalTab>("skills");
@@ -117,7 +117,7 @@ export default function TrainedUmaModal({
     };
   }, [currentRun]);
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
   const activeTargetSkillsMap = useMemo(() => {
     return extractActiveParentTargetSkills(parentSkills, course, runningStyle, raceParams);
   }, [parentSkills, course, runningStyle, raceParams]);

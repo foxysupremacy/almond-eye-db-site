@@ -26,7 +26,8 @@ import {
   flattenCourse,
 } from "@/lib/api";
 import type { Course } from "@/lib/skill-engine/types";
-import { type PvpEvent, getPvpEventById } from "@/lib/pvp/events";
+import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
+import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
 
 // Extracted Domain Modules
 import {
@@ -104,6 +105,27 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
   const activePvpEventId = activePreset.trackInfo.pvpEventId ?? null;
   const activePvpEvent = useMemo(() => getPvpEventById(activePvpEventId), [activePvpEventId]);
+  const masterChallengeEvents = useMemo(
+    () => dataStore?.pvpRecommendations.raceFitAssistance.filter((event) => event.eventType === 3) ?? [],
+    [dataStore],
+  );
+  const pvpRecommendationEvents = dataStore?.pvpRecommendations.raceFitAssistance ?? [];
+  const masterChallengeMatch = useMemo(
+    () => findMasterChallengeRace(
+      pvpRecommendationEvents,
+      activePreset.trackInfo.masterChallengeSelection?.eventId,
+      activePreset.trackInfo.masterChallengeSelection?.eventSubId,
+    ),
+    [pvpRecommendationEvents, activePreset.trackInfo.masterChallengeSelection],
+  );
+  const activeMasterChallengeEvent = masterChallengeMatch?.event ?? null;
+  const activeMasterChallengeRace = masterChallengeMatch?.race ?? null;
+  const activeRaceParameters = useMemo(
+    () => activeMasterChallengeRace
+      ? raceParametersForMasterChallenge(activeMasterChallengeRace)
+      : getPvpRaceParameters(activePvpEvent),
+    [activeMasterChallengeRace, activePvpEvent],
+  );
 
   // Persist presets and visualizer state once hydrated
   useEffect(() => {
@@ -237,7 +259,12 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         type: "updateActivePreset",
         update: (p) => ({
           ...p,
-          trackInfo: { ...p.trackInfo, trackId: newTrackId, courseId: firstCourseId },
+          trackInfo: {
+            ...p.trackInfo,
+            trackId: newTrackId,
+            courseId: firstCourseId,
+            masterChallengeSelection: null,
+          },
         }),
       });
     },
@@ -249,7 +276,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       type: "updateActivePreset",
       update: (p) => ({
         ...p,
-        trackInfo: { ...p.trackInfo, courseId: newCourseId },
+        trackInfo: { ...p.trackInfo, courseId: newCourseId, masterChallengeSelection: null },
       }),
     });
   }, []);
@@ -286,6 +313,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
           courseId: event.courseId,
           racerCount: event.racerCount,
           pvpEventId: event.id,
+          masterChallengeSelection: null,
         },
       }),
     });
@@ -297,6 +325,42 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       update: (p) => ({
         ...p,
         trackInfo: { ...p.trackInfo, pvpEventId: null },
+      }),
+    });
+  }, []);
+
+  const selectMasterChallengeRace = useCallback((eventId: number, eventSubId: number): boolean => {
+    if (!dataStore) return false;
+    const match = findMasterChallengeRace(masterChallengeEvents, eventId, eventSubId);
+    if (!match) return false;
+
+    const courseId = match.race.raceCourseSetId;
+    const track = dataStore.racetracks.find((candidate) => candidate.courses.some((course) => course.id === courseId));
+    if (!track) return false;
+
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: {
+          ...p.trackInfo,
+          trackId: track.id,
+          courseId,
+          racerCount: Math.min(18, Math.max(9, match.race.entryCount)),
+          pvpEventId: null,
+          masterChallengeSelection: { eventId, eventSubId },
+        },
+      }),
+    });
+    return true;
+  }, [dataStore, masterChallengeEvents]);
+
+  const clearMasterChallenge = useCallback(() => {
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({
+        ...p,
+        trackInfo: { ...p.trackInfo, masterChallengeSelection: null },
       }),
     });
   }, []);
@@ -451,8 +515,16 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
       activePvpEventId,
       activePvpEvent,
+      activeRaceParameters,
       applyPvpPreset,
       clearPvpPreset,
+      masterChallengeEvents,
+      pvpRecommendationEvents,
+      activeMasterChallengeEvent,
+      activeMasterChallengeRace,
+      selectMasterChallengeRace,
+      clearMasterChallenge,
+      racetrackDetails: dataStore?.racetracks ?? [],
 
       parentingSetup,
       setParentingSetup,
@@ -499,8 +571,15 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       setRacerCount,
       activePvpEventId,
       activePvpEvent,
+      activeRaceParameters,
       applyPvpPreset,
       clearPvpPreset,
+      masterChallengeEvents,
+      activeMasterChallengeEvent,
+      activeMasterChallengeRace,
+      selectMasterChallengeRace,
+      clearMasterChallenge,
+      dataStore,
       parentingSetup,
       setParentingSetup,
       index,

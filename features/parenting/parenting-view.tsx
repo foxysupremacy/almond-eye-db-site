@@ -30,8 +30,8 @@ import {
 import {
   candidateToVeteran,
   evaluateAptitudePatch,
-  getSlotRecommendations,
   type LegacyCandidate,
+  type SlotRecommendations,
 } from "@/lib/parenting";
 import CharacterPickerModal from "@/features/parenting/components/character-picker-modal";
 import { VeteranPickerModal, type PickerRecommendations, createCharacterVeteranTemplate } from "@/features/veterans";
@@ -76,6 +76,9 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   // Modals & UI States
   const [isTraineeModalOpen, setIsTraineeModalOpen] = useState(false);
   const [activePickerSlot, setActivePickerSlot] = useState<PickerSlotKey | null>(null);
+  const [pickerRecommendations, setPickerRecommendations] = useState<PickerRecommendations | null>(null);
+  const [pickerRecommendationsLoading, setPickerRecommendationsLoading] = useState(false);
+  const [pickerRecommendationsError, setPickerRecommendationsError] = useState<string | null>(null);
   const [isInheritedSkillsOpen, setIsInheritedSkillsOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [, startTransition] = useTransition();
@@ -217,7 +220,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
   // Per-slot recommendations for the picker's "Recommended" tab.
   // Parent slots score by trainee affinity; GP slots add affinity with the branch parent.
-  const pickerRecommendations = useMemo<PickerRecommendations | null>(() => {
+  const pickerRequest = useMemo(() => {
     if (!activePickerSlot || !setup.targetCharaId) return null;
 
     const branchPrefix = activePickerSlot.startsWith("p1_gp")
@@ -248,35 +251,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       if (sibling) excludedCharIds.push(getCharaIdFromCardId(sibling.card_id));
     }
 
-    const { owned, borrow } = getSlotRecommendations({
+    return {
       targetCharaId: setup.targetCharaId,
       branchParent,
       excludedCharIds,
-      course,
-      runningStyle,
+      course: course ?? null,
+      runningStyle: runningStyle ?? null,
       veterans,
       supportCardIds: setup.supportCardIds,
-    });
-
-    const branchName = branchParent
-      ? charaMap.get(branchParent.card_id)?.nameEn ?? branchParent.name ?? null
-      : null;
-    const contextNote = branchName
-      ? `Grandparent slot — ranked by affinity with the trainee + ${branchName}${
-          courseLabel ? ` · ${courseLabel}` : ""
-        }`
-      : `Parent slot — ranked by affinity with ${targetChara?.nameEn ?? "trainee"}${
-          courseLabel ? ` · ${courseLabel}` : ""
-        }`;
-
-    const runBorrow = getRunBorrowState(setup, activePickerSlot);
-
-    return {
-      owned,
-      borrow,
-      borrowUsed: runBorrow.used,
-      runLabel: runBorrow.runLabel,
-      contextNote,
     };
   }, [
     activePickerSlot,
@@ -293,9 +275,70 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     course,
     runningStyle,
     veterans,
+  ]);
+
+  useEffect(() => {
+    if (!activePickerSlot || !pickerRequest) {
+      setPickerRecommendations(null);
+      setPickerRecommendationsLoading(false);
+      setPickerRecommendationsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setPickerRecommendations(null);
+    setPickerRecommendationsError(null);
+    setPickerRecommendationsLoading(true);
+
+    const worker = new Worker(
+      new URL("./workers/slot-recommendations.worker.ts", import.meta.url),
+      { type: "module" },
+    );
+    worker.onmessage = (event: MessageEvent<{
+      recommendations: SlotRecommendations;
+      error?: string;
+    }>) => {
+      if (cancelled) return;
+      const { error, recommendations } = event.data;
+      if (error) {
+        setPickerRecommendationsError(error);
+      } else {
+        const runBorrow = getRunBorrowState(setup, activePickerSlot);
+        const branchParent = pickerRequest.branchParent;
+        const branchName = branchParent
+          ? charaMap.get(branchParent.card_id)?.nameEn ?? branchParent.name ?? null
+          : null;
+        const contextNote = branchName
+          ? `Grandparent slot — ranked by affinity with the trainee + ${branchName}${courseLabel ? ` · ${courseLabel}` : ""}`
+          : `Parent slot — ranked by affinity with ${targetChara?.nameEn ?? "trainee"}${courseLabel ? ` · ${courseLabel}` : ""}`;
+        setPickerRecommendations({
+          ...recommendations,
+          borrowUsed: runBorrow.used,
+          runLabel: runBorrow.runLabel,
+          contextNote,
+        });
+      }
+      setPickerRecommendationsLoading(false);
+    };
+    worker.onerror = (event) => {
+      if (cancelled) return;
+      console.error("Failed to calculate parenting recommendations:", event.message);
+      setPickerRecommendationsError("Could not load recommendations. Close and reopen this picker to try again.");
+      setPickerRecommendationsLoading(false);
+    };
+    worker.postMessage(pickerRequest);
+
+    return () => {
+      cancelled = true;
+      worker.terminate();
+    };
+  }, [
+    activePickerSlot,
+    pickerRequest,
+    setup,
     charaMap,
-    targetChara,
     courseLabel,
+    targetChara,
   ]);
 
   // The other fixed uma for the open picker slot: the other parent for P1/P2,
@@ -383,6 +426,13 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     if (!cardId || !course) return undefined;
     const patch = evaluateAptitudePatch(cardId, course);
     return patch.requiresPatch ? patch.warningMessage : undefined;
+  };
+
+  const openPicker = (slot: PickerSlotKey) => {
+    setPickerRecommendations(null);
+    setPickerRecommendationsError(null);
+    setPickerRecommendationsLoading(Boolean(setup.targetCharaId));
+    setActivePickerSlot(slot);
   };
 
   if (loading) {
@@ -479,7 +529,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               factors={p1Factors}
               isBorrow={setup.parent1 ? setup.p1IsBorrow : undefined}
               aptitudeWarning={getSlotAptitudeWarning(setup.parent1?.card_id)}
-              onClick={() => setActivePickerSlot("p1")}
+              onClick={() => openPicker("p1")}
             />
             <div className="flex min-w-0 gap-1.5">
               <PedigreeSlotCard
@@ -489,7 +539,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
                 rank={p1_gp1?.rank}
                 factors={p1Gp1Factors}
                 isBorrow={p1_gp1?.isBorrow}
-                onClick={() => setActivePickerSlot("p1_gp1")}
+                onClick={() => openPicker("p1_gp1")}
               />
               <PedigreeSlotCard
                 slotLabel="GP"
@@ -498,7 +548,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
                 rank={p1_gp2?.rank}
                 factors={p1Gp2Factors}
                 isBorrow={p1_gp2?.isBorrow}
-                onClick={() => setActivePickerSlot("p1_gp2")}
+                onClick={() => openPicker("p1_gp2")}
               />
             </div>
           </div>
@@ -534,7 +584,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               factors={p2Factors}
               isBorrow={setup.parent2 ? setup.p2IsBorrow : undefined}
               aptitudeWarning={getSlotAptitudeWarning(setup.parent2?.card_id)}
-              onClick={() => setActivePickerSlot("p2")}
+              onClick={() => openPicker("p2")}
             />
             <div className="flex min-w-0 gap-1.5">
               <PedigreeSlotCard
@@ -544,7 +594,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
                 rank={p2_gp1?.rank}
                 factors={p2Gp1Factors}
                 isBorrow={p2_gp1?.isBorrow}
-                onClick={() => setActivePickerSlot("p2_gp1")}
+                onClick={() => openPicker("p2_gp1")}
               />
               <PedigreeSlotCard
                 slotLabel="GP"
@@ -553,7 +603,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
                 rank={p2_gp2?.rank}
                 factors={p2Gp2Factors}
                 isBorrow={p2_gp2?.isBorrow}
-                onClick={() => setActivePickerSlot("p2_gp2")}
+                onClick={() => openPicker("p2_gp2")}
               />
             </div>
           </div>
@@ -608,6 +658,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
             : "Sub-Parent (Grandparent)"
         }
         recommendations={pickerRecommendations ?? undefined}
+        recommendationsLoading={pickerRecommendationsLoading}
+        recommendationsError={pickerRecommendationsError}
         onSelectCandidate={handleSelectCandidate}
         targetCharaId={setup.targetCharaId}
         excludedCharId={

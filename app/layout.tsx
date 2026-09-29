@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AlmondEye DB - Deck Builder + Skill Zones",
+  title: "Almond Eye Database",
   description:
     "Uma Musume support deck builder, parent deck farmer, and skill activation visualizer.",
 };

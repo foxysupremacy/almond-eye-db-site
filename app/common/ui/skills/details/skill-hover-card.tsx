@@ -4,7 +4,7 @@ import React, { createContext, useCallback, useContext, useEffect, useLayoutEffe
 import { createPortal } from "react-dom";
 import { api, type SkillDetail } from "@/lib/api";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
-import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
+import { isSkillBanned } from "@/lib/pvp/events";
 import { horseForStrategy, type SkillZoneResult } from "@/lib/skill-engine/zones";
 import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
 import type { RaceParameters } from "@/lib/skill-engine/types";
@@ -52,16 +52,17 @@ export interface SkillInspectorContext {
   racerCount: number;
   runningStyle: RunningStyle | null;
   activePvpEvent: PvpEvent | null;
+  raceParams: Partial<RaceParameters>;
 }
 
-export function SkillInspectorProvider({ children, course, racerCount, runningStyle: deckRunningStyle, activePvpEvent }: React.PropsWithChildren<SkillInspectorContext>) {
+export function SkillInspectorProvider({ children, course, racerCount, runningStyle: deckRunningStyle, activePvpEvent, raceParams }: React.PropsWithChildren<SkillInspectorContext>) {
   const [active, setActive] = useState<SkillInspectorTarget | null>(null);
   const [detail, setDetail] = useState<SkillDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [coords, setCoords] = useState({ top: 16, left: 16, originX: "left" as "left" | "right" });
   const panelRef = useRef<HTMLDivElement>(null);
-  const deckRaceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const deckRaceParams = raceParams;
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);

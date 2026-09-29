@@ -32,6 +32,9 @@ export interface PvpEvent {
   noDebuffs?: boolean;
   startDate?: string;
   durationDays?: number;
+  /** Exact source event key in the game's race-fit recommendation dataset. */
+  recommendationEventId?: number;
+  recommendationEventSubId?: number;
 }
 
 // Banned debuff skills in Champions Meeting Special Rule "No Debuffs" (55 skills)
@@ -135,6 +138,8 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    recommendationEventId: 49,
+    recommendationEventSubId: 0,
     specialRules: ["No Debuffs"],
     noDebuffs: true,
     startDate: "2026-09-29T12:00:00+09:00",
@@ -159,6 +164,8 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    recommendationEventId: 50,
+    recommendationEventSubId: 0,
     startDate: "2026-10-15T12:00:00+09:00",
     durationDays: 6,
   },
@@ -236,4 +243,3 @@ export function isSkillBanned(skillId: number, eventOrNoDebuffs?: PvpEvent | boo
   if (!noDebuffs) return false;
   return BANNED_DEBUFF_SKILL_IDS.has(skillId);
 }
-

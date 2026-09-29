@@ -6,13 +6,14 @@ import { SkillInspectorProvider } from "@/app/common/ui/skills/details/skill-hov
 
 /** Connects application deck state to the shared, domain-agnostic inspector UI. */
 export function ApplicationSkillInspectorProvider({ children }: { children: ReactNode }) {
-  const { course, racerCount, runningStyle, activePvpEvent } = useDeck();
+  const { course, racerCount, runningStyle, activePvpEvent, activeRaceParameters } = useDeck();
   return (
     <SkillInspectorProvider
       course={course}
       racerCount={racerCount}
       runningStyle={runningStyle}
       activePvpEvent={activePvpEvent}
+      raceParams={activeRaceParameters}
     >
       {children}
     </SkillInspectorProvider>

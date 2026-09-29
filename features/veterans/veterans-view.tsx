@@ -45,7 +45,7 @@ export default function VeteransView() {
   const [parentOverrides, setParentOverrides] = useState<Record<string, boolean>>({});
   const [, startTransition] = useTransition();
   const { setup } = useParentingSetup();
-  const { parentSkills, course, runningStyle, activePvpEvent } = useDeck();
+  const { parentSkills, course, runningStyle, activeRaceParameters } = useDeck();
 
   const [selectedVeteran, setSelectedVeteran] = useState<KyumaruVeteranItem | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -97,7 +97,7 @@ export default function VeteransView() {
     });
   };
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   const activeTargetSkillsMap = useMemo(() => {
     return extractActiveParentTargetSkills(parentSkills, course, runningStyle, raceParams);

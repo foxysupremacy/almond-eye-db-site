@@ -28,7 +28,7 @@ type PedigreeFilterTab =
 type SlotFilter = "all" | "p1" | "p2";
 
 export function PedigreeSkillsSection() {
-  const { course, runningStyle, activePvpEvent, mainSkillIdSet } = useDeck();
+  const { course, runningStyle, activePvpEvent, activeRaceParameters, mainSkillIdSet } = useDeck();
   const { pedigreeSkills, pedigreeSlots, charaByCardIdMap } = useLineageSkills();
 
   const [filter, setFilter] = useState<PedigreeFilterTab>("all");
@@ -51,7 +51,7 @@ export function PedigreeSkillsSection() {
 
   const [search, setSearch] = useState("");
 
-  const raceParams = useMemo(() => getPvpRaceParameters(activePvpEvent), [activePvpEvent]);
+  const raceParams = activeRaceParameters;
 
   // Precompute activation results for all pedigree skills
   const activationMap = useMemo(() => {
