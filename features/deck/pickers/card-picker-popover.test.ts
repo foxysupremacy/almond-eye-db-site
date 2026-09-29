@@ -19,6 +19,8 @@ describe("CardPickerPopover SSR", () => {
     );
     expect(html).toContain("Search cards by English or Japanese name");
     expect(html).toContain("Sort: Release Date");
+    expect(html).toContain('aria-label="Loading support cards"');
+    expect(html).toContain("animate-pulse");
     expect(html).not.toContain("Filter by Skills");
   });
 
@@ -48,6 +50,7 @@ describe("CardPickerPopover SSR", () => {
     expect(html).toContain("Acceleration");
     expect(html).toContain("Filter by Skills");
     expect(html).toContain("Search skill to filter");
+    expect(html).toContain('aria-label="Loading support cards"');
   });
 
   it("handles gold <-> white skill equivalence mapping correctly", async () => {

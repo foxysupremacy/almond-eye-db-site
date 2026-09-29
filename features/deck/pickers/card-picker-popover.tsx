@@ -40,6 +40,40 @@ function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
 }
 
+// Leave the first frame free for the picker shell to become visibly usable.
+const PICKER_WORK_DELAY_MS = 250;
+
+function CardPickerSkeleton({ mode, label }: { mode: "main" | "parent"; label: string }) {
+  return (
+    <div role="status" aria-label={label} aria-live="polite" className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
+      <span className="sr-only">{label}</span>
+      {Array.from({ length: 8 }, (_, index) => (
+        <div key={index} aria-hidden="true" className="flex items-center gap-3 px-3 py-2.5 sm:px-3.5 animate-pulse">
+          <div className="h-10 w-10 flex-none rounded bg-zinc-200 dark:bg-zinc-800" />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="h-4 w-7 flex-none rounded bg-zinc-200 dark:bg-zinc-800" />
+                <span className={`h-3.5 rounded bg-zinc-200 dark:bg-zinc-800 ${index % 3 === 0 ? "w-24 sm:w-36" : "w-20 sm:w-28"}`} />
+              </div>
+              <div className="flex flex-none items-center gap-2">
+                {mode === "parent" && <span className="hidden h-4 w-16 rounded bg-zinc-200 dark:bg-zinc-800 sm:block" />}
+                <span className="h-4 w-11 rounded bg-zinc-200 dark:bg-zinc-800" />
+                <span className="h-5 w-5 rounded bg-zinc-200 dark:bg-zinc-800" />
+                <span className="hidden h-5 w-12 rounded bg-zinc-200 dark:bg-zinc-800 sm:block" />
+              </div>
+            </div>
+            <div className="mt-1.5 flex items-center justify-between gap-2">
+              <span className="h-2.5 w-32 max-w-[55%] rounded bg-zinc-200 dark:bg-zinc-800" />
+              <span className="hidden h-2.5 w-24 rounded bg-zinc-200 dark:bg-zinc-800 sm:block" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // Rarity label + chip colors. Rarity: 3 = SSR, 2 = SR, 1 = R.
 
 export default function CardPickerPopover({
@@ -99,10 +133,26 @@ export default function CardPickerPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [dispatch]);
 
-  // Load the full card index and skills once
+  // Keep the first picker frame light; loading these cached datasets can
+  // immediately trigger a large card list render on the same click.
   useEffect(() => {
-    api.listCardIndex().then(setCards).catch(() => setCards([]));
-    api.listSkills().then(setSkills).catch(() => setSkills([]));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      timer = setTimeout(() => {
+        api.listCardIndex()
+          .then((result) => { if (!cancelled) setCards(result); })
+          .catch(() => { if (!cancelled) setCards([]); });
+        api.listSkills()
+          .then((result) => { if (!cancelled) setSkills(result); })
+          .catch(() => { if (!cancelled) setSkills([]); });
+      }, PICKER_WORK_DELAY_MS);
+    });
+    return () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      if (timer !== undefined) clearTimeout(timer);
+    };
   }, []);
 
   // Focus search box on open only on fine-pointer (desktop) devices to avoid popping soft keyboard on mobile
@@ -157,23 +207,36 @@ export default function CardPickerPopover({
   // Recommendations map for both parent and main deck modes
   const raceParams = activeRaceParameters;
 
-  const recommendationsMap = useMemo(() => {
-    const isParent = mode === "parent";
-    const recs = recommendCardsForParent({
-      mainDeckSkillIds: isParent ? mainSkillIdSet : new Set(),
-      equippedParentCardIds: isParent
-        ? parentSlots.map((c) => c?.id ?? null)
-        : mainSlots.map((c) => c?.id ?? null),
-      course,
-      style: runningStyle,
-      distance,
-      surface,
-      limit: 600, // wider pool for search & sort
-      raceParams,
-      chainChoicesMap: isParent ? activePreset.parentChainChoices : activePreset.mainChainChoices,
+  const [recommendationsMap, setRecommendationsMap] = useState<Map<number, CardRecommendation> | null>(null);
+  useEffect(() => {
+    if (sort !== "recommended") return;
+    // Course evaluation across the entire card index is expensive. Let the
+    // picker frame paint before starting it so the click responds immediately.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const frame = window.requestAnimationFrame(() => {
+      timer = setTimeout(() => {
+        const isParent = mode === "parent";
+        const recs = recommendCardsForParent({
+          mainDeckSkillIds: isParent ? mainSkillIdSet : new Set(),
+          equippedParentCardIds: isParent
+            ? parentSlots.map((c) => c?.id ?? null)
+            : mainSlots.map((c) => c?.id ?? null),
+          course,
+          style: runningStyle,
+          distance,
+          surface,
+          limit: 600, // wider pool for search & sort
+          raceParams,
+          chainChoicesMap: isParent ? activePreset.parentChainChoices : activePreset.mainChainChoices,
+        });
+        setRecommendationsMap(new Map(recs.map((r) => [r.cardId, r])));
+      }, PICKER_WORK_DELAY_MS);
     });
-    return new Map<number, CardRecommendation>(recs.map((r) => [r.cardId, r]));
-  }, [mode, mainSkillIdSet, parentSlots, mainSlots, course, runningStyle, distance, surface, raceParams, activePreset.parentChainChoices, activePreset.mainChainChoices]);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [sort, mode, mainSkillIdSet, parentSlots, mainSlots, course, runningStyle, distance, surface, raceParams, activePreset.parentChainChoices, activePreset.mainChainChoices]);
 
   // Precompute evaluated target skills for parent deck mode:
   // - Gathers hint skills and selected event chain choice skills
@@ -473,7 +536,7 @@ export default function CardPickerPopover({
         parentCardTargetSkillsMap,
         sort,
         mode,
-        recommendationsMap,
+        recommendationsMap: recommendationsMap ?? new Map(),
         onlyOwned,
         isOwned,
         selectedSkillCount: selectedSkills.length,
@@ -501,7 +564,7 @@ export default function CardPickerPopover({
 
   return (
     <div
-      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
+      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 touch-none overscroll-none"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -510,7 +573,7 @@ export default function CardPickerPopover({
       <div
         ref={panelRef}
         onClick={(e) => e.stopPropagation()}
-        className="flex h-[88dvh] max-h-[92dvh] sm:h-[90vh] sm:max-h-[860px] w-full sm:max-w-2xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-[250ms] ease-out-expo text-left overscroll-contain touch-pan-y"
+        className="flex h-[88dvh] max-h-[92dvh] sm:h-[90vh] sm:max-h-[860px] w-full sm:max-w-2xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left overscroll-contain touch-pan-y"
       >
         {/* Mobile drag handle */}
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
@@ -809,8 +872,8 @@ export default function CardPickerPopover({
 
         {/* Cards List */}
         <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/60">
-          {!cards ? (
-            <p className="p-4 text-[13px] text-zinc-400 dark:text-zinc-500">Loading cards…</p>
+          {!cards || (sort === "recommended" && !recommendationsMap) ? (
+            <CardPickerSkeleton mode={mode} label={!cards ? "Loading support cards" : "Ranking recommendations"} />
           ) : filtered.length === 0 ? (
             <p className="p-4 text-[13px] text-zinc-400 dark:text-zinc-500">{query ? "No matches found." : "No cards."}</p>
           ) : (
