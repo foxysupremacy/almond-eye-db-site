@@ -1,6 +1,6 @@
 import { describe, it, expect } from "bun:test";
 import { cardCharacterKey, canPlaceCard, findCharConflict } from "./card-constraints";
-import type { CardIndexEntry } from "../data-store";
+import type { CardIndexEntry } from "../api";
 
 function card(id: number, charName: string, type: CardIndexEntry["type"] = "speed"): CardIndexEntry {
   return {

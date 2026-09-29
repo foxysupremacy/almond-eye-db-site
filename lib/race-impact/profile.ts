@@ -1,4 +1,4 @@
-import { notifyLocalUpdate, readJsonStorage, subscribeLocalUpdates, writeJsonStorage } from "../persistence";
+import { notifyLocalUpdate, readJsonStorage, subscribeLocalUpdates, writeJsonStorage } from "../storage/persistence";
 import {
   DEFAULT_RACE_IMPACT_STATS,
   RACE_IMPACT_PROFILE_KEY,

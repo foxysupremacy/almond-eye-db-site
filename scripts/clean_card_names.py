@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Strip the bracketed title prefix from card nameEn in lib/data/cards.json.
+"""Strip the bracketed title prefix from card nameEn in lib/data/generated/cards.json.
 
 "[Make These Feelings Reach You!] Bamboo Memory" -> "Bamboo Memory".
 The bracket content is already preserved in each card's titleEn field, so no
@@ -14,10 +14,10 @@ from pathlib import Path
 
 _root = Path(__file__).resolve().parent.parent
 # In-repo layout (scripts/ lives inside the site repo) or legacy sibling layout.
-if (_root / "lib" / "data" / "cards.json").exists():
-    DEFAULT_PATH = _root / "lib" / "data" / "cards.json"
+if (_root / "lib" / "data" / "generated" / "cards.json").exists():
+    DEFAULT_PATH = _root / "lib" / "data" / "generated" / "cards.json"
 else:
-    DEFAULT_PATH = _root / "almond-eye-db-site" / "lib" / "data" / "cards.json"
+    DEFAULT_PATH = _root / "almond-eye-db-site" / "lib" / "data" / "generated" / "cards.json"
 
 # Leading bracketed group + following whitespace. $1 = the rest of the name.
 BRACKET_PREFIX = re.compile(r"^\s*\[[^\]]*\]\s*")

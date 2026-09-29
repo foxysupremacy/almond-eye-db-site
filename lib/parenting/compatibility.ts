@@ -18,16 +18,16 @@ import {
   charactersByCharId as characterByCharIdMap,
   characterVariantsByCharId as variantsByCharIdMap,
 } from "../data/registry";
-import { getCharacterImageUrl } from "../data-store";
-import type { KyumaruVeteranItem } from "../kyumaru-types";
+import { getCharacterImageUrl } from "../api";
+import type { KyumaruVeteranItem } from "../veterans/types";
 import type { Course } from "../skill-engine/types";
 import type { RunningStyle } from "../deck/types";
 import {
   calculateAffinity,
   calculatePairAffinity,
   getCharaIdFromCardId,
-} from "../affinity-engine";
-import { calculateLineageBlueStars, decodeFactor } from "../factor-decoder";
+} from "../lineage/affinity-engine";
+import { calculateLineageBlueStars, decodeFactor } from "../lineage/factor-decoder";
 import { getDeckAnalysis } from "./deck-analyzer";
 import { evaluateUniqueSkill, runningStyleToNum } from "./skill-evaluator";
 import {

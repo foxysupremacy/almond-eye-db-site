@@ -21,7 +21,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT = ROOT / "kyumaru" / "responses" / "veterans.json"
-G1_SADDLES = set(json.loads((ROOT / "almond-eye-db-site/lib/data/affinity.json").read_text())["g1Saddles"])
+G1_SADDLES = set(json.loads((ROOT / "almond-eye-db-site/lib/data/generated/affinity.json").read_text())["g1Saddles"])
 
 
 def factor_type(fid: int) -> str:

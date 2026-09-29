@@ -1,7 +1,7 @@
 import { describe, it, expect } from "bun:test";
 import { getDefaultChoiceIndex } from "./event-choices";
 import { CHAIN_CHOICES_STORAGE_KEY } from "./constants";
-import type { CardEventDetail } from "../data-store";
+import type { CardEventDetail } from "../api";
 
 describe("getDefaultChoiceIndex", () => {
   it("defaults to Choice 1 when event has only 1 choice or no choices", () => {

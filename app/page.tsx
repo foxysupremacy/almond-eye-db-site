@@ -4,25 +4,20 @@
 // Responsive six-view shell. Library groups the two inventory views on mobile.
 
 import { useEffect, useState } from "react";
-import { DeckProvider } from "../components/store";
-import DeckPicker from "../components/deck-picker";
-import SkillList from "../components/skill-list";
-import ParentDeckView from "../components/parent-deck-view";
-import TrackView from "../components/track/track-view";
-import GlobalTrackBar from "../components/global-track-bar";
-import PresetManager from "../components/preset-manager";
-import ThemeToggle from "../components/theme-toggle";
-import Footer from "../components/footer";
-import SharedImportDialog from "../components/shared-import-dialog";
-import CollectionView from "../components/collection/collection-view";
-import ParentingView from "../components/parenting/parenting-view";
-import VeteransView from "../components/veterans-view";
-import ImportModal from "../components/import-modal";
-import { PvpExpiredModal } from "../components/pvp-expired-modal";
-import { SkillInspectorProvider } from "../components/skill-hover-card";
-import { MobileSheet } from "../components/shared/mobile-sheet";
-import { Badge } from "../components/shared/badge";
-import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon } from "../components/icons";
+import { DeckFeature, DeckProvider, ParentDeckFeature, SharedImportDialog, PvpExpiredModal } from "../features/deck";
+import GlobalTrackBar from "@/app/components/global-track-bar";
+import { PresetManager } from "../features/deck";
+import ThemeToggle from "@/app/components/theme-toggle";
+import Footer from "@/app/components/footer";
+import { CollectionFeature } from "../features/collection";
+import { ParentingFeature } from "../features/parenting";
+import { VisualizerFeature } from "../features/visualizer";
+import { VeteransFeature } from "../features/veterans";
+import { ImportModal } from "@/features/importer";
+import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
+import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
+import { Badge } from "@/app/common/ui/primitives/badge";
+import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon } from "@/app/common/ui/primitives/icons";
 
 type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
 
@@ -85,7 +80,7 @@ export default function Home() {
 
   return (
     <DeckProvider>
-      <SkillInspectorProvider>
+      <ApplicationSkillInspectorProvider>
       <div className="app-shell flex min-h-[100dvh] min-w-0 flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[400] focus:rounded-lg focus:bg-emerald-700 focus:p-3 focus:text-white">Skip to content</a>
         <header className="border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md sticky top-0 z-40 transition-colors">
@@ -196,20 +191,17 @@ export default function Home() {
             {([['collection', 'Collection'], ['veterans', 'Trained Umas']] as const).map(([id, label]) => <button key={id} type="button" aria-current={tab === id ? "page" : undefined} onClick={() => handleTabChange(id)} className={`min-h-11 rounded-lg text-sm font-medium ${tab === id ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{label}</button>)}
           </nav>}
           {tab === "main" ? (
-            <div className="flex flex-col gap-6 sm:gap-8">
-              <DeckPicker />
-              <SkillList />
-            </div>
+            <DeckFeature />
           ) : tab === "parent-deck" ? (
-            <ParentDeckView onNavigateToParenting={() => handleTabChange("parenting")} />
+            <ParentDeckFeature onNavigateToParenting={() => handleTabChange("parenting")} />
           ) : tab === "parenting" ? (
-            <ParentingView onNavigateToParentDeck={() => handleTabChange("parent-deck")} />
+            <ParentingFeature onNavigateToParentDeck={() => handleTabChange("parent-deck")} />
           ) : tab === "visualizer" ? (
-            <TrackView />
+            <VisualizerFeature />
           ) : tab === "collection" ? (
-            <CollectionView />
+            <CollectionFeature />
           ) : (
-            <VeteransView />
+            <VeteransFeature />
           )}
         </main>
 
@@ -245,7 +237,7 @@ export default function Home() {
         {/* Expired PvP Event Resolution Modal */}
         <PvpExpiredModal />
       </div>
-      </SkillInspectorProvider>
+      </ApplicationSkillInspectorProvider>
     </DeckProvider>
   );
 }

@@ -237,13 +237,13 @@ def apply_manifest_to_db(db_path: Path, manifest_path: Path) -> int:
 
 def _default_json(raw_name: str, lib_name: str) -> Path:
     """Site lib/data file if present, else raw sibling-workspace dump."""
-    site_file = Path(__file__).resolve().parent.parent / "lib" / "data" / lib_name
+    site_file = Path(__file__).resolve().parent.parent / "lib" / "data" / "generated" / lib_name
     if site_file.exists():
         return site_file
     raw = ROOT_DIR / raw_name
     if raw.exists():
         return raw
-    return ROOT_DIR / "lib" / "data" / lib_name
+    return ROOT_DIR / "lib" / "data" / "generated" / lib_name
 
 
 def main() -> int:

@@ -1,6 +1,6 @@
 // Pure reducer over the preset list — every deck/track/pvp mutation funnels
 // through here so the update semantics live in one testable place, free of
-// React. components/store.tsx wires this with useReducer and adapts it to the
+// React. features/deck/state/deck-provider.tsx wires this with useReducer and adapts it to the
 // useDeck() API.
 
 import type { DeckPreset } from "./types";

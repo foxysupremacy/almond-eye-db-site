@@ -52,7 +52,7 @@ Per frontend design craftsmanship guidelines (`design-taste-frontend`), **nested
    - Child items within the container must use separator lines (`divide-y divide-zinc-100 dark:divide-zinc-800/80`) or clean table/list rows, NOT individual inner bordered boxes.
    - Secondary filter sections within a popover/modal header must integrate seamlessly, demarcated only by a subtle top divider line (`pt-2.5 mt-2 border-t border-zinc-200/70 dark:border-zinc-800`) rather than an enclosed container box.
 4. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
-   - Both **Main Deck** and **Parent Deck** must render the identical clean 6-slot grid (`components/deck-picker.tsx`).
+   - Both **Main Deck** and **Parent Deck** must render the identical clean 6-slot grid (`features/deck/screens/deck-picker.tsx`).
    - Do NOT embed a secondary "reference strip" box containing 6 mini-boxes inside the Parent Deck surface.
 
 ---
@@ -167,14 +167,14 @@ To ensure zero dead ends when inspecting support cards:
 
 | View / Component | File | Icon Size | Centering Classes | Title Size | Subtitle Size | Notes |
 |---|---|---|---|---|---|---|
-| **Visualizer Inspector** | `components/track/skill-detail-inspector.tsx` | `h-10 w-10 sm:h-11 sm:w-11` | `flex items-center gap-3` | `text-base font-semibold` | `text-xs text-zinc-400` | Hero inspector header, enlarged drop-shadowed icon. |
-| **Track Visualizer Sidebar** | `components/track/track-skill-sidebar.tsx` | `h-4 w-4` / `h-5 w-5` | `flex items-center gap-1.5` | `text-xs font-semibold truncate` | `text-[10px] text-zinc-400 truncate` | Trigger status dot, icon, and text stack all vertically centered. |
-| **Main Deck Skill List** | `components/skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Full title block & icon wrapped inside `SkillHoverCard`. |
-| **Parent Deck Skill List** | `components/parent-skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Identical styling to Main Deck for visual consistency. |
-| **Card Skills Sheet** | `components/card-skills-sheet.tsx` | `h-5 w-5 sm:h-6 sm:w-6` | `flex items-center gap-2` | `text-xs font-semibold` | `text-[10px] sm:text-[11px] text-zinc-400` | Modal/bottom-sheet card detail viewer. |
-| **Multi-Skill Filter (Card Picker)** | `components/card-picker-popover.tsx` | `h-3.5 w-3.5` / `h-4 w-4` | `flex items-center gap-1.5` | `text-xs font-bold` | `text-[10px] text-zinc-400` | Flat, non-nested multi-skill filter with tag chips & SVG icons. |
-| **Skill Picker Modal (List)** | `components/skill-picker-modal.tsx` | `h-7 w-7` | `flex items-center gap-2.5` | `text-xs font-bold truncate` | `text-[10px] text-zinc-400 truncate` | Search list items with category pills. |
-| **Skill Picker Modal (Preview)** | `components/skill-picker-modal.tsx` | `h-8 w-8` | `flex items-center gap-2.5` | `text-xs sm:text-sm font-bold` | `text-[11px] text-zinc-400` | Right-side detail preview header. |
+| **Visualizer Inspector** | `features/visualizer/components/skill-detail-inspector.tsx` | `h-10 w-10 sm:h-11 sm:w-11` | `flex items-center gap-3` | `text-base font-semibold` | `text-xs text-zinc-400` | Hero inspector header, enlarged drop-shadowed icon. |
+| **Track Visualizer Sidebar** | `features/visualizer/components/track-skill-sidebar.tsx` | `h-4 w-4` / `h-5 w-5` | `flex items-center gap-1.5` | `text-xs font-semibold truncate` | `text-[10px] text-zinc-400 truncate` | Trigger status dot, icon, and text stack all vertically centered. |
+| **Main Deck Skill List** | `features/deck/screens/skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Full title block & icon wrapped inside `SkillHoverCard`. |
+| **Parent Deck Skill List** | `features/parenting/skills/parent-skill-list.tsx` | `h-7 w-7` (unified) / `h-6 w-6` (grouped) | `inline-flex items-center gap-2.5` | `text-sm font-semibold` | `text-xs text-zinc-400` | Identical styling to Main Deck for visual consistency. |
+| **Card Skills Sheet** | `features/deck/components/card-skills-sheet.tsx` | `h-5 w-5 sm:h-6 sm:w-6` | `flex items-center gap-2` | `text-xs font-semibold` | `text-[10px] sm:text-[11px] text-zinc-400` | Modal/bottom-sheet card detail viewer. |
+| **Multi-Skill Filter (Card Picker)** | `features/deck/pickers/card-picker-popover.tsx` | `h-3.5 w-3.5` / `h-4 w-4` | `flex items-center gap-1.5` | `text-xs font-bold` | `text-[10px] text-zinc-400` | Flat, non-nested multi-skill filter with tag chips & SVG icons. |
+| **Skill Picker Modal (List)** | `features/deck/components/legacy-skill-picker-modal.tsx` | `h-7 w-7` | `flex items-center gap-2.5` | `text-xs font-bold truncate` | `text-[10px] text-zinc-400 truncate` | Search list items with category pills. |
+| **Skill Picker Modal (Preview)** | `features/deck/components/legacy-skill-picker-modal.tsx` | `h-8 w-8` | `flex items-center gap-2.5` | `text-xs sm:text-sm font-bold` | `text-[11px] text-zinc-400` | Right-side detail preview header. |
 
 ---
 
@@ -261,7 +261,7 @@ Before approving any UI change involving cards, skills, or deck pickers:
 - [ ] **Icon Centering**: Is the skill icon vertically centered (`items-center`) against the combined 2-line title block?
 - [ ] **Aspect Ratio**: Does the icon have `flex-none` / `shrink-0` to avoid aspect ratio distortion on narrow viewports?
 - [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat and divider-based rather than nested cards?
-- [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `components/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
+- [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `app/common/ui/primitives/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
 - [ ] **Multi-Skill Matching Integrity**: In Parent Deck mode, does skill filtering support ANY/ALL toggling and bi-directional Gold <-> White mapping?
 - [ ] **Uniform Card Layout**: Does candidate card row place target-skills badge (parent mode only), ownership chip, type icon & `Skills ↗` top-right, and release date bottom-right?
 - [ ] **Ownership Chip**: Is the ownership chip labeled `Unowned` / `0 LB`–`3 LB` / `MLB` (never `N★`) and rendered fixed-width (`w-11`, `inline-flex items-center justify-center`) so the column aligns across rows?
@@ -332,7 +332,7 @@ The desktop skill popover must be positioned relative to its trigger, never cove
 
 ## 14. SVG Icons Over Emojis Standard (Clean UI Typography)
 
-All interface icons, badges, indicators, and buttons MUST use standardized SVG vector icons from `components/icons.tsx`. The use of Unicode emojis in functional UI is **strictly prohibited**.
+All interface icons, badges, indicators, and buttons MUST use standardized SVG vector icons from `app/common/ui/primitives/icons.tsx`. The use of Unicode emojis in functional UI is **strictly prohibited**.
 
 ### Core Rules
 1. ❌ **No Emojis in Functional UI Markup**:
@@ -345,8 +345,8 @@ All interface icons, badges, indicators, and buttons MUST use standardized SVG v
      - ✅ `Sort: Recommended` (never `Sort: ⭐ Recommended`)
      - ✅ `Sort: Target Skills` (never `Sort: 🎯 Target Skills`)
 3. ✅ **Component Icon Library**:
-   - All standard icons must be imported from `components/icons.tsx`: `TargetIcon`, `CheckIcon`, `XIcon`, `ChevronDownIcon`, `ChevronUpIcon`, `SearchIcon`, `StarIcon`, `TrophyIcon`, `TimerIcon`, `FlagIcon`, etc.
-   - When a new icon is needed, implement it in `components/icons.tsx` as a standard `IconProps` component before using it in views.
+   - All standard icons must be imported from `app/common/ui/primitives/icons.tsx`: `TargetIcon`, `CheckIcon`, `XIcon`, `ChevronDownIcon`, `ChevronUpIcon`, `SearchIcon`, `StarIcon`, `TrophyIcon`, `TimerIcon`, `FlagIcon`, etc.
+   - When a new icon is needed, implement it in `app/common/ui/primitives/icons.tsx` as a standard `IconProps` component before using it in views.
 
 ---
 

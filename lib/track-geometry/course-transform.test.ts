@@ -1,13 +1,14 @@
 import { describe, expect, it } from "bun:test";
-import courseShapesJson from "../data/course-shapes.json";
+import { loadCourseShapesDataset } from "../data/registry";
 import { transformCourseSpline, interpolateCoursePoint } from "./course-transform";
 import type { Course } from "../skill-engine/types";
 import type { CompactShapeEntry } from "./types";
 
-const shapes = courseShapesJson as unknown as Record<string, CompactShapeEntry>;
+const shapesPromise = loadCourseShapesDataset() as Promise<Record<string, CompactShapeEntry>>;
 
 describe("Course Transform & Alignment Engine", () => {
-  it("aligns Left-handed courses (Tokyo) with final straight running left-to-right (+X) into finish on bottom-right", () => {
+  it("aligns Left-handed courses (Tokyo) with final straight running left-to-right (+X) into finish on bottom-right", async () => {
+    const shapes = await shapesPromise;
     const shape = shapes["10606"] || shapes["10404"] || shapes["10101"];
     const mockCourse: Course = {
       id: 10606,
@@ -37,7 +38,8 @@ describe("Course Transform & Alignment Engine", () => {
     expect(res.bounds.maxY).toBeGreaterThan(res.bounds.minY);
   });
 
-  it("aligns Right-handed courses (Nakayama) with final straight running right-to-left (-X) into finish on bottom-left", () => {
+  it("aligns Right-handed courses (Nakayama) with final straight running right-to-left (-X) into finish on bottom-left", async () => {
+    const shapes = await shapesPromise;
     const shape = shapes["10504"] || shapes["10101"];
     const mockCourse: Course = {
       id: 10504,
@@ -64,7 +66,8 @@ describe("Course Transform & Alignment Engine", () => {
     expect(finishPt.y).toBeGreaterThan(350);
   });
 
-  it("interpolates intermediate point accurately with orthogonal normal", () => {
+  it("interpolates intermediate point accurately with orthogonal normal", async () => {
+    const shapes = await shapesPromise;
     const shape = shapes["10101"];
     const mockCourse: Course = {
       id: 10101,

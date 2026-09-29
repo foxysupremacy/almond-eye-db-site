@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback, useTransition } from "react";
 import Link from "next/link";
-import { type KyumaruInventoryDump, type KyumaruVeteranItem } from "@/lib/kyumaru-types";
-import { decodeKyumaruSyncPayload } from "@/lib/kyumaru-decode";
-import { saveVeterans, getVeteransCount } from "@/lib/db/veterans-db";
+import type { KyumaruInventoryDump } from "@/lib/veterans/import/kyumaru-types";
+import type { KyumaruVeteranItem } from "@/lib/veterans/types";
+import { decodeKyumaruSyncPayload } from "@/lib/veterans/import/kyumaru-decode";
+import { saveVeterans, getVeteransCount } from "@/lib/IndexDB/veterans-db";
 
 export default function ImportPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");

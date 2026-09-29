@@ -1,10 +1,10 @@
 // Golden test pinning the shared effect-classification table. Both
 // evaluateSkillForTrack (lib/evaluator/evaluator.ts) and classifySkillEffects
-// (lib/skill-effects.ts) must agree on these cases — if this table ever
+// (lib/skills/effects.ts) must agree on these cases — if this table ever
 // drifts, one of the two vocabularies breaks.
 import { describe, expect, test } from "bun:test";
 import { classifyEffect } from "./effects";
-import { classifySkillEffects } from "../skill-effects";
+import { classifySkillEffects } from "../skills/effects";
 
 describe("classifyEffect — single effect table", () => {
   test("speed family", () => {

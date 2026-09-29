@@ -1,5 +1,5 @@
-import type { KyumaruVeteranItem } from "../kyumaru-types";
-import type { GrandparentSlot } from "../parenting-state";
+import type { KyumaruVeteranItem } from "../veterans/types";
+import type { GrandparentSlot } from "./state";
 import type { CharacterIndexEntry } from "../api";
 
 /** One pedigree slot shown in the inherited-skills modal (parent/grandparent line). */

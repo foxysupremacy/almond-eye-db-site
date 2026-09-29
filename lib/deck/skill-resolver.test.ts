@@ -9,7 +9,7 @@ import {
 } from "./skill-resolver";
 
 // Gold skill 200014 ("Clockwise Demon") maps to white 200011 ("Right Turns ◎")
-// in lib/gold-to-white.json — see that file for the authoritative table.
+// in lib/data/generated/gold-to-white.json — see that file for the authoritative table.
 const GOLD_ID = 200014;
 const GOLD_WHITE_COUNTERPART = 200011;
 

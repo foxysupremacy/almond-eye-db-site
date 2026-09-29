@@ -350,7 +350,7 @@ $$\text{Final Score} = (100.85 \times 0.70) - 30 = 70.60 - 30 = \mathbf{40.60}$$
 
 ## 4. Implementation Notes (2026-09)
 
-How this document maps onto the shipped code (`lib/evaluator/`, `lib/parenting/skill-evaluator.ts`, `lib/recommendation-engine.ts`):
+How this document maps onto the shipped code (`lib/evaluator/`, `lib/parenting/skill-evaluator.ts`, `lib/recommendation/engine.ts`):
 
 - **Chaser envelope widened to 4th–9th** (`STYLE_EXPECTED_RANKS` in `lib/evaluator/constants.ts`) to match the current game version. Runner [1,2], Leader [2,5], Betweener [4,7], Great Escape [1,1] unchanged; room size stays fixed at 9 umas.
 - **Positional Overlap (Term 4) is graded, not binary.** `parseRankRequirements` now also parses `order_rate_inXX` / `order_rate_outXX` and unions repeated `order==N` matches. The evaluator computes `positionOverlap = |R_skill ∩ R_style| / |R_style|` and applies:

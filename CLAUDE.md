@@ -40,48 +40,70 @@ If the application uses Durable Objects or Workflows, refer to the relevant best
 
 Single-route client app (`app/page.tsx`, a `"use client"` shell) rendering six
 tabs — Main Deck, Parent Deck, Parenting, Visualizer, Collection, Trained
-Umas — inside one `DeckProvider`.
+Umas — through feature entry points under `features/`.
 
-Dependency direction is strict: **components → lib**, never lib → components.
-Deck types/constants live in `lib/deck/*`; components/store.tsx only wires React.
+UI dependency direction is **app/features/app/common → lib**. Feature screens may
+compose shared UI from `app/common/ui/`, but domain modules in `lib/` must never
+import UI. Feature-to-feature imports should use that feature's public `index.ts`
+when one exists.
 
-- **State**: `components/store.tsx` — `DeckProvider` + `useDeck()`. A thin
-  adapter over the pure reducer in `lib/deck/preset-reducer.ts` (all preset
-  mutation semantics live there, testable without React). Derived deck data
-  comes from `lib/deck/skill-resolver.ts`; same-uma slot constraints from
-  `lib/deck/card-constraints.ts`.
-- **Parenting state**: `lib/parenting-state.ts` — its own domain hook
-  (`useParentingSetup`) with its own storage key, built on the same
-  persistence pattern (see below).
-- **Share links**: `lib/share-codec.ts` — bit-packed codec. V3 (current)
-  wraps the field payload in a CORE section; future fields ship as extension
-  sections that decoders skip. Legacy V1/V2 links must decode forever (pinned
-  by tests). `#share` links are user-facing — never break them.
+- **Feature layout**: `features/deck`, `features/parenting`,
+  `features/visualizer`, `features/collection`, and `features/veterans` own the
+  screens, feature-specific models, and feature-only components. Cross-feature
+  presentation components and metadata live in `app/common/ui/`.
+- **Common UI layout**: `app/common/ui/primitives/` owns base display elements,
+  `controls/` owns shared filters/sheets/search, `cards/` owns card presentation,
+  and `skills/` owns skill display with `details/` and `provenance/` subgroups.
+- **Shared hooks**: cross-feature React hooks live in `app/common/hooks/`; do not
+  put React hooks or context into `lib/`. Keep pure persistence/data contracts
+  in `lib/` and let feature/shared hooks adapt them for React.
+- **Picker state**: `app/common/hooks/use-picker-controller.ts` provides only the
+  generic reducer/projection lifecycle. Each feature owns its adapter, state,
+  actions, and view model; API, localStorage, and UI callbacks stay outside the
+  reducer. Do not add shared filter or ranking rules.
+- **State**: `features/deck/state/deck-provider.tsx` exports `DeckProvider` and
+  `useDeck()`. Hydration and data loading are isolated in adjacent hooks. Preset
+  mutation semantics remain in the pure reducer in `lib/deck/preset-reducer.ts`;
+  derived deck data comes from `lib/deck/skill-resolver.ts` and same-uma slot
+  constraints from `lib/deck/card-constraints.ts`.
+- **Parenting state**: pure setup types, normalization, persistence, and URL
+  serialization live in `lib/parenting/state.ts`; the React hook
+  `useParentingSetup` lives in `features/parenting/hooks/` and keeps the same
+  storage key and subscription behavior.
+- **Share links**: `lib/share-link/codec.ts` owns the only supported V4 bit-packed
+  wire format; `lib/share-link/url.ts` owns URL parsing/building. V4 wraps the payload
+  in a CORE section and skips unknown extension sections. V1/V2/V3 payloads are
+  rejected; do not add legacy decoding without an explicit compatibility change.
 
 ### Data gateway (IMPORTANT)
 
-`lib/data/registry.ts` is the **only** module allowed to import game JSON
-(`lib/data/*.json`, `lib/gold-to-white.json`). It
-hydrates cards/characters/skills(+inherited uniques) with CDN image URLs and
+`lib/data/generated/` holds normalized runtime JSON committed for deployment;
+`lib/data/source/` holds raw local captures and the ignored GameTora page cache.
+Keep registry code, schema types, and registry tests at the `lib/data/` root.
+
+`lib/data/registry.ts` is the **only** module allowed to import runtime JSON
+(including lazily loaded racetracks and course shapes). It hydrates
+cards/characters/skills(+inherited uniques) with CDN image URLs and
 exposes canonical lookup maps. `lib/data/types.ts` is the typed contract with
 the data pipeline — update it together with `scripts/generate-data.ts` /
 `scripts/extract-affinity.ts`.
 
-- `lib/data-store.ts` — async facade over the registry adding the `DataStore`
-  Maps + `getCardSkills` metadata computation. Only `racetracks.json` stays a
-  dynamic import (code-splitting).
-- `lib/api.ts` — legacy in-memory adapter surface over data-store
+- `lib/api/data-store.ts` — async facade over the registry adding the `DataStore`
+  Maps + `getCardSkills` metadata computation. It never imports JSON itself;
+  code-split datasets are loaded through registry functions.
+- `lib/api/client.ts` — in-memory adapter surface over data-store; `lib/api/index.ts`
+  is the stable import entry point
   (`api.listCardIndex()` etc.) plus course helpers (`flattenCourse`,
   `distanceLabel`, `terrainLabel`, `turnLabel`).
 - Skill evaluation has one classification table: `lib/evaluator/effects.ts`
   (`classifyEffect`). `evaluateSkillForTrack` (`lib/evaluator/evaluator.ts`,
   public entry `lib/evaluator/index.ts`) and `classifySkillEffects`
-  (`lib/skill-effects.ts`) both consume it — do not fork the table again.
-- Card/character → skill grant indexers: `lib/data/skill-grants.ts`.
+  (`lib/skills/effects.ts`) both consume it — do not fork the table again.
+- Card/character → skill grant indexers: `lib/skills/skill-grants.ts`.
 
 ### Persistence (localStorage)
 
-Shared helpers in `lib/persistence.ts` (guarded JSON read/write + same-tab &
+Shared helpers in `lib/storage/persistence.ts` (guarded JSON read/write + same-tab &
 cross-tab notify via `notifyLocalUpdate` / `subscribeLocalUpdates`). Domains:
 
 | Key | Content |
@@ -95,6 +117,10 @@ Validate saved values before trusting them (`loadStoredPresets` is the
 reference implementation).
 
 ## Skill-zone engine (`lib/skill-engine/`)
+
+The generic zone engine does not enforce PVP skill bans. Callers that need the
+Champions Meeting "No Debuffs" rule use `lib/pvp/skill-zones.ts`; keep the ban
+list and event policy out of `lib/skill-engine/`.
 
 Pure TS, no deps. A faithful port of `uma-tools/uma-skill-tools` (Region/RegionList,
 Pratt `ConditionParser`, `ActivationConditions` map), adapted to the **flat DB
@@ -126,7 +152,7 @@ conditions evaluate against a fixed max-stat horse (HORSE in `zones.ts`).
 - `_random` boolean comparators have custom `filterGt/Gte/Lt/Lte/Neq` beyond the
   default `notSupported` — don't replace them with the shared defaults.
 
-## Track renderer (`lib/track-render.ts`)
+## Track renderer (`features/visualizer/rendering/track-render.ts`)
 
 Browser-only SVG builder ported from `track_visualizer.html` (itself a port of
 uma-tools `RaceTrack.tsx`). Builds DOM nodes via `createElementNS` (no JSX).
@@ -165,45 +191,43 @@ Key contracts defined in `docs/DESIGN.md`:
 - **Interactive Wrapping (Section 10)**: `SkillHoverCard` wraps both the centered icon and the 2-line title container as a single interactive trigger (`group inline-flex items-center gap-2.5 min-w-0 cursor-pointer`).
 - **Motion & Animations (Section 13)**: Powered by `tw-animate-css` (`@theme` easing tokens: `ease-out-expo`, `ease-out-quart`, `ease-in-out-cubic`). Durations ≤ 300ms. Always respect `prefers-reduced-motion`.
 - **Code Review Checklist (Section 12)**: Before finalizing UI changes, agents must verify their work against the checklist in `docs/DESIGN.md#12-checklist-for-code-reviews--future-sessions`.
-- **Shared Scaffolding**: Shared picker UI lives in `components/shared/` (e.g. `picker-search-bar.tsx`); shared display metadata lives in `lib/` (`RARITY_META` in `lib/skill-rarity.ts`, `EFFECT_CATEGORIES` in `lib/skill-effects.ts`) — never inside a sibling component.
+- **Shared Scaffolding**: Cross-feature presentation components live in `app/common/ui/`; skill presentation metadata lives there as well. Pure classification logic stays in `lib/skills/effects.ts` — never duplicate it inside sibling components.
 
 ## Data pipeline & external dependencies
 
 - `bun run build:data` (`scripts/generate-data.ts` + `scripts/extract-mdb.ts`,
-  auto-run on `prebuild`) generates `lib/data/*.json`. Hachimi translations are
+  auto-run on `prebuild`) generates `lib/data/generated/*.json`. Hachimi translations are
   merged into skills.json names and skill-meta.json at the source. Card name
   EN output strips the `[Title] ` bracket group.
 - **Data ownership per dataset (no ping-pong between raw and processed):**
   - `scripts/generate-data.ts` reads `../skills.json`, `../characters.json`,
-    `../data/racetracks_raw.json` → `lib/data/{skills,characters,racetracks}.json`
+    `../data/racetracks_raw.json` → `lib/data/generated/{skills,characters,racetracks}.json`
     (skills.json entries carry a `tags` array of raw effect tags for the crawler).
   - `scripts/extract-mdb.ts` reads the game's `master.mdb` (SQLite) directly —
     path from `$UMAMUSUME_MDB_PATH`, defaulting to the local CrossOver/Steam
-    install. It MERGES `lib/data/cards.json` (mdb contributes the index: new
+    install. It MERGES `lib/data/generated/cards.json` (mdb contributes the index: new
     cards, rarity, release, JP names via text_data cat 75/76/77; existing
-    entries are preserved verbatim) and owns `lib/data/affinity.json` +
-    `lib/data/careers.json` (`succession_relation`, `succession_relation_member`,
+    entries are preserved verbatim) and owns `lib/data/generated/affinity.json` +
+    `lib/data/generated/careers.json` (`succession_relation`, `succession_relation_member`,
     `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program`
     → `race_instance` → `race` → `race_course_set`).
   - `scripts/crawl_gametora_cards.py` (repo root, manual) operates **directly
-    on `lib/data/`**: reads cards.json + skills.json, crawls GameTora, and
+    on `lib/data/generated/`**: reads cards.json + skills.json, crawls GameTora, and
     updates cards.json in place (type/nameEn/urlName/hints/eventSkills/
     eventDetails — the fields mdb cannot provide) and writes
-    `lib/data/skill-meta.json`.
+    `lib/data/generated/skill-meta.json`.
   - `bun run fetch:gametora` fetches only `factors.json` (EN factor names —
     its URL embeds a content hash refreshed manually per scrape).
 
 ## Verification
 
 1. `npx tsc --noEmit` clean.
-2. `bun test` green (one known pre-existing failure may exist: rec-engine
-   "attaches event metadata … card 30308" — upstream data drift, tracked
-   separately).
+2. `bun test` green.
 3. `bun run build` passes.
 4. Manual: deck pick/search/sort, deck persists across reload, visualizer
    selection persists, triggerable tint matches zones on the selected course,
-   clicking a skill draws its ruler bands, share-link round-trip (old links
-   included) and Parenting Hub state persistence.
+   clicking a skill draws its ruler bands, V4 share-link round-trip (V1/V2/V3
+   are rejected) and Parenting Hub state persistence.
 
 ## Reference material (in `../`, outside this repo)
 

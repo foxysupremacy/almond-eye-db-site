@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { charactersByCharId, charactersById } from "../data/registry";
-import { DEFAULT_PARENTING_SETUP } from "../parenting-state";
+import { DEFAULT_PARENTING_SETUP } from "./state";
 import { resolveTargetCharacter } from "./pedigree-resolvers";
 
 describe("resolveTargetCharacter", () => {

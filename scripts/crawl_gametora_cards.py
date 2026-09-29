@@ -3,13 +3,13 @@
 Crawl / sync support-card skill grants from GameTora, operating directly on
 the datasets inside almond-eye-db-site/lib/data/ (no intermediate files):
 
-  reads   lib/data/cards.json   — card index (id + urlName), written by
+  reads   lib/data/generated/cards.json   — card index (id + urlName), written by
                                   extract-mdb.ts from master.mdb
-  reads   lib/data/skills.json  — processed skills with tactical tags
-  updates lib/data/cards.json   — fills type/nameEn/urlName and the GameTora-
+  reads   lib/data/generated/skills.json  — processed skills with tactical tags
+  updates lib/data/generated/cards.json   — fills type/nameEn/urlName and the GameTora-
                                   only fields (hints, event_skills, event
                                   details) in place
-  writes  lib/data/skill-meta.json — skill tactical metadata (styles,
+  writes  lib/data/generated/skill-meta.json — skill tactical metadata (styles,
                                   distances, surfaces) for recommendations
 
 Queries GameTora's Next.js data endpoint:
@@ -35,13 +35,14 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # In-repo layout (scripts/ lives inside the site repo) or legacy sibling
 # workspace layout (scripts/ sits next to almond-eye-db-site/).
-if (ROOT_DIR / "lib" / "data" / "cards.json").exists():
+if (ROOT_DIR / "lib" / "data" / "generated" / "cards.json").exists():
     SITE_LIB_DIR = ROOT_DIR / "lib"
 else:
     SITE_LIB_DIR = ROOT_DIR / "almond-eye-db-site" / "lib"
-CARDS_JSON = SITE_LIB_DIR / "data" / "cards.json"
-SKILLS_JSON = SITE_LIB_DIR / "data" / "skills.json"
-OUT_JSON = SITE_LIB_DIR / "data" / "skill-meta.json"
+GENERATED_DATA_DIR = SITE_LIB_DIR / "data" / "generated"
+CARDS_JSON = GENERATED_DATA_DIR / "cards.json"
+SKILLS_JSON = GENERATED_DATA_DIR / "skills.json"
+OUT_JSON = GENERATED_DATA_DIR / "skill-meta.json"
 
 SUPPORTS_LIST_URL = "https://gametora.com/umamusume/supports"
 SITEMAP_URL = "https://gametora.com/sitemap.xml"
@@ -334,7 +335,7 @@ def build_card_data(crawl_all: bool = False, specific_id: int | None = None, new
     if specific_id:
         card = cards_by_id.get(specific_id)
         if card is None:
-            print(f"Card {specific_id} not found in lib/data/cards.json.")
+            print(f"Card {specific_id} not found in lib/data/generated/cards.json.")
             return
         cards_to_crawl.append(card)
     elif crawl_all:

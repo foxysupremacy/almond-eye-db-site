@@ -1,5 +1,5 @@
 // Extracts card index + affinity/relation data + career G1 objectives directly
-// from the game's master.mdb (SQLite) into lib/data/{cards,affinity,careers}.json.
+// from the game's master.mdb (SQLite) into lib/data/generated/{cards,affinity,careers}.json.
 //
 // mdb-first pipeline: everything except English names and crawl results lives
 // in master.mdb. cards.json is a MERGE — existing entries are preserved
@@ -25,12 +25,12 @@ loadEnv();
 // machine-specific fallbacks. openMdb() fails with instructions if unset.
 const MDB_PATH = process.env.UMAMUSUME_MDB_PATH || "";
 
-const GAMETORA_DIR = path.resolve(__dirname, "../data-source/gametora");
+const GAMETORA_DIR = path.resolve(__dirname, "../lib/data/source/gametora");
 const HACHIMI_PATH = path.resolve(__dirname, "../../hachimi_text_data.json");
-const CHARACTERS_PATH = path.resolve(__dirname, "../lib/data/characters.json");
-const CARDS_PATH = path.resolve(__dirname, "../lib/data/cards.json");
-const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/affinity.json");
-const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/careers.json");
+const CHARACTERS_PATH = path.resolve(__dirname, "../lib/data/generated/characters.json");
+const CARDS_PATH = path.resolve(__dirname, "../lib/data/generated/cards.json");
+const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/affinity.json");
+const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/careers.json");
 
 interface GameToraFactor {
   id: string;
@@ -151,7 +151,7 @@ export function extractAffinityData() {
     }
   }
 
-  // 7. Career G1 objectives -> lib/data/careers.json.
+  // 7. Career G1 objectives -> lib/data/generated/careers.json.
   //    route (chara -> race_set) -> route_race (objective). condition_type 1
   //    objectives resolve to races; condition_type 3 is a fan-count target.
   //    condition_id resolution: a direct single_mode_program.id, or (for
@@ -313,7 +313,7 @@ export function extractAffinityData() {
       (missing.length ? ` (missing: ${missing.join(", ")})` : " (complete)");
   }
 
-  // 8. Support card index -> lib/data/cards.json (mdb-first merge).
+  // 8. Support card index -> lib/data/generated/cards.json (mdb-first merge).
   //    Existing entries are preserved verbatim — names/type/urlName and the
   //    crawl fields (hints/eventSkills/eventDetails) are owned by
   //    crawl_gametora_cards.py. mdb contributes the index: new cards,

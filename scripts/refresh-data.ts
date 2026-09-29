@@ -32,6 +32,9 @@ const SITE_ROOT = path.resolve(__dirname, "..");
 loadEnv();
 
 const noImages = process.argv.includes("--no-images");
+const pvpRecommendationsSource = process.env.PVP_RECOMMENDATIONS_SOURCE
+  ? path.resolve(SITE_ROOT, process.env.PVP_RECOMMENDATIONS_SOURCE)
+  : path.join(SITE_ROOT, "lib/data/source/game/pvp-recommendations.json");
 const isBun = Boolean(process.versions.bun);
 const tsScript = (name: string) =>
   isBun ? [path.join(__dirname, name)] : ["--experimental-strip-types", path.join(__dirname, name)];
@@ -82,7 +85,7 @@ const rawSkills = path.resolve(SITE_ROOT, "..", "skills.json");
 if (fs.existsSync(rawSkills)) {
   steps.push({ name: "generate-data (raw dumps)", cmd: process.execPath, args: tsScript("generate-data.ts") });
 } else {
-  console.log(`[skip] generate-data: raw dumps not found at ${rawSkills} — using committed lib/data as base.`);
+  console.log(`[skip] generate-data: raw dumps not found at ${rawSkills} — using committed lib/data/generated as base.`);
 }
 
 // 2. master.mdb extraction (mdb path from .env / $UMAMUSUME_MDB_PATH).
@@ -109,10 +112,28 @@ steps.push({
 // 5. Inherited-unique skills from master.mdb.
 steps.push({ name: "generate inherit skills", cmd: python, args: py("generate_inherit_skills.py") });
 
-// 6. Name cleanup (idempotent).
+// 6. Optional game-captured event recommendation response. Keep the raw
+// response local; only the normalized, header-free JSON is committed.
+if (fs.existsSync(pvpRecommendationsSource)) {
+  steps.push({
+    name: "build PvP recommendations",
+    cmd: process.execPath,
+    args: tsScript("build-pvp-recommendations.ts").concat([pvpRecommendationsSource]),
+  });
+} else if (process.env.PVP_RECOMMENDATIONS_SOURCE) {
+  steps.push({
+    name: "build PvP recommendations",
+    cmd: process.execPath,
+    args: tsScript("build-pvp-recommendations.ts").concat([pvpRecommendationsSource]),
+  });
+} else {
+  console.log(`[skip] PvP recommendations: source not found at ${pvpRecommendationsSource}. Set PVP_RECOMMENDATIONS_SOURCE or place the capture at lib/data/source/game/pvp-recommendations.json.`);
+}
+
+// 7. Name cleanup (idempotent).
 steps.push({ name: "clean card names", cmd: python, args: py("clean_card_names.py"), soft: true });
 
-// 7. PNG assets (incremental; skips already-downloaded files).
+// 8. PNG assets (incremental; skips already-downloaded files).
 if (!noImages) {
   steps.push({ name: "crawl card images", cmd: python, args: py("crawl_card_images.py"), soft: true });
 }
@@ -133,4 +154,4 @@ for (const step of steps) {
 }
 
 console.log(`\nData refresh finished (${steps.length - failed}/${steps.length} steps ok).`);
-console.log("Review the lib/data diff, then commit to deploy the updated datasets.");
+console.log("Review the lib/data/generated diff, then commit to deploy the updated datasets.");

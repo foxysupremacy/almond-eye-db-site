@@ -7,7 +7,7 @@ Roy's mdb guide, those rows ARE the inherited (white) versions of unique
 skills; unique_skill_id_1 points at the full 3-star unique, unique_skill_id_2
 at the 1-star/2-star version when the horse upgrades from a lower base star.
 
-Outputs (into almond-eye-db-site/lib/data/):
+Outputs (into almond-eye-db-site/lib/data/generated/):
   skills-inherit.json        inherit skill entries, same schema as skills.json
   unique-inherit-map.json    { originalUniqueSkillId: inheritSkillId }
 
@@ -29,10 +29,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from skill_icons import resolve_skill_icon_id
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if os.path.isdir(os.path.join(REPO_ROOT, "lib", "data")):
-    SITE_LIB_DATA = os.path.join(REPO_ROOT, "lib", "data")       # in-repo layout
+if os.path.isdir(os.path.join(REPO_ROOT, "lib", "data", "generated")):
+    SITE_LIB_DATA = os.path.join(REPO_ROOT, "lib", "data", "generated")       # in-repo layout
 else:
-    SITE_LIB_DATA = os.path.join(REPO_ROOT, "almond-eye-db-site", "lib", "data")  # sibling layout
+    SITE_LIB_DATA = os.path.join(REPO_ROOT, "almond-eye-db-site", "lib", "data", "generated")  # sibling layout
 
 # Korean text (untranslated GameTora gene rows / KR-client mdb text_data) must
 # never win over an available English name.

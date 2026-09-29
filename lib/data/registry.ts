@@ -1,27 +1,28 @@
 // Static Data Registry — the single gateway to the pre-processed JSON datasets.
 //
 // Every module that needs synchronous access to game data imports from here;
-// importing the JSON files directly is reserved for this module only.
-// (racetracks.json is the exception — it stays a dynamic import inside
-// lib/data-store.ts for code-splitting.)
+// importing runtime JSON files directly is reserved for this module only.
+// Large visualizer datasets remain dynamic imports here for code-splitting.
 //
 // Hydrated entities carry deterministic CDN image URLs. Large lookups that
-// lib/data-store.ts builds on top of this data (DataStore with getCardSkills
+// data-store.ts builds on top of this data (DataStore with getCardSkills
 // etc.) live there; the maps below serve modules that cannot await an async
 // init (pure engines called during render).
 
-import rawCardsJson from "./cards.json";
-import rawSkillsJson from "./skills.json";
-import rawSkillsInheritJson from "./skills-inherit.json";
-import rawCharactersJson from "./characters.json";
-import rawAffinityJson from "./affinity.json";
-import rawCareersJson from "./careers.json";
-import rawUniqueInheritJson from "./unique-inherit-map.json";
-import rawCharacterEvolutionsJson from "./character-evolutions.json";
-import rawCardEffectsJson from "./card-effects.json";
-import rawGoldToWhiteJson from "../gold-to-white.json";
-import rawSkillMetaJson from "./skill-meta.json";
-import rawRaceImpactPriorsJson from "./race-impact-priors.json";
+import rawCardsJson from "./generated/cards.json";
+import rawSkillsJson from "./generated/skills.json";
+import rawSkillsInheritJson from "./generated/skills-inherit.json";
+import rawCharactersJson from "./generated/characters.json";
+import rawAffinityJson from "./generated/affinity.json";
+import rawCareersJson from "./generated/careers.json";
+import rawUniqueInheritJson from "./generated/unique-inherit-map.json";
+import rawCharacterEvolutionsJson from "./generated/character-evolutions.json";
+import rawCardEffectsJson from "./generated/card-effects.json";
+import rawGoldToWhiteJson from "./generated/gold-to-white.json";
+import rawSkillMetaJson from "./generated/skill-meta.json";
+import rawRaceImpactPriorsJson from "./generated/race-impact-priors.json";
+import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
+import rawFactorsCompactJson from "./generated/factors-compact.json";
 
 import type {
   AffinityDataPayload,
@@ -36,6 +37,9 @@ import type {
   SkillMeta,
   SupportCardEffectsBlob,
   RaceImpactPriorsPayload,
+  PvpRecommendationsPayload,
+  CompactFactorEntry,
+  RacetrackDetail,
 } from "./types";
 
 export type {
@@ -48,7 +52,56 @@ export type {
   SkillMeta,
   SupportCardEffectsBlob,
   RaceImpactPriorsPayload,
+  PvpRecommendationsPayload,
+  CompactFactorEntry,
 };
+
+interface RawCardRecord {
+  id: number;
+  nameEn: string;
+  nameJp: string;
+  charName?: string;
+  titleEn?: string;
+  titleJa?: string;
+  rarity: 1 | 2 | 3;
+  type: CardIndexEntry["type"];
+  release?: string | null;
+  urlName?: string | null;
+  eventSkills?: number[];
+  hintSkills?: number[];
+  eventDetails?: CardIndexEntry["eventDetails"];
+}
+
+interface RawCharacterRecord {
+  id: number;
+  charId: number;
+  variant?: string;
+  nameEn: string;
+  nameJp: string;
+  titleEn: string;
+  titleJp: string;
+  rarity: number;
+  release?: string | null;
+  aptitude?: string[];
+  baseStats?: number[];
+  uniqueSkillId?: number | null;
+  innateSkills?: number[];
+  awakeningSkills?: number[];
+  eventSkills?: number[];
+  growthRates?: number[];
+}
+
+interface RawSkillRecord {
+  id: number;
+  nameEn: string;
+  nameJp: string;
+  descEn?: string;
+  descJp?: string;
+  rarity?: number;
+  iconId?: number | null;
+  tags?: string[];
+  conditionGroups?: SkillDetail["conditionGroups"];
+}
 
 const CDN_BASE: string =
   (typeof process !== "undefined" && process.env?.NEXT_PUBLIC_CDN_URL) ||
@@ -80,7 +133,7 @@ export function getCharacterImageUrl(
 // ---------------------------------------------------------------------------
 
 /** Support cards with hydrated CDN image URLs. */
-export const cards: CardIndexEntry[] = (rawCardsJson as any[]).map((c) => ({
+export const cards: CardIndexEntry[] = (rawCardsJson as unknown as RawCardRecord[]).map((c) => ({
   id: c.id,
   nameEn: c.nameEn,
   nameJp: c.nameJp,
@@ -99,7 +152,7 @@ export const cards: CardIndexEntry[] = (rawCardsJson as any[]).map((c) => ({
 }));
 
 /** Playable characters with hydrated CDN avatar URLs. */
-export const characters: CharacterIndexEntry[] = (rawCharactersJson as any[]).map((c) => ({
+export const characters: CharacterIndexEntry[] = (rawCharactersJson as unknown as RawCharacterRecord[]).map((c) => ({
   id: c.id,
   charId: c.charId,
   variant: c.variant || String(c.id).slice(-2),
@@ -121,7 +174,7 @@ export const characters: CharacterIndexEntry[] = (rawCharactersJson as any[]).ma
 
 // Inherited-unique (white) skill versions, generated from master.mdb —
 // see scripts/generate_inherit_skills.py
-export const skillsBase: SkillDetail[] = (rawSkillsJson as any[]).map((s) => ({
+export const skillsBase: SkillDetail[] = (rawSkillsJson as unknown as RawSkillRecord[]).map((s) => ({
   id: s.id,
   nameEn: s.nameEn,
   nameJp: s.nameJp,
@@ -133,7 +186,7 @@ export const skillsBase: SkillDetail[] = (rawSkillsJson as any[]).map((s) => ({
   conditionGroups: s.conditionGroups || [],
 }));
 
-export const skillsInherit: SkillDetail[] = (rawSkillsInheritJson as any[]).map((s) => ({
+export const skillsInherit: SkillDetail[] = (rawSkillsInheritJson as unknown as RawSkillRecord[]).map((s) => ({
   id: s.id,
   nameEn: s.nameEn,
   nameJp: s.nameJp,
@@ -206,6 +259,24 @@ export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Recor
 
 /** Aggregate race telemetry for the optional Visualizer race-impact model. */
 export const raceImpactPriors = rawRaceImpactPriorsJson as RaceImpactPriorsPayload;
+
+/** Game-provided race fit recommendations, normalized from the captured response. */
+export const pvpRecommendations = rawPvpRecommendationsJson as PvpRecommendationsPayload;
+
+/** Compact factor metadata used by the veteran decoder. */
+export const compactFactors = rawFactorsCompactJson as Record<string, CompactFactorEntry>;
+
+/** Racetrack data is loaded lazily through this gateway to keep it code-split. */
+export async function loadRacetracks(): Promise<RacetrackDetail[]> {
+  const module = await import("./generated/racetracks.json");
+  return (module.default ?? module) as unknown as RacetrackDetail[];
+}
+
+/** Course shapes are large and loaded only by the visualizer. */
+export async function loadCourseShapesDataset(): Promise<unknown> {
+  const module = await import("./generated/course-shapes.json");
+  return module.default ?? module;
+}
 
 /** Card metadata (grant lists, url names) keyed by card id string — derived
  * from the hydrated cards dataset (formerly a separate card-data.json). */

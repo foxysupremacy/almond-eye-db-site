@@ -31,7 +31,7 @@ almond-eye-db-site/
 │   ├── affinity-engine.ts          # Base relations, G1 race overlap, and 6-slot lineage affinity
 │   ├── evaluator/evaluator.ts       # Track geometry simulation and skill timing evaluation
 │   ├── use-owned-umas.ts           # Hook managing user's owned characters inventory
-│   └── data-store.ts               # Character assets, stands (assets/chara_stand 512x512), and metadata
+│   └── lib/api/data-store.ts        # In-memory game-data access and character metadata
 └── components/
     ├── parenting-view.tsx           # Main hub coordinating tree, modals, auto-select, and state
     ├── parenting/
@@ -141,7 +141,7 @@ Mapped directly from the `docs/parent.md` case study (Kyoto 2200m Turf example):
 
 ## 5. State & Data Schema Reference
 
-### `GrandparentSlot` ([`lib/parenting-state.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/parenting-state.ts))
+### `GrandparentSlot` ([`lib/parenting/state.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/parenting/state.ts))
 ```typescript
 export interface GrandparentSlot {
   id: string; // e.g. "p1-gp1", "p1-gp2", "p2-gp1", "p2-gp2"

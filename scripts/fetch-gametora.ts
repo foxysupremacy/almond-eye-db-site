@@ -1,4 +1,4 @@
-// Downloads GameTora's English factor names into data-source/gametora/ so
+// Downloads GameTora's English factor names into lib/data/source/gametora/ so
 // extract-affinity.ts can overlay them onto the Japanese names from
 // master.mdb (master.mdb text_data is Japanese-only).
 //
@@ -15,7 +15,7 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const OUTPUT_DIR = path.resolve(__dirname, "../data-source/gametora");
+const OUTPUT_DIR = path.resolve(__dirname, "../lib/data/source/gametora");
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 

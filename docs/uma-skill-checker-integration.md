@@ -54,7 +54,7 @@ Toàn bộ logic nặng nằm trong `js/common.js` (~1.600 dòng, các hàm thu�
 
 ⚠️ **Định danh skill: KHÔNG dùng `id` của deck để map sang site.** Tôi đã kiểm chứng trực tiếp:
 
-- `id` trong `uma-skill-deck-skills.json` là số thứ tự "1".."445" (legacy), **không phải game skill ID**. Tra theo ID vào `almond-eye-db-site/lib/data/skills.json` → **khớp 0/445**.
+- `id` trong `uma-skill-deck-skills.json` là số thứ tự "1".."445" (legacy), **không phải game skill ID**. Tra theo ID vào `almond-eye-db-site/lib/data/generated/skills.json` → **khớp 0/445**.
 - Khớp theo `name` (tên Nhật) vào `nameJp` của site: **439/445 khớp chính xác 100%**.
 - 6 entry còn lại là nhóm skill awakening "目覚め" (`左回りの目覚め`, `右回りの目覚め`, `春/夏/秋/冬の目覚め`) — **không tồn tại trong `skills.json` của site** (tôi đã tra cả MDB game: không có tên này trong `skill_data`/`text_data` cat 47). Nghĩa là phép map đúng là: **tên Nhật chuẩn hóa + `AWAKENING_PAIR_MAP` quy 6 skill này về skill gốc ○ tương ứng**.
 - Lưu ý chuẩn hóa: `normalizeText` của checker hợp nhất `◎→○`, nên `根幹距離◎` và `根幹距離○` trùng nhau sau chuẩn hóa — phía site cần chốt cách xử lý (khuyến nghị: map ◎ về skill ○ gốc, vì deck master vốn chỉ có ○).
@@ -83,7 +83,7 @@ Site hiện trả lời "đế tôi nên nuôi skill/card nào", nhưng **đầu
 | Tab mới | Hoặc mở rộng `Tab` union + `TABS` trong `app/page.tsx:21-34`; hash `#ocr` được miễn phí; **phải giữ nguyên logic bỏ qua hash lạ** (`applyHash`) để không phá `#share=`/`#data=` |
 | Dữ liệu skill | Chỉ được đọc JSON game qua `lib/data/registry.ts` (quy tắc gateway); skills.json có 1907 skill với `id` = **game ID thật** (200012…), `nameJp`, `nameEn`, `rarity` |
 | Style | Tailwind v4 + token `globals.css`, palette warm zinc/emerald, dark mode qua class `.dark`; **không** mang theo Tailwind CDN của checker; animation tuân DESIGN.md §13 (≤300ms, easing token) |
-| Persistence | localStorage `almondeye_owned_cards` / `almondeye_owned_umas`, IndexedDB `lib/db/veterans-db.ts` cho payload lớn (3.1MB), event `almondeye_inventory_updated` báo cross-tab |
+| Persistence | localStorage `almondeye_owned_cards` / `almondeye_owned_umas`, IndexedDB `lib/IndexDB/veterans-db.ts` cho payload lớn (3.1MB), event `almondeye_veterans_updated` báo cập nhật trong cùng tab |
 
 ### 2.3. Kiến trúc tích hợp đề xuất
 
@@ -110,12 +110,12 @@ almond-eye-db-site/
 
 Viết `lib/ocr/skill-map.ts` chạy lúc build (script trong `scripts/`) sinh `lib/data/skill-ocr-map.json`:
 
-1. Đầu vào: `uma-skill-checker/uma-skill-deck-skills.json` + `AWAKENING_PAIR_MAP` (extract từ `exam.html:1105-1113`) + `lib/data/skills.json`.
+1. Đầu vào: `uma-skill-checker/uma-skill-deck-skills.json` + `AWAKENING_PAIR_MAP` (extract từ `exam.html:1105-1113`) + `lib/data/generated/skills.json`.
 2. Logic: `checker.name` → chuẩn hóa (dùng chính `normalizeText`) → tra `nameJp` trong skills.json → xuất map `{ checkerName → siteSkillId }`.
 3. Kiểm chứng đã làm: **439/445 khớp trực tiếp**; 6 "目覚め" quy qua `AWAKENING_PAIR_MAP` về skill ○ gốc rồi map tiếp → **đủ 445/445 về mặt khái niệm**.
 4. Chèn 1 bước verify vào `prebuild`: fail build nếu tỷ lệ map < 100% (skill mới thêm vào game sẽ tự bị bắt).
 
-Sản phẩm: OCR trả về *tên Nhật* → map tức thì sang `siteSkillId` (number, cùng không gian ID với share-codec V3, `eventSkills`, skill-resolver) → toàn bộ hạ tầng hiển thị skill sẵn có của site (popover, hover card, tier…) dùng được ngay mà không phải dịch gì thêm.
+Sản phẩm: OCR trả về *tên Nhật* → map tức thì sang `siteSkillId` (number, cùng không gian ID với share preset, `eventSkills`, skill-resolver) → toàn bộ hạ tầng hiển thị skill sẵn có của site (popover, hover card, tier…) dùng được ngay mà không phải dịch gì thêm.
 
 ### 2.5. Luồng end-to-end sau tích hợp (đề xuất UX)
 

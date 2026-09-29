@@ -8,8 +8,9 @@ import {
 import { skillsById } from "../data/registry";
 import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";
-import { isSkillMatchingFilter } from "../recommendation-engine";
-import { BANNED_DEBUFF_SKILL_IDS } from "../pvp-events";
+import type { SkillDetail } from "../data/types";
+import { isSkillMatchingFilter } from "../recommendation/engine";
+import { BANNED_DEBUFF_SKILL_IDS } from "../pvp/events";
 
 
 export function runningStyleToNum(
@@ -32,7 +33,7 @@ const TRAP_BADGE_CLASS =
   "bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border-red-400/50";
 
 function computeZonesFor(
-  rawSkill: any,
+  rawSkill: SkillDetail,
   course: Course,
   styleNum?: RunningStyle,
   raceParams?: Partial<RaceParameters>
@@ -148,7 +149,7 @@ export function evaluateSkillActivation(
 
   // Fallback when no course is set: check if raw condition requires an incompatible style
   if (styleNum && rawSkill.conditionGroups) {
-    const allCondStr = rawSkill.conditionGroups.map((g: any) => `${g.condition || ""} ${g.precondition || ""}`).join(" ");
+    const allCondStr = rawSkill.conditionGroups.map((group) => `${group.condition || ""} ${group.precondition || ""}`).join(" ");
     const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
       parseInt(m[1], 10)
     );
@@ -165,7 +166,7 @@ export function evaluateSkillActivation(
 
 function mapEvalResult(
   evalResult: SkillEvaluationResult,
-  rawSkill: any,
+  rawSkill: SkillDetail,
   course: Course,
   skillName: string
 ): LegacyUniqueEval {
@@ -213,11 +214,11 @@ function mapEvalResult(
     rawSkill?.conditionGroups &&
     rawSkill.conditionGroups.length >= 2 &&
     rawSkill.conditionGroups.some(
-      (g: any) =>
-        (g.condition.includes("distance_rate") ||
-          g.condition.includes("phase==1") ||
-          g.condition.includes("phase_random==1")) &&
-        (g.effects || []).some((e: any) => e.type === 27 || e.type === 21 || e.type === 22)
+      (group) =>
+        ((group.condition ?? "").includes("distance_rate") ||
+          (group.condition ?? "").includes("phase==1") ||
+          (group.condition ?? "").includes("phase_random==1")) &&
+        (group.effects || []).some((effect) => effect.type === 27 || effect.type === 21 || effect.type === 22)
     ) &&
     evalResult.category === "fastest_accel";
 

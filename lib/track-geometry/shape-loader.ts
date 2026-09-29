@@ -1,4 +1,5 @@
 import type { CompactShapeEntry } from "./types";
+import { loadCourseShapesDataset } from "../data/registry";
 
 let cachedShapes: Record<string, CompactShapeEntry> | null = null;
 let loadPromise: Promise<Record<string, CompactShapeEntry>> | null = null;
@@ -13,8 +14,8 @@ export async function loadCourseShapes(): Promise<Record<string, CompactShapeEnt
 
   loadPromise = (async () => {
     try {
-      const mod = await import("../data/course-shapes.json");
-      cachedShapes = (mod.default ?? mod) as unknown as Record<string, CompactShapeEntry>;
+      const dataset = await loadCourseShapesDataset();
+      cachedShapes = dataset as Record<string, CompactShapeEntry>;
       return cachedShapes;
     } catch (err) {
       loadPromise = null;

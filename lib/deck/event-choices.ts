@@ -1,4 +1,4 @@
-import type { CardEventDetail } from "../data-store";
+import type { CardEventDetail } from "../api";
 
 export function getDefaultChoiceIndex(
   eventDetail: CardEventDetail,

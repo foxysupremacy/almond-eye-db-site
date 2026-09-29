@@ -5,10 +5,10 @@ import {
   isAptitudeExcluded,
 } from "./compatibility";
 import { getCareerG1Saddles, getCareerMustWinSaddles } from "./career-engine";
-import { calculateAffinity, calculatePairAffinity } from "../affinity-engine";
+import { calculateAffinity, calculatePairAffinity } from "../lineage/affinity-engine";
 import { getDeckAnalysis } from "./deck-analyzer";
 import type { Course } from "../skill-engine/types";
-import type { KyumaruVeteranItem } from "../kyumaru-types";
+import type { KyumaruVeteranItem } from "../veterans/types";
 import { characters as rawCharactersData } from "../data/registry";
 import type { CharacterIndexEntry } from "../api";
 

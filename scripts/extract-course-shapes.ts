@@ -4,8 +4,8 @@ import * as zlib from "node:zlib";
 
 const ROOT_DIR = path.resolve(import.meta.dirname, "../..");
 const HAKURAKU_GAMEDATA = path.join(ROOT_DIR, "hakuraku/public/data/gamedata.bin.gz");
-const OUTPUT_FILE = path.resolve(import.meta.dirname, "../lib/data/course-shapes.json");
-const RACETRACKS_FILE = path.resolve(import.meta.dirname, "../lib/data/racetracks.json");
+const OUTPUT_FILE = path.resolve(import.meta.dirname, "../lib/data/generated/course-shapes.json");
+const RACETRACKS_FILE = path.resolve(import.meta.dirname, "../lib/data/generated/racetracks.json");
 
 export interface CompactShapeEntry {
   distance: number;

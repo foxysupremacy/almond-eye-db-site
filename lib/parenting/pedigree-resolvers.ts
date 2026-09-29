@@ -1,9 +1,9 @@
 import type { CharacterIndexEntry } from "../api";
-import type { KyumaruVeteranItem } from "../kyumaru-types";
+import type { KyumaruVeteranItem } from "../veterans/types";
 import type {
   ParentingSetup,
   GrandparentSlot,
-} from "../parenting-state";
+} from "./state";
 import type { ParticipantSlot } from "./types";
 
 /**

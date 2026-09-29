@@ -109,12 +109,7 @@ export interface SkillDetailInput {
   conditionGroups?: Array<{
     condition?: string | null;
     precondition?: string | null;
-    effects?: Array<{
-      type: number;
-      value: number;
-      target?: number;
-      target_details?: number;
-    }> | unknown[];
+    effects?: import("../data/types").RawSkillEffect[];
     base_time?: number | null;
   }>;
 }

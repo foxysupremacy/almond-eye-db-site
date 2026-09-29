@@ -5,10 +5,10 @@ import type {
   RacetrackDetail,
   CourseRow,
 } from "../api";
-import type { EventSkillMetadata } from "../data-store";
+import type { EventSkillMetadata } from "../api";
 import type { Course } from "../skill-engine/types";
-import type { PvpEvent } from "../pvp-events";
-import type { ParentingSetup } from "../parenting-state";
+import type { PvpEvent } from "../pvp/events";
+import type { ParentingSetup } from "../parenting/state";
 
 /** 1: Runner, 2: Leader, 3: Betweener, 4: Chaser, 5: Runaway */
 export type RunningStyle = 1 | 2 | 3 | 4 | 5;

@@ -1,5 +1,5 @@
 // Career schedule engine — per-character career G1 objectives sourced from
-// GameTora character pages ("objectiveData"), merged into lib/data/careers.json
+// GameTora character pages ("objectiveData"), merged into lib/data/generated/careers.json
 // by scripts/extract-affinity.ts (run `bun run fetch:gametora` + `build:data`).
 // Used to score untrained "potential veteran" candidates and to surface
 // career/track fit in the parent picker. Zero-server, 100% client-side.

@@ -3,7 +3,7 @@
 // The game encodes skill effects as {type, value, target} triples; this table
 // maps each triple to one gameplay category. Both the evaluator
 // (evaluateSkillForTrack) and the UI classifier (classifySkillEffects in
-// lib/skill-effects.ts) must go through classifyEffect so the vocabularies
+// lib/skills/effects.ts) must go through classifyEffect so the vocabularies
 // can never drift apart again.
 
 export type EffectCategory =
@@ -17,12 +17,7 @@ export type EffectCategory =
   | "other";
 
 /** Raw effect shape as found in skill conditionGroups. */
-export interface RawEffect {
-  type?: number;
-  value?: number;
-  target?: number;
-  target_details?: number;
-}
+export type RawEffect = import("../data/types").RawSkillEffect;
 
 /**
  * Classify one raw effect triple.

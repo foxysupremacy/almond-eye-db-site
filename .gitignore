@@ -13,8 +13,9 @@ tsconfig.tsbuildinfo
 .env
 # crawled image assets + python cache (local only)
 /data/
+/lib/data/source/game/
 scripts/__pycache__/
-/data-source/gametora/.page-cache
+/lib/data/source/gametora/.page-cache
 implementation_plan.md
 output/pdf/phan-tich-u-tools-race-impact.pdf
 docs/race-visualizer-three-board-plan.md

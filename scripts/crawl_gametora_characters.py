@@ -3,15 +3,15 @@
 Populate playable-character data, mdb-first, operating directly on the
 datasets inside almond-eye-db-site/lib/data/ (no intermediate files):
 
-  reads   lib/data/characters.json — character index (id = base card_id)
-  reads   lib/data/skills.json     — known skills
+  reads   lib/data/generated/characters.json — character index (id = base card_id)
+  reads   lib/data/generated/skills.json     — known skills
   merges  master.mdb               — new playable characters (card_data rows
                                      where id == chara_id*100 + 1): JP name,
                                      rarity, release, innate/awakening skills
-  updates lib/data/characters.json — fills EN name/title, aptitudes, base
+  updates lib/data/generated/characters.json — fills EN name/title, aptitudes, base
                                      stats, unique/innate/awakening/event
                                      skill ids from GameTora
-  appends lib/data/skills.json     — referenced skills missing from the site
+  appends lib/data/generated/skills.json     — referenced skills missing from the site
                                      (e.g. brand-new uniques), built from mdb
                                      skill_data with JP text (cat 47/48)
 
@@ -46,12 +46,13 @@ load_env()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # In-repo layout (scripts/ lives inside the site repo) or legacy sibling layout.
-if (ROOT_DIR / "lib" / "data" / "characters.json").exists():
+if (ROOT_DIR / "lib" / "data" / "generated" / "characters.json").exists():
     SITE_LIB_DIR = ROOT_DIR / "lib"
 else:
     SITE_LIB_DIR = ROOT_DIR / "almond-eye-db-site" / "lib"
-CHARACTERS_JSON = SITE_LIB_DIR / "data" / "characters.json"
-SKILLS_JSON = SITE_LIB_DIR / "data" / "skills.json"
+GENERATED_DATA_DIR = SITE_LIB_DIR / "data" / "generated"
+CHARACTERS_JSON = GENERATED_DATA_DIR / "characters.json"
+SKILLS_JSON = GENERATED_DATA_DIR / "skills.json"
 
 CHARACTERS_LIST_URL = "https://gametora.com/umamusume/characters"
 SITEMAP_URL = "https://gametora.com/sitemap.xml"
@@ -327,7 +328,7 @@ def main() -> None:
     if args.card_id:
         card = by_id.get(args.card_id)
         if card is None:
-            print(f"Character {args.card_id} not found in lib/data/characters.json.")
+            print(f"Character {args.card_id} not found in lib/data/generated/characters.json.")
             return
         to_crawl = [card]
     elif args.all:

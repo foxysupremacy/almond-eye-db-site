@@ -231,20 +231,17 @@ describe("computeZones - intrinsic track & environmental conditions", () => {
     expect(mismatchGrade.regions.length).toBe(0);
   });
 
-  test("noDebuffs rule returns empty regions for banned skills and preserves unbanned skills", () => {
-    // 201151 = Monopolize (独占力), a banned debuff
-    const normalZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "201151" });
-    expect(normalZones.regions.length).toBeGreaterThan(0);
+  test("generic zone computation does not apply PVP no-debuff policy", () => {
+    const withoutRule = computeZones(dummyCourse, "phase>=2", null, undefined, {
+      skillId: "201151",
+      noDebuffs: false,
+    });
+    const withRule = computeZones(dummyCourse, "phase>=2", null, undefined, {
+      skillId: "201151",
+      noDebuffs: true,
+    });
 
-    const bannedZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "201151", noDebuffs: true });
-    expect(bannedZones.regions.length).toBe(0);
-
-    // 110071 = Adventure of 564 (継承スキル ban)
-    const bannedUnique = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "110071", noDebuffs: true });
-    expect(bannedUnique.regions.length).toBe(0);
-
-    // 200011 = General speed skill (not banned)
-    const unbannedZones = computeZones(dummyCourse, "phase>=2", null, undefined, { skillId: "200011", noDebuffs: true });
-    expect(unbannedZones.regions.length).toBeGreaterThan(0);
+    expect(withRule.regions.length).toBeGreaterThan(0);
+    expect(withRule.regions).toEqual(withoutRule.regions);
   });
 });

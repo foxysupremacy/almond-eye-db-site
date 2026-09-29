@@ -52,7 +52,7 @@ const jpCharaNames = getTextDataMap(6);
 console.log("Loaded text data caches.");
 
 // ---------------------------------------------------------------------------
-// 1. Extract Support Card Effects -> lib/data/card-effects.json
+// 1. Extract Support Card Effects -> lib/data/generated/card-effects.json
 // ---------------------------------------------------------------------------
 console.log("Extracting Support Card Effects...");
 
@@ -203,7 +203,7 @@ for (const sc of supportCardRows) {
 }
 
 fs.writeFileSync(
-  path.resolve(SITE_ROOT, "lib/data/card-effects.json"),
+  path.resolve(SITE_ROOT, "lib/data/generated/card-effects.json"),
   JSON.stringify(allCardEffects)
 );
 console.log(`Saved card-effects.json (${Object.keys(allCardEffects).length} cards).`);
@@ -214,7 +214,7 @@ console.log(`Saved card-effects.json (${Object.keys(allCardEffects).length} card
 console.log("Extracting Character Growth Rates & Evolutions...");
 
 // Read existing characters.json
-const charasPath = path.resolve(SITE_ROOT, "lib/data/characters.json");
+const charasPath = path.resolve(SITE_ROOT, "lib/data/generated/characters.json");
 const existingCharas: any[] = JSON.parse(fs.readFileSync(charasPath, "utf8"));
 const charaMap = new Map<number, any>();
 for (const c of existingCharas) {
@@ -292,7 +292,7 @@ export interface CharacterEvolutionDetail {
 const characterEvolutions: Record<number, CharacterEvolutionDetail[]> = {};
 
 // Also load existing skills.json to ensure evolved skills are registered!
-const skillsPath = path.resolve(SITE_ROOT, "lib/data/skills.json");
+const skillsPath = path.resolve(SITE_ROOT, "lib/data/generated/skills.json");
 const existingSkills: any[] = JSON.parse(fs.readFileSync(skillsPath, "utf8"));
 const skillsMap = new Map<number, any>();
 for (const s of existingSkills) {
@@ -437,7 +437,7 @@ console.log(`Updated characters.json (${existingCharas.length} characters).`);
 
 // Write character-evolutions.json
 fs.writeFileSync(
-  path.resolve(SITE_ROOT, "lib/data/character-evolutions.json"),
+  path.resolve(SITE_ROOT, "lib/data/generated/character-evolutions.json"),
   JSON.stringify(characterEvolutions, null, 2)
 );
 console.log(`Saved character-evolutions.json (${Object.keys(characterEvolutions).length} characters with evolutions).`);

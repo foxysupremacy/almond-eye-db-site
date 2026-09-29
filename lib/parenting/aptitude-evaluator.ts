@@ -1,7 +1,7 @@
 import type { Course } from "../skill-engine/types";
 import type { CharacterIndexEntry } from "../api";
 import { characters } from "../data/registry";
-import { getCharaIdFromCardId } from "../affinity-engine";
+import { getCharaIdFromCardId } from "../lineage/affinity-engine";
 import type { AptitudePatchInfo } from "./types";
 
 const charactersList = characters;

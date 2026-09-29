@@ -1,7 +1,7 @@
 import type { CardIndexEntry, CardSkills } from "../api";
 import type { DeckSkill, DeckSkillGrant, ParentDeckSkill } from "./types";
 import { getDefaultChoiceIndex } from "./event-choices";
-import { getInheritableSkillForGold } from "../skill-rarity";
+import { getInheritableSkillForGold } from "../skills/rarity";
 
 export function deriveSkillsForDeck(
   slotsArr: (CardIndexEntry | null)[],

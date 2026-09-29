@@ -3,7 +3,7 @@
 // carry `end` instead of `length`; total meters live in `length`; distance-type
 // bucket lives in `distance`).
 
-/** A flat race course, as produced by `lib/api.ts` flattenCourse(). */
+/** A flat race course, as produced by `lib/api/course-format.ts` flattenCourse(). */
 export interface Course {
   id: number;
   terrain: number; // 1 turf, 2 dirt

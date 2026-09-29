@@ -8,7 +8,7 @@
  * - data/translations/track_names.json
  *
  * Prunes unused metadata and exports lightweight JSON datasets into
- * `lib/data/`. The support-card index (cards.json) is NOT generated here —
+ * `lib/data/generated/`. The support-card index (cards.json) is NOT generated here —
  * it comes from master.mdb via extract-mdb.ts and is maintained in place by
  * the GameTora card crawler (see scripts/crawl_gametora_cards.py).
  */
@@ -28,7 +28,7 @@ const tracksPath = path.join(REPO_ROOT, "data", "racetracks_raw.json");
 const trackNamesPath = path.join(REPO_ROOT, "data", "translations", "track_names.json");
 const charasPath = path.join(REPO_ROOT, "characters.json");
 const hachimiPath = path.join(REPO_ROOT, "hachimi_text_data.json");
-const outDir = path.join(SITE_ROOT, "lib", "data");
+const outDir = path.join(SITE_ROOT, "lib", "data", "generated");
 
 if (!fs.existsSync(skillsPath)) {
   console.error(`Error: skills.json not found at ${skillsPath}`);
@@ -166,7 +166,7 @@ console.log(
 );
 
 // Also sync Hachimi skill names into gold-to-white.json
-const goldToWhitePath = path.join(SITE_ROOT, "lib", "gold-to-white.json");
+const goldToWhitePath = path.join(SITE_ROOT, "lib", "data", "generated", "gold-to-white.json");
 if (fs.existsSync(goldToWhitePath) && Object.keys(hachimiSkillNames).length > 0) {
   const g2w = JSON.parse(fs.readFileSync(goldToWhitePath, "utf8"));
   let g2wUpdated = 0;
@@ -322,4 +322,3 @@ if (fs.existsSync(srcAssets)) {
 }
 
 console.log("Data preprocessing completed successfully.");
-

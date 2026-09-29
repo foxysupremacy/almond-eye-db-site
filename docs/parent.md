@@ -299,10 +299,10 @@ AlmondEyeDB implements the entire logic described in this guide programmatically
    - **[`single-recommender.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/parenting/single-recommender.ts)**: Scores and ranks individual parents across user veterans and character templates.
    - **[`lineage-combinations.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/parenting/lineage-combinations.ts)**: Generates 6-slot bloodlines, 2-parent combinations (Your Lineage + Friend Borrow), and actionable friend borrow blueprints.
    - **[`use-parent-recommender.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/parenting/use-parent-recommender.ts)**: Headless React hook with memoized combinations, recommendations, and deck analysis.
-2. **[`lib/affinity-engine.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/affinity-engine.ts)**:
+2. **[`lib/lineage/affinity-engine.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/lineage/affinity-engine.ts)**:
    - Computes Post-2.0 compatibility (+3 points per overlapping G1 race win) and relation type affinity points.
    - Calculates Parent-to-Parent pair affinity and total 6-slot lineage score.
-3. **[`lib/factor-decoder.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/factor-decoder.ts)**:
+3. **[`lib/lineage/factor-decoder.ts`](file:///Users/fubuki/Documents/AlmondEyeDB/almond-eye-db-site/lib/lineage/factor-decoder.ts)**:
    - Decodes numeric factor IDs into Blue stats, Pink aptitudes, Green uniques, and White skills/races/scenarios.
    - Calculates total 9★ Blue lineage totals.
 4. **UI Components**:
@@ -485,4 +485,3 @@ For in-depth source reading, raw data points, and community research logs, refer
   - *5th Anniversary Section*: Inheritance-Only Umas (継承専用ウマ娘) and Bulk Inheritance system.
 - **[`docs/parenting/VN Community Guide.md`](file:///Users/fubuki/Documents/AlmondEyeDB/docs/parenting/VN%20Community%20Guide.md)**:
   - Practical 4-step workflow for 9★ Dirt GGP farming, parent/grandparent career survival thresholds (Turf/Dirt D, Distance C), and pink spark economics.
-

@@ -9,7 +9,6 @@ import { Conditions, EqOperator, NeqOperator, LtOperator, LteOperator, GtOperato
 import { getParser } from "./parser";
 import { ImmediatePolicy, isRandom } from "./sample-policy";
 import type { Course, HorseParameters, RaceParameters } from "./types";
-import { BANNED_DEBUFF_SKILL_IDS } from "../pvp-events";
 
 // Fixed max-stat horse, same choice as uma-tools' skill-visualizer app.
 const HORSE: HorseParameters = {
@@ -66,12 +65,6 @@ export function computeZones(
   extra?: Partial<RaceParameters>,
 ): SkillZoneResult {
   const fullExtra: RaceParameters = { skillId: "", ...extra };
-  if (fullExtra.noDebuffs && fullExtra.skillId) {
-    const numId = Number(fullExtra.skillId);
-    if (!Number.isNaN(numId) && BANNED_DEBUFF_SKILL_IDS.has(numId)) {
-      return { regions: new RegionList(), isRandom: false, earliestFire: null };
-    }
-  }
   let full = wholeCourse(course);
   let earliestFire: number | null = null;
 

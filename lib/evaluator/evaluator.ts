@@ -1,7 +1,7 @@
 import type { Course } from "../skill-engine/types";
 import { CourseHelpers } from "../skill-engine/course";
 import type { RunningStyle } from "../deck/types";
-import { getInheritableSkillForGold } from "../skill-rarity";
+import { getInheritableSkillForGold } from "../skills/rarity";
 import type {
   SkillDetailInput,
   EvaluatorZoneInput,
@@ -19,6 +19,7 @@ import {
   HEAVY_TURF_STAMINA_CRITICAL_DISTANCE,
 } from "./constants";
 import { classifyEffect } from "./effects";
+import { summarizeSkillEffects } from "./effect-summary";
 import { parseRankRequirements, calculateStyleRankOverlap } from "./rank-parser";
 import { getCategoryBadge, buildCalculationBreakdown } from "./calculation-steps";
 import { raceImpactPriors } from "../data/registry";
@@ -70,61 +71,20 @@ export function evaluateSkillForTrack(
   }
 
   // 2. Identify effects and base timing across condition groups
-  let hasAccel = false;
-  let hasZenkaiAcceleration = false;
-  let hasTargetSpeed = false;
-  let hasCurrentSpeed = false;
-  let hasHeal = false;
-  let hasPassive = false;
-  let hasDebuff = false;
-  let maxBaseTime = 0;
-  let maxAccelVal = 0;
-  let maxZenkaiAccelerationVal = 0;
-  let maxSpeedVal = 0;
-
-  for (const group of skill.conditionGroups ?? []) {
-    if (group.base_time && group.base_time > maxBaseTime) {
-      maxBaseTime = group.base_time;
-    }
-
-    for (const rawEff of group.effects ?? []) {
-      const eff = rawEff as { type?: number; value?: number; target?: number; target_details?: number };
-      const val = eff.value ?? 0;
-      const cat = classifyEffect(eff);
-
-      if (cat === "debuff") {
-        hasDebuff = true;
-      } else if (cat === "acceleration") {
-        hasAccel = true;
-        if (val > maxAccelVal) maxAccelVal = val;
-      } else if (cat === "zenkai_acceleration") {
-        hasZenkaiAcceleration = true;
-        if (val > maxZenkaiAccelerationVal) maxZenkaiAccelerationVal = val;
-      } else if (cat === "target_speed") {
-        hasTargetSpeed = true;
-        if (val > maxSpeedVal) maxSpeedVal = val;
-      } else if (cat === "current_speed") {
-        hasCurrentSpeed = true;
-        if (val > maxSpeedVal) maxSpeedVal = val;
-      } else if (cat === "heal") {
-        hasHeal = true;
-      } else if (cat === "passive") {
-        hasPassive = true;
-      }
-    }
-  }
-
-  // Keep legacy aggregate scoring stable when a multi-stage skill also has a
-  // conventional speed effect. Type 48 gets its dedicated verdict when the
-  // evaluated trigger is Zenkai-only (which is the per-trigger path).
-  const zenkaiOnly =
-    hasZenkaiAcceleration &&
-    !hasAccel &&
-    !hasTargetSpeed &&
-    !hasCurrentSpeed &&
-    !hasHeal &&
-    !hasPassive &&
-    !hasDebuff;
+  const {
+    hasAccel,
+    hasZenkaiAcceleration,
+    hasTargetSpeed,
+    hasCurrentSpeed,
+    hasHeal,
+    hasPassive,
+    hasDebuff,
+    maxBaseTime,
+    maxAccelVal,
+    maxZenkaiAccelerationVal,
+    maxSpeedVal,
+    zenkaiOnly,
+  } = summarizeSkillEffects(skill.conditionGroups);
 
   // 3. Inspect computed zone regions
   const activeRegions = zones.flatMap((z) => z.regions);
@@ -391,7 +351,7 @@ export function evaluateSkillForTrack(
     const accelRegions: Array<{ start: number; end: number }> = [];
     if (accelGroupsAligned) {
       skill.conditionGroups!.forEach((g, idx) => {
-        const hasGroupAccel = (g.effects ?? []).some((e: any) => e.type === 31);
+        const hasGroupAccel = (g.effects ?? []).some((effect) => effect.type === 31);
         if (hasGroupAccel && zones[idx]?.regions) {
           accelRegions.push(...zones[idx].regions);
         }
@@ -719,7 +679,7 @@ export function evaluateSkillForTrack(
         const gScaledTime = gTime * (courseLength / 1000);
         const gDurationFactor = Math.min(1.5, gScaledTime > 0 ? gScaledTime / 5.0 : 1.0);
 
-        for (const rawEff of (g.effects ?? []) as any[]) {
+        for (const rawEff of g.effects ?? []) {
           const cat = classifyEffect(rawEff);
           if (cat === "current_speed") compositeBonus += 10 * gDurationFactor;
           else if (cat === "target_speed") compositeBonus += 8 * gDurationFactor;
