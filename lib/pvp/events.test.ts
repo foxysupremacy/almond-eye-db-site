@@ -2,8 +2,8 @@ import { describe, it, expect } from "bun:test";
 import { PVP_EVENTS, getPvpEventById } from "./events";
 
 describe("PvP Presets & Events", () => {
-  it("contains all 4 curated PvP events with valid parameters", () => {
-    expect(PVP_EVENTS.length).toBe(4);
+  it("contains all 5 curated PvP events with valid parameters", () => {
+    expect(PVP_EVENTS.length).toBe(5);
 
     const longchampCm = getPvpEventById("cm-classic-2026-09");
     expect(longchampCm).toBeDefined();
@@ -35,6 +35,17 @@ describe("PvP Presets & Events", () => {
     expect(octCm?.racerCount).toBe(9);
     expect(octCm?.weather).toBe("Cloudy");
     expect(octCm?.ground).toBe("Good");
+
+    const decCm = getPvpEventById("cm-long-2026-12");
+    expect(decCm).toBeDefined();
+    expect(decCm?.trackId).toBe(10005); // Nakayama
+    expect(decCm?.courseId).toBe(10506); // 2500m Turf, Right-handed, Inner
+    expect(decCm?.season).toBe("Winter");
+    expect(decCm?.seasonNum).toBe(4);
+    expect(decCm?.weather).toBe("Sunny");
+    expect(decCm?.ground).toBe("Good");
+    expect(decCm?.time).toBe("Daytime");
+    expect(decCm?.startDate).toBeUndefined();
 
     const novLoh = getPvpEventById("league-heroes-2026-11");
     expect(novLoh).toBeDefined();

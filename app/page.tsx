@@ -17,7 +17,8 @@ import { ImportModal } from "@/features/importer";
 import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { Badge } from "@/app/common/ui/primitives/badge";
-import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon } from "@/app/common/ui/primitives/icons";
+import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon, DownloadIcon } from "@/app/common/ui/primitives/icons";
+import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
 
 type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
 
@@ -108,10 +109,10 @@ export default function Home() {
                   <button
                     type="button"
                     onClick={() => setIsImportModalOpen(true)}
-                    className="flex items-center gap-1.5 rounded-lg border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-emerald-600 dark:hover:text-emerald-400 shadow-2xs cursor-pointer transition-colors"
+                    className={HEADER_ACTION_CLASS}
                     title="Sync or Import Kyumaru Game Data"
                   >
-                    <span>📥</span>
+                    <DownloadIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
                     <span className="hidden sm:inline">Sync Data</span>
                   </button>
                   <PresetManager />

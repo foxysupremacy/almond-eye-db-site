@@ -66,4 +66,12 @@ describe("PVP Event Lifecycle", () => {
     expect(active.some((e) => e.id === "cm-mile-2026-09")).toBe(false);
     expect(active.some((e) => e.id === "cm-classic-2026-09")).toBe(true);
   });
+
+  it("keeps events with an unannounced date upcoming and selectable", () => {
+    const undatedEvent = { ...baseEvent, id: "undated", startDate: undefined };
+    const now = new Date("2026-12-15T12:00:00+09:00");
+
+    expect(getPvpEventStage(undatedEvent, now)).toBe("upcoming");
+    expect(getActivePvpEvents(now).some((event) => event.id === "cm-long-2026-12")).toBe(true);
+  });
 });

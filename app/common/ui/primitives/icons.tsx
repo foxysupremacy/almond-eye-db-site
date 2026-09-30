@@ -20,6 +20,18 @@ export function LibraryIcon(props: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><rect x="3" y="4" width="5" height="16" rx="1" /><path d="M11 4v16M15 5l4-1 3 15-4 1-3-15ZM4 8h3" /></svg>;
 }
 
+export function DownloadIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}><path d="M12 3v12m0 0 4-4m-4 4-4-4" /><path d="M5 16v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" /></svg>;
+}
+
+export function PlusIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={className} {...props}><path d="M12 5v14M5 12h14" /></svg>;
+}
+
+export function ListIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></svg>;
+}
+
 /** Flat Trophy Icon for PvP headers */
 export function TrophyIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return (

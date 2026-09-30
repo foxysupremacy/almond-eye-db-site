@@ -13,10 +13,9 @@ import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { useDeck } from "@/features/deck/state";
 import { RUNNING_STYLE_OPTIONS, RUNNING_STYLE_LABELS } from "@/lib/deck/constants";
 import type { RunningStyle } from "@/lib/deck/types";
-import { distanceLabel, terrainLabel, turnLabel } from "@/lib/api";
+import { terrainLabel } from "@/lib/api";
 import { getActivePvpEvents } from "@/lib/pvp/events";
 import { FlagIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
-import { Badge } from "@/app/common/ui/primitives/badge";
 
 export default function GlobalTrackBar() {
   const {
@@ -46,7 +45,7 @@ export default function GlobalTrackBar() {
   const [mobileExpanded, setMobileExpanded] = useState(false);
 
   const raceTitle = activeCourseRow && trackDetail
-    ? `${trackDetail.nameEn} · ${distanceLabel(activeCourseRow.distance, activeCourseRow.length)} · ${terrainLabel(activeCourseRow.terrain)}`
+    ? `${trackDetail.nameEn} ${activeCourseRow.length}m · ${terrainLabel(activeCourseRow.terrain)}`
     : "Select Target Race";
 
   const masterChallengeSelection = activePreset.trackInfo.masterChallengeSelection ?? null;
@@ -54,8 +53,14 @@ export default function GlobalTrackBar() {
     const track = racetrackDetails.find((entry) => entry.courses.some((course) => course.id === courseId));
     const course = track?.courses.find((entry) => entry.id === courseId);
     if (!track || !course) return `Course ${courseId}`;
-    return `${track.nameEn} · ${distanceLabel(course.distance, course.length)} · ${terrainLabel(course.terrain)}${turnLabel(course.turn) ? ` · ${turnLabel(course.turn)}` : ""}`;
+    return `${track.nameEn} ${course.length}m`;
   }
+
+  const availableGrounds = new Set((trackDetail?.courses ?? []).map((course) => course.terrain));
+  const selectedGround = activeCourseRow?.terrain ?? 1;
+  const groundLabel = (ground: number) => terrainLabel(ground as 1 | 2);
+  const matchingGroundCourses = (trackDetail?.courses ?? []).filter((course) => course.terrain === selectedGround);
+  const distanceOptions = Array.from(new Map(matchingGroundCourses.map((course) => [course.length, course])).values());
 
   const customConditions = normalizeRaceConditions(activePreset.trackInfo.customRaceConditions);
   const isCustomTrack = !activePvpEvent && !activeMasterChallengeRace;
@@ -102,7 +107,7 @@ export default function GlobalTrackBar() {
                   const selected = modeEvents.find((entry) => entry.id === value);
                   if (selected) applyPvpPreset(selected);
                 }}
-                className="w-full md:w-auto" triggerLabel="Event" label="Event" options={modeEvents.map(event => ({ value: event.id, label: event.shortName }))} />
+                className="w-full md:w-64" triggerLabel="Event" label="Event" options={modeEvents.map(event => ({ value: event.id, label: event.shortName }))} />
           )}
           {raceMode === "master" && (
             <AppSelect
@@ -111,8 +116,8 @@ export default function GlobalTrackBar() {
                   const [eventId, raceId] = value.split(":").map(Number);
                   selectMasterChallengeRace(eventId, raceId);
                 }}
-                className="w-full md:w-auto"
-               label="Master Challenge race" options={masterChallengeEvents.flatMap(event => event.races.map(race => ({ value: `${event.eventId}:${race.eventSubId}`, label: `${courseLabel(race.raceCourseSetId)} · Race ${race.eventSubId}`, group: `Master Challenge #${event.eventId} · ${event.schedule}` })))} />
+                className="w-full md:w-80"
+                label="Master Challenge race" options={masterChallengeEvents.flatMap(event => event.races.map(race => ({ value: `${event.eventId}:${race.eventSubId}`, label: courseLabel(race.raceCourseSetId), group: `Master Challenge #${event.eventId} · ${event.schedule}` })))} />
           )}
 
 
@@ -190,15 +195,38 @@ export default function GlobalTrackBar() {
           <AppSelect
               value={String(trackId)}
               onValueChange={(value) => setTrackId(Number(value))}
-              className="w-full md:w-auto"
+              className="w-full md:w-60"
              triggerLabel="Venue" label="Venue" options={(tracks ?? []).map(t => ({ value: String(t.id), label: `${t.nameEn} (${t.nameJa})` }))} />
+
+          {/* Ground is selected independently, while remaining tied to a real course surface. */}
+          <AppSelect
+              value={String(selectedGround)}
+              onValueChange={(value) => {
+                const targetGround = Number(value);
+                const currentCourse = activeCourseRow;
+                const nextCourse = (trackDetail?.courses ?? []).find((course) =>
+                  course.terrain === targetGround && currentCourse && course.distance === currentCourse.distance && course.length === currentCourse.length
+                ) ?? (trackDetail?.courses ?? []).find((course) => course.terrain === targetGround);
+                if (nextCourse) setCourseId(nextCourse.id);
+              }}
+              className="w-full md:w-32"
+              triggerLabel="Ground" label="Ground"
+              options={[1, 2].map((ground) => ({
+                value: String(ground),
+                label: groundLabel(ground),
+                disabled: !availableGrounds.has(ground as 1 | 2),
+              }))} />
 
           {/* Course Selector */}
           <AppSelect
-              value={String(courseId)}
-              onValueChange={(value) => setCourseId(Number(value))}
-              className="w-full md:w-auto"
-             triggerLabel="Course" label="Course" options={(trackDetail?.courses ?? []).map(c => ({ value: String(c.id), label: `${distanceLabel(c.distance, c.length)} · ${terrainLabel(c.terrain)}${turnLabel(c.turn) ? ` · ${turnLabel(c.turn)}` : ""}` }))} />
+              value={String(activeCourseRow?.length ?? "")}
+              onValueChange={(value) => {
+                const length = Number(value);
+                const nextCourse = matchingGroundCourses.find((course) => course.length === length);
+                if (nextCourse) setCourseId(nextCourse.id);
+              }}
+              className="w-full md:w-36"
+             triggerLabel="Distance" label="Distance" options={distanceOptions.map(course => ({ value: String(course.length), label: `${course.length}m` }))} />
 
           {/* Running Style Selector */}
           <AppSelect
@@ -206,7 +234,7 @@ export default function GlobalTrackBar() {
               onValueChange={(value) =>
                 setRunningStyle(value === "" ? null : (Number(value) as RunningStyle))
               }
-              className="w-full md:w-auto"
+              className="w-full md:w-40"
              triggerLabel="Style" label="Running style" options={RUNNING_STYLE_OPTIONS.map(o => ({ value: String(o.value ?? ""), label: o.label }))} />
 
           {/* Racers Input */}
@@ -223,18 +251,6 @@ export default function GlobalTrackBar() {
           </label>
         </div>
 
-        {/* Course Summary Pill (Desktop) */}
-        {activeCourseRow && trackDetail && (
-          <div className="hidden lg:flex items-center gap-2 text-xs">
-            <Badge size="standard" tone="amber" className="font-semibold shadow-2xs">
-              {raceTitle}
-            </Badge>
-            <span className="flex items-center gap-1 text-[11px] text-zinc-400 dark:text-zinc-500">
-              <span className="h-2 w-2 rounded-full bg-emerald-500" />
-              <span>Visualizer synced</span>
-            </span>
-          </div>
-        )}
       </div>
     </div>);
   return <>
@@ -247,7 +263,7 @@ export default function GlobalTrackBar() {
       </span>
       <ChevronDownIcon className="h-4 w-4 shrink-0 text-zinc-400" />
     </button>
-    <div className="hidden rounded-2xl border border-zinc-200/80 bg-white/95 p-3.5 dark:border-zinc-800 dark:bg-zinc-900/90 lg:block">{controls}</div>
+    <div className="hidden p-3.5 lg:block">{controls}</div>
     <MobileSheet open={mobileExpanded} onClose={() => setMobileExpanded(false)} title="Target race" description="This profile applies to your decks, lineage, and skill zones.">{controls}</MobileSheet>
   </>;
 }

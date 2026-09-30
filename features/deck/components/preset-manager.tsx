@@ -13,8 +13,9 @@ import { createPortal } from "react-dom";
 import { useDeck } from "@/features/deck/state";
 import type { DeckPreset } from "@/lib/deck/types";
 import ShareModal from "./share-modal";
-import { LinkIcon, XIcon, EditIcon } from "@/app/common/ui/primitives/icons";
+import { LinkIcon, XIcon, EditIcon, PlusIcon, ListIcon } from "@/app/common/ui/primitives/icons";
 import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
+import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
 
 export default function PresetManager() {
   const {
@@ -106,28 +107,30 @@ export default function PresetManager() {
             const id = addPreset();
             setActivePresetId(id);
           }}
-          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-xs cursor-pointer transition-colors"
+          className={HEADER_ACTION_CLASS}
           title="New Preset"
         >
-          + New
+          <PlusIcon className="h-3.5 w-3.5" />
+          <span>New</span>
         </button>
 
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-xs cursor-pointer transition-colors"
+          className={HEADER_ACTION_CLASS}
         >
-          <span className="hidden sm:inline">Manage </span>({presets.length})
+          <ListIcon className="h-3.5 w-3.5" />
+          <span>Manage ({presets.length})</span>
         </button>
 
         <button
           type="button"
           onClick={() => setSharingPreset(activePreset)}
-          className="flex items-center gap-1.5 rounded-lg border border-emerald-500/40 dark:border-emerald-500/30 bg-emerald-50/70 dark:bg-emerald-950/30 px-2.5 py-1.5 text-xs font-semibold text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/60 shadow-xs cursor-pointer transition-colors"
+          className={HEADER_ACTION_CLASS}
           title="Share active build with ultra-compact URL"
         >
-          <LinkIcon className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Share</span>
+          <LinkIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+          <span>Share</span>
         </button>
       </div>
 

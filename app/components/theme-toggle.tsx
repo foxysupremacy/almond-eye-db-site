@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { HEADER_ICON_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
 
 type Theme = "light" | "dark" | "system";
 
@@ -53,7 +54,7 @@ export default function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="h-8 w-8 rounded-lg border border-zinc-200/60 dark:border-zinc-800 bg-white dark:bg-zinc-900" />
+      <div className={HEADER_ICON_ACTION_CLASS} aria-hidden="true" />
     );
   }
 
@@ -61,7 +62,7 @@ export default function ThemeToggle() {
     <button
       type="button"
       onClick={cycleTheme}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 shadow-2xs transition-colors cursor-pointer"
+      className={HEADER_ICON_ACTION_CLASS}
       title={`Current theme: ${theme} (click to toggle)`}
       aria-label={`Current theme: ${theme}. Click to switch theme.`}
     >

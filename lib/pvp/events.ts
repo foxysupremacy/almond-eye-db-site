@@ -197,6 +197,27 @@ export const PVP_EVENTS: PvpEvent[] = [
     startDate: "2026-11-10T12:00:00+09:00",
     durationDays: 6,
   },
+  {
+    id: "cm-long-2026-12",
+    name: "December Champions Meeting LONG",
+    shortName: "Dec CM (Long)",
+    trackId: 10005, // Nakayama
+    courseId: 10506, // 2500m Turf, Right-handed, Inner
+    racerCount: 9,
+    season: "Winter",
+    seasonIcon: "/assets/track_conditions/utx_txt_season_03.png",
+    seasonNum: 4, // 4: Winter
+    weather: "Sunny",
+    weatherIcon: "/assets/track_conditions/utx_ico_weather_00.png",
+    weatherNum: 1, // 1: Sunny
+    ground: "Good",
+    groundNum: 1, // 1: Good/Firm
+    time: "Daytime",
+    timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
+    timeNum: 2, // 2: Daytime
+    gradeNum: 100, // 100: G1
+    // The December event's exact start date has not been announced yet.
+  },
 ];
 
 export function getPvpEventById(id: string | null | undefined): PvpEvent | null {
@@ -205,7 +226,8 @@ export function getPvpEventById(id: string | null | undefined): PvpEvent | null 
 }
 
 export function getPvpEventStage(event: PvpEvent, now: Date = new Date()): PvpEventStage {
-  if (!event.startDate) return "round1";
+  // Undated events stay selectable without being presented as already underway.
+  if (!event.startDate) return "upcoming";
   const start = new Date(event.startDate).getTime();
   const diffMs = now.getTime() - start;
   if (diffMs < 0) return "upcoming";
