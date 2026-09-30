@@ -1,5 +1,10 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 // Skill Picker Modal: Search and filter skills by gameplay effects (Target Speed, Current Speed,
 // Acceleration, Heal, Debuff, Passive, Other), inspect granting support cards, and equip directly to Parent Deck.
 
@@ -69,7 +74,7 @@ export default function SkillPickerModal({
   // Close on Escape
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
     }
     if (isOpen) {
       window.addEventListener("keydown", onKey);
@@ -309,16 +314,11 @@ export default function SkillPickerModal({
             />
 
             {/* Source Filter Dropdown */}
-            <select
+            <AppSelect
               value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value as SourceFilter)}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-700 dark:text-zinc-200 outline-none cursor-pointer shrink-0"
-            >
-              <option value="all">Source: All (Cards & Parents)</option>
-              <option value="event">Source: Card Events Only</option>
-              <option value="hint">Source: Card Hints Only</option>
-              <option value="lineage">Source: Parent Inherits (White)</option>
-            </select>
+              onValueChange={(value) => setSourceFilter(value as SourceFilter)}
+              className="shrink-0"
+             label="Skill source" options={[{ value: "all", label: "Source: All (Cards & Parents)" }, { value: "event", label: "Source: Card Events Only" }, { value: "hint", label: "Source: Card Hints Only" }, { value: "lineage", label: "Source: Parent Inherits (White)" }]} />
 
             {/* Hide Skills in Parent Deck Toggle */}
             <button

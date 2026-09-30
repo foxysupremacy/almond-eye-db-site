@@ -25,6 +25,7 @@ import {
   type CourseRow,
   flattenCourse,
 } from "@/lib/api";
+import { customTrackInfo, normalizeRaceConditions, type CustomRaceConditions } from "@/lib/deck/race-conditions";
 import type { Course } from "@/lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
 import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
@@ -123,8 +124,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const activeRaceParameters = useMemo(
     () => activeMasterChallengeRace
       ? raceParametersForMasterChallenge(activeMasterChallengeRace)
-      : getPvpRaceParameters(activePvpEvent),
-    [activeMasterChallengeRace, activePvpEvent],
+      : activePvpEvent ? getPvpRaceParameters(activePvpEvent) : normalizeRaceConditions(activePreset.trackInfo.customRaceConditions),
+    [activeMasterChallengeRace, activePvpEvent, activePreset.trackInfo.customRaceConditions],
   );
 
   // Persist presets and visualizer state once hydrated
@@ -260,7 +261,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         update: (p) => ({
           ...p,
           trackInfo: {
-            ...p.trackInfo,
+            ...customTrackInfo(p.trackInfo),
             trackId: newTrackId,
             courseId: firstCourseId,
             masterChallengeSelection: null,
@@ -276,7 +277,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       type: "updateActivePreset",
       update: (p) => ({
         ...p,
-        trackInfo: { ...p.trackInfo, courseId: newCourseId, masterChallengeSelection: null },
+        trackInfo: { ...customTrackInfo(p.trackInfo), courseId: newCourseId },
       }),
     });
   }, []);
@@ -312,6 +313,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
           trackId: event.trackId,
           courseId: event.courseId,
           racerCount: event.racerCount,
+          customRaceConditions: normalizeRaceConditions(),
           pvpEventId: event.id,
           masterChallengeSelection: null,
         },
@@ -324,7 +326,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       type: "updateActivePreset",
       update: (p) => ({
         ...p,
-        trackInfo: { ...p.trackInfo, pvpEventId: null },
+        trackInfo: customTrackInfo(p.trackInfo, true),
       }),
     });
   }, []);
@@ -348,6 +350,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
           courseId,
           racerCount: Math.min(18, Math.max(9, match.race.entryCount)),
           pvpEventId: null,
+          customRaceConditions: normalizeRaceConditions(),
           masterChallengeSelection: { eventId, eventSubId },
         },
       }),
@@ -360,8 +363,25 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       type: "updateActivePreset",
       update: (p) => ({
         ...p,
-        trackInfo: { ...p.trackInfo, masterChallengeSelection: null },
+        trackInfo: customTrackInfo(p.trackInfo, true),
       }),
+    });
+  }, []);
+
+  const selectCustomTrack = clearMasterChallenge;
+  const setCustomRaceConditions = useCallback((conditions: Partial<CustomRaceConditions>) => {
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => {
+        const info = customTrackInfo(p.trackInfo);
+        return {
+          ...p,
+          trackInfo: {
+            ...info,
+            customRaceConditions: normalizeRaceConditions({ ...info.customRaceConditions, ...conditions }),
+          },
+        };
+      },
     });
   }, []);
 
@@ -516,6 +536,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       activePvpEventId,
       activePvpEvent,
       activeRaceParameters,
+      selectCustomTrack,
+      setCustomRaceConditions,
       applyPvpPreset,
       clearPvpPreset,
       masterChallengeEvents,
@@ -572,6 +594,8 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       activePvpEventId,
       activePvpEvent,
       activeRaceParameters,
+      selectCustomTrack,
+      setCustomRaceConditions,
       applyPvpPreset,
       clearPvpPreset,
       masterChallengeEvents,

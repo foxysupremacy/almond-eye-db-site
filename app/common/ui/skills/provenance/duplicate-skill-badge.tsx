@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { CopyIcon } from "@/app/common/ui/primitives/icons";
@@ -102,7 +105,7 @@ export default function DuplicateSkillBadge({
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape" && !hasOpenAppSelect()) setIsOpen(false);
     }
     function handleClickOutside(e: MouseEvent) {
       if (

@@ -460,3 +460,7 @@ export function SparklesIcon({ className = "h-4 w-4", ...props }: IconProps) {
   );
 }
 
+
+export function WeatherIcon(props: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d="M6 19a4 4 0 0 1-.6-8 6 6 0 0 1 11.4-1A4.5 4.5 0 1 1 18 19H6Z" /></svg>;
+}

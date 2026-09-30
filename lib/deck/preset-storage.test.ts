@@ -158,3 +158,13 @@ describe("persistPresetsAndVisualizer", () => {
     expect(() => persistPresetsAndVisualizer([DEFAULT_PRESET], DEFAULT_PRESET)).not.toThrow();
   });
 });
+
+test("custom conditions survive storage and invalid values normalize", () => {
+  const storage = installWindow();
+  const preset = createDefaultPreset("custom", "Custom");
+  preset.trackInfo.customRaceConditions = { season: 3, weather: 4, groundCondition: 2, time: null };
+  persistPresetsAndVisualizer([preset], preset);
+  expect(loadStoredPresets()?.presets[0].trackInfo.customRaceConditions).toEqual(preset.trackInfo.customRaceConditions);
+  storage.setItem(PRESETS_STORAGE_KEY, JSON.stringify([{ ...preset, trackInfo: { ...preset.trackInfo, customRaceConditions: { season: -1, weather: "3", groundCondition: 5, time: 2 } } }]));
+  expect(loadStoredPresets()?.presets[0].trackInfo.customRaceConditions).toEqual({ season: null, weather: null, groundCondition: null, time: 2 });
+});

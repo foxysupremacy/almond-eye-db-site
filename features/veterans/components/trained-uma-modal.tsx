@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { KyumaruVeteranItem, KyumaruLearnedSkill, KyumaruFactorInfo } from "@/lib/veterans/types";
@@ -73,7 +76,7 @@ export default function TrainedUmaModal({
   useEffect(() => {
     if (!isOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);

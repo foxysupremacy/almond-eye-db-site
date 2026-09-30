@@ -1,5 +1,10 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 // Popover listing ALL support cards for one deck slot, with search + sort by
 // recommendation score (for parent farming), rarity (SSR/SR/R), or type.
 // Rendered absolutely and layered above everything (z-[100]) so it never gets clipped.
@@ -165,7 +170,7 @@ export default function CardPickerPopover({
   // Close on Escape key
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -601,17 +606,11 @@ export default function CardPickerPopover({
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <select
+            <AppSelect
               value={sort}
-              onChange={(e) => dispatch({ type: "sortChanged", value: e.target.value as CardPickerSort })}
-              className="min-h-11 min-w-0 flex-1 rounded-lg border border-zinc-200 bg-white px-2 text-base text-zinc-700 outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 sm:min-h-0 sm:flex-none sm:py-1 sm:text-[13px]"
-            >
-              <option value="recommended">Sort: Recommended</option>
-              {mode === "parent" && <option value="targetSkills">Sort: Target Skills</option>}
-              <option value="release">Sort: Release Date</option>
-              <option value="rarity">Sort: Rarity</option>
-              <option value="type">Sort: Type</option>
-            </select>
+              onValueChange={(value) => dispatch({ type: "sortChanged", value: value as CardPickerSort })}
+              className="min-h-11 flex-1 sm:flex-none"
+             label="Sort cards" options={[{ value: "recommended", label: "Sort: Recommended" }, ...(mode === "parent" ? [{ value: "targetSkills", label: "Sort: Target Skills" }] : []), { value: "release", label: "Sort: Release Date" }, { value: "rarity", label: "Sort: Rarity" }, { value: "type", label: "Sort: Type" }]} />
 
             {totalOwned > 0 && (
               <button

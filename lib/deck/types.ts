@@ -1,3 +1,4 @@
+import type { CustomRaceConditions } from "./race-conditions";
 import type {
   CardIndexEntry,
   CardSkills,
@@ -23,6 +24,7 @@ export type DistanceType = 1 | 2 | 3 | 4;
 export type SurfaceType = 1 | 2;
 
 export interface TrackInfo {
+  customRaceConditions?: CustomRaceConditions;
   trackId: number;
   courseId: number;
   runningStyle: RunningStyle | null;
@@ -128,6 +130,9 @@ export interface DeckContextValue {
   setRunningStyle: (s: RunningStyle | null) => void;
   racerCount: number;
   setRacerCount: (c: number) => void;
+
+  setCustomRaceConditions: (conditions: Partial<CustomRaceConditions>) => void;
+  selectCustomTrack: () => void;
 
   // PvP Event Presets
   activePvpEventId: string | null;

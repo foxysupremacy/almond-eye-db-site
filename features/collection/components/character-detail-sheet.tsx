@@ -1,5 +1,10 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -141,7 +146,7 @@ export function CharacterDetailSheet({
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -405,23 +410,17 @@ export function CharacterDetailSheet({
               {/* Talent Stepper */}
               <div className="flex items-center gap-1.5">
                 <span className="text-zinc-500 text-[11px]">Awakening:</span>
-                <select
-                  value={isOwned ? currentTalent : 1}
-                  onChange={(e) =>
+                <AppSelect
+                  value={String(isOwned ? currentTalent : 1)}
+                  onValueChange={(value) =>
                     onSetUmaDetails(
                       character.id,
                       currentStars,
-                      Number(e.target.value)
+                      Number(value)
                     )
                   }
-                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-xs text-zinc-900 dark:text-zinc-100 font-semibold cursor-pointer"
-                >
-                  {[1, 2, 3, 4, 5, 6, 7].map((lvl) => (
-                    <option key={lvl} value={lvl}>
-                      Lv {lvl}
-                    </option>
-                  ))}
-                </select>
+                  className=""
+                 label="Awakening level" options={[1, 2, 3, 4, 5, 6, 7].map(lvl => ({ value: String(lvl), label: `Lv ${lvl}` }))} />
               </div>
             </div>
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 import { useMemo, useState } from "react";
 import type { CharacterIndexEntry } from "@/lib/api";
 import { CharacterItem } from "./character-item";
@@ -103,16 +105,12 @@ export function CharactersCollectionTab({
 
         <div className="flex items-center gap-2">
           <label htmlFor="character-sort" className="text-xs text-zinc-400">Sort:</label>
-          <select
+          <AppSelect
             id="character-sort"
             value={sortMode}
-            onChange={(event) => setSortMode(event.target.value as CharacterSortMode)}
-            className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs font-semibold text-zinc-700 outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
-          >
-            <option value="release">Release: Newest</option>
-            <option value="distance">Distance: Aptitude A</option>
-            <option value="style">Style: Aptitude A</option>
-          </select>
+            onValueChange={(value) => setSortMode(value as CharacterSortMode)}
+            className=""
+           label="Sort characters" options={[{ value: "release", label: "Release: Newest" }, { value: "distance", label: "Distance: Aptitude A" }, { value: "style", label: "Style: Aptitude A" }]} />
           <span className="text-xs text-zinc-400">
             {sortedCharacters.length} / {totalCharactersCount}
           </span>

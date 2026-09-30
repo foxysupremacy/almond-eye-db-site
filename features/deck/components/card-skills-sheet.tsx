@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { useEffect, useMemo, useState } from "react";
 import { api, type CardIndexEntry, type SkillSummary, type CardSkills } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
@@ -67,7 +70,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
   useEffect(() => {
     if (!isOpen) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

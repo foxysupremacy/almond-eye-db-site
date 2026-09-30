@@ -1,9 +1,13 @@
 "use client";
 
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 // Unified Target Race Profile: Venue + Course + Running Style + Racers.
 // This is the single source of truth that drives Parent recommendations,
 // Main Deck analysis, and Visualizer racecourse simulation.
 
+import { normalizeRaceConditions } from "@/lib/deck/race-conditions";
+import { RaceConditionChips } from "@/app/common/ui/controls/race-condition-chips";
 import { useState } from "react";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { useDeck } from "@/features/deck/state";
@@ -11,7 +15,7 @@ import { RUNNING_STYLE_OPTIONS, RUNNING_STYLE_LABELS } from "@/lib/deck/constant
 import type { RunningStyle } from "@/lib/deck/types";
 import { distanceLabel, terrainLabel, turnLabel } from "@/lib/api";
 import { getActivePvpEvents } from "@/lib/pvp/events";
-import { TrophyIcon, FlagIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
+import { FlagIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
 import { Badge } from "@/app/common/ui/primitives/badge";
 
 export default function GlobalTrackBar() {
@@ -31,13 +35,12 @@ export default function GlobalTrackBar() {
     activePvpEvent,
     activePreset,
     masterChallengeEvents,
-    activeMasterChallengeEvent,
     activeMasterChallengeRace,
     selectMasterChallengeRace,
-    clearMasterChallenge,
+    selectCustomTrack,
+    setCustomRaceConditions,
     racetrackDetails,
     applyPvpPreset,
-    clearPvpPreset,
   } = useDeck();
 
   const [mobileExpanded, setMobileExpanded] = useState(false);
@@ -47,9 +50,6 @@ export default function GlobalTrackBar() {
     : "Select Target Race";
 
   const masterChallengeSelection = activePreset.trackInfo.masterChallengeSelection ?? null;
-  const selectedMasterChallengeEvent = masterChallengeEvents.find((event) => event.eventId === masterChallengeSelection?.eventId) ?? null;
-  const selectedMasterChallengeRace = selectedMasterChallengeEvent?.races.find((race) => race.eventSubId === masterChallengeSelection?.eventSubId) ?? null;
-
   function courseLabel(courseId: number): string {
     const track = racetrackDetails.find((entry) => entry.courses.some((course) => course.id === courseId));
     const course = track?.courses.find((entry) => entry.id === courseId);
@@ -57,101 +57,75 @@ export default function GlobalTrackBar() {
     return `${track.nameEn} · ${distanceLabel(course.distance, course.length)} · ${terrainLabel(course.terrain)}${turnLabel(course.turn) ? ` · ${turnLabel(course.turn)}` : ""}`;
   }
 
-  function handleMasterChallengeEventChange(value: string) {
-    const eventId = Number(value);
-    const event = masterChallengeEvents.find((entry) => entry.eventId === eventId);
-    if (!event) {
-      clearMasterChallenge();
+  const customConditions = normalizeRaceConditions(activePreset.trackInfo.customRaceConditions);
+  const isCustomTrack = !activePvpEvent && !activeMasterChallengeRace;
+  const raceMode = activeMasterChallengeRace ? "master" : activePvpEvent ? (activePvpEvent.recommendationEventType === 2 ? "loh" : "cm") : "custom";
+  const pvpEvents = getActivePvpEvents();
+  if (activePvpEvent && !pvpEvents.some((event) => event.id === activePvpEvent.id)) pvpEvents.push(activePvpEvent);
+  const modeEvents = pvpEvents.filter((event) => (event.recommendationEventType === 2 ? "loh" : "cm") === raceMode);
+  const modes = [
+    { id: "cm", label: "CM", available: pvpEvents.some((event) => event.recommendationEventType !== 2) },
+    { id: "loh", label: "LoH", available: pvpEvents.some((event) => event.recommendationEventType === 2) },
+    { id: "master", label: "Master Challenge", available: masterChallengeEvents.some((event) => event.races.length > 0) },
+    { id: "custom", label: "Custom", available: true },
+  ] as const;
+
+  function selectRaceMode(mode: typeof modes[number]["id"]) {
+    if (mode === raceMode) return;
+    if (mode === "custom") { selectCustomTrack(); return; }
+    if (mode === "master") {
+      const event = masterChallengeEvents.find((entry) => entry.races.length > 0);
+      if (event) selectMasterChallengeRace(event.eventId, event.races[0].eventSubId);
       return;
     }
-    const preferredRace = event.races.find((race) => race.raceCourseSetId === courseId)
-      ?? [...event.races].sort((a, b) => a.eventSubId - b.eventSubId || a.raceCourseSetId - b.raceCourseSetId)[0];
-    if (preferredRace) selectMasterChallengeRace(event.eventId, preferredRace.eventSubId);
+    const event = pvpEvents.find((entry) => (entry.recommendationEventType === 2 ? "loh" : "cm") === mode);
+    if (event) applyPvpPreset(event);
   }
 
   const controls = (<div className="race-controls flex min-w-0 flex-col gap-3">
         {/* PvP Presets & Conditions Section */}
         <div className="flex flex-col gap-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-2">
-          {/* PvP Presets Row */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-bold uppercase tracking-wider text-purple-700 dark:text-purple-400 text-[11px] mr-1 flex items-center gap-1.5">
-              <TrophyIcon className="h-3.5 w-3.5" />
-              <span>PvP:</span>
-            </span>
-            {getActivePvpEvents().map((event) => {
-              const isActive = activePvpEventId === event.id;
-              return (
-                <button
-                  key={event.id}
-                  type="button"
-                  onClick={() => {
-                    if (isActive) {
-                      clearPvpPreset();
-                    } else {
-                      applyPvpPreset(event);
-                    }
-                  }}
-                  className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
-                    isActive
-                      ? "bg-purple-600 text-white shadow-xs ring-2 ring-purple-500/40 border border-purple-500"
-                      : "border border-zinc-200 dark:border-zinc-700/80 bg-zinc-50/90 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  }`}
-                  title={event.name}
-                >
-                  <span>{event.shortName}</span>
-                </button>
-              );
-            })}
-            <label className="flex min-h-8 items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50/80 px-2 dark:border-violet-900/70 dark:bg-violet-950/40">
-              <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">Master Challenge</span>
-              <select
-                aria-label="Master Challenge event"
-                value={masterChallengeSelection?.eventId ?? ""}
-                onChange={(event) => handleMasterChallengeEventChange(event.target.value)}
-                className="max-w-[220px] bg-transparent text-xs font-semibold text-violet-950 outline-none dark:text-violet-100"
-              >
-                <option value="" className="dark:bg-zinc-900">Choose event</option>
-                {masterChallengeEvents.map((event) => (
-                  <option key={event.eventId} value={event.eventId} className="dark:bg-zinc-900">
-                    Master Challenge #{event.eventId} · {event.schedule}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="flex min-h-8 items-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50/90 px-2 dark:border-zinc-700/80 dark:bg-zinc-800/80">
-              <span className="text-[10px] font-medium text-zinc-500 dark:text-zinc-400">Race</span>
-              <select
-                aria-label="Master Challenge race"
-                value={selectedMasterChallengeRace?.eventSubId ?? ""}
-                onChange={(event) => {
-                  const eventSubId = Number(event.target.value);
-                  if (selectedMasterChallengeEvent && Number.isInteger(eventSubId)) {
-                    selectMasterChallengeRace(selectedMasterChallengeEvent.eventId, eventSubId);
-                  }
-                }}
-                disabled={!selectedMasterChallengeEvent}
-                className="max-w-[300px] bg-transparent text-xs font-semibold text-zinc-800 outline-none disabled:text-zinc-400 dark:text-zinc-100"
-              >
-                <option value="" className="dark:bg-zinc-900">Choose race</option>
-                {(selectedMasterChallengeEvent?.races ?? []).map((race) => (
-                  <option key={race.eventSubId} value={race.eventSubId} className="dark:bg-zinc-900">
-                    {courseLabel(race.raceCourseSetId)} · Race {race.eventSubId}
-                  </option>
-                ))}
-              </select>
-            </label>
+          <div role="group" aria-label="Race mode" className="flex flex-wrap items-center gap-1.5">
+            {modes.map((mode) => (
+              <button key={mode.id} type="button" aria-pressed={raceMode === mode.id} disabled={!mode.available}
+                onClick={() => selectRaceMode(mode.id)}
+                className={`min-h-8 cursor-pointer rounded-lg border px-2.5 py-1 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${raceMode === mode.id
+                  ? "border-purple-500 bg-purple-600 text-white"
+                  : "border-zinc-200 bg-zinc-50/90 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700/80 dark:bg-zinc-800/80 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}>
+                {mode.label}
+              </button>
+            ))}
           </div>
+          {(raceMode === "cm" || raceMode === "loh") && (
+            <AppSelect value={activePvpEventId ?? ""}
+                onValueChange={(value) => {
+                  const selected = modeEvents.find((entry) => entry.id === value);
+                  if (selected) applyPvpPreset(selected);
+                }}
+                className="w-full md:w-auto" triggerLabel="Event" label="Event" options={modeEvents.map(event => ({ value: event.id, label: event.shortName }))} />
+          )}
+          {raceMode === "master" && (
+            <AppSelect
+                value={masterChallengeSelection ? `${masterChallengeSelection.eventId}:${masterChallengeSelection.eventSubId}` : ""}
+                onValueChange={(value) => {
+                  const [eventId, raceId] = value.split(":").map(Number);
+                  selectMasterChallengeRace(eventId, raceId);
+                }}
+                className="w-full md:w-auto"
+               label="Master Challenge race" options={masterChallengeEvents.flatMap(event => event.races.map(race => ({ value: `${event.eventId}:${race.eventSubId}`, label: `${courseLabel(race.raceCourseSetId)} · Race ${race.eventSubId}`, group: `Master Challenge #${event.eventId} · ${event.schedule}` })))} />
+          )}
 
-          {activeMasterChallengeEvent && activeMasterChallengeRace && (
-            <div className="flex flex-wrap items-center gap-1.5 text-[11px]" aria-live="polite">
-              <Badge size="standard" tone="purple" className="font-semibold">
-                Master Challenge #{activeMasterChallengeEvent.eventId} · Race #{activeMasterChallengeRace.eventSubId}
-              </Badge>
-              <span className="text-zinc-500 dark:text-zinc-400">
-                Season {activeMasterChallengeRace.season} · Weather {activeMasterChallengeRace.weather} · Ground {activeMasterChallengeRace.ground} · Time {activeMasterChallengeRace.timezone} · {activeMasterChallengeRace.entryCount} racers
-              </span>
-            </div>
+
+          {(isCustomTrack || activeMasterChallengeRace) && (
+            <RaceConditionChips
+              conditions={activeMasterChallengeRace ? normalizeRaceConditions({
+                season: activeMasterChallengeRace.season,
+                weather: activeMasterChallengeRace.weather,
+                groundCondition: activeMasterChallengeRace.ground,
+                time: activeMasterChallengeRace.timezone,
+              }) : customConditions}
+              onChange={isCustomTrack ? setCustomRaceConditions : undefined}
+            />
           )}
 
           {/* Active Event Conditions Badges (Below PvP Selector) */}
@@ -213,54 +187,27 @@ export default function GlobalTrackBar() {
             </span>
 
           {/* Venue Selector */}
-          <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 shadow-2xs">
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Venue:</span>
-            <select
-              value={trackId}
-              onChange={(e) => setTrackId(Number(e.target.value))}
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer min-w-0 flex-1"
-            >
-              {(tracks ?? []).map((t) => (
-                <option key={t.id} value={t.id} className="dark:bg-zinc-900">
-                  {t.nameEn} ({t.nameJa})
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+              value={String(trackId)}
+              onValueChange={(value) => setTrackId(Number(value))}
+              className="w-full md:w-auto"
+             triggerLabel="Venue" label="Venue" options={(tracks ?? []).map(t => ({ value: String(t.id), label: `${t.nameEn} (${t.nameJa})` }))} />
 
           {/* Course Selector */}
-          <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 shadow-2xs">
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Course:</span>
-            <select
-              value={courseId}
-              onChange={(e) => setCourseId(Number(e.target.value))}
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer w-full min-w-0 truncate flex-1"
-            >
-              {(trackDetail?.courses ?? []).map((c) => (
-                <option key={c.id} value={c.id} className="dark:bg-zinc-900">
-                  {distanceLabel(c.distance, c.length)} · {terrainLabel(c.terrain)}{turnLabel(c.turn) ? ` · ${turnLabel(c.turn)}` : ""}
-                </option>
-              ))}
-            </select>
-          </label>
+          <AppSelect
+              value={String(courseId)}
+              onValueChange={(value) => setCourseId(Number(value))}
+              className="w-full md:w-auto"
+             triggerLabel="Course" label="Course" options={(trackDetail?.courses ?? []).map(c => ({ value: String(c.id), label: `${distanceLabel(c.distance, c.length)} · ${terrainLabel(c.terrain)}${turnLabel(c.turn) ? ` · ${turnLabel(c.turn)}` : ""}` }))} />
 
           {/* Running Style Selector */}
-          <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 px-2.5 py-1.5 text-zinc-700 dark:text-zinc-300 shadow-2xs">
-            <span className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">Style:</span>
-            <select
-              value={runningStyle ?? ""}
-              onChange={(e) =>
-                setRunningStyle(e.target.value === "" ? null : (Number(e.target.value) as RunningStyle))
+          <AppSelect
+              value={String(runningStyle ?? "")}
+              onValueChange={(value) =>
+                setRunningStyle(value === "" ? null : (Number(value) as RunningStyle))
               }
-              className="bg-transparent text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none cursor-pointer min-w-0 flex-1"
-            >
-              {RUNNING_STYLE_OPTIONS.map((o) => (
-                <option key={o.label} value={o.value ?? ""} className="dark:bg-zinc-900">
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              className="w-full md:w-auto"
+             triggerLabel="Style" label="Running style" options={RUNNING_STYLE_OPTIONS.map(o => ({ value: String(o.value ?? ""), label: o.label }))} />
 
           {/* Racers Input */}
           <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50/80 dark:bg-zinc-800/80 px-2 py-1.5 text-zinc-700 dark:text-zinc-300 shadow-2xs">

@@ -245,3 +245,13 @@ describe("computeZones - intrinsic track & environmental conditions", () => {
     expect(withRule.regions).toEqual(withoutRule.regions);
   });
 });
+
+describe("custom race condition filtering", () => {
+  for (const [condition, key] of [["season", "season"], ["weather", "weather"], ["ground_condition", "groundCondition"], ["time", "time"]] as const) {
+    test(`${condition} respects fixed values and unrestricted null`, () => {
+      expect(computeZones(dummyCourse, `${condition}==2`, null, undefined, { [key]: 2 }).regions.length).toBeGreaterThan(0);
+      expect(computeZones(dummyCourse, `${condition}==2`, null, undefined, { [key]: 1 }).regions).toHaveLength(0);
+      expect(computeZones(dummyCourse, `${condition}==2`, null, undefined, { [key]: null }).regions.length).toBeGreaterThan(0);
+    });
+  }
+});

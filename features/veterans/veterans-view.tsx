@@ -1,5 +1,7 @@
 "use client";
 
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 import { useState, useEffect, useMemo, useTransition } from "react";
 import { api, type CharacterIndexEntry } from "@/lib/api";
 import { getAllVeterans, saveVeterans, clearVeterans } from "@/lib/IndexDB/veterans-db";
@@ -377,24 +379,11 @@ export default function VeteransView() {
           {/* Sort Selector */}
           <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
             <span className="text-xs text-zinc-400 shrink-0">Sort:</span>
-            <select
+            <AppSelect
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as SortOption)}
-              className="w-full sm:w-auto rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 font-medium cursor-pointer"
-            >
-              <option value="newest">Newest Trained First</option>
-              {hasTargetSkills && (
-                <option value="target_factors">Target Factors (High to Low)</option>
-              )}
-              <option value="rank_score">Score (High to Low)</option>
-              {setup.targetCharaId && (
-                <option value="affinity">Compatibility Affinity (High to Low)</option>
-              )}
-              <option value="blue_stars">Lineage Blue Stars (High to Low)</option>
-              <option value="speed">Speed (High to Low)</option>
-              <option value="stamina">Stamina (High to Low)</option>
-              <option value="power">Power (High to Low)</option>
-            </select>
+              onValueChange={(value) => setSortBy(value as SortOption)}
+              className="w-full sm:w-auto"
+             label="Sort trained Umas" options={[{ value: "newest", label: "Newest Trained First" }, ...(hasTargetSkills ? [{ value: "target_factors", label: "Target Factors (High to Low)" }] : []), { value: "rank_score", label: "Score (High to Low)" }, ...(setup.targetCharaId ? [{ value: "affinity", label: "Compatibility Affinity (High to Low)" }] : []), { value: "blue_stars", label: "Lineage Blue Stars (High to Low)" }, ...["speed", "stamina", "power"].map(value => ({ value, label: `${value[0].toUpperCase()}${value.slice(1)} (High to Low)` }))]} />
           </div>
 
           {/* Parent Filter Toggle */}

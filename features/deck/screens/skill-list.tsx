@@ -1,3 +1,4 @@
+import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
 import { useMemo, useState, useEffect } from "react";
 import { useDeck } from "@/features/deck/state";
@@ -135,19 +136,13 @@ export default function SkillList() {
         <div className="flex flex-wrap items-center gap-2">
           <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
             <span className="hidden sm:inline">Style</span>
-            <select
-              value={runningStyle ?? ""}
-              onChange={(e) =>
-                setRunningStyle(e.target.value === "" ? null : (Number(e.target.value) as 1 | 2 | 3 | 4 | 5))
+            <AppSelect
+              value={String(runningStyle ?? "")}
+              onValueChange={(value) =>
+                setRunningStyle(value === "" ? null : (Number(value) as 1 | 2 | 3 | 4 | 5))
               }
-              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-1.5 text-xs text-zinc-800 dark:text-zinc-200 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs cursor-pointer"
-            >
-              {RUNNING_STYLE_OPTIONS.map((o) => (
-                <option key={o.label} value={o.value ?? ""}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
+              className=""
+             label="Running style" options={RUNNING_STYLE_OPTIONS.map(o => ({ value: String(o.value ?? ""), label: o.label }))} />
           </label>
 
           <input

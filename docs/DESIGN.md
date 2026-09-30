@@ -376,3 +376,31 @@ When picking support cards for the **Parent Deck** to farm inheritance skills:
    - Candidate card rows display a high-contrast match badge: `<CheckIcon className="h-3 w-3" /> {count}/{total} Skills`.
    - Matched skill pills (`<SkillIcon /> {name}`) are rendered beneath the card title for immediate identification of which target skills the card provides.
 
+
+
+## 16. Universal Single-Value Dropdowns (`AppSelect`)
+
+All single-value dropdowns in `app/` and `features/` must use
+`app/common/ui/controls/app-select.tsx`; do not render native `<select>` menus.
+Specialized card/skill search and multiple-choice filters retain their own UI.
+
+- Controlled API: string `value`, `onValueChange`, readonly `options`, `label`,
+  optional `placeholder`, `disabled`, `id`, `className`, `triggerLabel`, and `variant` (`field` / `chip`).
+  Options provide a string value and text label, optional icon, disabled state,
+  and group label. Keep options ordered and group entries contiguous. Empty strings
+  are supported; number/null conversion belongs to callers.
+- Desktop and mobile use an anchored Radix Select popup with viewport-aware
+  placement, typeahead, keyboard navigation and a scrolling list. Mobile uses
+  44px option rows and a selected checkmark; never open a second bottom sheet.
+  Focus the current enabled option, never a search input. Selection applies once
+  and closes; cancel leaves the value intact. Restore trigger focus on close.
+  Crossing the breakpoint closes the dropdown.
+- Use shared zinc light/dark surfaces and emerald selected/focus states. `field`
+  is the form/filter trigger; `chip` displays condition icons and tone classes.
+  Long trigger text truncates; full option text wraps inside the list.
+- Portal to `document.body`: popup z410, above existing
+  inspection sheets. Parent Escape/outside-click handlers must yield while
+  `hasOpenAppSelect()` is true. Portal clicks must not close a parent overlay.
+  Parent scroll locks remain active until the parent itself closes.
+- Utility enter animations use existing easing tokens, at most 250ms, with
+  global reduced-motion support; keyboard opening has no animation.

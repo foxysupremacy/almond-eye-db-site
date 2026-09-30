@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { api, type SkillDetail } from "@/lib/api";
@@ -149,7 +152,7 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   useEffect(() => {
     if (!active) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
+      if (event.key === "Escape" && !hasOpenAppSelect()) {
         event.preventDefault();
         close(undefined, active.mode === "pinned");
       }

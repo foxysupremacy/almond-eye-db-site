@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { useEffect, useRef } from "react";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
@@ -35,7 +38,7 @@ export function TrackUnifiedTooltip({
   useEffect(() => {
     if (!isPinned) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onUnpin();
+      if (e.key === "Escape" && !hasOpenAppSelect()) onUnpin();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);

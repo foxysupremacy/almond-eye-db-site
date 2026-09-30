@@ -1,3 +1,4 @@
+import { normalizeRaceConditions, type CustomRaceConditions } from "../deck/race-conditions";
 // Share Codec V4: Section-based (TLV) Bit-Packed Binary / Base64URL Preset Serializer
 //
 // Packs DeckPreset (Main Deck, Parent Deck, Track Info, Event Choices, Name)
@@ -155,6 +156,7 @@ export interface SharedBuildData {
  */
 const SECTION_TAG = {
   CORE: 0,
+  CUSTOM_CONDITIONS: 1,
 } as const;
 
 const TAG_BITS = 4;
@@ -293,6 +295,12 @@ export function encodePresetToShareCode(preset: Partial<DeckPreset> & { trackInf
   // 2. Core section — extension sections can carry future fields.
   writeSection(writer, SECTION_TAG.CORE, (w) => writeCorePayload(w, preset));
 
+  const conditions = normalizeRaceConditions(preset.trackInfo.customRaceConditions);
+  if (Object.values(conditions).some((value) => value !== null)) {
+    writeSection(writer, SECTION_TAG.CUSTOM_CONDITIONS, (w) => {
+      for (const key of ["season", "weather", "groundCondition", "time"] as const) w.write(conditions[key] ?? 0, 3);
+    });
+  }
   return writer.getEncoded();
 }
 
@@ -320,6 +328,7 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
   if (version !== CODEC_VERSION) return null;
 
   let decoded: SharedBuildData | null = null;
+  let customRaceConditions = normalizeRaceConditions();
 
   while (reader.remainingBits >= TAG_BITS + LENGTH_BITS) {
     const tag = reader.read(TAG_BITS);
@@ -327,6 +336,11 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
     if (bitLength > reader.remainingBits) break; // truncated / corrupt tail
     if (tag === SECTION_TAG.CORE) {
       decoded = readCorePayload(subReader(reader, bitLength));
+    } else if (tag === SECTION_TAG.CUSTOM_CONDITIONS && bitLength === 12) {
+      const conditionsReader = subReader(reader, bitLength);
+      const values: Partial<CustomRaceConditions> = {};
+      for (const key of ["season", "weather", "groundCondition", "time"] as const) values[key] = conditionsReader.read(3);
+      customRaceConditions = normalizeRaceConditions(values);
     } else {
       // Unknown extension section — skip and keep decoding.
       for (let i = 0; i < bitLength && reader.remainingBits > 0; i++) {
@@ -335,6 +349,7 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
     }
   }
 
+  if (decoded) decoded.trackInfo.customRaceConditions = customRaceConditions;
   return decoded;
 }
 

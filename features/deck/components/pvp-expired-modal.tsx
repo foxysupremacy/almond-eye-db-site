@@ -1,5 +1,7 @@
 "use client";
 
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 import { useMemo, useState } from "react";
 import { useDeck } from "@/features/deck/state";
 import {
@@ -143,22 +145,16 @@ export function PvpExpiredModal() {
                   {/* Option 2: Migrate to active event */}
                   {activeEvents.length > 0 && (
                     <div className="flex items-center gap-1.5">
-                      <select
+                      <AppSelect
                         value={selectedMigrateId}
-                        onChange={(e) =>
+                        onValueChange={(value) =>
                           setMigrateSelections((prev) => ({
                             ...prev,
-                            [preset.id]: e.target.value,
+                            [preset.id]: value,
                           }))
                         }
-                        className="rounded-lg border border-purple-200 dark:border-purple-800/80 bg-purple-50/60 dark:bg-purple-950/40 px-2 py-1.5 text-xs font-medium text-purple-900 dark:text-purple-200 outline-none"
-                      >
-                        {activeEvents.map((ae) => (
-                          <option key={ae.id} value={ae.id} className="dark:bg-zinc-900">
-                            Switch to {ae.shortName}
-                          </option>
-                        ))}
-                      </select>
+                        className="max-w-full"
+                       label="Migration event" options={activeEvents.map(ae => ({ value: ae.id, label: `Switch to ${ae.shortName}` }))} />
                       <button
                         type="button"
                         onClick={() => {

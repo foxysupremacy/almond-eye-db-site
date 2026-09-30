@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
@@ -36,7 +39,7 @@ export function MobileSheet({ open, onClose, title, description, children, foote
         onKeyDown={(event) => {
           // Portal children (such as the preset manager) own their own keyboard handling.
           if (!panel.current?.contains(event.target as Node) || event.defaultPrevented) return;
-          if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); }
+          if (event.key === "Escape" && !hasOpenAppSelect()) { event.preventDefault(); event.stopPropagation(); onClose(); }
           if (event.key !== "Tab") return;
           const focusable = Array.from(panel.current.querySelectorAll<HTMLElement>(
             'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex="0"]',

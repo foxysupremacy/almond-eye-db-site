@@ -1,3 +1,4 @@
+import { normalizeRaceConditions } from "./race-conditions";
 // Pure reducer over the preset list — every deck/track/pvp mutation funnels
 // through here so the update semantics live in one testable place, free of
 // React. features/deck/state/deck-provider.tsx wires this with useReducer and adapts it to the
@@ -62,7 +63,7 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
         name: `${src.name} (Copy)`,
         mainDeckIds: [...src.mainDeckIds],
         parentDeckIds: [...src.parentDeckIds],
-        trackInfo: { ...src.trackInfo },
+        trackInfo: { ...src.trackInfo, customRaceConditions: normalizeRaceConditions(src.trackInfo.customRaceConditions) },
         mainChainChoices: src.mainChainChoices ? { ...src.mainChainChoices } : undefined,
         parentChainChoices: src.parentChainChoices ? { ...src.parentChainChoices } : undefined,
         parentingSetup: src.parentingSetup
@@ -121,6 +122,7 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
         mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? p.mainDeckIds,
         parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? p.parentDeckIds,
         trackInfo: {
+          customRaceConditions: normalizeRaceConditions(presetData.trackInfo?.customRaceConditions),
           trackId: presetData.trackInfo?.trackId ?? p.trackInfo.trackId,
           courseId: presetData.trackInfo?.courseId ?? p.trackInfo.courseId,
           runningStyle:
@@ -128,11 +130,11 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
               ? presetData.trackInfo.runningStyle
               : p.trackInfo.runningStyle,
           racerCount: presetData.trackInfo?.racerCount ?? p.trackInfo.racerCount,
-          pvpEventId: presetData.trackInfo?.pvpEventId ?? p.trackInfo.pvpEventId,
+          pvpEventId: presetData.trackInfo?.pvpEventId ?? null,
           masterChallengeSelection:
             presetData.trackInfo?.masterChallengeSelection !== undefined
               ? presetData.trackInfo.masterChallengeSelection
-              : p.trackInfo.masterChallengeSelection,
+              : null,
         },
         mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
         parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
@@ -164,6 +166,7 @@ export function buildImportedPreset(
     mainDeckIds: presetData.mainDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
     parentDeckIds: presetData.parentDeckIds?.slice(0, DECK_SIZE) ?? Array(DECK_SIZE).fill(null),
     trackInfo: {
+      customRaceConditions: normalizeRaceConditions(presetData.trackInfo?.customRaceConditions),
       trackId: presetData.trackInfo?.trackId ?? DEFAULT_TRACK_ID,
       courseId: presetData.trackInfo?.courseId ?? DEFAULT_COURSE_ID,
       runningStyle: presetData.trackInfo?.runningStyle ?? null,

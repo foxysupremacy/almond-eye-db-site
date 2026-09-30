@@ -1,5 +1,7 @@
 "use client";
 
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 import { useState, useMemo, useEffect } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
@@ -749,23 +751,11 @@ export default function VeteranPickerModal({
 
           <div className="flex items-center gap-1.5 shrink-0">
             <span className="text-[11px] text-zinc-400">Sort:</span>
-            <select
+            <AppSelect
               value={sortBy}
-              onChange={(e) => dispatch({ type: "sortChanged", value: e.target.value as SortBy })}
-              className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 cursor-pointer"
-            >
-              <option value="affinity" disabled={!targetCharaId}>
-                Compatibility Affinity
-              </option>
-              <option value="rank_score">Evaluation Score</option>
-              <option value="blue_stars">Lineage Blue Stars</option>
-              <option value="skill_effect" disabled={!course}>
-                Unique Skill Effect
-              </option>
-              <option value="unique_tier" disabled={!course}>
-                Unique Rating (S/A/B/C)
-              </option>
-            </select>
+              onValueChange={(value) => dispatch({ type: "sortChanged", value: value as SortBy })}
+              className=""
+             label="Sort trained Umas" options={[{ value: "affinity", label: "Compatibility Affinity", disabled: !targetCharaId }, { value: "rank_score", label: "Evaluation Score" }, { value: "blue_stars", label: "Lineage Blue Stars" }, { value: "skill_effect", label: "Unique Skill Effect", disabled: !course }, { value: "unique_tier", label: "Unique Rating (S/A/B/C)", disabled: !course }]} />
           </div>
         </div>
 

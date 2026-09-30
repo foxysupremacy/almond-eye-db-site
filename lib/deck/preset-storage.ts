@@ -1,3 +1,4 @@
+import { normalizeRaceConditions } from "./race-conditions";
 import type { DeckPreset } from "./types";
 import {
   DECK_SIZE,
@@ -23,6 +24,7 @@ export function createDefaultPreset(id: string, name: string): DeckPreset {
       racerCount: 12,
       pvpEventId: null,
       masterChallengeSelection: null,
+      customRaceConditions: normalizeRaceConditions(),
     },
     parentingSetup: { ...DEFAULT_PARENTING_SETUP },
   };
@@ -58,6 +60,7 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
         ? p.parentDeckIds.slice(0, DECK_SIZE).map((x: unknown) => (typeof x === "number" ? x : null))
         : Array(DECK_SIZE).fill(null),
       trackInfo: {
+        customRaceConditions: normalizeRaceConditions(p.trackInfo?.customRaceConditions),
         trackId: typeof p.trackInfo?.trackId === "number" ? p.trackInfo.trackId : DEFAULT_TRACK_ID,
         courseId: typeof p.trackInfo?.courseId === "number" ? p.trackInfo.courseId : DEFAULT_COURSE_ID,
         runningStyle: [1, 2, 3, 4, 5].includes(p.trackInfo?.runningStyle) ? p.trackInfo.runningStyle : null,

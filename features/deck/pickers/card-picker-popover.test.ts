@@ -18,7 +18,8 @@ describe("CardPickerPopover SSR", () => {
       ),
     );
     expect(html).toContain("Search cards by English or Japanese name");
-    expect(html).toContain("Sort: Release Date");
+    expect(html).toContain('aria-label="Sort cards"');
+    expect(html).toContain("Sort: Rarity");
     expect(html).toContain('aria-label="Loading support cards"');
     expect(html).toContain("animate-pulse");
     expect(html).not.toContain("Filter by Skills");
@@ -43,7 +44,7 @@ describe("CardPickerPopover SSR", () => {
     );
     expect(html).toContain("Parent Deck Mode");
     expect(html).toContain("Sort: Recommended");
-    expect(html).toContain("Sort: Target Skills");
+    expect(html).toContain('aria-label="Sort cards"');
     expect(html).toContain("All Effects");
     expect(html).toContain("Target Speed");
     expect(html).toContain("Current Speed");

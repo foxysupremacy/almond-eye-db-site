@@ -1,5 +1,10 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
+import { AppSelect } from "@/app/common/ui/controls/app-select";
+
 // Preset management: switch, create, rename, duplicate, delete,
 // and drag up & down to reorder preset combos (Main Deck + Parent Deck + Track Info).
 
@@ -41,7 +46,7 @@ export default function PresetManager() {
   // Close modal on Escape
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") {
+      if (e.key === "Escape" && !hasOpenAppSelect()) {
         setIsOpen(false);
         setEditingId(null);
       }
@@ -88,17 +93,11 @@ export default function PresetManager() {
       <div className="flex items-center gap-1.5 sm:gap-2">
         <label className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-medium">
           <span className="hidden sm:inline">Build:</span>
-          <select
+          <AppSelect
             value={activePresetId}
-            onChange={(e) => setActivePresetId(e.target.value)}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none hover:border-zinc-300 dark:hover:border-zinc-700 focus:border-emerald-500 cursor-pointer shadow-xs"
-          >
-            {presets.map((p) => (
-              <option key={p.id} value={p.id} className="dark:bg-zinc-900">
-                {p.name}
-              </option>
-            ))}
-          </select>
+            onValueChange={(value) => setActivePresetId(value)}
+            className="max-w-full"
+           label="Build" options={presets.map(p => ({ value: p.id, label: p.name }))} />
         </label>
 
         <button
@@ -232,7 +231,7 @@ export default function PresetManager() {
                             onChange={(e) => setEditName(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitRename(p.id);
-                              if (e.key === "Escape") setEditingId(null);
+                              if (e.key === "Escape" && !hasOpenAppSelect()) setEditingId(null);
                             }}
                             autoFocus
                             className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none focus:border-emerald-500"

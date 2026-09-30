@@ -1,5 +1,8 @@
 "use client";
 
+import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+
+
 import React, { useMemo, useState, useEffect } from "react";
 import type { CardIndexEntry, SkillSummary } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
@@ -33,7 +36,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
   useEffect(() => {
     if (!isOpen) return;
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setIsOpen(false);
+      if (e.key === "Escape" && !hasOpenAppSelect()) setIsOpen(false);
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
