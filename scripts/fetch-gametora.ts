@@ -1,12 +1,6 @@
-// Downloads GameTora's English factor names into lib/data/source/gametora/ so
-// extract-affinity.ts can overlay them onto the Japanese names from
-// master.mdb (master.mdb text_data is Japanese-only).
-//
-// The factors URL contains a content hash that changes when GameTora updates
-// their dump — update the URL below when the fetch starts failing.
-//
-// Everything else in the affinity/careers pipeline now comes from master.mdb
-// directly (see extract-affinity.ts).
+// Downloads the current skills, playable characters, tracks and factors into
+// lib/data/source/gametora/. Resolve content hashes from GameTora's manifest
+// so a full refresh follows new releases without hardcoded dataset URLs.
 
 import fs from "fs";
 import path from "path";
@@ -19,12 +13,7 @@ const OUTPUT_DIR = path.resolve(__dirname, "../lib/data/source/gametora");
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
-const SOURCES: Array<{ file: string; url: string }> = [
-  {
-    file: "factors.json",
-    url: "https://gametora.com/data/umamusume/factors.05f8305a.json",
-  },
-];
+const SOURCES = ["factors", "skills", "character-cards", "support-cards", "racetracks"];
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA } });
@@ -36,12 +25,16 @@ async function fetchText(url: string): Promise<string> {
 
 async function main() {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
+  const manifest = JSON.parse(await fetchText("https://gametora.com/data/manifests/umamusume.json")) as Record<string, string>;
 
   for (const source of SOURCES) {
-    process.stdout.write(`Fetching ${source.url} ... `);
-    const text = await fetchText(source.url);
+    const hash = manifest[source];
+    if (!hash) throw new Error(`GameTora manifest is missing ${source}`);
+    const url = `https://gametora.com/data/umamusume/${source}.${hash}.json`;
+    process.stdout.write(`Fetching ${url} ... `);
+    const text = await fetchText(url);
     const parsed = JSON.parse(text); // validate before writing
-    const outPath = path.join(OUTPUT_DIR, source.file);
+    const outPath = path.join(OUTPUT_DIR, `${source}.json`);
     fs.writeFileSync(outPath, JSON.stringify(parsed));
     const summary = Array.isArray(parsed)
       ? `${parsed.length} records`

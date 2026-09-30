@@ -23,10 +23,15 @@ const __dirname = path.dirname(__filename);
 const SITE_ROOT = path.resolve(__dirname, "..");
 const REPO_ROOT = path.resolve(SITE_ROOT, "..");
 
-const skillsPath = path.join(REPO_ROOT, "skills.json");
-const tracksPath = path.join(REPO_ROOT, "data", "racetracks_raw.json");
+const sourceDir = path.join(SITE_ROOT, "lib", "data", "source", "gametora");
+const preferFreshSource = (file: string, legacy: string) => {
+  const fresh = path.join(sourceDir, file);
+  return fs.existsSync(fresh) ? fresh : legacy;
+};
+const skillsPath = preferFreshSource("skills.json", path.join(REPO_ROOT, "skills.json"));
+const tracksPath = preferFreshSource("racetracks.json", path.join(REPO_ROOT, "data", "racetracks_raw.json"));
 const trackNamesPath = path.join(REPO_ROOT, "data", "translations", "track_names.json");
-const charasPath = path.join(REPO_ROOT, "characters.json");
+const charasPath = preferFreshSource("character-cards.json", path.join(REPO_ROOT, "characters.json"));
 const hachimiPath = path.join(REPO_ROOT, "hachimi_text_data.json");
 const outDir = path.join(SITE_ROOT, "lib", "data", "generated");
 

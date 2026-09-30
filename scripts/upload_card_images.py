@@ -8,6 +8,8 @@ Sources (pick with --source, default: supports for back-compat):
   supports      support_cards.json
     full art    data/images/support_cards/{id}.png
                 -> POST {API_BASE}/{version}/icon/support/{id}/{id}?variant=01
+    portrait    data/images/support_card_portraits/{id}.png
+                -> POST {API_BASE}/{version}/icon/support/{id}/{id}?variant=02
 
   characters    characters.json
     stand       data/images/character_stands/{card_id}.png  (512x512 full art)
@@ -95,8 +97,12 @@ def load_support_tasks(images_dir: Path, cards_json: Path) -> list[Task]:
     else:
         ids = sorted(int(k) for k in data.keys() if str(k).isdigit())
     return [
-        Task(str(cid), "img", "support", cid, cid, "01", images_dir / "support_cards" / f"{cid}.png")
+        Task(str(cid), field, "support", cid, cid, variant, images_dir / folder / f"{cid}.png")
         for cid in ids
+        for field, variant, folder in (
+            ("img", "01", "support_cards"),
+            ("portrait", "02", "support_card_portraits"),
+        )
     ]
 
 
@@ -317,6 +323,7 @@ def main() -> int:
     env = {
         **load_dotenv(ROOT_DIR / ".env"),
         **load_dotenv(API_DIR / ".env"),
+        **load_dotenv(Path(__file__).resolve().parent.parent / ".env"),
         **{k: v for k, v in os.environ.items() if k.startswith("ICON_")},
     }
     api_key = env.get("ICON_API_KEY", "")

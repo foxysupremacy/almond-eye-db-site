@@ -32,6 +32,8 @@ import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
+from _names import is_japanese_fallback
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
 # In-repo layout (scripts/ lives inside the site repo) or legacy sibling
 # workspace layout (scripts/ sits next to almond-eye-db-site/).
@@ -91,7 +93,13 @@ def scrape_support_slugs() -> dict[int, str]:
             urls += re.findall(r"<loc>([^<]+)</loc>", _fetch_text(loc))
         else:
             urls.append(loc)
-    slugs: dict[int, str] = {}
+    # Fresh cards can be present in the public dataset before the sitemap.
+    snapshot = SITE_LIB_DIR / "data" / "source" / "gametora" / "support-cards.json"
+    slugs: dict[int, str] = {
+        int(c["support_id"]): c["url_name"]
+        for c in json.loads(snapshot.read_text(encoding="utf-8"))
+        if c.get("url_name")
+    } if snapshot.exists() else {}
     for url in urls:
         m = re.search(r"/umamusume/supports/(\d+)-([a-z0-9-]+)", url)
         if m:
@@ -297,7 +305,8 @@ def extract_skill_meta(skills: list[dict]) -> dict[int, dict]:
 
 def apply_crawl_result(entry: dict, item: dict, event_details: list[dict]) -> None:
     """Merge one GameTora card payload into its cards.json entry. Curated
-    English names are never clobbered — only filled in when missing."""
+    English names are never clobbered — Japanese-script fallbacks count as
+    missing so an available GameTora English name can replace them."""
     entry["urlName"] = item.get("url_name") or entry.get("urlName")
     if item.get("type"):
         entry["type"] = item["type"]
@@ -306,7 +315,9 @@ def apply_crawl_result(entry: dict, item: dict, event_details: list[dict]) -> No
     if item.get("rarity"):
         entry["rarity"] = int(item["rarity"])
     char_en = (item.get("char_name") or "").strip()
-    if char_en and (not entry.get("nameEn") or entry["nameEn"] == entry.get("nameJp")):
+    if char_en and not is_japanese_fallback(char_en) and (
+        not entry.get("nameEn") or is_japanese_fallback(entry.get("nameEn"))
+    ):
         entry["nameEn"] = char_en
     entry["charName"] = char_en or entry.get("charName")
     if item.get("name_jp"):
@@ -341,12 +352,13 @@ def build_card_data(crawl_all: bool = False, specific_id: int | None = None, new
     elif crawl_all:
         cards_to_crawl = cards
     elif new_only:
-        # Cards never crawled: no event data merged yet and no slug resolved.
-        # (Cards with legitimately zero events get a urlName once crawled, so
-        # they are not re-selected; nameEn can only come from a crawl.)
+        # Re-crawl unprocessed cards and cards whose current name is still a
+        # Japanese fallback, even if event data/slug were already merged.
         cards_to_crawl = [
             c for c in cards
-            if (not c.get("eventDetails") and not c.get("urlName")) or not c.get("nameEn")
+            if (not c.get("eventDetails") and not c.get("urlName"))
+            or not c.get("nameEn")
+            or is_japanese_fallback(c.get("nameEn"))
         ]
         print(f"Incremental mode: {len(cards_to_crawl)} of {len(cards)} cards need a crawl.")
     else:

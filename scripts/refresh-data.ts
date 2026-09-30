@@ -20,6 +20,7 @@
  * Usage:
  *   bun run data:refresh                 # full refresh incl. images
  *   bun run data:refresh -- --no-images  # text data only
+ *   bun run data:refresh -- --full --upload-cdn # fresh sources, all crawls, CDN assets
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -32,6 +33,8 @@ const SITE_ROOT = path.resolve(__dirname, "..");
 loadEnv();
 
 const noImages = process.argv.includes("--no-images");
+const full = process.argv.includes("--full");
+const uploadCdn = process.argv.includes("--upload-cdn");
 const pvpRecommendationsSource = process.env.PVP_RECOMMENDATIONS_SOURCE
   ? path.resolve(SITE_ROOT, process.env.PVP_RECOMMENDATIONS_SOURCE)
   : path.join(SITE_ROOT, "lib/data/source/game/pvp-recommendations.json");
@@ -46,6 +49,7 @@ function findPython(): string | null {
   const candidates: Array<{ cmd: string; args?: string[] }> = [];
   if (process.env.PYTHON_EXE) candidates.push({ cmd: process.env.PYTHON_EXE });
   candidates.push(
+    { cmd: "/opt/homebrew/bin/python3" },
     { cmd: "python" },
     { cmd: "python3" },
     { cmd: "py", args: ["-3"] },
@@ -80,9 +84,13 @@ const py = (script: string, extra: string[] = []): string[] => {
 
 const steps: Step[] = [];
 
+if (full) {
+  steps.push({ name: "fetch latest GameTora datasets", cmd: process.execPath, args: tsScript("fetch-gametora.ts") });
+}
+
 // 1. Raw-dump preprocessing — only in the legacy sibling workspace layout.
 const rawSkills = path.resolve(SITE_ROOT, "..", "skills.json");
-if (fs.existsSync(rawSkills)) {
+if (full || fs.existsSync(rawSkills) || fs.existsSync(path.join(SITE_ROOT, "lib/data/source/gametora/skills.json"))) {
   steps.push({ name: "generate-data (raw dumps)", cmd: process.execPath, args: tsScript("generate-data.ts") });
 } else {
   console.log(`[skip] generate-data: raw dumps not found at ${rawSkills} — using committed lib/data/generated as base.`);
@@ -97,7 +105,7 @@ steps.push({ name: "extract-mdb", cmd: process.execPath, args: tsScript("extract
 steps.push({
   name: "populate characters (mdb + gametora)",
   cmd: python,
-  args: py("crawl_gametora_characters.py"),
+  args: py("crawl_gametora_characters.py", full ? ["--all"] : []),
   soft: true,
 });
 
@@ -105,7 +113,7 @@ steps.push({
 steps.push({
   name: "crawl gametora cards (incremental)",
   cmd: python,
-  args: py("crawl_gametora_cards.py", ["--new-only"]),
+  args: py("crawl_gametora_cards.py", [full ? "--crawl-all" : "--new-only"]),
   soft: true,
 });
 
@@ -136,6 +144,14 @@ steps.push({ name: "clean card names", cmd: python, args: py("clean_card_names.p
 // 8. PNG assets (incremental; skips already-downloaded files).
 if (!noImages) {
   steps.push({ name: "crawl card images", cmd: python, args: py("crawl_card_images.py"), soft: true });
+}
+
+if (uploadCdn) {
+  steps.push({
+    name: "upload images to CDN",
+    cmd: python,
+    args: py("upload_card_images.py", ["--source", "all", "--char-variant", "01"]),
+  });
 }
 
 let failed = 0;

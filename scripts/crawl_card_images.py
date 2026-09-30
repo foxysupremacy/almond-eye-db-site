@@ -17,6 +17,8 @@ Sources (pick with --source, default: all):
   supports        support_cards.json -> full art (full resolution):
     full            https://media.gametora.com/umamusume/supports/full/{card_id}.png
                     -> data/images/support_cards/{card_id}.png
+    portrait        https://gametora.com/images/umamusume/supports/support_card_s_{card_id}.png
+                    -> data/images/support_card_portraits/{card_id}.png
 
 - Skips files already downloaded (safe to re-run; use --force to overwrite)
 - Concurrent downloads (default 8 workers) + small delay to stay polite
@@ -141,6 +143,11 @@ def build_jobs(args) -> list[Job]:
             jobs.append(Job(
                 url=f"https://media.gametora.com/umamusume/supports/full/{cid}.png",
                 dest=out / f"{cid}.png",
+                label=str(cid),
+            ))
+            jobs.append(Job(
+                url=f"https://gametora.com/images/umamusume/supports/support_card_s_{cid}.png",
+                dest=images_dir / "support_card_portraits" / f"{cid}.png",
                 label=str(cid),
             ))
 

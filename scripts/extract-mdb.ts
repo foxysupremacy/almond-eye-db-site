@@ -357,6 +357,8 @@ export function extractAffinityData() {
     const hachimiName = hachimiCards[String(id)]?.trim();
     existingById.set(id, {
       id,
+      // Keep a readable Japanese fallback until the GameTora crawler finds
+      // English. The crawler recognizes Japanese script as an untranslated name.
       nameEn: stripVariant(hachimiName || variant) || charJp || fullJp,
       nameJp: fullJp,
       charName: charJp,

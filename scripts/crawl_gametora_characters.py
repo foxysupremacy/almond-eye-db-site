@@ -41,6 +41,7 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _env import load_env
+from _names import is_japanese_fallback
 
 load_env()
 
@@ -91,7 +92,7 @@ def find_build_id() -> str:
             return m.group(1)
     except Exception as e:
         print(f"[warn] Could not fetch live buildId ({e})")
-    raise SystemExit("Error: no buildId available — GameTora unreachable?")
+    raise RuntimeError("no buildId available — GameTora unreachable?")
 
 
 def scrape_character_slugs() -> dict[int, str]:
@@ -104,7 +105,13 @@ def scrape_character_slugs() -> dict[int, str]:
             urls += re.findall(r"<loc>([^<]+)</loc>", fetch_text(loc))
         else:
             urls.append(loc)
-    slugs: dict[int, str] = {}
+    # New costumes may reach the public dataset before the sitemap does.
+    snapshot = SITE_LIB_DIR / "data" / "source" / "gametora" / "character-cards.json"
+    slugs: dict[int, str] = {
+        int(c["card_id"]): c["url_name"]
+        for c in json.loads(snapshot.read_text(encoding="utf-8"))
+        if c.get("url_name")
+    } if snapshot.exists() else {}
     for url in urls:
         m = re.search(r"/umamusume/characters/(\d+)-([a-z0-9-]+)", url)
         if m:
@@ -127,10 +134,14 @@ def crawl_character_data(slug: str, build_id: str) -> dict | None:
 
 def merge_game_tora(entry: dict, item: dict) -> None:
     """Merge a GameTora character payload into its characters.json entry.
-    Existing EN names are never clobbered — only filled in when missing."""
+    Existing English names are never clobbered. Japanese-script fallbacks
+    count as missing so an available GameTora English name can replace them."""
     entry["urlName"] = item.get("url_name") or entry.get("urlName")
-    if item.get("name_en") and (not entry.get("nameEn") or entry["nameEn"] == entry.get("nameJp")):
-        entry["nameEn"] = item["name_en"].strip()
+    name_en = (item.get("name_en") or "").strip()
+    if name_en and not is_japanese_fallback(name_en) and (
+        not entry.get("nameEn") or is_japanese_fallback(entry.get("nameEn"))
+    ):
+        entry["nameEn"] = name_en
     if item.get("name_jp"):
         entry["nameJp"] = item["name_jp"].strip()
     title_en = (item.get("title") or "").strip()
@@ -212,7 +223,7 @@ def mdb_index_merge(db, characters: list[dict]) -> int:
             "id": int(card_id),
             "charId": int(chara_id),
             "variant": "01",
-            "nameEn": "",
+            "nameEn": name_jp,
             "nameJp": name_jp,
             "titleEn": "",
             "titleJp": "",
@@ -334,33 +345,45 @@ def main() -> None:
     elif args.all:
         to_crawl = characters
     else:
-        to_crawl = [c for c in characters if not c.get("nameEn") or c.get("nameEn") == c.get("nameJp")]
+        to_crawl = [
+            c for c in characters
+            if not c.get("nameEn") or is_japanese_fallback(c.get("nameEn"))
+        ]
 
     if to_crawl:
-        slugs = scrape_character_slugs()
-        build_id = find_build_id()
-        print(f"Using GameTora buildId: {build_id}")
-        print(f"Crawling {len(to_crawl)} characters live from GameTora...")
+        try:
+            slugs = scrape_character_slugs()
+            build_id = find_build_id()
+        except Exception as e:
+            # Keep the mdb skeletons (including their Japanese display names)
+            # even when GameTora is unavailable; a later refresh retries them.
+            print(f"[warn] GameTora unavailable ({e}); keeping mdb character data and retrying English names next refresh.")
+            slugs = {}
+            build_id = ""
 
-        def worker(c: dict):
-            slug = slugs.get(int(c["id"]))
-            if not slug:
-                return int(c["id"]), None
-            return int(c["id"]), crawl_character_data(slug, build_id)
+        if build_id:
+            print(f"Using GameTora buildId: {build_id}")
+            print(f"Crawling {len(to_crawl)} characters live from GameTora...")
 
-        updated = 0
-        with ThreadPoolExecutor(max_workers=8) as pool:
-            futures = [pool.submit(worker, c) for c in to_crawl]
-            for i, fut in enumerate(as_completed(futures), 1):
-                cid, item = fut.result()
-                if item:
-                    merge_game_tora(by_id[cid], item)
-                    updated += 1
-                    print(f"  [{i}/{len(to_crawl)}] {cid} ({by_id[cid].get('nameEn') or '?'})")
-                else:
-                    print(f"  [{i}/{len(to_crawl)}] {cid}: failed to fetch")
+            def worker(c: dict):
+                slug = slugs.get(int(c["id"]))
+                if not slug:
+                    return int(c["id"]), None
+                return int(c["id"]), crawl_character_data(slug, build_id)
 
-        print(f"Updated {updated}/{len(to_crawl)} characters from GameTora.")
+            updated = 0
+            with ThreadPoolExecutor(max_workers=8) as pool:
+                futures = [pool.submit(worker, c) for c in to_crawl]
+                for i, fut in enumerate(as_completed(futures), 1):
+                    cid, item = fut.result()
+                    if item:
+                        merge_game_tora(by_id[cid], item)
+                        updated += 1
+                        print(f"  [{i}/{len(to_crawl)}] {cid} ({by_id[cid].get('nameEn') or '?'})")
+                    else:
+                        print(f"  [{i}/{len(to_crawl)}] {cid}: failed to fetch")
+
+            print(f"Updated {updated}/{len(to_crawl)} characters from GameTora.")
 
     if db is not None:
         mdb_skill_backfill(db, characters, skills)
