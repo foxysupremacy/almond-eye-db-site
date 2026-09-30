@@ -71,6 +71,7 @@ export function GameRecommendedBrowser({
       activePvpEvent.recommendationEventId,
       activeCourseId,
       activePvpEvent.recommendationEventSubId,
+      activePvpEvent.recommendationEventType,
     );
   }, [activeMasterChallengeRace, activeCourseId, activePvpEvent, pvpRecommendationEvents]);
   const recommendationRace = activeMasterChallengeRace ?? pvpRecommendationRace;

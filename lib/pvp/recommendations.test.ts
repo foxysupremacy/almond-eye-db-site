@@ -10,21 +10,38 @@ import {
 import type { PvpRaceFitAssistance, RecommendedPvpSkill } from "@/lib/data/types";
 
 describe("PvP game recommendation mapping", () => {
-  test("maps CM events by the declared source event id, course id, and sub-id", () => {
+  test("maps CM and LoH events by the declared source type, event id, course id, and sub-id", () => {
     const events = pvpRecommendations.raceFitAssistance;
     const mapped = PVP_EVENTS.filter((event) => event.recommendationEventId != null);
 
-    expect(mapped.map((event) => event.recommendationEventId).sort()).toEqual([49, 50]);
+    expect(mapped.map((event) => event.recommendationEventId).sort((a, b) => a! - b!)).toEqual([17, 49, 50]);
     for (const event of mapped) {
       expect(getRecommendedRace(
         events,
         event.recommendationEventId,
         event.courseId,
         event.recommendationEventSubId,
+        event.recommendationEventType,
       )).not.toBeNull();
     }
     expect(getRecommendedRace(events, 50, 11203, 0)).toBeNull();
     expect(getRecommendedRace(events, 50, 10808, 1)).toBeNull();
+  });
+
+  test("resolves LoH recommendations without mixing event types or dropping variable conditions", () => {
+    const events = pvpRecommendations.raceFitAssistance;
+    const race = getRecommendedRace(events, 17, 10810, 0, 2);
+    expect(race).not.toBeNull();
+    expect(race!.recommendedSkills.length).toBeGreaterThan(0);
+    expect(race!.recommendedSuccessionCharacters.length).toBeGreaterThan(0);
+    expect(race!.entryCount).toBe(12);
+    expect(race!.weather).toBe(0);
+    expect(race!.ground).toBe(0);
+    const overlappingEvents = [...events, { ...events.find((event) => event.eventType === 2)!, eventType: 1, races: [] }];
+    expect(getRecommendedRace(overlappingEvents, 17, 10810, 0, 1)).toBeNull();
+    expect(getRecommendedRace(overlappingEvents, 17, 10810, 0, 2)).toEqual(race);
+    expect(getRecommendedRace(events, 17, 10808, 0, 2)).toBeNull();
+    expect(getRecommendedRace(events, 17, 10810, 1, 2)).toBeNull();
   });
 
   test("exposes all current Master Challenge race sub-events and maps them to local courses", async () => {

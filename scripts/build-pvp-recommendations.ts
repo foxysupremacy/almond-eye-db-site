@@ -191,6 +191,11 @@ try {
     0,
   );
   console.log(`Wrote ${path.relative(SITE_ROOT, OUTPUT)}: ${normalized.raceFitAssistance.length} events, ${raceCount} races, ${skillCount} skill recommendations, ${normalized.recommendedScenarioSupportCards.length} scenario cards.`);
+  const eventTypeNames: Record<number, string> = { 1: "Champions Meeting", 2: "League of Heroes", 3: "Master Challenge" };
+  for (const event of normalized.raceFitAssistance) {
+    const skills = event.races.reduce((sum, race) => sum + race.recommendedSkills.length, 0);
+    console.log(`  ${eventTypeNames[event.eventType] ?? `Event type ${event.eventType}`} #${event.eventId}: ${event.races.length} races, ${skills} skill recommendations.`);
+  }
 } catch (error) {
   console.error(`Failed to build PvP recommendations: ${error instanceof Error ? error.message : error}`);
   process.exitCode = 1;

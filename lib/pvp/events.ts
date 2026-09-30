@@ -33,6 +33,7 @@ export interface PvpEvent {
   startDate?: string;
   durationDays?: number;
   /** Exact source event key in the game's race-fit recommendation dataset. */
+  recommendationEventType?: 1 | 2;
   recommendationEventId?: number;
   recommendationEventSubId?: number;
 }
@@ -139,6 +140,7 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
     recommendationEventId: 49,
+    recommendationEventType: 1,
     recommendationEventSubId: 0,
     specialRules: ["No Debuffs"],
     noDebuffs: true,
@@ -165,6 +167,7 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
     recommendationEventId: 50,
+    recommendationEventType: 1,
     recommendationEventSubId: 0,
     startDate: "2026-10-15T12:00:00+09:00",
     durationDays: 6,
@@ -188,6 +191,9 @@ export const PVP_EVENTS: PvpEvent[] = [
     timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
     timeNum: 2, // 2: Daytime
     gradeNum: 100, // 100: G1
+    recommendationEventType: 2,
+    recommendationEventId: 17,
+    recommendationEventSubId: 0,
     startDate: "2026-11-10T12:00:00+09:00",
     durationDays: 6,
   },

@@ -110,7 +110,7 @@ export interface PvpRecommendedRace {
 
 export interface PvpRaceFitAssistance {
   assistanceId: number;
-  /** 1 = Champions Meeting, 3 = Master Challenge; unknown values stay intact. */
+  /** 1 = Champions Meeting, 2 = League of Heroes, 3 = Master Challenge; unknown values stay intact. */
   eventType: number;
   eventId: number;
   eventStartTime: string;
