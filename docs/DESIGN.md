@@ -1,6 +1,6 @@
 # AlmondEye DB — UI Design System & Component Guidelines (`DESIGN.md`)
 
-This document defines the core UI/UX patterns and design system specifications for **AlmondEye DB**, with particular focus on skill presentation, bilingual hierarchy, icon geometry, deck picker layout, mobile ergonomics, and duplicate skill indicators. All current and future components must strictly adhere to these standards.
+This document defines the core UI/UX patterns and design system specifications for **AlmondEye DB**, including skill presentation, bilingual hierarchy, icon geometry, deck picker layout, mobile ergonomics, duplicate skill indicators, and reusable control behavior. These standards apply across the application and to future components, not only to the screens where a pattern first appeared.
 
 ---
 
@@ -404,3 +404,54 @@ Specialized card/skill search and multiple-choice filters retain their own UI.
   Parent scroll locks remain active until the parent itself closes.
 - Utility enter animations use existing easing tokens, at most 250ms, with
   global reduced-motion support; keyboard opening has no animation.
+
+---
+
+## 17. Consistent Action Controls Across the Application
+
+Action buttons in toolbars, page headers, dialogs, and feature panels must share a small set of visual variants. Do not create a new one-off button treatment for each screen.
+
+1. **Shared variants**:
+   - Use the shared control styling or a component built from it for primary, secondary, quiet, destructive, and icon-only actions.
+   - Buttons in the same action group use the same height, corner radius, border weight, typography scale, focus ring, and hover/disabled behavior. Semantic emphasis may change the color, but not the control geometry.
+   - Match dropdown triggers to adjacent buttons so they read as one control group. Single-value dropdowns use the Radix-based `AppSelect` contract in Section 16.
+2. **Icons**:
+   - Use SVG icon components from `app/common/ui/primitives/icons.tsx`; never use emoji or text glyphs as functional button icons.
+   - Keep icon size and stroke weight consistent within a control group. Icon-only actions require an accessible name (`aria-label` or equivalent title where appropriate) and the same minimum target size as text actions.
+3. **Responsive behavior**:
+   - Preserve control height and interaction states across screens. Labels may shorten or become visually hidden at narrow widths only when the action remains accessible by name and understandable in context.
+   - Keep action groups usable without causing horizontal overflow; wrap or reflow controls instead of shrinking their hit targets.
+
+---
+
+## 18. Stable Selectors and Concise Values
+
+Selectors should communicate one decision at a time and keep their geometry stable as the selected value changes.
+
+1. **One property per selector**:
+   - Give independent choices independent controls. Do not combine unrelated properties into one option label when they can be selected separately.
+   - A selector for a quantity should show the concise quantity (for example, `1400m`). Put category, surface, direction, or other derived metadata in its own control or a clearly associated detail area.
+2. **Stable trigger sizing**:
+   - Set trigger widths by the control's role and expected content, not by the currently selected option. A long option must not resize the surrounding toolbar as the user makes a selection.
+   - Choose widths that fit common values, then truncate long selected labels. Keep full option labels readable in the popup.
+3. **Dependent options**:
+   - When one choice constrains another, filter the dependent options and keep the selected domain object valid. Selecting a related value should preserve the current compatible choice when possible, then choose a valid available option if necessary.
+   - Do not let display-only values silently diverge from the data used for evaluation or calculations.
+4. **Derived summaries**:
+   - Show parsed or derived details only when they add information that the controls do not already communicate. Keep them adjacent to the relevant controls and remove redundant summaries, duplicate labels, and status badges that do not help the next decision.
+   - Avoid wrapping a compact control group in an extra bordered or tinted surface when it can sit directly in the parent layout. Use a containing surface only when it establishes a meaningful section boundary.
+
+---
+
+## 19. Checklist for Shared Controls
+
+Before finalizing a new or updated toolbar, filter row, selector group, or action group:
+
+- [ ] Do controls in the same group share consistent geometry and interaction styling?
+- [ ] Are single-value menus implemented with the custom Radix `AppSelect` rather than native `<select>`?
+- [ ] Are trigger widths fixed by control role rather than changing with the selected option?
+- [ ] Does each selector represent one independent decision, with dependent options constrained to valid data?
+- [ ] Are option labels concise while any useful derived detail appears only once?
+- [ ] Have redundant summary rows, status labels, and outer surfaces been removed?
+- [ ] Do functional icons use shared SVG components and accessible names?
+- [ ] Do responsive layouts retain readable labels and usable hit targets without overflow?

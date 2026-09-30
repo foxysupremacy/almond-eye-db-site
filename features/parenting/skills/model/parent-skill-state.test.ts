@@ -33,28 +33,23 @@ const input: ParentSkillPickerInput = {
 describe("parentSkillPickerAdapter", () => {
   it("initializes every filter and view control to its default", () => {
     expect(parentSkillPickerAdapter.initialState(input)).toEqual({
-      filter: "all",
+      filter: "unique",
       sourceFilter: "all",
       rarityFilter: "all",
       viewMode: "list",
-      hideParentDuplicates: false,
       search: "",
     });
   });
 
   it("reduces each action without mutating the previous state", () => {
     const initial = parentSkillPickerAdapter.initialState(input);
-    const next = parentSkillPickerAdapter.reduce(initial, { type: "filterChanged", value: "unique" });
-    const view = parentSkillPickerAdapter.reduce(next, { type: "viewModeChanged", value: "parent" });
-    const hidden = parentSkillPickerAdapter.reduce(view, { type: "hideParentDuplicatesChanged", value: true });
-    const searched = parentSkillPickerAdapter.reduce(hidden, { type: "searchChanged", value: " Speed " });
+    const view = parentSkillPickerAdapter.reduce(initial, { type: "viewModeChanged", value: "parent" });
+    const searched = parentSkillPickerAdapter.reduce(view, { type: "searchChanged", value: " Speed " });
 
-    expect(initial.filter).toBe("all");
+    expect(initial.filter).toBe("unique");
     expect(searched).toEqual({
       ...initial,
-      filter: "unique",
       viewMode: "parent",
-      hideParentDuplicates: true,
       search: " Speed ",
     });
   });
@@ -65,6 +60,6 @@ describe("parentSkillPickerAdapter", () => {
     expect(parentSkillPickerAdapter.derive(input, uniqueState).filteredSkills.map((skill) => skill.id)).toEqual([2]);
 
     const changedInput = { ...input, skills: [skills[0]!] };
-    expect(parentSkillPickerAdapter.derive(changedInput, initial).filteredSkills.map((skill) => skill.id)).toEqual([1]);
+    expect(parentSkillPickerAdapter.derive(changedInput, initial).filteredSkills).toEqual([]);
   });
 });

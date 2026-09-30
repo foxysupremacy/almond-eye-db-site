@@ -199,7 +199,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     },
   }), [unifiedSkillList, uniqueTargetIds, parentCardDuplicateSkillIdSet]);
   const { state, view, dispatch } = usePickerController(parentSkillPickerAdapter, pickerInput);
-  const { filter, sourceFilter, rarityFilter, viewMode, hideParentDuplicates: hideParentDupes, search } = state;
+  const { filter, sourceFilter, rarityFilter, viewMode, search } = state;
   const filtered = view.filteredSkills;
 
   // Persist the selected view without putting browser storage in the reducer.
@@ -223,7 +223,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
         <h2 className="mb-2 text-lg font-semibold">Inheritable skills <span className="text-sm font-normal text-zinc-500">({unifiedSkillList.length})</span></h2>
         <input aria-label="Search skills" value={search} onChange={(event) => dispatch({ type: "searchChanged", value: event.target.value })} placeholder="Search skills…" className="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900" />
       </div>
-      <MobileFilters count={Number(sourceFilter !== "all") + Number(filter !== "all") + Number(hideParentDupes)} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
+      <MobileFilters count={Number(sourceFilter !== "all") + Number(filter !== "all")} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
       {/* Header & Controls */}
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div>
@@ -254,20 +254,6 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             placeholder="Search all skills…"
             className="hidden md:block w-36 sm:w-44 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs"
           />
-
-          {/* Hide Parent Deck Dupes Toggle */}
-          <button
-            type="button"
-            onClick={() => dispatch({ type: "hideParentDuplicatesChanged", value: !hideParentDupes })}
-            className={`rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
-              hideParentDupes
-                ? "bg-violet-500/20 border-violet-500/50 text-violet-800 dark:text-violet-300 shadow-2xs"
-                : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
-            }`}
-            title="Hide skills that appear multiple times across your Parent Support Cards"
-          >
-            {hideParentDupes ? "✓ Hiding Parent Dupes" : "Hide Parent Dupes"}
-          </button>
 
           {/* Source Toggle */}
           <div className="flex flex-wrap md:flex-nowrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
@@ -464,7 +450,6 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                   if (!card) return null;
                   const allCardSkills = parentCardSkillsMap.get(card.id) || [];
                   const cFiltered = allCardSkills.filter((s) => {
-                    if (hideParentDupes && parentCardDuplicateSkillIdSet.has(s.id)) return false;
                     const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                     const canAct = act.activates;
                     const isDupe = mainSkillIdSet.has(s.id);
@@ -668,7 +653,6 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                       const parentSkillsList = pedigreeSkills
                         .filter((s) => s.grants?.some((g) => g.slotLabel === slot.slotLabel))
                         .filter((s) => {
-                          if (hideParentDupes && parentCardDuplicateSkillIdSet.has(s.id)) return false;
                           const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                           const canAct = act.activates;
                           const isDupe = mainSkillIdSet.has(s.id);

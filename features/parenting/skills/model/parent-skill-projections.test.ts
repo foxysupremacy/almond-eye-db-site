@@ -43,7 +43,6 @@ const options = (overrides: Partial<ParentSkillFilterOptions> = {}): ParentSkill
   filter: "all",
   sourceFilter: "all",
   rarityFilter: "all",
-  hideParentDuplicates: false,
   search: "",
   uniqueTargetIds: new Set(),
   duplicateInParentIds: new Set(),
@@ -96,15 +95,4 @@ describe("parent skill projections", () => {
     expect(filterParentSkills(pool, options({ search: "  RAISES SPEED  " })).map((skill) => skill.id)).toEqual([1]);
   });
 
-  it("hides parent duplicates regardless of the active category", () => {
-    const pool: DisplayParentSkill[] = [
-      displayCardSkill({ id: 10 }),
-      lineageSkill({ id: 11 }),
-    ];
-    expect(filterParentSkills(pool, options({
-      filter: "all",
-      hideParentDuplicates: true,
-      duplicateInParentIds: new Set([10]),
-    })).map((skill) => skill.id)).toEqual([11]);
-  });
 });

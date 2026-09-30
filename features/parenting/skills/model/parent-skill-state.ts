@@ -15,7 +15,6 @@ export interface ParentSkillPickerState {
   sourceFilter: ParentSkillSourceFilter;
   rarityFilter: RarityFilterKey;
   viewMode: ParentSkillViewMode;
-  hideParentDuplicates: boolean;
   search: string;
 }
 
@@ -24,12 +23,11 @@ export type ParentSkillPickerAction =
   | { type: "sourceFilterChanged"; value: ParentSkillSourceFilter }
   | { type: "rarityFilterChanged"; value: RarityFilterKey }
   | { type: "viewModeChanged"; value: ParentSkillViewMode }
-  | { type: "hideParentDuplicatesChanged"; value: boolean }
   | { type: "searchChanged"; value: string };
 
 export interface ParentSkillPickerInput {
   skills: readonly DisplayParentSkill[];
-  options: Omit<ParentSkillFilterOptions, "filter" | "sourceFilter" | "rarityFilter" | "hideParentDuplicates" | "search">;
+  options: Omit<ParentSkillFilterOptions, "filter" | "sourceFilter" | "rarityFilter" | "search">;
 }
 
 export interface ParentSkillPickerViewModel {
@@ -44,11 +42,10 @@ export const parentSkillPickerAdapter: PickerAdapter<
   ParentSkillPickerViewModel
 > = {
   initialState: () => ({
-    filter: "all",
+    filter: "unique",
     sourceFilter: "all",
     rarityFilter: "all",
     viewMode: "list",
-    hideParentDuplicates: false,
     search: "",
   }),
   reduce: (state, action) => {
@@ -57,7 +54,6 @@ export const parentSkillPickerAdapter: PickerAdapter<
       case "sourceFilterChanged": return { ...state, sourceFilter: action.value };
       case "rarityFilterChanged": return { ...state, rarityFilter: action.value };
       case "viewModeChanged": return { ...state, viewMode: action.value };
-      case "hideParentDuplicatesChanged": return { ...state, hideParentDuplicates: action.value };
       case "searchChanged": return { ...state, search: action.value };
     }
   },
@@ -67,7 +63,6 @@ export const parentSkillPickerAdapter: PickerAdapter<
       filter: state.filter,
       sourceFilter: state.sourceFilter,
       rarityFilter: state.rarityFilter,
-      hideParentDuplicates: state.hideParentDuplicates,
       search: state.search,
     }),
     normalizedSearch: state.search.trim().toLowerCase(),

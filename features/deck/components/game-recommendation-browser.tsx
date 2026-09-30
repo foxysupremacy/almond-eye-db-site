@@ -12,7 +12,7 @@ import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { GameRecommendedCardList } from "@/features/deck/components/game-recommended-card-list";
-import { filterRecommendedSkillsByEffect, projectGameRecommendedCards } from "@/features/deck/model/game-recommendation-projections";
+import { filterRecommendedSkillsByEffect, projectGameRecommendedCards, projectTrackActiveFallbackSkills } from "@/features/deck/model/game-recommendation-projections";
 
 interface GameRecommendedBrowserProps {
   activePvpEvent: PvpEvent | null;
@@ -80,9 +80,21 @@ export function GameRecommendedBrowser({
     () => filterRecommendedSkillsByStyle(recommendationRace?.recommendedSkills ?? [], runningStyle),
     [recommendationRace, runningStyle],
   );
+  const hasStyleRecommendations = styleSkills.length > 0;
+  const isFallback = !hasStyleRecommendations;
+  const fallbackSkills = useMemo(() => hasStyleRecommendations ? [] : projectTrackActiveFallbackSkills({
+    allCards,
+    course,
+    runningStyle,
+    raceParams,
+    excludedSkillIds,
+    parentSlots,
+    skillDetailMap,
+  }), [hasStyleRecommendations, allCards, course, runningStyle, raceParams, excludedSkillIds, parentSlots, skillDetailMap]);
+  const visibleSourceSkills = isFallback ? fallbackSkills : styleSkills;
   const effectFilteredSkills = useMemo(
-    () => filterRecommendedSkillsByEffect(styleSkills, effectFilter, skillDetailMap),
-    [styleSkills, effectFilter, skillDetailMap],
+    () => filterRecommendedSkillsByEffect(visibleSourceSkills, effectFilter, skillDetailMap),
+    [visibleSourceSkills, effectFilter, skillDetailMap],
   );
   const cardRows = useMemo(() => projectGameRecommendedCards({
     skills: styleSkills,
@@ -124,18 +136,18 @@ export function GameRecommendedBrowser({
   }
 
   return (
-    <section className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800" aria-label="Game recommendations">
+    <section className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800" aria-label={isFallback ? "Track-active skill suggestions" : "Game recommendations"}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">Game Recommendations</h4>
-          <Badge size="compact" tone="sky">Game data</Badge>
+          <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{isFallback ? "Track-Active Skills" : "Game Recommendations"}</h4>
+          <Badge size="compact" tone={isFallback ? "emerald" : "sky"}>{isFallback ? "Track data" : "Game data"}</Badge>
         </div>
         <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
-          {recommendationRace
+          {course
             ? activeView === "skills"
               ? `${recommendedSkills.length} skills for ${runningStyle ? "selected style" : "all styles"}`
-              : `${cardRows.length} game-recommended cards`
-            : "Select a supported race"}
+              : `${cardRows.length} ${isFallback ? "eligible" : "game-recommended"} cards`
+            : "Select a course"}
         </span>
       </div>
 
@@ -188,11 +200,11 @@ export function GameRecommendedBrowser({
         )}
       </div>
 
-      {!recommendationRace ? (
+      {!course ? (
         <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-          Game skill data is unavailable for this event/course combination. Choose a supported Champions Meeting preset or a Master Challenge race.
+          Select a course to find skills that can activate on it.
         </p>
-      ) : runningStyle === 5 ? (
+      ) : !isFallback && runningStyle === 5 ? (
         <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
           The game data does not include a separate Runaway style recommendation.
         </p>
@@ -212,27 +224,30 @@ export function GameRecommendedBrowser({
           onAddCard={onAddCard}
         />
       ) : (
-        <div role="tabpanel" aria-label="Game recommended skills">
+        <div role="tabpanel" aria-label={isFallback ? "Track-active skills" : "Game recommended skills"}>
           <label className="mt-2 block">
             <span className="sr-only">Search game recommended skills</span>
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search game recommended skills…"
+              placeholder={isFallback ? "Search track-active skills…" : "Search game recommended skills…"}
               className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs text-zinc-800 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-100 dark:placeholder:text-zinc-500"
             />
           </label>
 
           {recommendedSkills.length === 0 ? (
-            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">No game recommended skills match this style and search.</p>
+            <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{isFallback ? "No eligible support-card skills activate on this track and style." : "No game recommended skills match this style and search."}</p>
           ) : (
             <>
               <ul className="mt-1 divide-y divide-zinc-100 dark:divide-zinc-800/60">
                 {recommendedSkills.slice(0, visibleCount).map((entry) => {
                   const detail = skillDetailMap.get(entry.skillId);
                   const skillName = detail?.nameEn || `Skill ${entry.skillId}`;
-                  const sourceCards = entry.supportCardIds
+                  const sourceCardIds = isFallback
+                    ? entry.supportCardIds.filter((id) => !parentSlots.some((card) => card?.id === id))
+                    : entry.supportCardIds;
+                  const sourceCards = sourceCardIds
                     .map((id) => ({ id, card: cardById.get(id) }))
                     .sort((a, b) => Number(Boolean(b.card)) - Number(Boolean(a.card)));
                   const expanded = expandedSkillId === entry.skillId;
@@ -267,7 +282,7 @@ export function GameRecommendedBrowser({
                           aria-expanded={expanded}
                           className="min-h-8 flex-none rounded-lg px-2 text-[10px] font-medium text-sky-700 hover:bg-sky-50 dark:text-sky-300 dark:hover:bg-sky-950/40"
                         >
-                          Support cards ({entry.supportCardIds.length})
+                          Support cards ({sourceCards.length})
                         </button>
                       </div>
                       {expanded && (

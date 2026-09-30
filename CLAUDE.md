@@ -219,12 +219,22 @@ Key contracts defined in `docs/DESIGN.md`:
   - `bun run fetch:gametora` fetches only `factors.json` (EN factor names —
     its URL embeds a content hash refreshed manually per scrape).
 
+## Project memory — collaboration preferences
+
+- Execute the agreed plan and report the completed changes and verification results.
+- The user handles all browser-based testing. Do not independently open, control,
+  inspect, or test the application in a browser unless the user explicitly asks.
+- CLI verification is authorized: run appropriate tests, typecheck, and build.
+- Report CLI results and any remaining checks for the user. Do not claim browser
+  verification was completed when it has not been performed by the user.
+
 ## Verification
 
 1. `npx tsc --noEmit` clean.
 2. `bun test` green.
 3. `bun run build` passes.
-4. Manual: deck pick/search/sort, deck persists across reload, visualizer
+4. User-owned browser checks (agents do not run these unless explicitly asked):
+   deck pick/search/sort, deck persists across reload, visualizer
    selection persists, triggerable tint matches zones on the selected course,
    clicking a skill draws its ruler bands, V4 share-link round-trip (V1/V2/V3
    are rejected) and Parenting Hub state persistence.

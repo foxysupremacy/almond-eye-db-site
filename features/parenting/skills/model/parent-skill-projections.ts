@@ -18,7 +18,6 @@ export interface ParentSkillFilterOptions {
   filter: ParentSkillFilterTab;
   sourceFilter: ParentSkillSourceFilter;
   rarityFilter: RarityFilterKey;
-  hideParentDuplicates: boolean;
   search: string;
   uniqueTargetIds: ReadonlySet<number>;
   duplicateInParentIds: ReadonlySet<number>;
@@ -83,8 +82,6 @@ export function filterParentSkills(
   const query = options.search.trim().toLowerCase();
   return skills.filter((skill) => {
     const parentDuplicate = options.duplicateInParentIds.has(skill.id);
-    if (options.hideParentDuplicates && parentDuplicate) return false;
-
     if (options.sourceFilter === "cards" && (skill.source === "unique" || skill.source === "factor")) return false;
     if (options.sourceFilter === "lineage" && (skill.source === "hint" || skill.source === "event")) return false;
 

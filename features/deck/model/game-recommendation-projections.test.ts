@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import type { CardIndexEntry, RecommendedPvpSkill, SkillDetail } from "@/lib/api";
 import { GOLD_TO_WHITE_MAP } from "@/lib/skills/rarity";
-import { filterRecommendedSkillsByEffect, findDuplicateRecommendedCardSkillIds, hideDuplicateRecommendedCardSkills, includeCardsWithAdditionalSkills, projectAdditionalCardSkills, projectGameRecommendedCards } from "./game-recommendation-projections";
+import { filterRecommendedSkillsByEffect, findDuplicateRecommendedCardSkillIds, hideDuplicateRecommendedCardSkills, includeCardsWithAdditionalSkills, projectAdditionalCardSkills, projectGameRecommendedCards, projectTrackActiveFallbackSkills } from "./game-recommendation-projections";
 
 function recommendedSkill(skillId: number, supportCardIds: number[]): RecommendedPvpSkill {
   return {
@@ -175,5 +175,50 @@ describe("game recommendation projections", () => {
       allCards: [candidate],
     })).toEqual([]);
     expect(projectAdditionalCardSkills(candidate, new Set(), new Set(), details).map((skill) => skill.id)).toEqual([whiteId]);
+  });
+
+  test("builds track-active fallback skills from unselected cards and excludes Ace and Parent skills", () => {
+    const course = {
+      id: 90001,
+      terrain: 1,
+      turn: 1,
+      distance: 3,
+      inout: 0,
+      length: 2200,
+      corners: [],
+      slopes: [],
+      straights: [],
+    };
+    const cards = [
+      { ...card(10, "First"), hintSkills: [204721, 204722] },
+      { ...card(11, "Second"), eventSkills: [204721] },
+      { ...card(12, "Selected Parent"), eventSkills: [204722] },
+    ];
+    const details = new Map([
+      [204721, skillDetail(204721, 27)],
+      [204722, skillDetail(204722, 27)],
+    ]);
+
+    expect(projectTrackActiveFallbackSkills({
+      allCards: cards,
+      course,
+      runningStyle: null,
+      excludedSkillIds: new Set(),
+      parentSlots: [cards[2]],
+      skillDetailMap: details,
+    })).toEqual([{
+      skillId: 204721,
+      supportCardIds: [10, 11],
+      runningStyleValues: { nige: 1, senko: 1, sashi: 1, oikomi: 1 },
+    }]);
+
+    expect(projectTrackActiveFallbackSkills({
+      allCards: cards,
+      course,
+      runningStyle: null,
+      excludedSkillIds: new Set([204721]),
+      parentSlots: [cards[2]],
+      skillDetailMap: details,
+    })).toEqual([]);
   });
 });

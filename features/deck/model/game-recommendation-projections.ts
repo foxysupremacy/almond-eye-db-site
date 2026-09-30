@@ -1,4 +1,7 @@
 import type { CardIndexEntry, RecommendedPvpSkill, SkillDetail } from "@/lib/api";
+import type { Course, RaceParameters } from "@/lib/skill-engine/types";
+import type { RunningStyle } from "@/lib/deck/types";
+import { doesSkillFireOnCourse } from "@/lib/recommendation/engine";
 import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
 import { getInheritableSkillForGold } from "@/lib/skills/rarity";
 
@@ -118,6 +121,57 @@ export function filterRecommendedSkillsByEffect(
 ): RecommendedPvpSkill[] {
   if (effectFilter.length === 0) return [...skills];
   return skills.filter((skill) => matchesEffectFilter(skill.skillId, effectFilter, skillDetailMap));
+}
+
+/** Builds a course/style fallback from support-card grants when game recommendations are absent. */
+export function projectTrackActiveFallbackSkills({
+  allCards,
+  course,
+  runningStyle,
+  raceParams,
+  excludedSkillIds,
+  parentSlots,
+  skillDetailMap,
+}: {
+  allCards: readonly CardIndexEntry[] | null;
+  course: Course | null;
+  runningStyle: RunningStyle | null;
+  raceParams?: Partial<RaceParameters>;
+  excludedSkillIds: ReadonlySet<number>;
+  parentSlots: readonly (CardIndexEntry | null)[];
+  skillDetailMap: ReadonlyMap<number, SkillDetail>;
+}): RecommendedPvpSkill[] {
+  if (!course) return [];
+
+  const selectedParentIds = new Set(parentSlots.flatMap((card) => card ? [card.id] : []));
+  const parentSkillIds = new Set<number>();
+  for (const card of allCards ?? []) {
+    if (!selectedParentIds.has(card.id)) continue;
+    for (const skill of projectAdditionalCardSkills(card, new Set(), new Set(), skillDetailMap)) {
+      parentSkillIds.add(skill.id);
+    }
+  }
+
+  const supportCardIdsBySkill = new Map<number, Set<number>>();
+  for (const card of allCards ?? []) {
+    if (selectedParentIds.has(card.id)) continue;
+    const skills = projectAdditionalCardSkills(card, new Set(), excludedSkillIds, skillDetailMap);
+    for (const skill of skills) {
+      if (parentSkillIds.has(skill.id) || !doesSkillFireOnCourse(skill.id, course, runningStyle, raceParams)) continue;
+      let sources = supportCardIdsBySkill.get(skill.id);
+      if (!sources) {
+        sources = new Set<number>();
+        supportCardIdsBySkill.set(skill.id, sources);
+      }
+      sources.add(card.id);
+    }
+  }
+
+  return Array.from(supportCardIdsBySkill, ([skillId, supportCardIds]) => ({
+    skillId,
+    supportCardIds: Array.from(supportCardIds).sort((a, b) => a - b),
+    runningStyleValues: { nige: 1, senko: 1, sashi: 1, oikomi: 1 },
+  })).sort((a, b) => a.skillId - b.skillId);
 }
 
 /** Groups eligible game recommendations by support card and orders by skill count. */

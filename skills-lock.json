@@ -67,6 +67,13 @@
       "skillPath": "skills/minimalist-skill/SKILL.md",
       "computedHash": "08873a3131d3be27bef9bf3304b310b16b44ca6e3561aebe532797be3443f6bd"
     },
+    "react-aria": {
+      "source": "react-aria.adobe.com",
+      "sourceUrl": "https://react-aria.adobe.com",
+      "sourceType": "well-known",
+      "computedHash": "535d95c23ff6871fbce98d3b0999505753a38d9af53a66507e860726919e8798",
+      "wellKnownDigest": "sha256:9e8c27013e279c54c9e2d0c9bcf2d8b09947be46f44807c4d91bfd6924a93e4c"
+    },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
