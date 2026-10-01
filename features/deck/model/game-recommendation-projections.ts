@@ -2,7 +2,7 @@ import type { CardIndexEntry, RecommendedPvpSkill, SkillDetail } from "@/lib/api
 import type { Course, RaceParameters } from "@/lib/skill-engine/types";
 import type { RunningStyle } from "@/lib/deck/types";
 import { doesSkillFireOnCourse } from "@/lib/recommendation/engine";
-import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
+import { matchesSkillEffectFilter, type SkillEffectCategory } from "@/lib/skills/effects";
 import { getInheritableSkillForGold } from "@/lib/skills/rarity";
 
 function inheritedSkillId(skillId: number, skillDetailMap: ReadonlyMap<number, SkillDetail>): number {
@@ -107,11 +107,7 @@ function matchesEffectFilter(
   effectFilter: readonly SkillEffectCategory[],
   skillDetailMap: ReadonlyMap<number, SkillDetail>,
 ): boolean {
-  if (effectFilter.length === 0) return true;
-  const detail = skillDetailMap.get(skillId);
-  // Match the shared effect classifier's fallback for skills without metadata.
-  const categories: SkillEffectCategory[] = detail ? classifySkillEffects(detail) : ["other"];
-  return categories.some((category) => effectFilter.includes(category));
+  return matchesSkillEffectFilter(skillDetailMap.get(skillId), effectFilter);
 }
 
 export function filterRecommendedSkillsByEffect(

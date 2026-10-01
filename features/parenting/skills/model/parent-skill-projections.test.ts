@@ -1,7 +1,9 @@
 import { describe, expect, it } from "bun:test";
 import type { ParentDeckSkill } from "@/lib/deck/types";
+import type { CharacterIndexEntry, SkillDetail } from "@/lib/api";
+import { getInheritableSkillForUnique } from "@/lib/skills/rarity";
 import type { DisplayParentSkill } from "../../hooks/use-lineage-skills";
-import { filterParentSkills, mergeParentSkills, type ParentSkillFilterOptions } from "./parent-skill-projections";
+import { buildHardToGetSkills, filterParentSkills, mergeParentSkills, type ParentSkillFilterOptions } from "./parent-skill-projections";
 
 const cardSkill = (overrides: Partial<ParentDeckSkill> = {}): ParentDeckSkill => ({
   id: 1,
@@ -93,6 +95,76 @@ describe("parent skill projections", () => {
     expect(filterParentSkills(pool, options({ filter: "factor" })).map((skill) => skill.id)).toEqual([4]);
     expect(filterParentSkills(pool, options({ rarityFilter: "gold" })).map((skill) => skill.id)).toEqual([1]);
     expect(filterParentSkills(pool, options({ search: "  RAISES SPEED  " })).map((skill) => skill.id)).toEqual([1]);
+  });
+
+  it("omits Uma unique skills and white inherit forms unless another non-unique source grants them", () => {
+    const whiteUniqueId = getInheritableSkillForUnique(100011)!;
+    const skills = [100011, whiteUniqueId].map((id) => ({
+      id,
+      nameEn: `Skill ${id}`,
+      nameJp: "",
+      rarity: 1,
+      descEn: "",
+      iconId: null,
+      conditionGroups: [],
+    }) as SkillDetail);
+    const uniqueUma = {
+      id: 100101,
+      charId: 1001,
+      nameEn: "Uma with Unique",
+      nameJp: "",
+      variant: "01",
+      titleEn: "",
+      titleJp: "",
+      rarity: 3,
+      aptitude: [],
+      baseStats: [],
+      imgUrl: "",
+      uniqueSkillId: 100011,
+    } as CharacterIndexEntry;
+    const innateUma = {
+      ...uniqueUma,
+      id: 100201,
+      charId: 1002,
+      nameEn: "Uma with Innate Skill",
+      uniqueSkillId: null,
+      innateSkills: [whiteUniqueId],
+    } as CharacterIndexEntry;
+
+    const uniqueOnly = buildHardToGetSkills(skills, [], [uniqueUma], () => true);
+    expect(uniqueOnly).toEqual([]);
+
+    const alternateSource = buildHardToGetSkills(skills, [], [uniqueUma, innateUma], () => true);
+    expect(alternateSource.map((skill) => skill.id)).toEqual([whiteUniqueId]);
+    expect(alternateSource[0]?.grants?.map((grant) => grant.cardName)).toEqual(["Uma with Innate Skill"]);
+  });
+
+  it("excludes Twinkling Star because it cannot be inherited", () => {
+    const twinklingStar = {
+      id: 204262,
+      nameEn: "Twinkling Star",
+      nameJp: "星の煌き",
+      rarity: 1,
+      descEn: "",
+      iconId: 2010011,
+      conditionGroups: [],
+    } as SkillDetail;
+    const uma = {
+      id: 100101,
+      charId: 1001,
+      nameEn: "Uma with Twinkling Star",
+      nameJp: "",
+      variant: "01",
+      titleEn: "",
+      titleJp: "",
+      rarity: 3,
+      aptitude: [],
+      baseStats: [],
+      imgUrl: "",
+      awakeningSkills: [204262],
+    } as CharacterIndexEntry;
+
+    expect(buildHardToGetSkills([twinklingStar], [], [uma], () => true)).toEqual([]);
   });
 
 });

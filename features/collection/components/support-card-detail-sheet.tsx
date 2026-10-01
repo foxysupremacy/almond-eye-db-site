@@ -1,10 +1,10 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
 import React, { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   type CardIndexEntry,
   type CardSkills,
@@ -13,7 +13,6 @@ import {
   api,
 } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card";
@@ -56,7 +55,6 @@ export function SupportCardDetailSheet({
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
 
-  useBodyScrollLock(isOpen);
 
   const [activeTab, setActiveTab] = useState<"skills" | "effects">("skills");
   const [loadedSkills, setLoadedSkills] = useState<CardSkills | null>(null);
@@ -93,21 +91,10 @@ export function SupportCardDetailSheet({
     };
   }, [isOpen, card?.id]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
-  if (!isOpen || !card || !mounted || typeof document === "undefined") return null;
+
+  if (!isOpen || !card) return null;
 
   const hintSkills = loadedSkills?.hintSkills || [];
   const baseEventSkills = loadedSkills?.eventSkills || [];
@@ -309,22 +296,16 @@ export function SupportCardDetailSheet({
     (a, b) => a.step - b.step || a.choice - b.choice || a.eventId - b.eventId,
   );
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="card-detail-title"
-    >
-      <div
-        className="flex h-[90dvh] sm:h-[88vh] max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-2xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-[250ms] ease-out-expo pb-6 sm:pb-0 overscroll-contain touch-pan-y"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Mobile handle */}
-        <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
-
-        {/* Header Profile */}
+  return (
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={card.charName || card.nameEn}
+      ariaLabel={card.charName || card.nameEn}
+      size="full"
+      overlayClassName="z-[350]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      header={
         <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5 min-w-0">
@@ -369,14 +350,15 @@ export function SupportCardDetailSheet({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
+            <AppButton
+              variant="quiet"
+              onPress={onClose}
               className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              aria-label="Close"
+              iconOnly
+                aria-label="Close"
             >
               <XIcon className="h-4 w-4" />
-            </button>
+            </AppButton>
           </div>
 
           {/* Limit Break Stepper + Ownership Row */}
@@ -385,10 +367,11 @@ export function SupportCardDetailSheet({
               <span className="text-zinc-500 text-[11px]">Limit Break:</span>
               <div className="flex items-center gap-1">
                 {[0, 1, 2, 3, 4].map((step) => (
-                  <button
+                  <AppButton
                     key={step}
-                    type="button"
-                    onClick={() => onSetLimitBreak(card.id, step)}
+                    aria-pressed={isOwned && limitBreak === step}
+                    variant="quiet"
+                    onPress={() => onSetLimitBreak(card.id, step)}
                     title={`Set to ${step === 4 ? "MLB" : `${step} LB`}`}
                     className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
                       isOwned && limitBreak === step
@@ -399,39 +382,40 @@ export function SupportCardDetailSheet({
                     }`}
                   >
                     {LB_LABELS[step]}
-                  </button>
+                  </AppButton>
                 ))}
               </div>
             </div>
 
             <div>
               {isOwned ? (
-                <button
-                  type="button"
-                  onClick={() => onRemoveCard(card.id)}
+                <AppButton
+                  variant="quiet"
+                  onPress={() => onRemoveCard(card.id)}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                 >
-                  Remove from Owned ✕
-                </button>
+                  <XIcon className="h-3.5 w-3.5" /> Remove from Owned
+                </AppButton>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => onSetLimitBreak(card.id, 4)}
+                <AppButton
+                  variant="quiet"
+                  onPress={() => onSetLimitBreak(card.id, 4)}
                   className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-2xs"
                 >
                   + Add to Owned (MLB)
-                </button>
+                </AppButton>
               )}
             </div>
           </div>
         </div>
-
+      }
+    >
         {/* Segmented Switcher: Skills vs Training Effects */}
         <div className="shrink-0 flex-none flex items-center justify-between px-4 py-2 bg-zinc-100/60 dark:bg-zinc-800/40 border-b border-zinc-200/70 dark:border-zinc-800 text-xs">
           <div className="inline-flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700/50">
-            <button
-              type="button"
-              onClick={() => setActiveTab("skills")}
+            <AppButton
+              variant="quiet"
+              onPress={() => setActiveTab("skills")}
               className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer ${
                 activeTab === "skills"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -439,10 +423,10 @@ export function SupportCardDetailSheet({
               }`}
             >
               Skills & Track ({totalSkillCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("effects")}
+            </AppButton>
+            <AppButton
+              variant="quiet"
+              onPress={() => setActiveTab("effects")}
               className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer ${
                 activeTab === "effects"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -450,7 +434,7 @@ export function SupportCardDetailSheet({
               }`}
             >
               Support Effects ({cardEffectsBlob?.effects.length || 0})
-            </button>
+            </AppButton>
           </div>
 
           {activeTab === "skills" && (
@@ -594,8 +578,6 @@ export function SupportCardDetailSheet({
             )}
           </div>
         )}
-      </div>
-    </div>,
-    document.body
+    </AppDialog>
   );
 }

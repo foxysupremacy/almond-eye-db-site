@@ -43,6 +43,8 @@ import { PedigreeSlotCard } from "@/features/parenting/components/pedigree-slot-
 import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
 import { Badge } from "@/app/common/ui/primitives/badge";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { CheckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 
 export interface ParentingViewProps {
   onNavigateToParentDeck?: () => void;
@@ -463,21 +465,22 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleShare}
+          <AppButton
+            variant="quiet"
+            onPress={handleShare}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
             title="Copy shareable link with current setup"
           >
-            <span>{copiedLink ? "✓ Link Copied!" : "🔗 Share Plan"}</span>
-          </button>
-          <button
-            type="button"
-            onClick={resetParenting}
+            {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+            <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
+          </AppButton>
+          <AppButton
+            variant="quiet"
+            onPress={resetParenting}
             className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-colors"
           >
             Reset Setup
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -506,13 +509,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               Legacy 1
             </span>
             {setup.parent1 && (
-              <button
-                type="button"
-                onClick={() => setP1IsBorrow(!setup.p1IsBorrow)}
+              <AppButton
+                variant="quiet"
+                aria-pressed={setup.p1IsBorrow}
+                onPress={() => setP1IsBorrow(!setup.p1IsBorrow)}
                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-emerald-600 cursor-pointer transition-colors"
               >
-                {setup.p1IsBorrow ? "Borrow" : "Your Uma"} ☔
-              </button>
+                {setup.p1IsBorrow ? "Borrow" : "Your Uma"}
+              </AppButton>
             )}
           </div>
           <div className="flex min-w-0 items-start justify-center gap-2">
@@ -561,13 +565,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
               Legacy 2
             </span>
             {setup.parent2 && (
-              <button
-                type="button"
-                onClick={() => setP2IsBorrow(!setup.p2IsBorrow)}
+              <AppButton
+                variant="quiet"
+                aria-pressed={setup.p2IsBorrow}
+                onPress={() => setP2IsBorrow(!setup.p2IsBorrow)}
                 className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-emerald-600 cursor-pointer transition-colors"
               >
-                {setup.p2IsBorrow ? "Borrow" : "Your Uma"} ☔
-              </button>
+                {setup.p2IsBorrow ? "Borrow" : "Your Uma"}
+              </AppButton>
             )}
           </div>
           <div className="flex min-w-0 items-start justify-center gap-2">
@@ -624,13 +629,13 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
           </div>
         </div>
         {onNavigateToParentDeck && (
-          <button
-            type="button"
-            onClick={onNavigateToParentDeck}
+          <AppButton
+            variant="quiet"
+            onPress={onNavigateToParentDeck}
             className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm active:scale-95 cursor-pointer transition-all shrink-0"
           >
             Go to Parent Deck ➔
-          </button>
+          </AppButton>
         )}
       </div>
 

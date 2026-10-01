@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "react-aria-components/Button";
 import { getCharacterImageUrl } from "@/lib/api";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import type { SlotPrimaryFactors } from "@/lib/lineage/factor-decoder";
@@ -37,9 +38,10 @@ export function PedigreeSlotCard({
     : "ring-2 ring-zinc-300 dark:ring-zinc-600";
 
   return (
-    <div
-      onClick={onClick}
-      className={`flex flex-col items-center cursor-pointer group text-center ${className}`}
+    <Button
+      aria-label={`Select ${slotLabel}: ${name}`}
+      onPress={onClick}
+      className={`flex flex-col items-center outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-lg cursor-pointer group text-center ${className}`}
     >
       <div
         className={`relative ${avatarSize} rounded-full ${ringColor} overflow-hidden bg-zinc-100 dark:bg-zinc-800 shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform duration-200 ease-out-quart`}
@@ -93,6 +95,6 @@ export function PedigreeSlotCard({
 
       {/* 3 Factor Mini-Pills */}
       <FactorPills factors={factors} />
-    </div>
+    </Button>
   );
 }

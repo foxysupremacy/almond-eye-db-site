@@ -1,13 +1,17 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
-
-
 import { AppSelect } from "@/app/common/ui/controls/app-select";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
+import { ToggleButton } from "react-aria-components/ToggleButton";
+import { ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
+import { CardTargetSkillSearch } from "./card-target-skill-search";
 
 // Popover listing ALL support cards for one deck slot, with search + sort by
 // recommendation score (for parent farming), rarity (SSR/SR/R), or type.
-// Rendered absolutely and layered above everything (z-[100]) so it never gets clipped.
+// Composes standard interaction controls inside a custom card-selection layout.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type CardIndexEntry, type SkillDetail } from "@/lib/api";
@@ -16,7 +20,6 @@ import { recommendCardsForParent, type CardRecommendation } from "@/lib/recommen
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
 import { EFFECT_CATEGORIES } from "@/app/common/ui/skills/skill-effects";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
 import { getPvpRaceParameters } from "@/lib/pvp/events";
@@ -108,35 +111,15 @@ export default function CardPickerPopover({
 
   const [cards, setCards] = useState<CardIndexEntry[] | null>(null);
   const [skills, setSkills] = useState<SkillDetail[] | null>(null);
-  const { query, sort, type, selectedEffects, onlyOwned, selectedSkills, skillMatchMode, skillQuery, isSkillDropdownOpen, isSkillPanelOpen } = state;
+  const { query, sort, type, selectedEffects, onlyOwned, selectedSkills, skillMatchMode, skillQuery, isSkillPanelOpen } = state;
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
 
   // Multi-skill filter states for Parent Deck
-  const skillSearchBoxRef = useRef<HTMLInputElement>(null);
-  const skillDropdownRef = useRef<HTMLDivElement>(null);
 
   const { getLimitBreak, isOwned, totalOwned } = useOwnedCards();
   const searchBoxRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  // Lock body scroll while popover is shown
-  useBodyScrollLock(true);
-
-  // Close skill dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (
-        skillDropdownRef.current &&
-        !skillDropdownRef.current.contains(event.target as Node) &&
-        skillSearchBoxRef.current &&
-        !skillSearchBoxRef.current.contains(event.target as Node)
-      ) {
-        dispatch({ type: "skillDropdownToggled", value: false });
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [dispatch]);
 
   // Keep the first picker frame light; loading these cached datasets can
   // immediately trigger a large card list render on the same click.
@@ -160,21 +143,6 @@ export default function CardPickerPopover({
     };
   }, []);
 
-  // Focus search box on open only on fine-pointer (desktop) devices to avoid popping soft keyboard on mobile
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches) {
-      searchBoxRef.current?.focus();
-    }
-  }, []);
-
-  // Close on Escape key
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   // Main & Parent cards presence sets
   const mainCardIdSet = useMemo(() => {
@@ -568,17 +536,17 @@ export default function CardPickerPopover({
   );
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 touch-none overscroll-none"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pick Support Card"
-    >
-      <div
-        ref={panelRef}
-        onClick={(e) => e.stopPropagation()}
-        className="flex h-[88dvh] max-h-[92dvh] sm:h-[90vh] sm:max-h-[860px] w-full sm:max-w-2xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left overscroll-contain touch-pan-y"
+    <>
+      <AppDialog
+        isOpen
+        onOpenChange={(open) => { if (!open) onClose(); }}
+        title="Pick Support Card"
+        ariaLabel="Pick Support Card"
+        size="full"
+        dialogRef={panelRef}
+        header={<></>}
+        bodyClassName="contents"
+        className="text-left overscroll-contain touch-pan-y"
       >
         {/* Mobile drag handle */}
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
@@ -586,23 +554,18 @@ export default function CardPickerPopover({
         {/* Search + Sort Header */}
         <div className="border-b border-zinc-100 dark:border-zinc-800 p-3 bg-zinc-50/50 dark:bg-zinc-900/50">
           <div className="flex items-center gap-2">
-            <input
-              ref={searchBoxRef}
+            <PickerSearchBar
+              inputRef={searchBoxRef}
               value={query}
-              onChange={(e) => dispatch({ type: "queryChanged", value: e.target.value })}
+              onChange={(value) => dispatch({ type: "queryChanged", value })}
               placeholder="Search cards by English or Japanese name…"
-              className="min-h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[13px]"
+              label="Search support cards"
+              autoFocus
+              inputClassName="min-h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[13px]"
             />
-            <button
-              type="button"
-              onClick={onClose}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-lg text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 sm:h-auto sm:w-auto sm:p-1.5"
-              aria-label="Close"
-            >
-              <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                <path d="M4 4l8 8M12 4l-8 8" />
-              </svg>
-            </button>
+            <AppButton variant="quiet" iconOnly onPress={onClose} aria-label="Close support card picker">
+              <XIcon className="h-4 w-4" />
+            </AppButton>
           </div>
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -613,9 +576,9 @@ export default function CardPickerPopover({
              label="Sort cards" options={[{ value: "recommended", label: "Sort: Recommended" }, ...(mode === "parent" ? [{ value: "targetSkills", label: "Sort: Target Skills" }] : []), { value: "release", label: "Sort: Release Date" }, { value: "rarity", label: "Sort: Rarity" }, { value: "type", label: "Sort: Type" }]} />
 
             {totalOwned > 0 && (
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "ownershipToggled" })}
+              <ToggleButton
+                isSelected={onlyOwned}
+                onChange={() => dispatch({ type: "ownershipToggled" })}
                 className={`rounded-md border px-2 py-1 text-[13px] font-semibold transition-colors cursor-pointer ${
                   onlyOwned
                     ? "bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300"
@@ -630,7 +593,7 @@ export default function CardPickerPopover({
                 ) : (
                   "Filter: All Cards"
                 )}
-              </button>
+              </ToggleButton>
             )}
 
             <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium ml-auto">
@@ -639,13 +602,13 @@ export default function CardPickerPopover({
           </div>
 
           {/* Type Filter Pills */}
-          <div className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+          <RadioGroup aria-label="Support card type" value={type} onChange={(value) => dispatch({ type: "typeChanged", value: value as CardPickerType })} orientation="horizontal" className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
               {CARD_PICKER_TYPES.map((t) => (
-              <button
+              <Radio
                 key={t}
-                type="button"
-                onClick={() => dispatch({ type: "typeChanged", value: t })}
-                className={`inline-flex items-center gap-1 rounded-full px-2.5 sm:px-2 py-1 sm:py-0.5 text-[12px] sm:text-[11px] min-h-[28px] sm:min-h-0 font-medium transition-colors cursor-pointer shrink-0 ${
+                value={t}
+                aria-label={formatCardType(t)}
+                className={`inline-flex items-center gap-1 rounded-full px-2.5 sm:px-2 py-1 sm:py-0.5 text-[12px] sm:text-[11px] min-h-11 sm:min-h-8 font-medium transition-colors cursor-pointer shrink-0 outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500/70 ${
                   type === t
                     ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xs font-semibold"
                     : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
@@ -653,43 +616,23 @@ export default function CardPickerPopover({
               >
                 {t !== "all" && <CardTypeIcon type={t} className="h-3 w-3 object-contain" />}
                 <span className="capitalize">{formatCardType(t)}</span>
-              </button>
+              </Radio>
             ))}
-          </div>
+          </RadioGroup>
 
           {/* Skill Effect Filter Chips */}
           <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "effectsCleared" })}
-              className={`rounded-full px-2.5 sm:px-2 py-1 sm:py-0.5 text-[11px] sm:text-[10px] min-h-[28px] sm:min-h-0 font-semibold transition-colors cursor-pointer shrink-0 ${
-                selectedEffects.length === 0
-                  ? "bg-emerald-700 dark:bg-emerald-600 text-white shadow-2xs"
-                  : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-              }`}
-            >
-              All Effects
-            </button>
-            {EFFECT_CATEGORIES.map((cat) => {
-              const isSelected = selectedEffects.includes(cat.id);
-              return (
-                <button
-                  key={cat.id}
-                  type="button"
-                  onClick={() => dispatch({ type: "effectToggled", value: cat.id })}
-                  className={`inline-flex items-center gap-1 rounded-full px-2.5 sm:px-2 py-1 sm:py-0.5 text-[11px] sm:text-[10px] min-h-[28px] sm:min-h-0 font-semibold transition-colors cursor-pointer shrink-0 ${
-                    isSelected
-                      ? "bg-emerald-700 dark:bg-emerald-600 text-white shadow-2xs"
-                      : "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-                  }`}
-                  title={cat.description}
-                >
-                  <span className={`h-1.5 w-1.5 rounded-full ${cat.dotColor} ${isSelected ? "ring-1 ring-white" : ""}`} />
-                  <span>{cat.label}</span>
-                  {isSelected && <span className="text-[10px] ml-0.5 font-bold">✓</span>}
-                </button>
-              );
-            })}
+            <AppButton variant={selectedEffects.length === 0 ? "primary" : "quiet"} onPress={() => dispatch({ type: "effectsCleared" })}>All Effects</AppButton>
+            <ToggleButtonGroup aria-label="Filter cards by skill effect" selectionMode="multiple" selectedKeys={selectedEffects} onSelectionChange={(keys) => {
+              const next = Array.from(keys) as SkillEffectCategory[];
+              for (const category of EFFECT_CATEGORIES) {
+                if (next.includes(category.id) !== selectedEffects.includes(category.id)) dispatch({ type: "effectToggled", value: category.id });
+              }
+            }} className="flex items-center gap-1.5">
+              {EFFECT_CATEGORIES.map((category) => <ToggleButton key={category.id} id={category.id} aria-description={category.description} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-600 outline-none transition-colors data-[selected]:border-emerald-700 data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500/70 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:data-[selected]:bg-emerald-700 dark:data-[selected]:text-white sm:min-h-8">
+                <span className={`h-1.5 w-1.5 rounded-full ${category.dotColor}`} />{category.label}
+              </ToggleButton>)}
+            </ToggleButtonGroup>
           </div>
 
           {/* Multi-Skill Filter (Parent Mode only - Flat layout, no nested box) */}
@@ -710,32 +653,10 @@ export default function CardPickerPopover({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {selectedSkills.length > 1 && (
-                    <div className="inline-flex rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-0.5 shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => dispatch({ type: "skillMatchModeChanged", value: "OR" })}
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
-                          skillMatchMode === "OR"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                        }`}
-                        title="Show cards granting ANY of the selected skills"
-                      >
-                        ANY (OR)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => dispatch({ type: "skillMatchModeChanged", value: "AND" })}
-                        className={`px-2 py-0.5 text-[10px] font-bold rounded cursor-pointer transition-colors ${
-                          skillMatchMode === "AND"
-                            ? "bg-emerald-600 text-white shadow-2xs"
-                            : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-                        }`}
-                        title="Show cards granting ALL of the selected skills"
-                      >
-                        ALL (AND)
-                      </button>
-                    </div>
+                    <RadioGroup aria-label="Target skill matching" value={skillMatchMode} onChange={(value) => dispatch({ type: "skillMatchModeChanged", value: value as "OR" | "AND" })} orientation="horizontal" className="inline-flex gap-0.5 rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700">
+                      <Radio value="OR" className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8">ANY (OR)</Radio>
+                      <Radio value="AND" className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8">ALL (AND)</Radio>
+                    </RadioGroup>
                   )}
 
                   {selectedSkills.length > 0 && (
@@ -763,106 +684,10 @@ export default function CardPickerPopover({
 
               {isSkillPanelOpen && (
                 <div className="mt-2 space-y-2">
-                  {/* Skill Search Input & Autocomplete Dropdown */}
-                  <div className="relative">
-                    <input
-                      ref={skillSearchBoxRef}
-                      value={skillQuery}
-                      onChange={(e) => {
-                        dispatch({ type: "skillQueryChanged", value: e.target.value });
-                        dispatch({ type: "skillDropdownToggled", value: true });
-                      }}
-                      onFocus={() => dispatch({ type: "skillDropdownToggled", value: true })}
-                      placeholder="Search skill to filter (e.g. Arc Maestro, Tail Flare)…"
-                      className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1.5 text-[12px] text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-emerald-500 dark:focus:border-emerald-500"
-                    />
-                    {skillQuery && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          dispatch({ type: "skillQueryChanged", value: "" });
-                          dispatch({ type: "skillDropdownToggled", value: false });
-                        }}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-                        aria-label="Clear skill query"
-                      >
-                        <XIcon className="h-3.5 w-3.5" />
-                      </button>
-                    )}
-
-                    {/* Autocomplete Dropdown */}
-                    {isSkillDropdownOpen && searchedSkills.length > 0 && (
-                      <div
-                        ref={skillDropdownRef}
-                        className="absolute left-0 right-0 top-full z-[120] mt-1 max-h-56 overflow-y-auto rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 shadow-xl divide-y divide-zinc-100 dark:divide-zinc-800"
-                      >
-                        {searchedSkills.map((s) => {
-                          const rarityStyle = getSkillRarityStyle(s.rarity);
-                          return (
-                            <button
-                              key={s.id}
-                              type="button"
-                              onClick={() => {
-                                dispatch({ type: "skillAdded", skill: s });
-                                dispatch({ type: "skillQueryChanged", value: "" });
-                                dispatch({ type: "skillDropdownToggled", value: false });
-                              }}
-                              className="flex w-full items-center gap-2 px-2.5 py-2 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
-                            >
-                              <SkillIcon iconId={s.iconId} name={s.nameEn} size={18} className="h-4 w-4 object-contain shrink-0" />
-                              <span className={`px-1 py-0.2 rounded text-[9px] font-bold shrink-0 ${rarityStyle.badgeClass}`}>
-                                {rarityStyle.badgeLabel}
-                              </span>
-                              <div className="min-w-0 flex-1">
-                                <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                                  {s.nameEn || s.nameJp}
-                                </p>
-                                {s.nameJp && s.nameEn && (
-                                  <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate">
-                                    {s.nameJp}
-                                  </p>
-                                )}
-                              </div>
-                              <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 shrink-0">
-                                + Add
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Selected Skill Tags */}
-                  {selectedSkills.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                      {selectedSkills.map((s) => {
-                        const rarityStyle = getSkillRarityStyle(s.rarity);
-                        return (
-                          <span
-                            key={s.id}
-                            className="inline-flex items-center gap-1 rounded-md border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-[11px] font-medium text-zinc-800 dark:text-zinc-200 shadow-2xs"
-                          >
-                            <SkillIcon iconId={s.iconId} name={s.nameEn} size={14} className="h-3.5 w-3.5 object-contain shrink-0" />
-                            <span className={`px-1 py-0.2 rounded text-[8px] font-bold ${rarityStyle.badgeClass}`}>
-                              {rarityStyle.badgeLabel}
-                            </span>
-                            <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate max-w-[140px] sm:max-w-[200px]">
-                              {s.nameEn || s.nameJp}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => dispatch({ type: "skillRemoved", skillId: s.id })}
-                              className="ml-0.5 p-0.5 text-zinc-400 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Remove skill"
-                            >
-                              <XIcon className="h-3 w-3" />
-                            </button>
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
+                  <CardTargetSkillSearch query={skillQuery} results={searchedSkills} selected={selectedSkills}
+                    onQueryChange={(value) => dispatch({ type: "skillQueryChanged", value })}
+                    onAdd={(skill) => dispatch({ type: "skillAdded", skill })}
+                    onRemove={(skillId) => dispatch({ type: "skillRemoved", skillId })} />
                 </div>
               )}
             </div>
@@ -1139,7 +964,7 @@ export default function CardPickerPopover({
             </ul>
           )}
         </div>
-      </div>
+      </AppDialog>
 
       {/* Quick Card Skills Sheet Modal */}
       {inspectCard && (
@@ -1154,6 +979,6 @@ export default function CardPickerPopover({
           }}
         />
       )}
-    </div>
+    </>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import React, { useState, useMemo, useEffect } from "react";
+import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import type { KyumaruVeteranItem, KyumaruLearnedSkill, KyumaruFactorInfo } from "@/lib/veterans/types";
 import { getCharacterImageUrl, type CharacterIndexEntry } from "@/lib/api";
 import { skillsById, charactersById } from "@/lib/api";
@@ -12,7 +13,6 @@ import { decodeFactor, type DecodedFactor } from "@/lib/lineage/factor-decoder";
 import { getSkillRarityStyle } from "@/app/common/ui/skills/skill-rarity";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import { useParentingSetup } from "@/features/parenting/hooks";
 import { useDeck } from "@/features/deck/state";
 import { getPvpRaceParameters } from "@/lib/pvp/events";
@@ -51,9 +51,7 @@ export default function TrainedUmaModal({
   const [activeTab, setActiveTab] = useState<ModalTab>("skills");
   const [lineageScope, setLineageScope] = useState<LineageScope>("self");
   const [skillQuery, setSkillQuery] = useState("");
-  const searchInputRef = useRef<HTMLInputElement>(null);
 
-  useBodyScrollLock(isOpen);
 
   // Sync activeRunIndex when initialRunIndex or veteran changes
   useEffect(() => {
@@ -62,25 +60,6 @@ export default function TrainedUmaModal({
     setLineageScope("self");
     setSkillQuery("");
   }, [veteran, initialRunIndex, isOpen]);
-
-  // Pointer fine guard for search input autofocus (DESIGN.md Section 6)
-  useEffect(() => {
-    if (isOpen && activeTab === "skills") {
-      if (typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches) {
-        searchInputRef.current?.focus();
-      }
-    }
-  }, [isOpen, activeTab]);
-
-  // Keyboard escape listener
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, onClose]);
 
   // Active run data
   const currentRun = useMemo(() => {
@@ -238,19 +217,16 @@ export default function TrainedUmaModal({
   const totalSkillsCount = currentRun.skill_array?.length || 0;
   const totalFactorsCount = currentRun.factor_info_array?.length || 0;
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-2xl rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden flex flex-col max-h-[90vh] sm:max-h-[85vh] animate-in slide-in-from-bottom sm:zoom-in-95 duration-[250ms] ease-out-expo"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Mobile Drag Indicator */}
-        <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
-
-        {/* Modal Header */}
+  return (
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={nameEn}
+      ariaLabel={nameEn}
+      size="full"
+      overlayClassName="z-[350]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      header={
         <div className="border-b border-zinc-100 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/60">
           <div className="flex items-start justify-between gap-3">
             {/* Uma Identity */}
@@ -313,9 +289,9 @@ export default function TrainedUmaModal({
 
               {currentRun && (
                 <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
+                  <AppButton
+                    variant="quiet"
+                    onPress={() => {
                       setParent1(currentRun);
                       setParentNotice("Assigned Parent 1!");
                       setTimeout(() => setParentNotice(null), 2500);
@@ -324,10 +300,10 @@ export default function TrainedUmaModal({
                     title="Assign to Parent 1 in Parenting Hub"
                   >
                     + P1
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
+                  </AppButton>
+                  <AppButton
+                    variant="quiet"
+                    onPress={() => {
                       setParent2(currentRun);
                       setParentNotice("Assigned Parent 2!");
                       setTimeout(() => setParentNotice(null), 2500);
@@ -336,19 +312,20 @@ export default function TrainedUmaModal({
                     title="Assign to Parent 2 in Parenting Hub"
                   >
                     + P2
-                  </button>
+                  </AppButton>
                 </div>
               )}
 
               {/* Close Button */}
-              <button
-                type="button"
-                onClick={onClose}
+              <AppButton
+                variant="quiet"
+                onPress={onClose}
                 className="rounded-xl p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                iconOnly
                 aria-label="Close"
               >
                 <XIcon className="h-4 w-4" />
-              </button>
+              </AppButton>
             </div>
           </div>
 
@@ -357,10 +334,11 @@ export default function TrainedUmaModal({
             <div className="mt-3 pt-2.5 border-t border-zinc-200/60 dark:border-zinc-800/60 flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-0.5">
               <span className="text-[11px] font-semibold text-zinc-400 shrink-0 mr-1">Runs:</span>
               {runs.map((r, idx) => (
-                <button
+                <AppButton
                   key={r.trained_chara_id || idx}
-                  type="button"
-                  onClick={() => setActiveRunIndex(idx)}
+                  aria-pressed={activeRunIndex === idx}
+                  variant="quiet"
+                  onPress={() => setActiveRunIndex(idx)}
                   className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors shrink-0 ${
                     activeRunIndex === idx
                       ? "bg-emerald-600 text-white shadow-2xs"
@@ -370,7 +348,7 @@ export default function TrainedUmaModal({
                   <span>#{idx + 1}</span>
                   {idx === 0 && <span className="ml-1 text-[10px] opacity-80">(Top)</span>}
                   <span className="ml-1.5 font-bold">{r.rank_score?.toLocaleString()}</span>
-                </button>
+                </AppButton>
               ))}
             </div>
           )}
@@ -409,13 +387,15 @@ export default function TrainedUmaModal({
             </div>
           </div>
         </div>
-
+      }
+    >
         {/* Tab Navigation (Learned Skills vs Sparks/Factors) */}
         <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 px-4 pt-2 bg-white dark:bg-zinc-900 shrink-0">
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab("skills")}
+            <AppButton
+              variant="quiet"
+              aria-pressed={activeTab === "skills"}
+                  onPress={() => setActiveTab("skills")}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
                 activeTab === "skills"
                   ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
@@ -426,11 +406,12 @@ export default function TrainedUmaModal({
               <Badge size="compact" tone="neutral" className="font-bold">
                 {totalSkillsCount}
               </Badge>
-            </button>
+            </AppButton>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("factors")}
+            <AppButton
+              variant="quiet"
+              aria-pressed={activeTab === "factors"}
+                  onPress={() => setActiveTab("factors")}
               className={`flex items-center gap-1.5 px-3 py-2 text-xs font-bold border-b-2 transition-colors cursor-pointer ${
                 activeTab === "factors"
                   ? "border-emerald-600 text-emerald-700 dark:text-emerald-400"
@@ -446,7 +427,7 @@ export default function TrainedUmaModal({
                   +{targetFactorMatch.count} target
                 </Badge>
               )}
-            </button>
+            </AppButton>
           </div>
         </div>
 
@@ -456,25 +437,7 @@ export default function TrainedUmaModal({
           {activeTab === "skills" && (
             <div className="space-y-3 animate-in fade-in duration-200 ease-out-quart">
               {/* Filter / Search Bar */}
-              <div className="relative">
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={skillQuery}
-                  onChange={(e) => setSkillQuery(e.target.value)}
-                  placeholder="Search acquired skills by English or Japanese name..."
-                  className="w-full rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-hidden focus:border-emerald-500 transition-colors"
-                />
-                {skillQuery && (
-                  <button
-                    type="button"
-                    onClick={() => setSkillQuery("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs"
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
+              <PickerSearchBar value={skillQuery} onChange={setSkillQuery} placeholder="Search acquired skills by English or Japanese name..." autoFocus />
 
               {learnedSkillsList.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800 p-8 text-center text-xs text-zinc-400">
@@ -560,9 +523,10 @@ export default function TrainedUmaModal({
             <div className="space-y-4 animate-in fade-in duration-200 ease-out-quart">
               {/* Lineage Scope Switcher */}
               <div className="inline-flex rounded-xl bg-zinc-100 dark:bg-zinc-800/80 p-1 border border-zinc-200 dark:border-zinc-700/60 w-full sm:w-auto">
-                <button
-                  type="button"
-                  onClick={() => setLineageScope("self")}
+                <AppButton
+                  variant="quiet"
+                  aria-pressed={lineageScope === "self"}
+                  onPress={() => setLineageScope("self")}
                   className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                     lineageScope === "self"
                       ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -571,12 +535,13 @@ export default function TrainedUmaModal({
                 >
                   <span>Self Factors</span>
                   <span className="ml-1 text-[10px] opacity-75">({currentRun.factor_info_array?.length || 0})</span>
-                </button>
+                </AppButton>
 
                 {parent1Chara && (
-                  <button
-                    type="button"
-                    onClick={() => setLineageScope("parent1")}
+                  <AppButton
+                    variant="quiet"
+                    aria-pressed={lineageScope === "parent1"}
+                  onPress={() => setLineageScope("parent1")}
                     className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                       lineageScope === "parent1"
                         ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -585,13 +550,14 @@ export default function TrainedUmaModal({
                   >
                     <span>P1: {parent1Chara.chara?.nameEn || "Parent 1"}</span>
                     <span className="ml-1 text-[10px] opacity-75">({parent1Chara.factors.length})</span>
-                  </button>
+                  </AppButton>
                 )}
 
                 {parent2Chara && (
-                  <button
-                    type="button"
-                    onClick={() => setLineageScope("parent2")}
+                  <AppButton
+                    variant="quiet"
+                    aria-pressed={lineageScope === "parent2"}
+                  onPress={() => setLineageScope("parent2")}
                     className={`flex-1 sm:flex-initial px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                       lineageScope === "parent2"
                         ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
@@ -600,7 +566,7 @@ export default function TrainedUmaModal({
                   >
                     <span>P2: {parent2Chara.chara?.nameEn || "Parent 2"}</span>
                     <span className="ml-1 text-[10px] opacity-75">({parent2Chara.factors.length})</span>
-                  </button>
+                  </AppButton>
                 )}
               </div>
 
@@ -956,8 +922,6 @@ export default function TrainedUmaModal({
             </div>
           )}
         </div>
-      </div>
-    </div>,
-    document.body
+    </AppDialog>
   );
 }

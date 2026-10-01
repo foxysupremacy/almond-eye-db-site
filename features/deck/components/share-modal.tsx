@@ -1,16 +1,17 @@
 "use client";
 
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 // Share Modal: Displays ultra-compact share URL, build overview, and 1-click clipboard copy.
 
-import { useState, useMemo, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useMemo } from "react";
 import { useDeck } from "@/features/deck/state";
 import type { DeckPreset } from "@/lib/deck/types";
 import { RUNNING_STYLE_LABELS } from "@/lib/deck/constants";
 import { buildShareUrl } from "@/lib/share-link";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { XIcon, CheckIcon, ClipboardIcon } from "@/app/common/ui/primitives/icons";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 
 export default function ShareModal({
   preset,
@@ -21,11 +22,6 @@ export default function ShareModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  useBodyScrollLock(isOpen);
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    setMounted(true);
-  }, []);
   const { activePreset, allCards, tracks, trackDetail, course } = useDeck();
   const targetPreset = preset || activePreset;
 
@@ -44,7 +40,7 @@ export default function ShareModal({
     return buildShareUrl(targetPreset);
   }, [targetPreset]);
 
-  if (!isOpen || !mounted) return null;
+  if (!isOpen) return null;
 
   const mainCards = targetPreset.mainDeckIds.map((id) => (id ? cardsById.get(id) : null));
   const parentCards = targetPreset.parentDeckIds.map((id) => (id ? cardsById.get(id) : null));
@@ -84,15 +80,10 @@ export default function ShareModal({
     } catch {}
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[250] flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo text-left touch-auto overscroll-contain"
-      >
+  return (
+    <AppDialog isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}
+      title={"Share Build"} ariaLabel={"Share Build"} size="md" overlayLayer="share"
+      header={<></>} bodyClassName="contents" className="max-w-lg text-left">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800/80 px-5 py-4">
           <div>
@@ -108,13 +99,15 @@ export default function ShareModal({
               {targetPreset.name}
             </p>
           </div>
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+            onPress={onClose}
+            aria-label="Close dialog"
+            iconOnly
+
           >
             <XIcon className="h-4 w-4" />
-          </button>
+          </AppButton>
         </div>
 
         {/* Build Preview Cards */}
@@ -207,6 +200,7 @@ export default function ShareModal({
 
             <div className="flex items-center gap-2">
               <input
+                aria-label="Share URL"
                 id="share-url-input"
                 type="text"
                 readOnly
@@ -214,14 +208,10 @@ export default function ShareModal({
                 onClick={(e) => (e.target as HTMLInputElement).select()}
                 className="flex-1 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs font-mono text-zinc-800 dark:text-zinc-200 outline-none select-all"
               />
-              <button
+              <AppButton variant="primary"
                 type="button"
-                onClick={handleCopy}
-                className={`rounded-xl px-4 py-2 text-xs font-semibold transition-all shadow-xs cursor-pointer shrink-0 ${
-                  copied
-                    ? "bg-emerald-600 text-white"
-                    : "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 active:scale-[0.98]"
-                }`}
+                onPress={handleCopy}
+
               >
                 {copied ? (
                   <span className="inline-flex items-center gap-1.5">
@@ -231,17 +221,17 @@ export default function ShareModal({
                 ) : (
                   "Copy Link"
                 )}
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
 
         {/* Footer Actions */}
         <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 px-5 py-3">
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={handleCopySummary}
-            className="text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 cursor-pointer"
+            onPress={handleCopySummary}
+
             title="Copy build title, cards count, track info and link"
           >
             {copiedSummary ? (
@@ -255,18 +245,16 @@ export default function ShareModal({
                 Copy Build Summary
               </span>
             )}
-          </button>
+          </AppButton>
 
-          <button
+          <AppButton variant="secondary"
             type="button"
-            onClick={onClose}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer"
+            onPress={onClose}
+
           >
             Close
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>,
-    document.body
+    </AppDialog>
   );
 }

@@ -5,6 +5,8 @@
 // ring + inline clear button. Layout wrappers and adjacent filter controls
 // stay at the call site.
 
+import { useEffect, useRef } from "react";
+import { Button, Input, SearchField } from "react-aria-components/SearchField";
 import { XIcon } from "@/app/common/ui/primitives/icons";
 
 const DEFAULT_INPUT_CLASS =
@@ -17,6 +19,7 @@ export function PickerSearchBar({
   autoFocus = false,
   inputRef,
   inputClassName,
+  label,
 }: {
   value: string;
   onChange: (next: string) => void;
@@ -25,28 +28,37 @@ export function PickerSearchBar({
   inputRef?: React.Ref<HTMLInputElement>;
   /** Override for pickers that need a different density (e.g. compact rows). */
   inputClassName?: string;
+  /** Accessible name; falls back to the visible placeholder. */
+  label?: string;
 }) {
+  const localInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (autoFocus && typeof window !== "undefined" && window.matchMedia("(pointer: fine)").matches) {
+      localInputRef.current?.focus();
+    }
+  }, [autoFocus, inputRef]);
+
+  const setInputRef = (node: HTMLInputElement | null) => {
+    localInputRef.current = node;
+    if (typeof inputRef === "function") inputRef(node);
+    else if (inputRef) inputRef.current = node;
+  };
+
   return (
-    <div className="relative flex-1">
-      <input
-        ref={inputRef}
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
+    <SearchField value={value} onChange={onChange} aria-label={label ?? placeholder} className="relative flex-1">
+      <Input
+        ref={setInputRef}
         placeholder={placeholder}
-        autoFocus={autoFocus}
         className={inputClassName ?? DEFAULT_INPUT_CLASS}
       />
       {value && (
-        <button
-          type="button"
-          onClick={() => onChange("")}
+        <Button
           aria-label="Clear search"
-          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+          className="absolute right-1 top-1/2 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-lg text-zinc-400 outline-none hover:text-zinc-600 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:text-zinc-200"
         >
           <XIcon className="h-3.5 w-3.5" />
-        </button>
+        </Button>
       )}
-    </div>
+    </SearchField>
   );
 }

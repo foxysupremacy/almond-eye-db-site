@@ -1,4 +1,5 @@
 import React from "react";
+import { Button } from "react-aria-components/Button";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import type { LineageStatBonuses } from "@/lib/lineage/factor-decoder";
 import { getStatRankBadge } from "@/lib/parenting/constants";
@@ -25,10 +26,10 @@ export function TraineeSpotlight({
         {/* Center Stage Pedestal Spotlight */}
         <div className="absolute bottom-2 w-52 sm:w-68 h-10 bg-radial from-emerald-500/25 via-emerald-500/10 to-transparent rounded-full blur-md pointer-events-none" />
 
-        <div
-          onClick={onSelectTrainee}
-          className="relative z-20 w-48 sm:w-64 h-full flex flex-col items-center justify-end cursor-pointer group"
-          title="Click to select or change Target Trainee"
+        <Button
+          aria-label="Select target trainee"
+          onPress={onSelectTrainee}
+          className="relative z-20 w-48 sm:w-64 h-full flex flex-col items-center justify-end rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 cursor-pointer group"
         >
           {targetChara ? (
             <div className="relative w-full h-full flex items-end justify-center">
@@ -56,7 +57,7 @@ export function TraineeSpotlight({
               </span>
             </div>
           )}
-        </div>
+        </Button>
       </div>
 
       {/* Floating Blue Stat Bonus Pills (Directly above the 5 stat columns) */}

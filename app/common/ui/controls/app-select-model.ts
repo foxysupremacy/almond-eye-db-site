@@ -1,4 +1,4 @@
-/** Encode every value, including the app's empty-string option, for Radix. */
+/** Encode every value, including the app's empty-string option, for React Aria ListBox. */
 export function selectWireValue(value: string): string { return `value:${value}`; }
 export function selectAppValue(value: string): string { return value.slice("value:".length); }
 

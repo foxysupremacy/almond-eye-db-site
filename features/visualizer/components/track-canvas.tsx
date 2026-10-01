@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import type { Course } from "@/lib/skill-engine/types";
 import { renderCourse, type TrackSvgElement } from "@/features/visualizer/rendering/track-render";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
@@ -147,77 +148,67 @@ export function TrackCanvas({
 
         {/* View Mode Switcher */}
         <div className="flex min-w-0 items-center gap-1 text-xs">
-          <div className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5 sm:flex sm:w-auto">
-            <button
-              type="button"
-              onClick={() => setViewMode("all")}
-              className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
+          <ToggleButtonGroup aria-label="Visualizer layout" selectionMode="single" disallowEmptySelection selectedKeys={[viewMode]} onSelectionChange={(keys) => { const key = [...keys][0]; if (key) setViewMode(key as typeof viewMode); }} className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5 sm:flex sm:w-auto">
+            <ToggleButton id="all"
+              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "all"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              title="Full View: All 3 Boards (Map + 1D Timeline + Effect Graphs)"
+              aria-description="Full View: All 3 Boards (Map + 1D Timeline + Effect Graphs)"
             >
               <LayoutDashboardIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
               <span>Full View</span>
-            </button>
+            </ToggleButton>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("timeline-graph")}
-              className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
+            <ToggleButton id="timeline-graph"
+              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "timeline-graph"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              title="Timeline & Graphs: 1D Timeline on top, Effect Graphs on bottom"
+              aria-description="Timeline & Graphs: 1D Timeline on top, Effect Graphs on bottom"
             >
               <LayersIcon className="h-3.5 w-3.5" />
               <span>Timeline & Graphs</span>
-            </button>
+            </ToggleButton>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("1d")}
-              className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
+            <ToggleButton id="1d"
+              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "1d"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              title="1D Timeline Only"
+              aria-description="1D Timeline Only"
             >
               <SplitVerticalIcon className="h-3.5 w-3.5" />
               <span>1D Only</span>
-            </button>
+            </ToggleButton>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("graphs")}
-              className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
+            <ToggleButton id="graphs"
+              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "graphs"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              title="Effect Graphs Only"
+              aria-description="Effect Graphs Only"
             >
               <TrendingUpIcon className="h-3.5 w-3.5" />
               <span>Graphs Only</span>
-            </button>
+            </ToggleButton>
 
-            <button
-              type="button"
-              onClick={() => setViewMode("map")}
-              className={`flex min-h-8 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
+            <ToggleButton id="map"
+              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "map"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              title="Course Map 2.5D Only"
+              aria-description="Course Map 2.5D Only"
             >
               <MapIcon className="h-3.5 w-3.5" />
               <span>Map Only</span>
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
         </div>
       </div>
 

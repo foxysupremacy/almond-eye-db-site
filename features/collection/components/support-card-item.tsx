@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "react-aria-components/Button";
+
 import type { CardIndexEntry } from "@/lib/api";
 import CardTypeIcon from "@/app/common/ui/cards/card-type-icon";
 
@@ -20,17 +22,9 @@ export function SupportCardItem({
   const lb = limitBreak;
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(card)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect(card);
-        }
-      }}
-      className={`group flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
+    <Button
+      onPress={() => onSelect(card)}
+      className={`group text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
         isOwned
           ? lb === 4
             ? "border-amber-500/50 shadow-xs ring-1 ring-amber-500/20 hover:border-amber-500 hover:shadow-md"
@@ -109,6 +103,6 @@ export function SupportCardItem({
           Skills & Stats ↗
         </span>
       </div>
-    </div>
+    </Button>
   );
 }

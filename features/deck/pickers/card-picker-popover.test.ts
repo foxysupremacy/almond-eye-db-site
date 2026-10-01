@@ -1,57 +1,17 @@
 import { describe, it, expect } from "bun:test";
 
 describe("CardPickerPopover SSR", () => {
-  it("renders without throwing", async () => {
+  it("does not render a focus-managed modal into server HTML", async () => {
     const { renderToStaticMarkup } = await import("react-dom/server");
     const React = await import("react");
     const { DeckProvider } = await import("@/features/deck/state");
     const CardPickerPopover = (await import("@/features/deck/pickers/card-picker-popover")).default;
-
-    const html = renderToStaticMarkup(
-      React.createElement(
-        DeckProvider,
-        null,
-        React.createElement(CardPickerPopover, {
-          onPick: () => {},
-          onClose: () => {},
-        }),
-      ),
-    );
-    expect(html).toContain("Search cards by English or Japanese name");
-    expect(html).toContain('aria-label="Sort cards"');
-    expect(html).toContain("Sort: Rarity");
-    expect(html).toContain('aria-label="Loading support cards"');
-    expect(html).toContain("animate-pulse");
-    expect(html).not.toContain("Filter by Skills");
-  });
-
-  it("renders parent mode with effect selector chips and target skills sort", async () => {
-    const { renderToStaticMarkup } = await import("react-dom/server");
-    const React = await import("react");
-    const { DeckProvider } = await import("@/features/deck/state");
-    const CardPickerPopover = (await import("@/features/deck/pickers/card-picker-popover")).default;
-
-    const html = renderToStaticMarkup(
-      React.createElement(
-        DeckProvider,
-        null,
-        React.createElement(CardPickerPopover, {
-          onPick: () => {},
-          onClose: () => {},
-          mode: "parent",
-        }),
-      ),
-    );
-    expect(html).toContain("Parent Deck Mode");
-    expect(html).toContain("Sort: Recommended");
-    expect(html).toContain('aria-label="Sort cards"');
-    expect(html).toContain("All Effects");
-    expect(html).toContain("Target Speed");
-    expect(html).toContain("Current Speed");
-    expect(html).toContain("Acceleration");
-    expect(html).toContain("Filter by Skills");
-    expect(html).toContain("Search skill to filter");
-    expect(html).toContain('aria-label="Loading support cards"');
+    for (const mode of ["main", "parent"] as const) {
+      const html = renderToStaticMarkup(React.createElement(DeckProvider, null,
+        React.createElement(CardPickerPopover, { mode, onPick: () => {}, onClose: () => {} })));
+      expect(html).not.toContain('role="dialog"');
+      expect(html).not.toContain('aria-modal="true"');
+    }
   });
 
   it("handles gold <-> white skill equivalence mapping correctly", async () => {

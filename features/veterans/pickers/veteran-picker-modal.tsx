@@ -1,6 +1,10 @@
 "use client";
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
+import { XIcon, StarIcon } from "@/app/common/ui/primitives/icons";
 
 import { useState, useMemo, useEffect } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
@@ -211,16 +215,13 @@ function RecommendedRow({
           {candidate.totalScore}
         </span>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
+        <AppButton
+          variant="quiet"
+          onPress={onSelect}
           className="text-[10px] font-bold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white shrink-0 cursor-pointer transition-colors"
         >
           Select →
-        </button>
+        </AppButton>
       </div>
     </div>
   );
@@ -400,16 +401,13 @@ function OwnedUmaRow({
           +{entry.affTotal}
         </span>
 
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect();
-          }}
+        <AppButton
+          variant="quiet"
+          onPress={onSelect}
           className="text-[10px] font-bold px-2 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white shrink-0 cursor-pointer transition-colors"
         >
           Select →
-        </button>
+        </AppButton>
       </div>
     </div>
   );
@@ -460,13 +458,13 @@ function OwnedTabContent({
 
 function ShowMoreButton({ onClick }: { onClick: () => void }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
+    <AppButton
+      variant="quiet"
+      onPress={onClick}
       className="w-full rounded-lg border border-zinc-200 dark:border-zinc-800 px-3 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
     >
       Show more
-    </button>
+    </AppButton>
   );
 }
 
@@ -657,9 +655,15 @@ export default function VeteranPickerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="flex flex-col w-full max-w-3xl max-h-[85vh] rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden">
-        {/* Header */}
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={`Select ${slotLabel}`}
+      ariaLabel={`Select ${slotLabel}`}
+      size="lg"
+      className="h-[85dvh]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      header={
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800">
           <div>
             <div className="flex items-center gap-2">
@@ -680,65 +684,61 @@ export default function VeteranPickerModal({
                 : "Select a horse from your Hall of Fame or character roster."}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
+          <AppButton
+            variant="quiet"
+            onPress={onClose}
+            iconOnly
+            aria-label="Close veteran picker"
             className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
-            ✕
-          </button>
+            <XIcon className="h-4 w-4" />
+          </AppButton>
         </div>
-
+      }
+    >
+      <Tabs selectedKey={activeTab} onSelectionChange={(key) => dispatch({ type: "tabSelected", tab: key as PickerTab })} className="flex min-h-0 flex-1 flex-col">
         {/* Source Tabs & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
-          <div className="flex items-center gap-1.5 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1">
+          <TabList aria-label="Candidate sources" className="flex items-center gap-1.5 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1">
             {(recommendations || recommendationsLoading || recommendationsError) && (
-              <button
-                type="button"
-                onClick={() => dispatch({ type: "tabSelected", tab: "recommended" })}
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+              <Tab id="recommended"
+                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                   activeTab === "recommended"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                     : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
                 }`}
               >
-                ⭐ Recommended
-              </button>
+                <StarIcon className="mr-1 inline h-3.5 w-3.5" /> Recommended
+              </Tab>
             )}
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "tabSelected", tab: "owned" })}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            <Tab id="owned"
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "owned"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               Owned Umas
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "tabSelected", tab: "veterans" })}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            </Tab>
+            <Tab id="veterans"
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "veterans"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               My Hall of Fame ({veterans.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => dispatch({ type: "tabSelected", tab: "templates" })}
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer ${
+            </Tab>
+            <Tab id="templates"
+              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "templates"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
               All Character Templates
-            </button>
-          </div>
+            </Tab>
+          </TabList>
 
           <div className="flex items-center gap-2 flex-1 max-w-sm">
             <PickerSearchBar
@@ -760,7 +760,7 @@ export default function VeteranPickerModal({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-y-auto p-4">
+        <TabPanel id={activeTab} className="min-h-0 flex-1 overflow-y-auto p-4 outline-none">
           {activeTab === "recommended" && recommendations ? (
             <RecommendedTabContent
               recommendations={recommendations}
@@ -924,25 +924,25 @@ export default function VeteranPickerModal({
                         {/* Actions: Select or Expand */}
                         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
                           {group.runCount > 1 && (
-                            <button
-                              type="button"
-                              onClick={() => setExpandedCharId(isExpanded ? null : charId)}
+                            <AppButton
+                              variant="quiet"
+                              onPress={() => setExpandedCharId(isExpanded ? null : charId)}
                               className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[11px] font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-700/80 cursor-pointer transition-colors"
                             >
                               {isExpanded ? "▲ Hide Runs" : `▼ View ${group.runCount} Runs`}
-                            </button>
+                            </AppButton>
                           )}
 
-                          <button
-                            type="button"
-                            onClick={() => {
+                          <AppButton
+                            variant="quiet"
+                            onPress={() => {
                               onSelectVeteran(vet);
                               onClose();
                             }}
                             className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-xs cursor-pointer active:scale-95 transition-all ease-out-quart duration-150"
                           >
                             {group.runCount > 1 ? "Select Best Run →" : "Select →"}
-                          </button>
+                          </AppButton>
                         </div>
                       </div>
 
@@ -1012,16 +1012,16 @@ export default function VeteranPickerModal({
                                     </span>
                                   </div>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
+                                  <AppButton
+                                    variant="quiet"
+                                    onPress={() => {
                                       onSelectVeteran(run);
                                       onClose();
                                     }}
                                     className="px-3 py-1 rounded-lg bg-emerald-600/15 hover:bg-emerald-600 hover:text-white text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer shrink-0 ml-2"
                                   >
                                     Use Run #{idx + 1}
-                                  </button>
+                                  </AppButton>
                                 </div>
                               );
                             })}
@@ -1052,19 +1052,9 @@ export default function VeteranPickerModal({
                   const uniqueEval = uniqueEvalByCardId.get(chara.id);
 
                   return (
-                    <button
+                    <div
                       key={chara.id}
-                      type="button"
-                      onClick={() => {
-                        if (onSelectCharacterTemplate) {
-                          onSelectCharacterTemplate(chara);
-                        } else {
-                          // convert character to minimal veteran stub
-                          onSelectVeteran(createCharacterVeteranTemplate(chara));
-                        }
-                        onClose();
-                      }}
-                      className="group flex items-center gap-2.5 p-2.5 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 hover:border-emerald-500/70 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-left transition-all cursor-pointer shadow-2xs"
+                      className="group grid grid-cols-[3rem_minmax(0,1fr)] items-center gap-2.5 p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 text-left transition-colors"
                     >
                       <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
                         <img
@@ -1125,7 +1115,21 @@ export default function VeteranPickerModal({
                           />
                         )}
                       </div>
-                    </button>
+                      <AppButton
+                        variant="secondary"
+                        className="col-span-2 w-full"
+                        aria-label={`Select ${chara.nameEn} template`}
+                      onPress={() => {
+                        if (onSelectCharacterTemplate) {
+                          onSelectCharacterTemplate(chara);
+                        } else {
+                          // convert character to minimal veteran stub
+                          onSelectVeteran(createCharacterVeteranTemplate(chara));
+                        }
+                        onClose();
+                      }}
+                      >Select</AppButton>
+                    </div>
                   );
                 })}
                 {processedTemplates.length > visibleLimit && (
@@ -1136,8 +1140,8 @@ export default function VeteranPickerModal({
               </div>
             )
           )}
-        </div>
-      </div>
-    </div>
+        </TabPanel>
+      </Tabs>
+    </AppDialog>
   );
 }

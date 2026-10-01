@@ -51,7 +51,9 @@ export const parentSkillPickerAdapter: PickerAdapter<
   reduce: (state, action) => {
     switch (action.type) {
       case "filterChanged": return { ...state, filter: action.value };
-      case "sourceFilterChanged": return { ...state, sourceFilter: action.value };
+      case "sourceFilterChanged": return action.value === "hard_to_get"
+        ? { ...state, sourceFilter: action.value, filter: "all", viewMode: "list" }
+        : { ...state, sourceFilter: action.value };
       case "rarityFilterChanged": return { ...state, rarityFilter: action.value };
       case "viewModeChanged": return { ...state, viewMode: action.value };
       case "searchChanged": return { ...state, search: action.value };

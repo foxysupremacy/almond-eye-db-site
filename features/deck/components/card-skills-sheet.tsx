@@ -1,8 +1,11 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
+
+import { CheckIcon, XIcon } from "@/app/common/ui/primitives/icons";
 import React, { useEffect, useMemo, useState } from "react";
 import { api, type CardIndexEntry, type SkillSummary, type CardSkills } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
@@ -14,7 +17,6 @@ import SkillItem from "@/app/common/ui/skills/skill-item";
 import DuplicateSkillBadge from "@/app/common/ui/skills/provenance/duplicate-skill-badge";
 import { getInheritableSkillForGold } from "@/lib/skills/rarity";
 import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { buildDuplicateSkillIndex, type DuplicateSkillIndex } from "@/lib/skills/duplicates";
 import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
@@ -45,7 +47,6 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
   const isParent = mode === "parent";
   const raceParams = activeRaceParameters;
 
-  useBodyScrollLock(isOpen);
 
   // Fetch skills dynamically if not already in deck store
   useEffect(() => {
@@ -67,14 +68,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
     }
   }, [isOpen, card?.id, skillsByCard]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+
 
   // Parent mode: map skillId -> every equipped parent card (this one included)
   // that also grants it, so rows can show the "duplicate with N cards" badge
@@ -228,17 +222,9 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
   }
 
   return (
-    <div
-      className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="card-skills-title"
-    >
-      <div
-        className="flex h-[88dvh] max-h-[92dvh] sm:h-auto sm:max-h-[88vh] w-full sm:max-w-lg flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left animate-in slide-in-from-bottom sm:zoom-in-95 duration-[250ms] ease-out-expo pb-6 sm:pb-0 overscroll-contain touch-pan-y"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <AppDialog isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}
+      title={cardTitle} ariaLabel={cardTitle} size="sheet" overlayLayer="inspection"
+      header={<></>} bodyClassName="contents" className="max-h-[92dvh] sm:max-h-[88vh] sm:max-w-lg text-left pb-6 sm:pb-0">
         {/* Mobile handle */}
         <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
 
@@ -267,16 +253,15 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
             </div>
           </div>
 
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+            onPress={onClose}
+            iconOnly
+
             aria-label="Close"
           >
-            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-              <path d="M4 4l8 8M12 4l-8 8" />
-            </svg>
-          </button>
+            <XIcon className="h-4 w-4" />
+          </AppButton>
         </div>
 
         {/* Subtitle count banner */}
@@ -338,20 +323,18 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
             <span className="text-xs text-zinc-500 dark:text-zinc-400">
               Ready to equip this support card?
             </span>
-            <button
+            <AppButton variant="primary"
               type="button"
-              onClick={() => {
+              onPress={() => {
                 onPick(card);
                 onClose();
               }}
-              className="flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 text-xs font-bold shadow-xs transition-colors ease-out-quart duration-150 cursor-pointer active:scale-[0.98]"
             >
               <span>Select Card</span>
-              <span>✓</span>
-            </button>
+              <CheckIcon className="h-3.5 w-3.5" />
+            </AppButton>
           </div>
         )}
-      </div>
-    </div>
+    </AppDialog>
   );
 }

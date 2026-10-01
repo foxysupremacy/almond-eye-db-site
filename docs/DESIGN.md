@@ -389,7 +389,7 @@ Specialized card/skill search and multiple-choice filters retain their own UI.
   Options provide a string value and text label, optional icon, disabled state,
   and group label. Keep options ordered and group entries contiguous. Empty strings
   are supported; number/null conversion belongs to callers.
-- Desktop and mobile use an anchored Radix Select popup with viewport-aware
+- Desktop and mobile use React Aria Components `Select`, `Popover`, and `ListBox` with viewport-aware
   placement, typeahead, keyboard navigation and a scrolling list. Mobile uses
   44px option rows and a selected checkmark; never open a second bottom sheet.
   Focus the current enabled option, never a search input. Selection applies once
@@ -402,8 +402,9 @@ Specialized card/skill search and multiple-choice filters retain their own UI.
   inspection sheets. Parent Escape/outside-click handlers must yield while
   `hasOpenAppSelect()` is true. Portal clicks must not close a parent overlay.
   Parent scroll locks remain active until the parent itself closes.
-- Utility enter animations use existing easing tokens, at most 250ms, with
-  global reduced-motion support; keyboard opening has no animation.
+- Style React Aria state through `data-*` selectors or render props. Utility
+  enter animations use existing easing tokens, at most 250ms, with global
+  reduced-motion support; keyboard opening has no animation.
 
 ---
 
@@ -411,16 +412,35 @@ Specialized card/skill search and multiple-choice filters retain their own UI.
 
 Action buttons in toolbars, page headers, dialogs, and feature panels must share a small set of visual variants. Do not create a new one-off button treatment for each screen.
 
+Build interaction behavior with React Aria Components (`react-aria-components`).
+Shared wrappers live in `app/common/ui/controls/`: `AppButton`, `AppSelect`,
+`AppDialog`, `AppPopover`, `AppDisclosure`, `PickerSearchBar`, and `MobileSheet`.
+Keep filter/ranking and persistence logic in its owning feature or `lib/`; these
+wrappers own presentation, focus, keyboard behavior and ARIA semantics.
+
 1. **Shared variants**:
-   - Use the shared control styling or a component built from it for primary, secondary, quiet, destructive, and icon-only actions.
+   - Use `app/common/ui/controls/app-button.tsx` (`AppButton`) or its shared
+     variants for primary, secondary, quiet, destructive, and icon-only actions.
    - Buttons in the same action group use the same height, corner radius, border weight, typography scale, focus ring, and hover/disabled behavior. Semantic emphasis may change the color, but not the control geometry.
-   - Match dropdown triggers to adjacent buttons so they read as one control group. Single-value dropdowns use the Radix-based `AppSelect` contract in Section 16.
+   - Match dropdown triggers to adjacent buttons so they read as one control group. Single-value dropdowns use the React Aria based `AppSelect` contract in Section 16.
 2. **Icons**:
    - Use SVG icon components from `app/common/ui/primitives/icons.tsx`; never use emoji or text glyphs as functional button icons.
    - Keep icon size and stroke weight consistent within a control group. Icon-only actions require an accessible name (`aria-label` or equivalent title where appropriate) and the same minimum target size as text actions.
 3. **Responsive behavior**:
    - Preserve control height and interaction states across screens. Labels may shorten or become visually hidden at narrow widths only when the action remains accessible by name and understandable in context.
    - Keep action groups usable without causing horizontal overflow; wrap or reflow controls instead of shrinking their hit targets.
+
+4. **Overlay behavior**:
+   - Use `AppDialog` for modal and sheet shells, with controlled `isOpen` and
+     `onOpenChange`; preserve modal focus containment/restoration and use the
+     explicit `overlayLayer` token (`mobile`, `picker`, `share`, `inspection`,
+     `inspector`) for stacking.
+   - Use `AppPopover` for anchored interactive content. `AppSelect` portals above
+     application dialogs at z410 and exposes `data-app-select-layer` so any
+     remaining legacy parent handlers yield Escape to it.
+   - Do not keep manual Escape, focus-trap, and body-scroll-lock handlers beside
+     React Aria's modal behavior. Nested overlays close from the top and return
+     focus to their owning trigger.
 
 ---
 
@@ -448,7 +468,7 @@ Selectors should communicate one decision at a time and keep their geometry stab
 Before finalizing a new or updated toolbar, filter row, selector group, or action group:
 
 - [ ] Do controls in the same group share consistent geometry and interaction styling?
-- [ ] Are single-value menus implemented with the custom Radix `AppSelect` rather than native `<select>`?
+- [ ] Are single-value menus implemented with the React Aria `AppSelect` rather than native `<select>`?
 - [ ] Are trigger widths fixed by control role rather than changing with the selected option?
 - [ ] Does each selector represent one independent decision, with dependent options constrained to valid data?
 - [ ] Are option labels concise while any useful derived detail appears only once?

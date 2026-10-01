@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Button } from "react-aria-components/Button";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { XIcon } from "@/app/common/ui/primitives/icons";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 
@@ -36,25 +40,15 @@ export default function CharacterPickerModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="flex flex-col w-full max-w-2xl max-h-[85vh] rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800">
-          <div>
-            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">{title}</h3>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Select the Uma Musume to plan compatibility and parent bloodlines for.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl flex items-center justify-center text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={title}
+      description="Select the Uma Musume to plan compatibility and parent bloodlines for."
+      size="lg"
+      bodyClassName="flex min-h-0 flex-1 flex-col"
+      headerAction={<AppButton variant="quiet" iconOnly aria-label="Close character picker" onPress={onClose}><XIcon className="h-4 w-4" /></AppButton>}
+    >
         {/* Search */}
         <div className="p-4 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
           <PickerSearchBar
@@ -75,14 +69,13 @@ export default function CharacterPickerModal({
             filtered.map((chara) => {
               const avatarUrl = getCharacterImageUrl(chara.charId, chara.id);
               return (
-                <button
+                <Button
                   key={chara.id}
-                  type="button"
-                  onClick={() => {
+                  onPress={() => {
                     onSelect(chara);
                     onClose();
                   }}
-                  className="group flex items-center gap-2.5 p-2 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-900 hover:border-emerald-500/70 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 text-left transition-all cursor-pointer shadow-2xs"
+                  className="group flex items-center gap-2.5 min-h-14 p-2 border-b border-zinc-100 dark:border-zinc-800/80 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/20 text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors cursor-pointer"
                 >
                   <div className="relative w-12 h-12 shrink-0 flex items-center justify-center">
                     <img
@@ -108,12 +101,11 @@ export default function CharacterPickerModal({
                       </span>
                     </div>
                   </div>
-                </button>
+                </Button>
               );
             })
           )}
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

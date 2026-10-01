@@ -41,6 +41,16 @@ export function classifySkillEffects(skill: SkillDetail): SkillEffectCategory[] 
   return Array.from(categories);
 }
 
+/** Match a skill against the shared multi-select effect filter (OR semantics). */
+export function matchesSkillEffectFilter(
+  skill: SkillDetail | undefined,
+  selectedEffects: readonly SkillEffectCategory[],
+): boolean {
+  if (selectedEffects.length === 0) return true;
+  const categories: SkillEffectCategory[] = skill ? classifySkillEffects(skill) : ["other"];
+  return categories.some((category) => selectedEffects.includes(category));
+}
+
 /**
  * Checks if a skill is obtainable via any support card (events or hints).
  */

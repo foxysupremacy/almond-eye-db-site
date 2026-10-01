@@ -1,7 +1,8 @@
 "use client";
 
 import type { RefObject } from "react";
-import SkillIcon from "@/app/common/ui/skills/skill-icon";
+import { Button } from "react-aria-components/Button";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { SkillIndicator } from "@/app/common/ui/skills/skill-badges";
 import { type RarityFilterKey } from "@/lib/skills/rarity";
@@ -51,90 +52,89 @@ export function TrackSkillSidebar({
               </span>
             </p>
           </div>
-          <div className="flex items-center gap-1 text-xs font-medium">
-            <button
-              type="button"
-              onClick={() => onVisualizerDeckChange("main")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+          <ToggleButtonGroup
+            aria-label="Skill deck"
+            selectionMode="single"
+            disallowEmptySelection
+            selectedKeys={[visualizerDeck]}
+            onSelectionChange={(keys) => { const key = [...keys][0]; if (key === "main" || key === "parent") onVisualizerDeckChange(key); }}
+            className="flex items-center gap-1 text-xs font-medium"
+          >
+            <ToggleButton id="main"
+              className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 visualizerDeck === "main"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Main
-            </button>
-            <button
-              type="button"
-              onClick={() => onVisualizerDeckChange("parent")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+            </ToggleButton>
+            <ToggleButton id="parent"
+              className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 visualizerDeck === "parent"
                   ? "bg-emerald-700 dark:bg-emerald-600 text-white shadow-2xs font-semibold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Parent
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
         </div>
 
-        {/* Rarity Tabs */}
-          <div className="flex flex-wrap items-center gap-1 text-[11px] font-medium">
-          <button
-            type="button"
-            onClick={() => onRarityFilterChange("all")}
-            className={`rounded px-2 py-0.5 transition-colors cursor-pointer ${
+        <ToggleButtonGroup
+          aria-label="Skill rarity"
+          selectionMode="single"
+          disallowEmptySelection
+          selectedKeys={[rarityFilter]}
+          onSelectionChange={(keys) => { const key = [...keys][0]; if (key && key !== rarityFilter) onRarityFilterChange(key as RarityFilterKey); }}
+          className="flex flex-wrap items-center gap-1 text-[11px] font-medium"
+        >
+          <ToggleButton id="all"
+            className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded px-2 py-0.5 transition-colors cursor-pointer ${
               rarityFilter === "all"
                 ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
                 : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800"
             }`}
           >
             All
-          </button>
-          <button
-            type="button"
-            onClick={() => onRarityFilterChange("white")}
-            className={`rounded px-2 py-0.5 transition-colors cursor-pointer ${
+          </ToggleButton>
+          <ToggleButton id="white"
+            className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded px-2 py-0.5 transition-colors cursor-pointer ${
               rarityFilter === "white"
                 ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900"
             }`}
           >
             White
-          </button>
-          <button
-            type="button"
-            onClick={() => onRarityFilterChange("gold")}
-            className={`rounded px-2 py-0.5 transition-colors cursor-pointer ${
+          </ToggleButton>
+          <ToggleButton id="gold"
+            className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded px-2 py-0.5 transition-colors cursor-pointer ${
               rarityFilter === "gold"
                 ? "bg-amber-500 text-amber-950 font-bold shadow-2xs"
                 : "text-amber-950 dark:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-950/60 font-medium"
             }`}
           >
             Gold
-          </button>
-          <button
-            type="button"
-            onClick={() => onRarityFilterChange("unique")}
-            className={`rounded px-2 py-0.5 transition-colors cursor-pointer ${
+          </ToggleButton>
+          <ToggleButton id="unique"
+            className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded px-2 py-0.5 transition-colors cursor-pointer ${
               rarityFilter === "unique"
                 ? "bg-pink-500 text-white font-bold shadow-2xs"
                 : "text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/40"
             }`}
           >
             Unique
-          </button>
-          <button
-            type="button"
-            onClick={() => onRarityFilterChange("evolved")}
-            className={`rounded px-2 py-0.5 transition-colors cursor-pointer ${
+          </ToggleButton>
+          <ToggleButton id="evolved"
+            className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded px-2 py-0.5 transition-colors cursor-pointer ${
               rarityFilter === "evolved"
                 ? "bg-purple-600 text-white font-bold shadow-2xs"
                 : "text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/40"
             }`}
           >
             Evo
-          </button>
-        </div>
+          </ToggleButton>
+        </ToggleButtonGroup>
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-2">
@@ -162,16 +162,16 @@ export function TrackSkillSidebar({
             const fires = !isBanned && firesOnCourse(s.id);
             const rStyle = getSkillRarityStyle(s.rarity);
             return (
-              <button
+              <Button
                 key={s.id}
-                type="button"
-                onClick={() => {
+                aria-pressed={active}
+                onPress={() => {
                   onSelectSkill(s.id);
                   if (typeof window !== "undefined" && window.innerWidth < 768) {
-                    conditionViewerRef?.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                    conditionViewerRef?.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
                   }
                 }}
-                className={`w-full min-w-0 rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer ${
+                className={`w-full min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer ${
                   active
                     ? "ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-xs"
                     : rStyle.borderClass
@@ -220,7 +220,7 @@ export function TrackSkillSidebar({
                     </div>
                   )}
                 </SkillItem>
-              </button>
+              </Button>
             );
           })
         )}

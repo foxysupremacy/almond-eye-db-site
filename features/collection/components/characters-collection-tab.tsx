@@ -3,6 +3,7 @@
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 
 import { useMemo, useState } from "react";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import type { CharacterIndexEntry } from "@/lib/api";
 import { CharacterItem } from "./character-item";
 import { CharacterDetailSheet } from "./character-detail-sheet";
@@ -80,7 +81,7 @@ export function CharactersCollectionTab({
     <div className="flex flex-col gap-4">
       {/* Secondary Filters: Initial Stars */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-        <div className="flex items-center gap-1">
+        <ToggleButtonGroup aria-label="Character initial stars" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(charaRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCharaRarityChange(key === "all" ? "all" : Number(key)); }} className="flex items-center gap-1">
           <span className="text-xs text-zinc-400 mr-1">Initial Stars:</span>
           {([
             { r: "all", label: "All" },
@@ -88,20 +89,19 @@ export function CharactersCollectionTab({
             { r: 2, label: "2★" },
             { r: 1, label: "1★" },
           ] as const).map((rItem) => (
-            <button
+            <ToggleButton
+              id={String(rItem.r)}
               key={String(rItem.r)}
-              type="button"
-              onClick={() => onCharaRarityChange(rItem.r)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 charaRarity === rItem.r
                   ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               {rItem.label}
-            </button>
+            </ToggleButton>
           ))}
-        </div>
+        </ToggleButtonGroup>
 
         <div className="flex items-center gap-2">
           <label htmlFor="character-sort" className="text-xs text-zinc-400">Sort:</label>

@@ -1,5 +1,8 @@
 "use client";
 
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 
 import { useMemo, useState } from "react";
@@ -78,13 +81,9 @@ export function PvpExpiredModal() {
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="expired-pvp-title"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200"
-    >
-      <div className="relative w-full max-w-xl rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+    <AppDialog isOpen={true} onOpenChange={(open) => { if (!open) setDismissedIds(new Set(affectedPresets.map((preset) => preset.id))); }}
+      title={"PvP Event Ended"} ariaLabel={"PvP Event Ended"} size="md" overlayLayer="picker"
+      header={<></>} bodyClassName="contents" className="max-h-[85vh]">
         {/* Header */}
         <div className="flex items-start gap-3 p-5 border-b border-zinc-100 dark:border-zinc-800/80">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
@@ -119,28 +118,28 @@ export function PvpExpiredModal() {
                       <span>{eventName} (Ended)</span>
                     </div>
                   </div>
-                  <button
+                  <AppButton variant="destructive"
                     type="button"
-                    onClick={() => handleDelete(preset.id)}
-                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                    onPress={() => handleDelete(preset.id)}
+
                     title="Delete Preset"
                   >
                     <TrashIcon className="h-3.5 w-3.5" />
                     <span>Delete</span>
-                  </button>
+                  </AppButton>
                 </div>
 
                 {/* Actions for this preset */}
                 <div className="flex flex-wrap items-center gap-2 pt-1">
                   {/* Option 1: Keep Track */}
-                  <button
+                  <AppButton variant="secondary"
                     type="button"
-                    onClick={() => handleKeepTrack(preset.id)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                    onPress={() => handleKeepTrack(preset.id)}
+
                   >
                     <CheckIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                     <span>Keep Course Geometry</span>
-                  </button>
+                  </AppButton>
 
                   {/* Option 2: Migrate to active event */}
                   {activeEvents.length > 0 && (
@@ -155,16 +154,16 @@ export function PvpExpiredModal() {
                         }
                         className="max-w-full"
                        label="Migration event" options={activeEvents.map(ae => ({ value: ae.id, label: `Switch to ${ae.shortName}` }))} />
-                      <button
+                      <AppButton variant="primary"
                         type="button"
-                        onClick={() => {
+                        onPress={() => {
                           const target = activeEvents.find((ae) => ae.id === selectedMigrateId) ?? activeEvents[0];
                           if (target) handleMigrate(preset.id, target);
                         }}
-                        className="rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-purple-700 shadow-xs transition-colors"
+
                       >
                         Migrate
-                      </button>
+                      </AppButton>
                     </div>
                   )}
                 </div>
@@ -175,22 +174,21 @@ export function PvpExpiredModal() {
 
         {/* Footer */}
         <div className="flex items-center justify-between gap-3 p-4 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/60">
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={handleKeepAll}
-            className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+            onPress={handleKeepAll}
+
           >
             Keep courses for all presets
-          </button>
-          <button
+          </AppButton>
+          <AppButton variant="secondary"
             type="button"
-            onClick={() => setDismissedIds(new Set(affectedPresets.map((p) => p.id)))}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-700 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            onPress={() => setDismissedIds(new Set(affectedPresets.map((p) => p.id)))}
+
           >
             Dismiss for now
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

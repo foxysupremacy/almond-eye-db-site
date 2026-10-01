@@ -1,12 +1,15 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { FileTrigger, SearchField, Input } from "react-aria-components";
 import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
 import { useOwnedUmas } from "@/app/common/hooks/use-owned-umas";
 import { saveVeterans, clearVeterans } from "@/lib/IndexDB/veterans-db";
 import type { KyumaruInventoryDump } from "@/lib/veterans/import/kyumaru-types";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import { decodeKyumaruSyncPayload } from "@/lib/veterans/import/kyumaru-decode";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 
 export default function ImportModal({
   isOpen,
@@ -141,30 +144,17 @@ export default function ImportModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title="Sync / Import Game Data"
+      description="Load inventory or trained veterans from Kyumaru."
+      size="md"
+      className="max-w-lg p-6"
+      bodyClassName="min-h-0 flex-1 overflow-y-auto"
+      overlayLayer="picker"
+      ariaLabel="Sync / Import Game Data"
     >
-      <div className="w-full max-w-lg rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl p-6 relative animate-in zoom-in-95 duration-200 ease-out-expo">
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-zinc-100 dark:border-zinc-800">
-          <div>
-            <h2 className="text-base font-bold text-zinc-900 dark:text-zinc-100">
-              Sync / Import Game Data
-            </h2>
-            <p className="text-xs text-zinc-500">
-              Load inventory or trained veterans from Kyumaru.
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-
         {/* Current status summary */}
         <div className="grid grid-cols-3 gap-2 mb-4 text-center">
           <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/60 p-2 border border-zinc-200/60 dark:border-zinc-700/40">
@@ -176,12 +166,14 @@ export default function ImportModal({
             <div className="text-[10px] text-zinc-500">Owned Umas</div>
           </div>
           <div className="rounded-xl bg-zinc-50 dark:bg-zinc-800/60 p-2 border border-zinc-200/60 dark:border-zinc-700/40 flex flex-col justify-center">
-            <button
+            <AppButton
+              variant="quiet"
+              size="sm"
               onClick={handleClearAll}
-              className="text-[11px] font-medium text-red-600 dark:text-red-400 hover:underline cursor-pointer"
+              className="text-[11px] font-medium text-red-600 dark:text-red-400 hover:underline"
             >
               Reset Data
-            </button>
+            </AppButton>
           </div>
         </div>
 
@@ -224,17 +216,12 @@ export default function ImportModal({
           <p className="text-[11px] text-zinc-500 mb-3">
             Located in <code>%USERPROFILE%\Documents\Kyumaru\</code>
           </p>
-          <label className="inline-flex items-center px-3 py-1.5 rounded-lg bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-medium cursor-pointer hover:bg-zinc-800 dark:hover:bg-white shadow-xs">
-            <span>Browse File</span>
-            <input
-              type="file"
-              accept=".json"
-              onChange={(e) => {
-                if (e.target.files?.[0]) handleFile(e.target.files[0]);
-              }}
-              className="sr-only"
-            />
-          </label>
+          <FileTrigger
+            acceptedFileTypes={[".json"]}
+            onSelect={(files) => { const file = files?.[0]; if (file) handleFile(file); }}
+          >
+            <AppButton variant="primary" size="sm">Browse File</AppButton>
+          </FileTrigger>
         </div>
 
         {/* Or Paste Code */}
@@ -243,35 +230,35 @@ export default function ImportModal({
             Or paste sync URL / JSON snippet:
           </label>
           <div className="flex gap-2">
-            <input
-              type="text"
-              value={pastedData}
-              onChange={(e) => setPastedData(e.target.value)}
-              placeholder="#data=... or raw JSON"
-              className="flex-1 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 focus:border-emerald-500 focus:outline-hidden"
-            />
-            <button
+            <SearchField aria-label="Sync URL or JSON snippet" value={pastedData} onChange={setPastedData} className="min-w-0 flex-1">
+              <Input
+                placeholder="#data=... or raw JSON"
+                className="w-full rounded-xl border border-zinc-300 bg-white px-3 py-2 text-xs text-zinc-900 placeholder-zinc-400 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+            </SearchField>
+            <AppButton
               type="button"
+              variant="primary"
+              size="sm"
               onClick={() => {
                 if (pastedData.trim()) processJson(pastedData.trim());
               }}
-              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer shrink-0"
             >
               Apply
-            </button>
+            </AppButton>
           </div>
         </div>
 
         <div className="mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
           <span>Zero data sent to any server</span>
-          <button
+          <AppButton
+            variant="quiet"
+            size="sm"
             onClick={onClose}
-            className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 font-medium"
           >
             Close
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

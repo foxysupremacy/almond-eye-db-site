@@ -1,10 +1,8 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
-
-
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
+import { Button } from "react-aria-components/Button";
+import { AppPopover, type AppPopoverProps } from "@/app/common/ui/controls/app-popover";
 import { CopyIcon } from "@/app/common/ui/primitives/icons";
 import { getCardImageUrl } from "@/lib/api";
 import { formatCardType } from "@/app/common/ui/cards/card-type-icon";
@@ -29,101 +27,50 @@ export default function DuplicateSkillBadge({
   variant = "amber",
   className = "",
 }: DuplicateSkillBadgeProps) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
-  const [mounted, setMounted] = useState(false);
+  const [mode, setMode] = useState<"closed" | "preview" | "pinned">("closed");
+  const isOpen = mode !== "closed";
+  const [layer, setLayer] = useState<AppPopoverProps["layer"]>("duplicate");
 
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
   const closeTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    setMounted(true);
+  useEffect(() => () => { if (closeTimerRef.current) clearTimeout(closeTimerRef.current); }, []);
+
+  const cancelClose = useCallback(() => {
+    if (closeTimerRef.current) clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = null;
   }, []);
 
-  const updatePosition = useCallback(() => {
-    if (!triggerRef.current) return;
-    const rect = triggerRef.current.getBoundingClientRect();
-    const popoverWidth = Math.min(320, window.innerWidth - 32);
-    const popoverHeight = Math.min(260, cards.length * 64 + 60);
-
-    // Right-align with the trigger badge by default so it stays on screen
-    let left = rect.right - popoverWidth;
-    if (left < 16) {
-      left = 16;
+  const updateLayer = useCallback(() => {
+    // A provenance badge inside a dialog must render above that dialog's surface.
+    let ancestor: HTMLElement | null = triggerRef.current?.closest('[role="dialog"]') ?? null;
+    let parentLayer = 0;
+    while (ancestor) {
+      const zIndex = Number.parseInt(window.getComputedStyle(ancestor).zIndex, 10);
+      if (Number.isFinite(zIndex)) parentLayer = Math.max(parentLayer, zIndex);
+      ancestor = ancestor.parentElement;
     }
-    if (left + popoverWidth > window.innerWidth - 16) {
-      left = window.innerWidth - popoverWidth - 16;
-    }
-
-    let top = rect.bottom + 6;
-    if (top + popoverHeight > window.innerHeight - 16) {
-      top = Math.max(16, rect.top - popoverHeight - 6);
-    }
-
-    setCoords({ top, left });
-  }, [cards.length]);
+    setLayer(parentLayer >= 400 ? "duplicate-inspector" : parentLayer >= 300 ? "duplicate-inspection" : "duplicate");
+  }, []);
 
   const handleOpen = useCallback(() => {
-    if (closeTimerRef.current) {
-      clearTimeout(closeTimerRef.current);
-      closeTimerRef.current = null;
-    }
-    updatePosition();
-    setIsOpen(true);
-  }, [updatePosition]);
+    cancelClose();
+    updateLayer();
+    setMode((current) => current === "closed" ? "preview" : current);
+  }, [cancelClose, updateLayer]);
 
   const handleClose = useCallback(() => {
+    cancelClose();
     closeTimerRef.current = setTimeout(() => {
-      setIsOpen(false);
+      setMode((current) => current === "preview" ? "closed" : current);
     }, 150);
-  }, []);
+  }, [cancelClose]);
 
   const handleToggle = useCallback(() => {
-    if (isOpen) {
-      setIsOpen(false);
-    } else {
-      handleOpen();
-    }
-  }, [isOpen, handleOpen]);
-
-  // Update coordinates on scroll or resize while open
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleScrollOrResize() {
-      updatePosition();
-    }
-    window.addEventListener("scroll", handleScrollOrResize, true);
-    window.addEventListener("resize", handleScrollOrResize);
-    return () => {
-      window.removeEventListener("scroll", handleScrollOrResize, true);
-      window.removeEventListener("resize", handleScrollOrResize);
-    };
-  }, [isOpen, updatePosition]);
-
-  // Close on Escape or click outside
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) setIsOpen(false);
-    }
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        popoverRef.current &&
-        !popoverRef.current.contains(e.target as Node) &&
-        triggerRef.current &&
-        !triggerRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
-  }, [isOpen]);
+    cancelClose();
+    updateLayer();
+    setMode((current) => current === "pinned" ? "closed" : "pinned");
+  }, [cancelClose, updateLayer]);
 
   const isAmber = variant === "amber";
 
@@ -133,7 +80,7 @@ export default function DuplicateSkillBadge({
     return cards.filter((c) => c.cardId !== currentCardId);
   }, [cards, currentCardId]);
 
-  // Accessible fallback title for native tooltips
+  // Accessible detail description when the visual label is truncated
   const titleTooltip = useMemo(() => {
     if (currentCardId && otherCards.length > 0) {
       return `Duplicate with ${otherCards.map((c: DuplicateSkillCard) => c.cardName).join(", ")}:\n${cards
@@ -182,15 +129,23 @@ export default function DuplicateSkillBadge({
     return <span>duplicate ({cards.length})</span>;
   }, [currentCardId, otherCards, cards.length]);
 
-  const popoverContent = isOpen && mounted && (
-    <div
-      ref={popoverRef}
-      role="tooltip"
+  const popoverContent = isOpen && (
+    <AppPopover
+      key={mode}
+      triggerRef={triggerRef}
+      isOpen
+      onOpenChange={(open) => { if (!open) { cancelClose(); setMode("closed"); } }}
+      isNonModal={mode === "preview"}
+      trigger={mode === "preview" ? "PreviewTrigger" : undefined}
+      aria-label={skillName ? `Duplicate sources for ${skillName}` : "Duplicate skill sources"}
+      layer={layer}
+      placement="bottom end"
+      offset={6}
+      style={{ transformOrigin: "var(--trigger-anchor-point)" }}
       onMouseEnter={handleOpen}
       onMouseLeave={handleClose}
       onClick={(e) => e.stopPropagation()}
-      style={{ top: `${coords.top}px`, left: `${coords.left}px` }}
-      className="fixed z-[250] w-72 sm:w-80 max-h-[340px] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/98 dark:bg-zinc-900/98 backdrop-blur-md p-3 shadow-2xl dark:shadow-zinc-950/80 text-left animate-in fade-in zoom-in-95 duration-200 ease-out-expo"
+      className="w-72 sm:w-80 max-h-[340px] overflow-y-auto overscroll-contain rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/98 dark:bg-zinc-900/98 backdrop-blur-md p-3 shadow-2xl dark:shadow-zinc-950/80 text-left data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95 data-[entering]:duration-200 data-[entering]:ease-out-expo"
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-2 pb-2 border-b border-zinc-100 dark:border-zinc-800">
@@ -227,7 +182,7 @@ export default function DuplicateSkillBadge({
       </div>
 
       {/* Cards List */}
-      <div className="mt-2 space-y-1.5">
+      <div className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800">
         {cards.map((c) => {
           const isCurrent = currentCardId === c.cardId;
           const imageSrc =
@@ -236,10 +191,10 @@ export default function DuplicateSkillBadge({
           return (
             <div
               key={`${c.cardId}-${c.source}`}
-              className={`flex items-center gap-2.5 p-1.5 rounded-lg transition-colors ${
+              className={`flex items-center gap-2.5 py-2 transition-colors ${
                 isCurrent
-                  ? "bg-zinc-100/90 dark:bg-zinc-800/80 border border-zinc-200 dark:border-zinc-700"
-                  : "hover:bg-zinc-50 dark:hover:bg-zinc-800/40 border border-transparent"
+                  ? "bg-zinc-100/90 dark:bg-zinc-800/80"
+                  : "hover:bg-zinc-50 dark:hover:bg-zinc-800/40"
               }`}
             >
               {/* Card Portrait Thumbnail */}
@@ -300,28 +255,26 @@ export default function DuplicateSkillBadge({
           );
         })}
       </div>
-    </div>
+    </AppPopover>
   );
 
   return (
     <>
-      <button
-        type="button"
+      <Button
         ref={triggerRef}
-        onClick={(e) => {
-          e.stopPropagation();
-          handleToggle();
-        }}
-        onMouseEnter={handleOpen}
-        onMouseLeave={handleClose}
-        title={titleTooltip}
-        className={`min-h-5 rounded-md ${duplicateSkillBadgeClass(variant)} ${className}`}
+        onPress={handleToggle}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        onHoverStart={handleOpen}
+        onHoverEnd={handleClose}
+        aria-description={titleTooltip}
+        className={`min-h-11 md:min-h-5 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${duplicateSkillBadgeClass(variant)} ${className}`}
       >
         <CopyIcon className="h-2.5 w-2.5 flex-none" />
         {badgeContent}
-      </button>
+      </Button>
 
-      {mounted && popoverContent && createPortal(popoverContent, document.body)}
+      {popoverContent}
     </>
   );
 }

@@ -1,4 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
+import { Dialog } from "react-aria-components/Dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { AppPopover } from "@/app/common/ui/controls/app-popover";
+import { AlertCircleIcon, XIcon } from "@/app/common/ui/primitives/icons";
 import type { FullLineageAffinityBreakdown } from "@/lib/lineage/affinity-engine";
 import { Badge } from "@/app/common/ui/primitives/badge";
 
@@ -14,6 +18,7 @@ export function LineageAffinityHeader({
   className = "",
 }: LineageAffinityHeaderProps) {
   const [showTooltip, setShowTooltip] = useState(false);
+  const triggerRef = useRef<HTMLSpanElement>(null);
 
   return (
     <div className={`relative z-20 mb-2 grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] ${className}`}>
@@ -39,27 +44,26 @@ export function LineageAffinityHeader({
         </div>
 
         {/* Info Button for Affinity Breakdown Popover */}
-        <button
-          type="button"
-          onClick={() => setShowTooltip(!showTooltip)}
-          className="flex h-8 w-8 items-center justify-center rounded-full border border-amber-400/40 bg-amber-400/20 text-[11px] font-bold text-amber-600 transition-colors hover:bg-amber-400/40 dark:text-amber-300"
-          title="View affinity score breakdown"
-        >
-          ⓘ
-        </button>
+        <span ref={triggerRef}>
+          <AppButton variant="quiet" iconOnly aria-label="View affinity score breakdown" aria-haspopup="dialog" aria-expanded={showTooltip} onPress={() => setShowTooltip((open) => !open)}>
+            <AlertCircleIcon className="h-4 w-4" />
+          </AppButton>
+        </span>
 
         {/* Affinity Breakdown Floating Popover */}
-        {showTooltip && (
-          <div className="absolute top-8 left-1/2 -translate-x-1/2 w-64 p-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md shadow-xl text-xs z-50 text-zinc-800 dark:text-zinc-200 space-y-1.5">
+        <AppPopover triggerRef={triggerRef} isOpen={showTooltip} onOpenChange={setShowTooltip} placement="bottom" className="w-64 rounded-xl border border-zinc-200 bg-white text-zinc-800 shadow-xl dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">
+          <Dialog aria-label="Affinity breakdown" className="space-y-1.5 p-3 text-xs outline-none">
             <div className="flex items-center justify-between font-bold border-b border-zinc-200 dark:border-zinc-800 pb-1">
               <span>Affinity Breakdown</span>
-              <button
-                type="button"
-                onClick={() => setShowTooltip(false)}
+              <AppButton
+                variant="quiet"
+                onPress={() => setShowTooltip(false)}
+                iconOnly
+                aria-label="Close affinity breakdown"
                 className="text-zinc-400 hover:text-zinc-600"
               >
-                ✕
-              </button>
+                <XIcon className="h-3.5 w-3.5" />
+              </AppButton>
             </div>
             <div className="flex justify-between text-[11px]">
               <span className="text-zinc-500">Trainee ↔ Parent 1:</span>
@@ -85,18 +89,18 @@ export function LineageAffinityHeader({
                 {affinityBreakdown.rating.symbol} ({affinityBreakdown.rating.label})
               </span>
             </div>
-          </div>
-        )}
+          </Dialog>
+        </AppPopover>
       </div>
 
       {/* Right Button: Inherited Skills */}
-      <button
-        type="button"
-        onClick={onOpenInheritedSkills}
+      <AppButton
+        variant="primary"
+        onPress={onOpenInheritedSkills}
         className="flex min-h-10 items-center justify-self-end gap-1 rounded-full bg-emerald-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition-all hover:bg-emerald-500 active:scale-[0.98]"
       >
         <span>Inherited Skills</span>
-      </button>
+      </AppButton>
     </div>
   );
 }

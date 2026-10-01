@@ -1,5 +1,8 @@
 "use client";
 
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 // Shared Import Dialog: Triggered when a user opens a link containing #share=... or ?share=...
 // Displays the build contents and asks:
 // 1. Save as a new preset
@@ -16,7 +19,6 @@ import {
   type SharedBuildData,
 } from "@/lib/share-link";
 import { XIcon } from "@/app/common/ui/primitives/icons";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 
 export default function SharedImportDialog() {
   const { importPreset, allCards, tracks, activePreset } = useDeck();
@@ -24,7 +26,6 @@ export default function SharedImportDialog() {
   const [presetName, setPresetName] = useState("");
   const [isOpen, setIsOpen] = useState(false);
 
-  useBodyScrollLock(Boolean(isOpen && sharedData));
 
   // Check URL on mount & when hash/search changes
   useEffect(() => {
@@ -100,15 +101,9 @@ export default function SharedImportDialog() {
   const parentCount = sharedData.parentDeckIds.filter(Boolean).length;
 
   return (
-    <div
-      className="fixed inset-0 z-[350] flex items-center justify-center bg-black/65 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-emerald-500/40 dark:border-emerald-500/30 bg-white dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo text-left ring-2 ring-emerald-500/20 overscroll-contain"
-      >
+    <AppDialog isOpen={isOpen} onOpenChange={(open) => { if (!open) handleDismiss(); }}
+      title={"Shared Build Received"} ariaLabel={"Shared Build Received"} size="md" overlayLayer="inspection"
+      header={<></>} bodyClassName="contents" className="max-w-lg text-left">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-zinc-100 dark:border-zinc-800 px-5 py-4 bg-emerald-50/50 dark:bg-emerald-950/20">
           <div>
@@ -122,13 +117,15 @@ export default function SharedImportDialog() {
               Someone shared a deck build with you! How would you like to load it?
             </p>
           </div>
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={handleDismiss}
-            className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
+            onPress={handleDismiss}
+            aria-label="Close shared build dialog"
+            iconOnly
+
           >
             <XIcon className="h-4 w-4" />
-          </button>
+          </AppButton>
         </div>
 
         {/* Content */}
@@ -140,6 +137,7 @@ export default function SharedImportDialog() {
             </label>
             <input
               type="text"
+              aria-label="Preset name"
               value={presetName}
               onChange={(e) => setPresetName(e.target.value)}
               className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100 outline-none focus:border-emerald-500"
@@ -218,32 +216,31 @@ export default function SharedImportDialog() {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 px-5 py-3.5">
-          <button
+          <AppButton variant="secondary"
             type="button"
-            onClick={handleDismiss}
-            className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer"
+            onPress={handleDismiss}
+
           >
             Cancel
-          </button>
+          </AppButton>
 
-          <button
+          <AppButton variant="secondary"
             type="button"
-            onClick={handleLoadIntoCurrent}
-            className="rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer"
+            onPress={handleLoadIntoCurrent}
+
             title={`Replace active preset "${activePreset.name}" with this build`}
           >
             Load into Current ({activePreset.name})
-          </button>
+          </AppButton>
 
-          <button
+          <AppButton variant="primary"
             type="button"
-            onClick={handleSaveAsNew}
-            className="rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 text-xs font-bold shadow-xs transition-colors cursor-pointer"
+            onPress={handleSaveAsNew}
+
           >
             + Save as New Preset
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

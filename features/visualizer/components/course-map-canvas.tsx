@@ -1,5 +1,7 @@
 "use client";
 
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
@@ -309,32 +311,29 @@ export function CourseMapCanvas({
 
       {/* Floating Zoom & Reset Toolbar */}
       <div className="absolute top-3 right-3 z-10 flex items-center gap-1 rounded-lg bg-background/90 p-1 shadow-md backdrop-blur border border-border/60">
-        <button
-          type="button"
-          onClick={handleZoomIn}
-          disabled={zoom >= 3.499}
-          title="Zoom In"
+        <AppButton variant="quiet" iconOnly
+          onPress={handleZoomIn}
+          isDisabled={zoom >= 3.499}
+          aria-label="Zoom in"
           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
         >
           <ZoomInIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleZoomOut}
-          disabled={zoom <= 1.001}
-          title="Zoom Out"
+        </AppButton>
+        <AppButton variant="quiet" iconOnly
+          onPress={handleZoomOut}
+          isDisabled={zoom <= 1.001}
+          aria-label="Zoom out"
           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
         >
           <ZoomOutIcon className="h-4 w-4" />
-        </button>
-        <button
-          type="button"
-          onClick={handleResetView}
-          title="Reset View"
+        </AppButton>
+        <AppButton variant="quiet" iconOnly
+          onPress={handleResetView}
+          aria-label="Reset view"
           className="rounded p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
         >
           <RotateCcwIcon className="h-4 w-4" />
-        </button>
+        </AppButton>
       </div>
 
       {/* Canvas */}

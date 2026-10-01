@@ -1,10 +1,10 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
-
-
-import React, { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, useId } from "react";
-import { createPortal } from "react-dom";
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useId } from "react";
+import { useButton } from "react-aria/useButton";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppPopover } from "@/app/common/ui/controls/app-popover";
 import { api, type SkillDetail } from "@/lib/api";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
 import { isSkillBanned } from "@/lib/pvp/events";
@@ -13,7 +13,6 @@ import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
 import type { RaceParameters } from "@/lib/skill-engine/types";
 import type { RunningStyle } from "@/lib/deck/types";
 import type { VisualizerSkillOrigin } from "@/lib/visualizer/skills";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import { XIcon } from "@/app/common/ui/primitives/icons";
 import { SkillDetailPanel } from "@/app/common/ui/skills/details/skill-detail-panel";
 import type { Course } from "@/lib/skill-engine/types";
@@ -40,7 +39,7 @@ interface SkillInspectorContextValue {
   preview: (target: Omit<SkillInspectorTarget, "mode">) => void;
   togglePinned: (target: Omit<SkillInspectorTarget, "mode">) => void;
   closePreview: (key: string) => void;
-  close: (key?: string, restoreFocus?: boolean) => void;
+  close: (key?: string) => void;
 }
 
 const SkillInspectorContext = createContext<SkillInspectorContextValue | null>(null);
@@ -63,8 +62,7 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   const [detail, setDetail] = useState<SkillDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [coords, setCoords] = useState({ top: 16, left: 16, originX: "left" as "left" | "right" });
-  const panelRef = useRef<HTMLDivElement>(null);
+  const anchorRef = useMemo(() => ({ current: active?.anchor ?? null }), [active?.anchor]);
   const deckRaceParams = raceParams;
 
   useEffect(() => {
@@ -74,16 +72,16 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  useBodyScrollLock(Boolean(active && active.mode === "pinned" && isMobile));
-
-  const close = useCallback((key?: string, restoreFocus = false) => {
+  const close = useCallback((key?: string) => {
     setActive((current) => {
       if (!current || (key && current.key !== key)) return current;
-      if (restoreFocus) current.anchor.focus({ preventScroll: true });
       return null;
     });
   }, []);
-  const preview = useCallback((target: Omit<SkillInspectorTarget, "mode">) => setActive({ ...target, mode: "preview" }), []);
+  const preview = useCallback((target: Omit<SkillInspectorTarget, "mode">) => {
+    if (window.innerWidth < 768) return;
+    setActive((current) => current?.key === target.key && current.mode === "pinned" ? current : { ...target, mode: "preview" });
+  }, []);
   const togglePinned = useCallback((target: Omit<SkillInspectorTarget, "mode">) => {
     setActive((current) => current?.key === target.key && current.mode === "pinned" ? null : { ...target, mode: "pinned" });
   }, []);
@@ -131,50 +129,6 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), zones ?? [], effectiveRaceParams);
   }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, zones, effectiveRaceParams]);
 
-  const updatePosition = useCallback(() => {
-    if (!active || isMobile) return;
-    const rect = active.anchor.getBoundingClientRect();
-    const width = 420;
-    const height = panelRef.current?.getBoundingClientRect().height ?? 480;
-    let left = rect.right + 8;
-    let originX: "left" | "right" = "left";
-    if (left + width > window.innerWidth - 16) {
-      left = rect.left - width - 8;
-      originX = "right";
-    }
-    left = Math.max(16, Math.min(left, window.innerWidth - width - 16));
-    const top = Math.min(Math.max(rect.top + rect.height / 2 - height / 2, 16), Math.max(16, window.innerHeight - height - 16));
-    setCoords({ top, left, originX });
-  }, [active, isMobile]);
-
-  useLayoutEffect(() => { updatePosition(); }, [updatePosition, detail, loading, evaluation]);
-
-  useEffect(() => {
-    if (!active) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape" && !hasOpenAppSelect()) {
-        event.preventDefault();
-        close(undefined, active.mode === "pinned");
-      }
-    };
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (active.anchor.contains(target) || panelRef.current?.contains(target)) return;
-      close();
-    };
-    const onViewportChange = () => updatePosition();
-    window.addEventListener("keydown", onKeyDown, true);
-    document.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("resize", onViewportChange);
-    window.addEventListener("scroll", onViewportChange, true);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown, true);
-      document.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("resize", onViewportChange);
-      window.removeEventListener("scroll", onViewportChange, true);
-    };
-  }, [active, close, updatePosition]);
-
   const value = useMemo<SkillInspectorContextValue>(() => ({ activeKey: active?.key ?? null, preview, togglePinned, closePreview, close }), [active?.key, preview, togglePinned, closePreview, close]);
   const inspector = (cardName?: string, cardId?: number | null) => (
     <SkillDetailPanel
@@ -190,23 +144,40 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
       cardId={cardId}
       isBanned={Boolean(active && isSkillBanned(active.skillId, activePvpEvent))}
       compact
+      embedded={isMobile}
     />
   );
-  const panel = active && typeof document !== "undefined" && createPortal(
+  const dismiss = (open: boolean) => { if (!open) close(); };
+  const panel = active && (
     isMobile ? (
-      <div className="fixed inset-0 z-[400] flex items-end bg-black/50 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart" onPointerDown={(event) => { if (event.target === event.currentTarget) close(); }}>
-        <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Skill details" className="relative max-h-[85dvh] w-full overflow-y-auto rounded-t-2xl bg-white p-3 pb-[max(2.5rem,env(safe-area-inset-bottom))] shadow-2xl animate-in slide-in-from-bottom-4 duration-[250ms] ease-out-expo dark:bg-zinc-900">
-          <button type="button" onClick={() => close(undefined, true)} aria-label="Close skill details" className="absolute right-5 top-5 z-10 grid h-9 w-9 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"><XIcon className="h-4 w-4" /></button>
-          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700" />
-          {inspector(active.cardName, active.cardId)}
-        </div>
-      </div>
+      <AppDialog
+        isOpen
+        onOpenChange={dismiss}
+        title="Skill details"
+        size="sheet"
+        overlayClassName="z-[400]"
+        className="max-h-[85dvh] md:max-w-none"
+        headerAction={<AppButton variant="quiet" iconOnly onPress={() => close()} aria-label="Close skill details"><XIcon className="h-4 w-4" /></AppButton>}
+      >
+        <div className="p-3 pb-[max(2.5rem,env(safe-area-inset-bottom))]">{inspector(active.cardName, active.cardId)}</div>
+      </AppDialog>
     ) : (
-      <div ref={panelRef} role={active.mode === "pinned" ? "dialog" : "tooltip"} aria-label="Skill details" style={{ top: coords.top, left: coords.left, transformOrigin: `${coords.originX} center` }} className={`fixed z-[400] w-[420px] max-h-[85vh] overflow-y-auto text-left animate-in fade-in zoom-in-95 duration-200 ease-out-expo ${active.mode === "preview" ? "pointer-events-none" : "pointer-events-auto"}`}>
-        {active.mode === "pinned" && <button type="button" onClick={() => close(undefined, true)} aria-label="Close skill details" className="absolute right-3 top-3 z-10 grid h-9 w-9 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"><XIcon className="h-4 w-4" /></button>}
+      <AppPopover
+        key={`${active.key}:${active.mode}`}
+        triggerRef={anchorRef}
+        isOpen
+        onOpenChange={dismiss}
+        isNonModal={active.mode === "preview"}
+        aria-label="Skill details"
+        aria-hidden={active.mode === "preview" || undefined}
+        inert={active.mode === "preview" || undefined}
+        style={{ transformOrigin: "var(--trigger-anchor-point)" }}
+        className={`relative w-[420px] max-w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto text-left data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95 data-[entering]:duration-200 data-[entering]:ease-out-expo ${active.mode === "preview" ? "pointer-events-none" : "pointer-events-auto"}`}
+      >
+        {active.mode === "pinned" && <AppButton variant="quiet" iconOnly onPress={() => close()} aria-label="Close skill details" className="absolute right-3 top-3 z-10"><XIcon className="h-4 w-4" /></AppButton>}
         {inspector(active.cardName, active.cardId)}
-      </div>
-    ), document.body,
+      </AppPopover>
+    )
   );
 
   return <SkillInspectorContext.Provider value={value}>{children}{panel}</SkillInspectorContext.Provider>;
@@ -245,8 +216,16 @@ export function SkillHoverCard({ skillId, fallbackSkill, cardName, cardId, origi
   const preview = () => { const next = target(); if (next) inspector?.preview(next); };
   const togglePinned = () => { const next = target(); if (next) inspector?.togglePinned(next); };
 
+  const { buttonProps } = useButton({
+    elementType: "span",
+    onPress: () => { clearTimers(); togglePinned(); },
+    "aria-haspopup": "dialog",
+    "aria-expanded": inspector?.activeKey === triggerKey,
+    "aria-label": `Inspect ${fallbackSkill?.nameEn || fallbackSkill?.nameJp || `skill ${skillId}`}`,
+  }, triggerRef);
+
   return (
-    <span ref={triggerRef} role={interactiveChild ? undefined : "button"} tabIndex={interactiveChild ? undefined : 0} aria-haspopup={interactiveChild ? undefined : "dialog"} aria-expanded={interactiveChild ? undefined : inspector?.activeKey === triggerKey} aria-label={interactiveChild ? undefined : `Inspect ${fallbackSkill?.nameEn || fallbackSkill?.nameJp || `skill ${skillId}`}`}
+    <span {...(interactiveChild ? { onClick: (event: React.MouseEvent) => { event.stopPropagation(); clearTimers(); togglePinned(); } } : buttonProps)} ref={triggerRef}
       onPointerEnter={(event) => {
         if (!inspector || event.pointerType !== "mouse" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
         clearTimers();
@@ -256,15 +235,6 @@ export function SkillHoverCard({ skillId, fallbackSkill, cardName, cardId, origi
         if (!inspector) return;
         if (hoverTimer.current) clearTimeout(hoverTimer.current);
         leaveTimer.current = setTimeout(() => inspector.closePreview(triggerKey), 120);
-      }}
-      onClick={(event) => { event.stopPropagation(); clearTimers(); togglePinned(); }}
-      onKeyDown={(event) => {
-        if (interactiveChild) return;
-        if (event.key !== "Enter" && event.key !== " ") return;
-        event.preventDefault();
-        event.stopPropagation();
-        clearTimers();
-        togglePinned();
       }}
       className={`inline-block cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 ${className}`}
     >{children}</span>

@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { XIcon, SparklesIcon, LibraryIcon } from "@/app/common/ui/primitives/icons";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import { getCharaIdFromCardId, getCanonicalFactorName } from "@/lib/lineage/affinity-engine";
 import { decodeFactor } from "@/lib/lineage/factor-decoder";
@@ -61,65 +65,27 @@ export default function InheritedSkillsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart">
-      <div
-        className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Modal Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60">
-          <div className="flex items-center gap-2.5">
-            <span className="w-3 h-3 rounded-full bg-emerald-500" />
-            <div>
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                Inherited Skills & Factors
-              </h3>
-              <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Unique skills and inheritable white factors present across your 6-uma lineage tree.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-7 h-7 rounded-full flex items-center justify-center text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-sm font-bold"
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex border-b border-zinc-200 dark:border-zinc-800 bg-zinc-100/50 dark:bg-zinc-900 px-5 pt-2 gap-4">
-          <button
-            type="button"
-            onClick={() => setActiveTab("unique")}
-            className={`pb-2 text-xs font-bold transition-colors cursor-pointer border-b-2 ${
-              activeTab === "unique"
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
-            }`}
-          >
-            🌟 Unique Skills
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("factors")}
-            className={`pb-2 text-xs font-bold transition-colors cursor-pointer border-b-2 flex items-center gap-1.5 ${
-              activeTab === "factors"
-                ? "border-emerald-500 text-emerald-600 dark:text-emerald-400"
-                : "border-transparent text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300"
-            }`}
-          >
-            <span>📜 White Factors</span>
-            <Badge size="compact" tone="neutral">
-              {aggregatedFactors.length}
-            </Badge>
-          </button>
-        </div>
-
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title="Inherited Skills & Factors"
+      description="Unique skills and inheritable white factors present across your 6-uma lineage tree."
+      size="lg"
+      headerAction={<AppButton variant="quiet" iconOnly aria-label="Close inherited skills" onPress={onClose}><XIcon className="h-4 w-4" /></AppButton>}
+      footer={<div className="flex justify-end"><AppButton onPress={onClose}>Close</AppButton></div>}
+    >
+      <Tabs selectedKey={activeTab} onSelectionChange={(key) => setActiveTab(key as "unique" | "factors")}>
+        <TabList aria-label="Inherited skill sources" className="flex gap-4 border-b border-zinc-200 px-5 pt-2 dark:border-zinc-800">
+          <Tab id="unique" className="flex min-h-11 items-center gap-1.5 border-b-2 border-transparent pb-2 text-xs font-semibold text-zinc-500 outline-none data-[selected]:border-emerald-500 data-[selected]:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:data-[selected]:text-emerald-400">
+            <SparklesIcon className="h-4 w-4" /> Unique Skills
+          </Tab>
+          <Tab id="factors" className="flex min-h-11 items-center gap-1.5 border-b-2 border-transparent pb-2 text-xs font-semibold text-zinc-500 outline-none data-[selected]:border-emerald-500 data-[selected]:text-emerald-700 focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:data-[selected]:text-emerald-400">
+            <LibraryIcon className="h-4 w-4" /> White Factors <Badge size="compact" tone="neutral">{aggregatedFactors.length}</Badge>
+          </Tab>
+        </TabList>
         {/* Modal Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          {activeTab === "unique" ? (
+          <TabPanel id="unique" className="outline-none">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {participants.map((p, idx) => {
                 const chara = p.chara;
@@ -129,7 +95,7 @@ export default function InheritedSkillsModal({
                 return (
                   <div
                     key={idx}
-                    className="flex items-center gap-3 p-3 rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950/30"
+                    className="flex items-center gap-3 p-3 border-b border-zinc-100 dark:border-zinc-800/80"
                   >
                     <div className="relative w-12 h-12 shrink-0 rounded-full ring-2 ring-amber-400/80 overflow-hidden bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
                       {cardId && charaId ? (
@@ -166,7 +132,8 @@ export default function InheritedSkillsModal({
                 );
               })}
             </div>
-          ) : (
+          </TabPanel>
+          <TabPanel id="factors" className="outline-none">
             <div>
               {aggregatedFactors.length === 0 ? (
                 <div className="py-12 text-center text-zinc-400 text-xs">
@@ -181,7 +148,7 @@ export default function InheritedSkillsModal({
                   {aggregatedFactors.map((f) => (
                     <div
                       key={f.factorId}
-                      className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-950/40 text-xs"
+                      className="flex items-center justify-between p-2.5 border-b border-zinc-100 dark:border-zinc-800/80 text-xs"
                     >
                       <div className="min-w-0 flex-1 pr-2">
                         <div className="font-bold text-zinc-900 dark:text-zinc-100 truncate">
@@ -203,20 +170,9 @@ export default function InheritedSkillsModal({
                 </div>
               )}
             </div>
-          )}
+          </TabPanel>
         </div>
-
-        {/* Modal Footer */}
-        <div className="px-5 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950/60 flex justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-1.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-semibold text-zinc-800 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 cursor-pointer active:scale-[0.98] transition-all"
-          >
-            Close
-          </button>
-        </div>
-      </div>
-    </div>
+      </Tabs>
+    </AppDialog>
   );
 }

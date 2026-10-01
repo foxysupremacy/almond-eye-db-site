@@ -19,6 +19,9 @@ import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon, DownloadIcon } from "@/app/common/ui/primitives/icons";
 import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
+import { BrandMark } from "@/app/common/ui/primitives/brand-mark";
+import { Link as AriaLink } from "react-aria-components/Link";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
 
@@ -86,35 +89,42 @@ export default function Home() {
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[400] focus:rounded-lg focus:bg-emerald-700 focus:p-3 focus:text-white">Skip to content</a>
         <header className="border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/85 dark:bg-zinc-900/85 backdrop-blur-md sticky top-0 z-40 transition-colors">
         <div className="flex h-14 items-center justify-between gap-3 px-4 lg:hidden">
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">AlmondEye DB</p>
-              <h1 className="truncate text-base font-semibold">{tab === "collection" || tab === "veterans" ? "Your library" : TABS.find((item) => item.id === tab)?.label}</h1>
+            <div className="flex min-w-0 items-center gap-2">
+              <BrandMark />
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-700 dark:text-emerald-400">AlmondEye DB</p>
+                <h1 className="truncate text-base font-semibold">{tab === "collection" || tab === "veterans" ? "Your library" : TABS.find((item) => item.id === tab)?.label}</h1>
+              </div>
             </div>
-            <button type="button" aria-label="Build settings" aria-haspopup="dialog" onClick={() => setToolsOpen(true)} className="flex h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800"><FilterIcon className="h-5 w-5" />Build</button>
+            <AppButton type="button" variant="quiet" size="md" aria-label="Build settings" aria-haspopup="dialog" onPress={() => setToolsOpen(true)}><FilterIcon className="h-5 w-5" />Build</AppButton>
           </div>
           {/* Collapsible Header Upper Content (Title, Presets, Theme, Track Bar) */}
         <div className={`mx-auto max-w-5xl px-3 pb-2 md:px-6 md:pt-4 md:pb-3 ${isHeaderCollapsed ? "lg:hidden" : ""}`}>
           <div className="hidden flex-wrap items-center justify-between gap-3 lg:flex">
-                <div>
-                  <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
-                    Almond Eye Database
-                  </p>
-                  <p className="mt-0.5 text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
-                    Universal Game Helper
-                  </p>
+                <div className="flex items-center gap-3">
+                  <BrandMark />
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-700 dark:text-emerald-400">
+                      Almond Eye Database
+                    </p>
+                    <p className="mt-0.5 text-xl sm:text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                      Universal Game Helper
+                    </p>
+                  </div>
                 </div>
 
                 {/* Preset Switcher, Management, Sync & Theme Toggle */}
                 <div className="flex items-center gap-2">
-                  <button
+                  <AppButton
                     type="button"
-                    onClick={() => setIsImportModalOpen(true)}
+                    onPress={() => setIsImportModalOpen(true)}
                     className={HEADER_ACTION_CLASS}
                     title="Sync or Import Kyumaru Game Data"
+                    variant="secondary"
                   >
                     <DownloadIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
                     <span className="hidden sm:inline">Sync Data</span>
-                  </button>
+                  </AppButton>
                   <PresetManager />
                   <ThemeToggle />
                 </div>
@@ -130,7 +140,7 @@ export default function Home() {
           <div className={`mx-auto hidden max-w-5xl items-end justify-between px-3 lg:flex sm:px-6 ${isHeaderCollapsed ? "pt-1.5" : ""}`}>
             <nav className="flex min-w-0 gap-1 overflow-x-auto" aria-label="Tabs">
               {TABS.map((t) => (
-                <a
+                <AriaLink
                   key={t.id}
                   href={`#${t.id}`}
                   aria-current={tab === t.id ? "page" : undefined}
@@ -155,16 +165,17 @@ export default function Home() {
                       {t.badge}
                     </Badge>
                   )}
-                </a>
+                </AriaLink>
               ))}
             </nav>
 
             {/* Collapse / Expand Header Controls Button */}
             <div className="mb-1.5 shrink-0 pl-2">
-              <button
+              <AppButton
                 type="button"
-                onClick={toggleHeaderCollapse}
-                className="flex items-center gap-1 rounded-lg border border-zinc-200/90 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2 py-1 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-2xs cursor-pointer transition-all active:scale-[0.98]"
+                onPress={toggleHeaderCollapse}
+                variant="secondary"
+                className="flex min-h-8 items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium shadow-2xs"
                 title={isHeaderCollapsed ? "Expand header controls (Track, Presets, Settings)" : "Collapse header controls"}
                 aria-label={isHeaderCollapsed ? "Expand header" : "Collapse header"}
               >
@@ -182,14 +193,14 @@ export default function Home() {
                 <span className="hidden sm:inline text-[11px]">
                   {isHeaderCollapsed ? "Expand" : "Collapse"}
                 </span>
-              </button>
+              </AppButton>
             </div>
           </div>
         </header>
 
         <main id="main-content" className="mx-auto w-full min-w-0 max-w-5xl flex-1 px-3 py-5 sm:px-6 sm:py-8">
           {(tab === "collection" || tab === "veterans") && <nav aria-label="Collection" className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-zinc-200/60 p-1 dark:bg-zinc-800 lg:hidden">
-            {([['collection', 'Collection'], ['veterans', 'Trained Umas']] as const).map(([id, label]) => <button key={id} type="button" aria-current={tab === id ? "page" : undefined} onClick={() => handleTabChange(id)} className={`min-h-11 rounded-lg text-sm font-medium ${tab === id ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{label}</button>)}
+            {([['collection', 'Collection'], ['veterans', 'Trained Umas']] as const).map(([id, label]) => <AriaLink key={id} href={`#${id}`} aria-current={tab === id ? "page" : undefined} onClick={(event) => { event.preventDefault(); handleTabChange(id); }} className={`inline-flex min-h-11 items-center justify-center rounded-lg text-sm font-medium ${tab === id ? 'bg-white text-zinc-900 shadow-xs dark:bg-zinc-700 dark:text-white' : 'text-zinc-500 dark:text-zinc-400'}`}>{label}</AriaLink>)}
           </nav>}
           {tab === "main" ? (
             <DeckFeature />
@@ -212,7 +223,7 @@ export default function Home() {
         <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-zinc-200 bg-white/95 px-2 pt-1 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden">
           {MOBILE_TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id || (id === "collection" && tab === "veterans");
-            return <a key={id} href={`#${id}`} aria-current={active ? "page" : undefined} onClick={(event) => { event.preventDefault(); handleTabChange(id === "collection" && tab === "veterans" ? "veterans" : id); }} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition-colors ${active ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`}><span className={`grid h-7 w-11 place-items-center rounded-lg ${active ? "bg-emerald-100 dark:bg-emerald-950" : ""}`}><Icon className="h-5 w-5" /></span>{label}</a>;
+            return <AriaLink key={id} href={`#${id}`} aria-current={active ? "page" : undefined} onClick={(event) => { event.preventDefault(); handleTabChange(id === "collection" && tab === "veterans" ? "veterans" : id); }} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition-colors ${active ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`}><span className={`grid h-7 w-11 place-items-center rounded-lg ${active ? "bg-emerald-100 dark:bg-emerald-950" : ""}`}><Icon className="h-5 w-5" /></span>{label}</AriaLink>;
           })}
         </nav>
 
@@ -220,7 +231,7 @@ export default function Home() {
           <div className="mobile-build-tools space-y-5">
             <PresetManager />
             <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-              <button type="button" onClick={() => { setToolsOpen(false); setIsImportModalOpen(true); }} className="min-h-11 rounded-xl border border-zinc-200 px-4 text-sm font-medium dark:border-zinc-700">Import game data</button>
+              <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsImportModalOpen(true); }}>Import game data</AppButton>
               <ThemeToggle />
             </div>
           </div>

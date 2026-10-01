@@ -1,6 +1,10 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
+import { ToggleButton } from "react-aria-components/ToggleButton";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
@@ -27,7 +31,6 @@ import SkillItem from "@/app/common/ui/skills/skill-item";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
 import { SearchIcon, XIcon, CheckIcon } from "@/app/common/ui/primitives/icons";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import { RarityBadge } from "@/app/common/ui/skills/skill-badges";
 
@@ -44,7 +47,6 @@ export default function SkillPickerModal({
 }) {
   const { allCards, parentSlots, parentSkills, setParentCard, setChainChoice } = useDeck();
   const { setup, setParent1, setParent2 } = useParentingSetup();
-  useBodyScrollLock(isOpen);
 
   const [skills, setSkills] = useState<SkillDetail[] | null>(null);
   const [characters, setCharacters] = useState<CharacterIndexEntry[]>([]);
@@ -71,16 +73,7 @@ export default function SkillPickerModal({
     }
   }, [isOpen]);
 
-  // Close on Escape
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    }
-    if (isOpen) {
-      window.addEventListener("keydown", onKey);
-      return () => window.removeEventListener("keydown", onKey);
-    }
-  }, [isOpen, onClose]);
+
 
   // Skills lookup map
   const skillsByIdMap = useMemo(() => {
@@ -269,16 +262,9 @@ export default function SkillPickerModal({
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 p-2 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Search Cards by Skill"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="flex h-[92dvh] max-h-[750px] w-full max-w-4xl flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo text-left overscroll-contain"
-      >
+    <AppDialog isOpen={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}
+      title={"Search Support Cards by Skill"} ariaLabel={"Search Support Cards by Skill"} size="lg" overlayLayer="picker"
+      header={<></>} bodyClassName="contents" className="h-[92dvh] max-h-[750px] max-w-4xl text-left">
         {/* Modal Header */}
         <div className="border-b border-zinc-100 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/60 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -295,13 +281,15 @@ export default function SkillPickerModal({
                 Pick an effect or search by skill name to find support cards that grant it via events or hints.
               </p>
             </div>
-            <button
+            <AppButton variant="quiet"
               type="button"
-              onClick={onClose}
+              onPress={onClose}
+              aria-label="Close skill picker"
+              iconOnly
               className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
             >
               <XIcon className="h-4 w-4" />
-            </button>
+            </AppButton>
           </div>
 
           {/* Search Box */}
@@ -321,53 +309,51 @@ export default function SkillPickerModal({
              label="Skill source" options={[{ value: "all", label: "Source: All (Cards & Parents)" }, { value: "event", label: "Source: Card Events Only" }, { value: "hint", label: "Source: Card Hints Only" }, { value: "lineage", label: "Source: Parent Inherits (White)" }]} />
 
             {/* Hide Skills in Parent Deck Toggle */}
-            <button
-              type="button"
-              onClick={() => setHideInParentDeck(!hideInParentDeck)}
+            <ToggleButton
+              isSelected={hideInParentDeck}
+              onChange={setHideInParentDeck}
               className={`rounded-xl border px-3 py-2 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
                 hideInParentDeck
                   ? "bg-amber-500/20 border-amber-500/50 text-amber-800 dark:text-amber-300 shadow-2xs"
                   : "bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
-              title="Filter out skills that are already granted by cards in your Parent Deck"
+              aria-description="Filter out skills that are already granted by cards in your Parent Deck"
             >
-              {hideInParentDeck ? "✓ Hiding Parent Deck Skills" : "Hide in Parent Deck"}
-            </button>
+              {hideInParentDeck && <CheckIcon className="h-3.5 w-3.5" />}{hideInParentDeck ? "Hiding Parent Deck Skills" : "Hide in Parent Deck"}
+            </ToggleButton>
           </div>
 
           {/* Effect Category Filter Chips */}
-          <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            <button
-              type="button"
-              onClick={() => setCategory("all")}
-              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer shrink-0 ${
+          <RadioGroup aria-label="Skill effect category" value={category} onChange={(value) => setCategory(value as SkillEffectCategory | "all")} orientation="horizontal" className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+            <Radio
+              value="all"
+              className={`inline-flex min-h-11 sm:min-h-8 items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer shrink-0 ${
                 category === "all"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xs"
                   : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
               }`}
             >
               All Effects
-            </button>
+            </Radio>
             {EFFECT_CATEGORIES.map((cat) => {
               const isSelected = category === cat.id;
               return (
-                <button
+                <Radio
                   key={cat.id}
-                  type="button"
-                  onClick={() => setCategory(cat.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer shrink-0 ${
+                      value={cat.id}
+                  className={`inline-flex items-center gap-1.5 inline-flex min-h-11 sm:min-h-8 items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer shrink-0 ${
                     isSelected
                       ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-2xs"
                       : "bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border border-zinc-200/80 dark:border-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-700"
                   }`}
-                  title={cat.description}
+                  aria-description={cat.description}
                 >
                   <span className={`h-1.5 w-1.5 rounded-full ${cat.dotColor}`} />
                   <span>{cat.label}</span>
-                </button>
+                </Radio>
               );
             })}
-          </div>
+          </RadioGroup>
         </div>
 
         {/* Toast Notification */}
@@ -377,13 +363,13 @@ export default function SkillPickerModal({
               <CheckIcon className="h-3.5 w-3.5 shrink-0" />
               <span>{toastMessage}</span>
             </span>
-            <button
+            <AppButton variant="quiet"
               type="button"
-              onClick={() => setToastMessage(null)}
+              onPress={() => setToastMessage(null)}
               className="text-emerald-100 hover:text-white cursor-pointer"
             >
               <XIcon className="h-3.5 w-3.5" />
-            </button>
+            </AppButton>
           </div>
         )}
 
@@ -407,10 +393,10 @@ export default function SkillPickerModal({
                   const cats = skillCategoryMap.get(s.id) || [];
 
                   return (
-                    <button
+                    <AppButton variant="quiet"
                       key={s.id}
                       type="button"
-                      onClick={() => setSelectedSkillId(s.id)}
+                      onPress={() => setSelectedSkillId(s.id)}
                       className={`w-full rounded-xl p-2.5 text-left transition-colors cursor-pointer ${
                         isSelected
                           ? "bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-500/50 shadow-2xs"
@@ -451,7 +437,7 @@ export default function SkillPickerModal({
                           </p>
                         )}
                       </SkillItem>
-                    </button>
+                    </AppButton>
                   );
                 })
               )}
@@ -533,9 +519,9 @@ export default function SkillPickerModal({
                                   Assign to:
                                 </span>
                                 <div className="flex items-center gap-1.5">
-                                  <button
+                                  <AppButton variant="quiet"
                                     type="button"
-                                    onClick={() => handleSetParent(chara, 1)}
+                                    onPress={() => handleSetParent(chara, 1)}
                                     className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all cursor-pointer ${
                                       isP1
                                         ? "bg-blue-600 text-white shadow-2xs font-bold"
@@ -543,10 +529,10 @@ export default function SkillPickerModal({
                                     }`}
                                   >
                                     {isP1 ? "✓ Parent 1" : "Set as Parent 1"}
-                                  </button>
-                                  <button
+                                  </AppButton>
+                                  <AppButton variant="quiet"
                                     type="button"
-                                    onClick={() => handleSetParent(chara, 2)}
+                                    onPress={() => handleSetParent(chara, 2)}
                                     className={`rounded-lg px-2.5 py-1 text-[10px] font-semibold transition-all cursor-pointer ${
                                       isP2
                                         ? "bg-pink-600 text-white shadow-2xs font-bold"
@@ -554,7 +540,7 @@ export default function SkillPickerModal({
                                     }`}
                                   >
                                     {isP2 ? "✓ Parent 2" : "Set as Parent 2"}
-                                  </button>
+                                  </AppButton>
                                 </div>
                               </div>
                             </div>
@@ -641,10 +627,10 @@ export default function SkillPickerModal({
                                 const isCurrentCard = currentSlotCard?.id === card.id;
 
                                 return (
-                                  <button
+                                  <AppButton variant="quiet"
                                     key={sIdx}
                                     type="button"
-                                    onClick={() => handleEquip(info, sIdx)}
+                                    onPress={() => handleEquip(info, sIdx)}
                                     className={`rounded-lg px-2 py-1 text-[10px] font-semibold transition-all cursor-pointer ${
                                       isCurrentCard
                                         ? "bg-emerald-600 text-white shadow-2xs font-bold"
@@ -658,7 +644,7 @@ export default function SkillPickerModal({
                                   >
                                     Slot {sIdx + 1}
                                     {isCurrentCard && <CheckIcon className="inline h-3 w-3 ml-1" />}
-                                  </button>
+                                  </AppButton>
                                 );
                               })}
                             </div>
@@ -690,15 +676,14 @@ export default function SkillPickerModal({
           <span className="text-[11px] text-zinc-400">
             Parent Deck: {parentSlots.filter(Boolean).length}/6 equipped
           </span>
-          <button
+          <AppButton variant="quiet"
             type="button"
-            onClick={onClose}
+            onPress={onClose}
             className="rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 px-4 py-1.5 text-xs font-bold cursor-pointer hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-colors"
           >
             Done
-          </button>
+          </AppButton>
         </div>
-      </div>
-    </div>
+    </AppDialog>
   );
 }

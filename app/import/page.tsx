@@ -6,6 +6,8 @@ import type { KyumaruInventoryDump } from "@/lib/veterans/import/kyumaru-types";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import { decodeKyumaruSyncPayload } from "@/lib/veterans/import/kyumaru-decode";
 import { saveVeterans, getVeteransCount } from "@/lib/IndexDB/veterans-db";
+import { FileTrigger } from "react-aria-components";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 export default function ImportPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -197,18 +199,6 @@ export default function ImportPage() {
     [processJsonFile]
   );
 
-  const handleFileInput = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0) {
-        startTransition(() => {
-          processJsonFile(files[0]);
-        });
-      }
-    },
-    [processJsonFile]
-  );
-
   return (
     <div className="max-w-2xl mx-auto py-12 px-4">
       <div className="text-center mb-8">
@@ -321,15 +311,15 @@ export default function ImportPage() {
           Drop <code>inventory.json</code> (cards & characters) or <code>veterans.json</code> (trained horses) directly here.
         </p>
 
-        <label className="inline-flex items-center px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-xs font-semibold rounded-xl shadow-xs hover:bg-zinc-800 dark:hover:bg-white cursor-pointer transition-colors">
-          <span>Choose JSON File</span>
-          <input
-            type="file"
-            accept=".json"
-            onChange={handleFileInput}
-            className="sr-only"
-          />
-        </label>
+        <FileTrigger
+          acceptedFileTypes={[".json"]}
+          onSelect={(files) => {
+            const file = files?.[0];
+            if (file) startTransition(() => processJsonFile(file));
+          }}
+        >
+          <AppButton variant="primary" size="md">Choose JSON File</AppButton>
+        </FileTrigger>
       </div>
 
       {/* Info footer */}

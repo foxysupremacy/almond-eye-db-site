@@ -1,6 +1,8 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
@@ -8,14 +10,11 @@ import { AppSelect } from "@/app/common/ui/controls/app-select";
 // Preset management: switch, create, rename, duplicate, delete,
 // and drag up & down to reorder preset combos (Main Deck + Parent Deck + Track Info).
 
-import { useState, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
+import { useState, useRef } from "react";
 import { useDeck } from "@/features/deck/state";
 import type { DeckPreset } from "@/lib/deck/types";
 import ShareModal from "./share-modal";
-import { LinkIcon, XIcon, EditIcon, PlusIcon, ListIcon } from "@/app/common/ui/primitives/icons";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
-import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
+import { LinkIcon, XIcon, EditIcon, PlusIcon, ListIcon, ChevronUpIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
 
 export default function PresetManager() {
   const {
@@ -30,33 +29,13 @@ export default function PresetManager() {
     reorderPresets,
   } = useDeck();
 
-  const [mounted, setMounted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  useBodyScrollLock(isOpen);
   const [sharingPreset, setSharingPreset] = useState<DeckPreset | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Close modal on Escape
-  useEffect(() => {
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) {
-        setIsOpen(false);
-        setEditingId(null);
-      }
-    }
-    if (isOpen) {
-      window.addEventListener("keydown", handleKeyDown);
-      return () => window.removeEventListener("keydown", handleKeyDown);
-    }
-  }, [isOpen]);
 
   function startRename(p: DeckPreset) {
     setEditingId(p.id);
@@ -101,55 +80,43 @@ export default function PresetManager() {
            label="Build" options={presets.map(p => ({ value: p.id, label: p.name }))} />
         </label>
 
-        <button
+        <AppButton
           type="button"
-          onClick={() => {
+          onPress={() => {
             const id = addPreset();
             setActivePresetId(id);
           }}
-          className={HEADER_ACTION_CLASS}
+          variant="secondary"
           title="New Preset"
         >
           <PlusIcon className="h-3.5 w-3.5" />
           <span>New</span>
-        </button>
+        </AppButton>
 
-        <button
+        <AppButton
           type="button"
-          onClick={() => setIsOpen(true)}
-          className={HEADER_ACTION_CLASS}
+          onPress={() => setIsOpen(true)}
+          variant="secondary"
         >
           <ListIcon className="h-3.5 w-3.5" />
           <span>Manage ({presets.length})</span>
-        </button>
+        </AppButton>
 
-        <button
+        <AppButton
           type="button"
-          onClick={() => setSharingPreset(activePreset)}
-          className={HEADER_ACTION_CLASS}
+          onPress={() => setSharingPreset(activePreset)}
+          variant="secondary"
           title="Share active build with ultra-compact URL"
         >
           <LinkIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
           <span>Share</span>
-        </button>
+        </AppButton>
       </div>
 
       {/* Preset Management Modal */}
-      {mounted && isOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-3 sm:p-4 backdrop-blur-xs animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setIsOpen(false);
-              setEditingId(null);
-            }
-          }}
-        >
-          <div
-            ref={modalRef}
-            onClick={(e) => e.stopPropagation()}
-            className="flex max-h-[85vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 shadow-2xl animate-in zoom-in-95 duration-200 ease-out-expo text-left touch-auto overscroll-contain"
-          >
+      <AppDialog isOpen={isOpen} onOpenChange={(open) => { setIsOpen(open); if (!open) setEditingId(null); }}
+        title="Manage Build Presets" ariaLabel="Manage Build Presets" size="md" overlayLayer="share"
+        dialogRef={modalRef} header={<></>} bodyClassName="contents" className="max-h-[85vh] max-w-lg text-left">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800 px-5 py-4 bg-white dark:bg-zinc-900">
               <div>
@@ -158,16 +125,17 @@ export default function PresetManager() {
                   Each preset bundles Main Deck + Parent Deck + Track info. Drag handles to reorder.
                 </p>
               </div>
-              <button
+              <AppButton variant="quiet"
                 type="button"
-                onClick={() => {
+                aria-label="Close build manager" iconOnly
+                onPress={() => {
                   setIsOpen(false);
                   setEditingId(null);
                 }}
                 className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer"
               >
                 <XIcon className="h-4 w-4" />
-              </button>
+              </AppButton>
             </div>
 
             {/* Presets List */}
@@ -201,26 +169,26 @@ export default function PresetManager() {
                   >
                     {/* Drag Handle & Order Controls */}
                     <div className="flex items-center gap-1 text-zinc-400 cursor-grab active:cursor-grabbing">
-                      <span className="text-sm font-bold select-none">⠿</span>
+                      <ListIcon className="h-4 w-4" />
                       <div className="flex flex-col">
-                        <button
+                        <AppButton variant="quiet"
                           type="button"
-                          disabled={idx === 0}
-                          onClick={() => reorderPresets(idx, idx - 1)}
+                          isDisabled={idx === 0}
+                          onPress={() => reorderPresets(idx, idx - 1)}
                           className="h-3.5 text-[9px] hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
-                          title="Move up"
+                          iconOnly aria-label={`Move ${p.name} up`}
                         >
-                          ▲
-                        </button>
-                        <button
+                          <ChevronUpIcon className="h-3.5 w-3.5" />
+                        </AppButton>
+                        <AppButton variant="quiet"
                           type="button"
-                          disabled={idx === presets.length - 1}
-                          onClick={() => reorderPresets(idx, idx + 1)}
+                          isDisabled={idx === presets.length - 1}
+                          onPress={() => reorderPresets(idx, idx + 1)}
                           className="h-3.5 text-[9px] hover:text-zinc-800 dark:hover:text-zinc-200 disabled:opacity-20 cursor-pointer disabled:cursor-not-allowed leading-none"
-                          title="Move down"
+                          iconOnly aria-label={`Move ${p.name} down`}
                         >
-                          ▼
-                        </button>
+                          <ChevronDownIcon className="h-3.5 w-3.5" />
+                        </AppButton>
                       </div>
                     </div>
 
@@ -234,41 +202,41 @@ export default function PresetManager() {
                             onChange={(e) => setEditName(e.target.value)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") commitRename(p.id);
-                              if (e.key === "Escape" && !hasOpenAppSelect()) setEditingId(null);
+                              if (e.key === "Escape") { e.stopPropagation(); setEditingId(null); }
                             }}
-                            autoFocus
+                            aria-label="Preset name"
                             className="w-full rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 outline-none focus:border-emerald-500"
                           />
-                          <button
+                          <AppButton variant="quiet"
                             type="button"
-                            onClick={() => commitRename(p.id)}
+                            onPress={() => commitRename(p.id)}
                             className="rounded px-2 py-1 text-[11px] font-medium bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 cursor-pointer"
                           >
                             Save
-                          </button>
+                          </AppButton>
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <button
+                          <AppButton variant="quiet"
                             type="button"
-                            onClick={() => setActivePresetId(p.id)}
+                            onPress={() => setActivePresetId(p.id)}
                             className="truncate text-left text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-400 cursor-pointer"
                           >
                             {p.name}
-                          </button>
+                          </AppButton>
                           {isActive && (
                             <span className="rounded bg-emerald-100 dark:bg-emerald-950/80 px-1.5 py-0.5 text-[10px] font-bold text-emerald-800 dark:text-emerald-300 uppercase">
                               Active
                             </span>
                           )}
-                          <button
+                          <AppButton variant="quiet"
                             type="button"
-                            onClick={() => startRename(p)}
+                            onPress={() => startRename(p)}
                             className="text-[11px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 cursor-pointer p-0.5"
                             title="Rename preset"
                           >
                             <EditIcon className="h-3 w-3" />
-                          </button>
+                          </AppButton>
                         </div>
                       )}
 
@@ -281,31 +249,31 @@ export default function PresetManager() {
 
                     {/* Actions */}
                     <div className="flex items-center gap-1">
-                      <button
+                      <AppButton variant="quiet"
                         type="button"
-                        onClick={() => setSharingPreset(p)}
+                        onPress={() => setSharingPreset(p)}
                         className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 cursor-pointer"
                         title="Share preset build"
                       >
                         Share
-                      </button>
-                      <button
+                      </AppButton>
+                      <AppButton variant="quiet"
                         type="button"
-                        onClick={() => duplicatePreset(p.id)}
+                        onPress={() => duplicatePreset(p.id)}
                         className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 cursor-pointer"
                         title="Duplicate preset"
                       >
                         Duplicate
-                      </button>
-                      <button
+                      </AppButton>
+                      <AppButton variant="quiet"
                         type="button"
-                        disabled={presets.length <= 1}
-                        onClick={() => deletePreset(p.id)}
+                        isDisabled={presets.length <= 1}
+                        onPress={() => deletePreset(p.id)}
                         className="rounded-md border border-zinc-200 dark:border-zinc-700 px-2 py-1 text-[11px] font-medium text-zinc-400 hover:border-red-200 dark:hover:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
                         title={presets.length <= 1 ? "Cannot delete the only preset" : "Delete preset"}
                       >
                         Delete
-                      </button>
+                      </AppButton>
                     </div>
                   </div>
                 );
@@ -314,32 +282,29 @@ export default function PresetManager() {
 
             {/* Modal Footer */}
             <div className="flex items-center justify-between border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-5 py-3">
-              <button
+              <AppButton variant="quiet"
                 type="button"
-                onClick={() => {
+                onPress={() => {
                   const id = addPreset();
                   setActivePresetId(id);
                 }}
                 className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:border-emerald-500 hover:bg-emerald-50/40 dark:hover:bg-emerald-950/30 cursor-pointer"
               >
-                + Add New Preset
-              </button>
+                <PlusIcon className="h-3.5 w-3.5" /> Add New Preset
+              </AppButton>
 
-              <button
+              <AppButton variant="quiet"
                 type="button"
-                onClick={() => {
+                onPress={() => {
                   setIsOpen(false);
                   setEditingId(null);
                 }}
                 className="rounded-lg bg-zinc-900 dark:bg-zinc-100 px-4 py-1.5 text-xs font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 cursor-pointer"
               >
                 Done
-              </button>
+              </AppButton>
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+      </AppDialog>
 
       {/* Share Preset Modal */}
       <ShareModal

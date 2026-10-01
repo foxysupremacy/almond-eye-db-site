@@ -1,9 +1,6 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
-
-
-import React, { useMemo, useState, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import type { CardIndexEntry, SkillSummary } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
 import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
@@ -12,7 +9,10 @@ import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card"
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { getInheritableSkillForGold } from "@/lib/skills/rarity";
 import { ZapIcon } from "@/app/common/ui/primitives/icons";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
+import { XIcon } from "@/app/common/ui/primitives/icons";
 
 interface CardChainSelectorProps {
   card: CardIndexEntry;
@@ -22,7 +22,6 @@ interface CardChainSelectorProps {
 export default function CardChainSelector({ card, mode }: CardChainSelectorProps) {
   const { setChainChoice, getChainChoice, resetCardChainChoices, skillsByCard } = useDeck();
   const [isOpen, setIsOpen] = useState(false);
-  useBodyScrollLock(isOpen);
 
   // Only SSR cards (rarity 3) have continuous chain choices
   const chainEvents = useMemo(() => {
@@ -31,16 +30,6 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
       .filter((ev) => ev.eventType === "chain" || (ev.chainStep != null && ev.chainStep > 0))
       .sort((a, b) => (a.chainStep ?? 0) - (b.chainStep ?? 0));
   }, [card]);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    if (!isOpen) return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) setIsOpen(false);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen]);
 
   const cardSkills = skillsByCard[card.id];
   const cardTitle = card.nameEn || card.nameJp;
@@ -301,18 +290,41 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
       </div>
 
       {/* Centered Modal Dialog / Bottom Sheet on Mobile */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-[120] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart touch-none overscroll-none"
-          onClick={() => setIsOpen(false)}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="chain-modal-title"
-        >
-          <div
-            className="flex max-h-[85vh] sm:max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border-t sm:border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl animate-in slide-in-from-bottom sm:zoom-in-95 duration-[250ms] ease-out-expo text-left overscroll-contain touch-pan-y"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <AppDialog
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        title={cardTitle}
+        ariaLabel={`Continuous event chain for ${cardTitle}`}
+        size="sheet"
+        overlayLayer="picker"
+        className="max-h-[88dvh] max-w-lg text-left overscroll-contain touch-pan-y"
+        header={
+          <div className="flex shrink-0 items-start justify-between border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={card.imgUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-zinc-200 bg-zinc-50/70 object-contain p-0.5 dark:border-zinc-700 dark:bg-zinc-800/40" />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="rounded border border-amber-400/80 bg-amber-200/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">SSR</span>
+                  <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">Continuous Event Chain</span>
+                </div>
+                <h3 className="mt-0.5 truncate text-sm font-bold text-zinc-900 dark:text-zinc-100" title={cardTitle}>{cardTitle}</h3>
+                <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p>
+              </div>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <AppButton variant="secondary" onPress={() => resetCardChainChoices(mode, card.id)} title="Reset all choices for this card to recommended defaults">Reset</AppButton>
+              <AppButton variant="quiet" iconOnly aria-label="Close dialog" onPress={() => setIsOpen(false)}><XIcon className="h-4 w-4" /></AppButton>
+            </div>
+          </div>
+        }
+        bodyClassName="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        footer={
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[11px] text-zinc-500 dark:text-zinc-400">Active path updates deck skills instantly</div>
+            <AppButton variant="primary" onPress={() => setIsOpen(false)}>Done</AppButton>
+          </div>
+        }
+      >
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
               <div className="flex items-center gap-3 min-w-0">
@@ -386,7 +398,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                     </div>
 
                     {/* Choices share this one flat step surface; selection is conveyed by tint, not nested cards. */}
-                    <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    <RadioGroup aria-label={`Choices for ${ev.nameEn || ev.nameJp}`} value={String(selectedChoice)} onChange={(value) => setChainChoice(mode, card.id, ev.eventId, Number(value))} className="divide-y divide-zinc-100 dark:divide-zinc-800">
                       {ev.choices.map((ch) => {
                         const isSelected = selectedChoice === ch.index;
 
@@ -397,10 +409,9 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                         const hasGoldSkill = grantedSkills.some((s) => s.rarity === 2);
 
                         return (
-                          <button
+                          <Radio
                             key={ch.index}
-                            type="button"
-                            onClick={() => setChainChoice(mode, card.id, ev.eventId, ch.index)}
+                            value={String(ch.index)}
                             className={`w-full flex items-start gap-3 px-2 py-2.5 text-left transition-colors ease-out-quart duration-150 cursor-pointer ${
                               isSelected
                                 ? "bg-emerald-50/70 dark:bg-emerald-950/40"
@@ -480,31 +491,16 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                                 )}
                               </div>
                             </div>
-                          </button>
+                          </Radio>
                         );
                       })}
-                    </div>
+                    </RadioGroup>
                   </section>
                 );
               })}
             </div>
 
-            {/* Modal Footer */}
-            <div className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-4 py-3">
-              <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                Active path updates deck skills instantly
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsOpen(false)}
-                className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white bg-emerald-700 hover:bg-emerald-800 dark:bg-emerald-600 dark:hover:bg-emerald-500 shadow-2xs active:scale-[0.98] transition-all ease-out-quart duration-150 cursor-pointer"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </AppDialog>
     </>
   );
 }

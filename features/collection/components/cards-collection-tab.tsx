@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import type { CardIndexEntry } from "@/lib/api";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { CARD_TYPES, type CardTypeKey } from "@/features/collection/model/types";
@@ -44,13 +45,12 @@ export function CardsCollectionTab({
       {/* Secondary Filters: Type & Rarity */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
         {/* Card Type Pills */}
-        <div className="flex flex-wrap items-center gap-1">
+        <ToggleButtonGroup aria-label="Support card type" selectionMode="single" disallowEmptySelection selectedKeys={new Set([cardType])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCardTypeChange(String(key) as CardTypeKey); }} className="flex flex-wrap items-center gap-1">
           {CARD_TYPES.map((t) => (
-            <button
+            <ToggleButton
+              id={t}
               key={t}
-              type="button"
-              onClick={() => onCardTypeChange(t)}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 cardType === t
                   ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40"
                   : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
@@ -58,32 +58,31 @@ export function CardsCollectionTab({
             >
               {t !== "all" && <CardTypeIcon type={t} className="h-3.5 w-3.5" />}
               <span>{t === "all" ? "All Types" : formatCardType(t)}</span>
-            </button>
+            </ToggleButton>
           ))}
-        </div>
+        </ToggleButtonGroup>
 
         {/* Rarity filter */}
-        <div className="flex items-center gap-1">
+        <ToggleButtonGroup aria-label="Support card rarity" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(cardRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCardRarityChange(key === "all" ? "all" : Number(key)); }} className="flex items-center gap-1">
           {([
             { r: "all", label: "All" },
             { r: 3, label: "SSR" },
             { r: 2, label: "SR" },
             { r: 1, label: "R" },
           ] as const).map((rItem) => (
-            <button
+            <ToggleButton
+              id={String(rItem.r)}
               key={String(rItem.r)}
-              type="button"
-              onClick={() => onCardRarityChange(rItem.r)}
-              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer transition-colors ${
+              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 cardRarity === rItem.r
                   ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               {rItem.label}
-            </button>
+            </ToggleButton>
           ))}
-        </div>
+        </ToggleButtonGroup>
       </div>
 
       {/* Grid Content */}

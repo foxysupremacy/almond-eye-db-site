@@ -1,12 +1,12 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
+import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   type CharacterIndexEntry,
   type CharacterEvolutionDetail,
@@ -15,7 +15,6 @@ import {
   getCharacterImageUrl,
 } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
-import { useBodyScrollLock } from "@/app/common/hooks/use-body-scroll-lock";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card";
 import {
@@ -96,12 +95,10 @@ export function CharacterDetailSheet({
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
 
-  useBodyScrollLock(isOpen);
 
   const [evolutions, setEvolutions] = useState<CharacterEvolutionDetail[]>([]);
   const [loadedSkillsMap, setLoadedSkillsMap] = useState<Map<number, SkillDetail>>(new Map());
   const [selectedStyle, setSelectedStyle] = useState<RunningStyle | null>(null);
-  const [mounted, setMounted] = useState(false);
 
   // Ignore runningStyle from globalTrackBar; automatically recommend best style based on kit & aptitudes
   const recommendedStyle: RunningStyle = useMemo(() => {
@@ -116,9 +113,6 @@ export function CharacterDetailSheet({
     }
   }, [isOpen, character?.id]);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   // Fetch character evolutions and resolved skill details
   useEffect(() => {
@@ -143,16 +137,9 @@ export function CharacterDetailSheet({
     };
   }, [isOpen, character?.id]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
 
-  if (!isOpen || !character || !mounted || typeof document === "undefined") return null;
+
+  if (!isOpen || !character) return null;
 
   const isOwned = details !== undefined;
   const [currentStars, currentTalent] = details || [character.rarity || 3, 1];
@@ -318,22 +305,16 @@ export function CharacterDetailSheet({
   const lv3Evolutions = evolutions.filter((e) => e.rank === 3);
   const lv5Evolutions = evolutions.filter((e) => e.rank === 5);
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-[350] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200 ease-out-quart"
-      onClick={onClose}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="chara-detail-title"
-    >
-      <div
-        className="flex h-[90dvh] sm:h-[88vh] max-h-[92dvh] sm:max-h-[88vh] w-full sm:max-w-2xl flex-col overflow-hidden rounded-t-2xl sm:rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-2xl text-left animate-in slide-in-from-bottom-4 sm:zoom-in-95 duration-[250ms] ease-out-expo pb-6 sm:pb-0 overscroll-contain touch-pan-y"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Mobile handle */}
-        <div className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-zinc-300 dark:bg-zinc-700 sm:hidden" />
-
-        {/* Header Profile */}
+  return (
+    <AppDialog
+      isOpen={isOpen}
+      onOpenChange={(open) => { if (!open) onClose(); }}
+      title={character.nameEn}
+      ariaLabel={character.nameEn}
+      size="full"
+      overlayClassName="z-[350]"
+      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
+      header={
         <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3.5 min-w-0">
@@ -373,14 +354,15 @@ export function CharacterDetailSheet({
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={onClose}
+            <AppButton
+              variant="quiet"
+              onPress={onClose}
               className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              aria-label="Close"
+              iconOnly
+                aria-label="Close"
             >
               <XIcon className="h-4 w-4" />
-            </button>
+            </AppButton>
           </div>
 
           {/* Star & Talent Steppers + Ownership Row */}
@@ -391,10 +373,11 @@ export function CharacterDetailSheet({
                 <span className="text-zinc-500 text-[11px]">Stars:</span>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((s) => (
-                    <button
+                    <AppButton
                       key={s}
-                      type="button"
-                      onClick={() => onSetUmaDetails(character.id, s, currentTalent)}
+                      aria-pressed={isOwned && currentStars === s}
+                      variant="quiet"
+                      onPress={() => onSetUmaDetails(character.id, s, currentTalent)}
                       className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center cursor-pointer transition-colors ${
                         isOwned && s <= currentStars
                           ? "bg-amber-400 text-amber-950 font-black shadow-2xs"
@@ -402,7 +385,7 @@ export function CharacterDetailSheet({
                       }`}
                     >
                       {s}
-                    </button>
+                    </AppButton>
                   ))}
                 </div>
               </div>
@@ -426,21 +409,21 @@ export function CharacterDetailSheet({
 
             <div>
               {isOwned ? (
-                <button
-                  type="button"
-                  onClick={() => onRemoveUma(character.id)}
+                <AppButton
+                  variant="quiet"
+                  onPress={() => onRemoveUma(character.id)}
                   className="px-2.5 py-1 text-xs font-semibold rounded-lg text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
                 >
-                  Remove from Owned ✕
-                </button>
+                  <XIcon className="h-3.5 w-3.5" /> Remove from Owned
+                </AppButton>
               ) : (
-                <button
-                  type="button"
-                  onClick={() => onSetUmaDetails(character.id, character.rarity, 5)}
+                <AppButton
+                  variant="quiet"
+                  onPress={() => onSetUmaDetails(character.id, character.rarity, 5)}
                   className="px-3 py-1 text-xs font-bold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer shadow-2xs"
                 >
                   + Add to Owned (Lv 5)
-                </button>
+                </AppButton>
               )}
             </div>
           </div>
@@ -494,7 +477,8 @@ export function CharacterDetailSheet({
             </div>
           </div>
         </div>
-
+      }
+    >
         {/* Track Compatibility Banner & Running Style Selector */}
         <div className="shrink-0 flex-none px-4 py-2.5 bg-zinc-100/70 dark:bg-zinc-800/50 border-b border-zinc-200/70 dark:border-zinc-800 flex flex-col gap-2 text-xs">
           {/* Row 1: Target Track & Overall Compatibility */}
@@ -541,10 +525,11 @@ export function CharacterDetailSheet({
                   const aptGrade = character.aptitude?.[st.aptIdx] || "-";
 
                   return (
-                    <button
+                    <AppButton
                       key={st.id}
-                      type="button"
-                      onClick={() => setSelectedStyle(st.id)}
+                      aria-pressed={activeStyle === st.id}
+                      variant="quiet"
+                      onPress={() => setSelectedStyle(st.id)}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                         isActive
                           ? "bg-white dark:bg-zinc-900 text-emerald-800 dark:text-emerald-300 shadow-xs border border-emerald-500/30"
@@ -560,21 +545,21 @@ export function CharacterDetailSheet({
                           Auto
                         </span>
                       )}
-                    </button>
+                    </AppButton>
                   );
                 })}
               </div>
             </div>
 
             {selectedStyle !== null && selectedStyle !== recommendedStyle && (
-              <button
-                type="button"
-                onClick={() => setSelectedStyle(null)}
+              <AppButton
+                variant="quiet"
+                onPress={() => setSelectedStyle(null)}
                 className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
                 title="Reset to recommended style based on character kit"
               >
                 Reset to Auto (Rec)
-              </button>
+              </AppButton>
             )}
           </div>
         </div>
@@ -684,8 +669,6 @@ export function CharacterDetailSheet({
             </div>
           )}
         </div>
-      </div>
-    </div>,
-    document.body
+    </AppDialog>
   );
 }

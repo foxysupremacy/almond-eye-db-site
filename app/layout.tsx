@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "Almond Eye Database",
   description:
     "Uma Musume support deck builder, parent deck farmer, and skill activation visualizer.",
+  icons: {
+    icon: [{ url: "/assets/icon.png", type: "image/png", sizes: "256x256" }],
+    apple: [{ url: "/assets/icon.png", type: "image/png", sizes: "256x256" }],
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

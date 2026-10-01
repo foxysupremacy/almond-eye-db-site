@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "react-aria-components/Button";
+
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 
 interface CharacterItemProps {
@@ -17,17 +19,9 @@ export function CharacterItem({
   const [currentStars, currentTalent] = details || [character.rarity, 1];
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(character)}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onSelect(character);
-        }
-      }}
-      className={`group flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
+    <Button
+      onPress={() => onSelect(character)}
+      className={`group text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 flex flex-col justify-between rounded-2xl border p-2 sm:p-2.5 transition-all cursor-pointer select-none bg-white dark:bg-zinc-900/90 active:scale-[0.98] ${
         isOwned
           ? currentStars === 5
             ? "border-sky-500/50 shadow-xs ring-1 ring-sky-500/20 hover:border-sky-500 hover:shadow-md"
@@ -72,6 +66,6 @@ export function CharacterItem({
           Skills ↗
         </span>
       </div>
-    </div>
+    </Button>
   );
 }

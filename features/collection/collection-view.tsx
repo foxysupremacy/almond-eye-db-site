@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { DownloadIcon } from "@/app/common/ui/primitives/icons";
 import { api, type CardIndexEntry, type CharacterIndexEntry } from "@/lib/api";
 import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
 import { useOwnedUmas } from "@/app/common/hooks/use-owned-umas";
@@ -72,7 +76,7 @@ export default function CollectionView() {
   }
 
   return (
-    <section className="flex flex-col gap-6">
+    <Tabs selectedKey={subTab} onSelectionChange={(key) => { setSubTab(key as SubTab); setQuery(""); }} className="flex flex-col gap-6">
       {/* Top Header & Sub-navigation Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
         <div>
@@ -85,27 +89,22 @@ export default function CollectionView() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setIsImportModalOpen(true)}
+          <AppButton
+            variant="secondary"
+            onPress={() => setIsImportModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-950/70 shadow-2xs cursor-pointer transition-colors"
           >
-            <span>📥 Sync / Import Data</span>
-          </button>
+            <DownloadIcon className="h-4 w-4" /> Sync / Import Data
+          </AppButton>
         </div>
       </div>
 
       {/* Segmented Switcher + Stats Summary */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
         {/* Segmented Controls */}
-        <div className="inline-flex rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1 border border-zinc-200/80 dark:border-zinc-700/50 shrink-0">
-          <button
-            type="button"
-            onClick={() => {
-              setSubTab("cards");
-              setQuery("");
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+        <TabList aria-label="Collection category" className="inline-flex rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1 border border-zinc-200/80 dark:border-zinc-700/50 shrink-0">
+          <Tab id="cards"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
               subTab === "cards"
                 ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -115,15 +114,10 @@ export default function CollectionView() {
             <span className="rounded-md bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-bold">
               {totalOwnedCards} / {cards.length}
             </span>
-          </button>
+          </Tab>
 
-          <button
-            type="button"
-            onClick={() => {
-              setSubTab("characters");
-              setQuery("");
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+          <Tab id="characters"
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
               subTab === "characters"
                 ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                 : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -133,8 +127,8 @@ export default function CollectionView() {
             <span className="rounded-md bg-sky-500/15 text-sky-700 dark:text-sky-300 px-1.5 py-0.5 text-[10px] font-bold">
               {totalOwnedUmas} / {characters.length}
             </span>
-          </button>
-        </div>
+          </Tab>
+        </TabList>
 
         {/* Stats Shelf */}
         <div className="flex items-center gap-3 text-xs">
@@ -178,31 +172,16 @@ export default function CollectionView() {
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/70 p-3.5 shadow-2xs backdrop-blur-xs">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           {/* Search Box */}
-          <div className="relative w-full">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={
-                subTab === "cards"
-                  ? "Search cards by character, title, or Japanese name..."
-                  : "Search characters by name or costume title..."
-              }
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-hidden focus:border-emerald-500 transition-colors"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs"
-              >
-                ✕
-              </button>
-            )}
-          </div>
+          <PickerSearchBar
+            value={query}
+            onChange={setQuery}
+            label={subTab === "cards" ? "Search support card collection" : "Search character collection"}
+            placeholder={subTab === "cards" ? "Search cards by character, title, or Japanese name..." : "Search characters by name or costume title..."}
+          />
         </div>
       </div>
 
+      <TabPanel id={subTab} className="outline-none">
       {subTab === "cards" ? (
         <CardsCollectionTab
           filteredCards={filteredCards}
@@ -226,11 +205,13 @@ export default function CollectionView() {
         />
       )}
 
+      </TabPanel>
+
       {/* Import Modal */}
       <ImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
       />
-    </section>
+    </Tabs>
   );
 }

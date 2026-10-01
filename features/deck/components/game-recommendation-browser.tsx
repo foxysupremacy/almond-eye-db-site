@@ -7,7 +7,9 @@ import type { PvpEvent } from "@/lib/pvp/events";
 import { filterRecommendedSkillsByStyle, getRecommendedRace } from "@/lib/pvp/recommendations";
 import type { RunningStyle } from "@/lib/deck/types";
 import type { SkillEffectCategory } from "@/lib/skills/effects";
+import { Tab, TabList, TabPanel, Tabs } from "react-aria-components/Tabs";
 import { EFFECT_CATEGORIES } from "@/app/common/ui/skills/skill-effects";
+import { SkillEffectFilter } from "@/app/common/ui/skills/skill-effect-filter";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import { Badge } from "@/app/common/ui/primitives/badge";
@@ -151,64 +153,35 @@ export function GameRecommendedBrowser({
         </span>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
-        <div className="flex min-h-9 items-center gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/70" role="tablist" aria-label="Game recommendations view">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeView === "skills"}
-            onClick={() => setActiveView("skills")}
-            className={`min-h-8 rounded-md px-2.5 text-xs font-medium transition-colors ${activeView === "skills" ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-700 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"}`}
-          >
-            By Skill
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={activeView === "cards"}
-            onClick={() => setActiveView("cards")}
-            className={`min-h-8 rounded-md px-2.5 text-xs font-medium transition-colors ${activeView === "cards" ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-700 dark:text-zinc-100" : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"}`}
-          >
-            By Card
-          </button>
-        </div>
+      <Tabs
+        aria-label="Game recommendations view"
+        selectedKey={activeView}
+        onSelectionChange={(key) => { if (key === "skills" || key === "cards") setActiveView(key); }}
+        className="mt-2"
+      >
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
+        <TabList className="flex min-h-9 items-center gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/70">
+          <Tab id="skills" className="min-h-11 rounded-md px-2.5 text-xs font-medium text-zinc-500 outline-none transition-colors data-[selected]:bg-white data-[selected]:text-zinc-900 data-[selected]:shadow-2xs data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:data-[selected]:bg-zinc-700 dark:data-[selected]:text-zinc-100">By Skill</Tab>
+          <Tab id="cards" className="min-h-11 rounded-md px-2.5 text-xs font-medium text-zinc-500 outline-none transition-colors data-[selected]:bg-white data-[selected]:text-zinc-900 data-[selected]:shadow-2xs data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:data-[selected]:bg-zinc-700 dark:data-[selected]:text-zinc-100">By Card</Tab>
+        </TabList>
         <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Effect filters apply to both views</span>
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-1" aria-label="Filter recommendations by skill effect">
-        <span className="mr-0.5 text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Effect:</span>
-        {EFFECT_CATEGORIES.map((category) => {
-          const active = effectFilter.includes(category.id);
-          return (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => toggleEffectFilter(category.id)}
-              title={category.description}
-              aria-pressed={active}
-              className={`inline-flex min-h-8 items-center gap-1 rounded border px-1.5 text-[10px] font-medium transition-colors ${active ? `${category.badge} font-semibold` : "border-zinc-200 bg-white text-zinc-500 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400"}`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${category.dotColor} ${active ? "" : "opacity-50"}`} />
-              {category.label}
-            </button>
-          );
-        })}
-        {effectFilter.length > 0 && (
-          <button type="button" onClick={() => setEffectFilter([])} className="min-h-8 rounded px-1.5 text-[10px] font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200">
-            Clear
-          </button>
-        )}
+      <div className="mt-2">
+        <SkillEffectFilter
+          selectedEffects={effectFilter}
+          onToggle={toggleEffectFilter}
+          onClear={() => setEffectFilter([])}
+          ariaLabel="Filter recommendations by skill effect"
+        />
       </div>
 
+      <TabPanel id="cards" className="mt-2 outline-none">
       {!course ? (
-        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+        <p className="text-xs text-zinc-400 dark:text-zinc-500">
           Select a course to find skills that can activate on it.
         </p>
-      ) : !isFallback && runningStyle === 5 ? (
-        <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-          The game data does not include a separate Runaway style recommendation.
-        </p>
-      ) : activeView === "cards" ? (
+      ) : (
         <GameRecommendedCardList
           rows={cardRows}
           allCards={allCards}
@@ -223,8 +196,15 @@ export function GameRecommendedBrowser({
           onSearchChange={setCardSearch}
           onAddCard={onAddCard}
         />
-      ) : (
-        <div role="tabpanel" aria-label={isFallback ? "Track-active skills" : "Game recommended skills"}>
+      )}
+      </TabPanel>
+      <TabPanel id="skills" aria-label={isFallback ? "Track-active skills" : "Game recommended skills"} className="mt-2 outline-none">
+        {!course ? (
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">Select a course to find skills that can activate on it.</p>
+        ) : !isFallback && runningStyle === 5 ? (
+          <p className="text-xs text-zinc-400 dark:text-zinc-500">The game data does not include a separate Runaway style recommendation.</p>
+        ) : (
+          <>
           <label className="mt-2 block">
             <span className="sr-only">Search game recommended skills</span>
             <input
@@ -320,8 +300,10 @@ export function GameRecommendedBrowser({
               )}
             </>
           )}
-        </div>
-      )}
+          </>
+        )}
+      </TabPanel>
+      </Tabs>
     </section>
   );
 }

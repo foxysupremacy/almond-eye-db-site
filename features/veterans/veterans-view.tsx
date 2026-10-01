@@ -1,6 +1,10 @@
 "use client";
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { FileTrigger } from "react-aria-components/FileTrigger";
+import { DownloadIcon, LineageIcon, TrophyIcon } from "@/app/common/ui/primitives/icons";
 
 import { useState, useEffect, useMemo, useTransition } from "react";
 import { api, type CharacterIndexEntry } from "@/lib/api";
@@ -264,7 +268,7 @@ export default function VeteransView() {
           className="rounded-2xl border-2 border-dashed border-zinc-300 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 p-10 text-center shadow-xs hover:border-emerald-500 transition-colors cursor-pointer"
         >
           <div className="w-16 h-16 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto mb-4 text-3xl shadow-2xs">
-            🏆
+            <TrophyIcon className="h-8 w-8" />
           </div>
           <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 mb-1">
             Drag & Drop veterans.json here
@@ -274,25 +278,17 @@ export default function VeteransView() {
           </p>
 
           <div className="flex items-center justify-center gap-3">
-            <label className="inline-flex items-center px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-xl shadow-xs cursor-pointer transition-colors">
-              <span>Select File</span>
-              <input
-                type="file"
-                accept=".json"
-                onChange={(e) => {
-                  if (e.target.files?.[0]) handleFileDrop(e.target.files[0]);
-                }}
-                className="sr-only"
-              />
-            </label>
+            <FileTrigger acceptedFileTypes={[".json"]} onSelect={(files) => { const file = files?.[0]; if (file) handleFileDrop(file); }}>
+              <AppButton variant="primary">Select File</AppButton>
+            </FileTrigger>
 
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
+            <AppButton
+              variant="secondary"
+              onPress={() => setIsImportModalOpen(true)}
               className="inline-flex items-center px-4 py-2 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
             >
               Open Sync Modal
-            </button>
+            </AppButton>
           </div>
         </div>
 
@@ -335,21 +331,21 @@ export default function VeteransView() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setIsImportModalOpen(true)}
+          <AppButton
+            variant="secondary"
+            onPress={() => setIsImportModalOpen(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-950/70 shadow-2xs cursor-pointer transition-colors"
           >
-            <span>📥 Sync / Upload</span>
-          </button>
-          <button
-            type="button"
-            onClick={handleClear}
+            <DownloadIcon className="h-4 w-4" /> Sync / Upload
+          </AppButton>
+          <AppButton
+            variant="secondary"
+            onPress={handleClear}
             className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-zinc-500 hover:text-red-500 text-xs font-medium cursor-pointer transition-colors"
             title="Clear all trained umas"
           >
             Clear Roster
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -357,23 +353,8 @@ export default function VeteransView() {
       <div className="flex flex-col gap-3 rounded-2xl border border-zinc-200/90 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/70 p-3.5 shadow-2xs backdrop-blur-xs">
         <div className="flex flex-col sm:flex-row items-center gap-3">
           {/* Search */}
-          <div className="relative w-full sm:flex-1">
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search veterans by character name or costume..."
-              className="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-950 px-3 py-2 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-hidden focus:border-emerald-500 transition-colors"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-xs"
-              >
-                ✕
-              </button>
-            )}
+          <div className="w-full sm:flex-1">
+            <PickerSearchBar value={query} onChange={setQuery} placeholder="Search veterans by character name or costume..." />
           </div>
 
           {/* Sort Selector */}
@@ -387,9 +368,10 @@ export default function VeteransView() {
           </div>
 
           {/* Parent Filter Toggle */}
-          <button
-            type="button"
-            onClick={() => setOnlyParents((prev) => !prev)}
+          <AppButton
+            variant="secondary"
+            aria-pressed={onlyParents}
+            onPress={() => setOnlyParents((prev) => !prev)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold cursor-pointer transition-all shrink-0 ${
               onlyParents
                 ? "bg-emerald-600 text-white shadow-xs"
@@ -397,7 +379,7 @@ export default function VeteransView() {
             }`}
             title="Filter roster to show only Parent candidates (Default rank UF–UC9)"
           >
-            <span>🧬 Only Parents</span>
+            <LineageIcon className="h-4 w-4" /> Only Parents
             <span
               className="contents"
             >
@@ -405,16 +387,17 @@ export default function VeteransView() {
                 {parentCount}
               </Badge>
             </span>
-          </button>
+          </AppButton>
 
           {/* Blue Stars Filter */}
           <div className="flex items-center gap-1 shrink-0 overflow-x-auto">
             <span className="text-xs text-zinc-400 mr-1">Lineage Blue:</span>
             {([0, 3, 6, 8, 9] as const).map((stars) => (
-              <button
+              <AppButton
                 key={stars}
-                type="button"
-                onClick={() => setMinBlueStars(stars)}
+                aria-pressed={minBlueStars === stars}
+                variant="secondary"
+                onPress={() => setMinBlueStars(stars)}
                 className={`px-2 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors ${
                   minBlueStars === stars
                     ? "bg-blue-600 text-white shadow-2xs"
@@ -422,7 +405,7 @@ export default function VeteransView() {
                 }`}
               >
                 {stars === 0 ? "All" : `${stars}★+`}
-              </button>
+              </AppButton>
             ))}
           </div>
         </div>

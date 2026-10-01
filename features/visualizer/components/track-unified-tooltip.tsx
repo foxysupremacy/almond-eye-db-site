@@ -4,6 +4,8 @@ import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
 
 
 import React, { useEffect, useRef } from "react";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { XIcon } from "@/app/common/ui/primitives/icons";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { RaceImpactResult } from "@/lib/race-impact/types";
@@ -38,7 +40,7 @@ export function TrackUnifiedTooltip({
   useEffect(() => {
     if (!isPinned) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !hasOpenAppSelect()) onUnpin();
+      if (e.key === "Escape" && !e.defaultPrevented && !hasOpenAppSelect()) onUnpin();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
@@ -109,6 +111,8 @@ export function TrackUnifiedTooltip({
   return (
     <div
       ref={cardRef}
+      role={isPinned ? "region" : "tooltip"}
+      aria-label="Course position details"
       style={{ left: `${left}px`, top: `${top}px` }}
       className={`fixed z-[300] w-[280px] sm:w-[295px] select-none rounded-xl border border-zinc-200/90 dark:border-zinc-700/80 bg-white/95 dark:bg-zinc-900/95 p-3.5 shadow-xl backdrop-blur-md transition-all duration-75 text-zinc-900 dark:text-zinc-100 ${
         isPinned ? "ring-2 ring-emerald-500/80 dark:ring-emerald-400/80" : ""
@@ -133,15 +137,15 @@ export function TrackUnifiedTooltip({
         {/* Pin Badge & Dismiss Button */}
         <div className="flex items-center gap-1">
           {isPinned ? (
-            <button
-              type="button"
-              onClick={onUnpin}
+            <AppButton variant="quiet"
+              onPress={onUnpin}
+              aria-label="Unpin course position"
               className="inline-flex items-center gap-1 rounded bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 cursor-pointer"
-              title="Click to unpin (or press Esc)"
+              aria-description="Press Escape to unpin"
             >
               <span>Pinned</span>
-              <span className="text-zinc-400">✕</span>
-            </button>
+              <XIcon className="h-3 w-3 text-zinc-400" />
+            </AppButton>
           ) : (
             <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Tap to pin</span>
           )}

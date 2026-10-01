@@ -14,6 +14,7 @@ import { getCharacterImageUrl } from "@/lib/api";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { Badge } from "@/app/common/ui/primitives/badge";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 
 type PedigreeFilterTab =
   | "all"
@@ -172,9 +173,9 @@ export function PedigreeSkillsSection() {
 
           {/* Slot Branch Toggle */}
           <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setSlotFilter("all")}
+            <AppButton
+              variant="quiet"
+              onPress={() => setSlotFilter("all")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 slotFilter === "all"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
@@ -182,10 +183,10 @@ export function PedigreeSkillsSection() {
               }`}
             >
               All
-            </button>
-            <button
-              type="button"
-              onClick={() => setSlotFilter("p1")}
+            </AppButton>
+            <AppButton
+              variant="quiet"
+              onPress={() => setSlotFilter("p1")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 slotFilter === "p1"
                   ? "bg-emerald-600 text-white font-semibold"
@@ -193,10 +194,10 @@ export function PedigreeSkillsSection() {
               }`}
             >
               P1 Branch
-            </button>
-            <button
-              type="button"
-              onClick={() => setSlotFilter("p2")}
+            </AppButton>
+            <AppButton
+              variant="quiet"
+              onPress={() => setSlotFilter("p2")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 slotFilter === "p2"
                   ? "bg-blue-600 text-white font-semibold"
@@ -204,14 +205,14 @@ export function PedigreeSkillsSection() {
               }`}
             >
               P2 Branch
-            </button>
+            </AppButton>
           </div>
 
           {/* View Mode Toggle */}
           <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("parent")}
+            <AppButton
+              variant="quiet"
+              onPress={() => setViewMode("parent")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 viewMode === "parent"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
@@ -219,10 +220,10 @@ export function PedigreeSkillsSection() {
               }`}
             >
               Group by Parent
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
+            </AppButton>
+            <AppButton
+              variant="quiet"
+              onPress={() => setViewMode("list")}
               className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 viewMode === "list"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
@@ -230,16 +231,16 @@ export function PedigreeSkillsSection() {
               }`}
             >
               Unified List
-            </button>
+            </AppButton>
           </div>
         </div>
       </div>
 
       {/* Filter Tabs Row */}
       <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium pt-2 border-t border-zinc-200/80 dark:border-zinc-800/80">
-        <button
-          type="button"
-          onClick={() => setFilter("all")}
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("all")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "all"
               ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
@@ -247,10 +248,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           All ({pedigreeSkills.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("inherit_only")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("inherit_only")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "inherit_only"
               ? "bg-indigo-600 text-white font-semibold shadow-xs"
@@ -258,10 +259,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Inherit Only ({inheritOnlyCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("unique_target")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("unique_target")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "unique_target"
               ? "bg-emerald-600 text-white font-semibold"
@@ -269,10 +270,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Unique Targets ({uniqueCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("in_main")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("in_main")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "in_main"
               ? "bg-amber-600 text-white font-semibold"
@@ -280,10 +281,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           In Main Deck ({inMainCount})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("hint")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("hint")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "hint"
               ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
@@ -291,10 +292,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Innate
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("event")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("event")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "event"
               ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
@@ -302,10 +303,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Awakening / Events
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("unique")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("unique")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "unique"
               ? "bg-amber-500 text-white font-semibold"
@@ -313,10 +314,10 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Uniques
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilter("factor")}
+        </AppButton>
+        <AppButton
+          variant="quiet"
+          onPress={() => setFilter("factor")}
           className={`rounded-lg px-2.5 py-1 transition-colors cursor-pointer ${
             filter === "factor"
               ? "bg-sky-600 text-white font-semibold"
@@ -324,7 +325,7 @@ export function PedigreeSkillsSection() {
           }`}
         >
           Factors
-        </button>
+        </AppButton>
       </div>
 
       {/* Content: Group by Parent vs Unified List */}

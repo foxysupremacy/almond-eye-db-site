@@ -38,6 +38,8 @@ interface SkillDetailInspectorProps {
   cardId?: number | null;
   isBanned?: boolean;
   compact?: boolean;
+  /** The parent overlay already provides the visible surface. */
+  embedded?: boolean;
 }
 
 /** Shared detail renderer for the fixed Visualizer pane and floating inspector. */
@@ -55,11 +57,12 @@ export function SkillDetailPanel({
   cardId,
   isBanned = false,
   compact = false,
+  embedded = false,
 }: SkillDetailInspectorProps) {
   return (
     <div
       ref={conditionViewerRef}
-      className={`order-1 min-w-0 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 ${compact ? "text-xs" : "text-sm"} shadow-xs text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
+      className={`order-1 min-w-0 ${embedded ? "" : "rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs"} ${compact ? "text-xs" : "text-sm"} text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
     >
       {skillLoading ? (
         <div className="p-4 sm:p-5 text-zinc-400 dark:text-zinc-500">Loading skill…</div>

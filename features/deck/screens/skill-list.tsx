@@ -1,3 +1,5 @@
+import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
 import { useMemo, useState, useEffect } from "react";
@@ -117,7 +119,7 @@ export default function SkillList() {
     <section className="mt-8">
       <div className="mb-3 md:hidden">
         <h2 className="mb-2 text-lg font-semibold">Deck skills <span className="text-sm font-normal text-zinc-500">({mainSkills.length})</span></h2>
-        <input aria-label="Search skills" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search skills…" className="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900" />
+        <PickerSearchBar label="Search deck skills" value={search} onChange={setSearch} placeholder="Search skills…" inputClassName="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900" />
       </div>
       <MobileFilters count={Number(sourceFilter !== "all") + Number(rarityFilter !== "all")} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
       {/* Header & Controls */}
@@ -145,109 +147,102 @@ export default function SkillList() {
              label="Running style" options={RUNNING_STYLE_OPTIONS.map(o => ({ value: String(o.value ?? ""), label: o.label }))} />
           </label>
 
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search skills…"
-            className="hidden md:block w-36 sm:w-44 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 dark:placeholder-zinc-500 outline-none focus:border-zinc-400 dark:focus:border-zinc-600 shadow-2xs"
-          />
+          <div className="hidden w-36 md:block sm:w-44"><PickerSearchBar label="Search deck skills" value={search} onChange={setSearch} placeholder="Search skills…" inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 pr-10 text-xs text-zinc-900 outline-none focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100" /></div>
 
           {/* Rarity Tabs */}
-          <div className="flex flex-wrap md:flex-nowrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
-            <button
-              onClick={() => setRarityFilter("all")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+          <RadioGroup aria-label="Skill rarity" value={rarityFilter} onChange={(value) => setRarityFilter(value as RarityFilterKey)} orientation="horizontal" className="flex flex-wrap md:flex-nowrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
+            <Radio
+              value="all"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "all"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               All ({mainSkills.length})
-            </button>
-            <button
-              onClick={() => setRarityFilter("white")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+            </Radio>
+            <Radio
+              value="white"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "white"
                   ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
             >
               White ({whiteCount})
-            </button>
-            <button
-              onClick={() => setRarityFilter("gold")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+            </Radio>
+            <Radio
+              value="gold"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "gold"
                   ? "bg-amber-500 text-amber-950 font-bold shadow-2xs"
                   : "text-amber-950 dark:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 font-medium"
               }`}
             >
               Gold ({goldCount})
-            </button>
-            <button
-              onClick={() => setRarityFilter("unique")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+            </Radio>
+            <Radio
+              value="unique"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "unique"
                   ? "bg-pink-500 text-white font-bold shadow-2xs"
                   : "text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
               }`}
             >
               Unique ({uniqueCount})
-            </button>
-            <button
-              onClick={() => setRarityFilter("evolved")}
-              className={`rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+            </Radio>
+            <Radio
+              value="evolved"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "evolved"
                   ? "bg-purple-600 text-white font-bold shadow-2xs"
                   : "text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
               }`}
             >
               Evo ({evolvedCount})
-            </button>
-          </div>
+            </Radio>
+          </RadioGroup>
 
           {/* Source Filter */}
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          <RadioGroup aria-label="Skill source" value={sourceFilter} onChange={(value) => setSourceFilter(value as "all" | "event" | "hint")} orientation="horizontal" className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
             {(["all", "hint", "event"] as const).map((f) => (
-              <button
+              <Radio
                 key={f}
-                onClick={() => setSourceFilter(f)}
-                className={`rounded-md px-2 py-1 capitalize cursor-pointer transition-colors ${
+                value={f}
+                className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 capitalize cursor-pointer transition-colors ${
                   sourceFilter === f
                     ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
                 }`}
               >
                 {f === "all" ? "Sources" : f}
-              </button>
+              </Radio>
             ))}
-          </div>
+          </RadioGroup>
 
           {/* View Mode Toggle (Unified List vs Group by Card) */}
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("list")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+          <RadioGroup aria-label="Deck skill layout" value={viewMode} onChange={(value) => setViewMode(value as "list" | "card")} orientation="horizontal" className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+            <Radio
+              value="list"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 viewMode === "list"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Unified List
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode("card")}
-              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+            </Radio>
+            <Radio
+              value="card"
+              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
                 viewMode === "card"
                   ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Group by Card
-            </button>
-          </div>
+            </Radio>
+          </RadioGroup>
         </div>
       </div>
 

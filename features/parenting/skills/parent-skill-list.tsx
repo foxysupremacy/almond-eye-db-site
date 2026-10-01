@@ -1,7 +1,7 @@
 "use client";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
 
-import { useMemo, useEffect } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { useDeck } from "@/features/deck/state";
 import type { DeckSkill, ParentDeckSkill } from "@/lib/deck/types";
 import { useParentingSetup, useLineageSkills, type DisplayParentSkill } from "@/features/parenting/hooks";
@@ -13,7 +13,7 @@ import { getSkillRarityStyle, RARITY_META } from "@/app/common/ui/skills/skill-r
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import SkillItem from "@/app/common/ui/skills/skill-item";
-import { getCharacterImageUrl } from "@/lib/api";
+import { api, getCharacterImageUrl, type CardIndexEntry, type CharacterIndexEntry, type SkillDetail } from "@/lib/api";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
 import { evaluateSkillActivation, type SkillActivationResult } from "@/lib/parenting/skill-evaluator";
@@ -24,7 +24,10 @@ import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/sk
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { buildDuplicateSkillIndex, getDuplicateSkillIds } from "@/lib/skills/duplicates";
 import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain-attribution";
-import { mergeParentSkills } from "./model/parent-skill-projections";
+import { SkillEffectFilter } from "@/app/common/ui/skills/skill-effect-filter";
+import type { SkillEffectCategory } from "@/lib/skills/effects";
+import { matchesSkillEffectFilter } from "@/lib/skills/effects";
+import { buildHardToGetSkills, filterParentSkills, mergeParentSkills } from "./model/parent-skill-projections";
 import { parentSkillPickerAdapter } from "./model/parent-skill-state";
 import { usePickerController } from "@/app/common/hooks/use-picker-controller";
 
@@ -91,6 +94,22 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     p1Chara,
     p2Chara,
   } = useLineageSkills();
+  const [hardToGetData, setHardToGetData] = useState<{
+    skills: SkillDetail[];
+    cards: CardIndexEntry[];
+    characters: CharacterIndexEntry[];
+  } | null>(null);
+  const [hardToGetEffects, setHardToGetEffects] = useState<SkillEffectCategory[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.listSkills(), api.listCardIndex(), api.listCharacters()])
+      .then(([skills, cards, characters]) => {
+        if (!cancelled) setHardToGetData({ skills, cards, characters });
+      })
+      .catch((error) => console.error("Failed to load Uma skill sources", error));
+    return () => { cancelled = true; };
+  }, []);
 
   // Map each parent card slot to its exact granted skills (respecting chosen chain branches & white downgrade)
   const parentCardSkillsMap = useMemo(() => {
@@ -147,6 +166,20 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
 
   const raceParams = activeRaceParameters;
 
+  const hardToGetSkills = useMemo(() => {
+    if (!hardToGetData || !course) return [];
+    return buildHardToGetSkills(
+      hardToGetData.skills,
+      hardToGetData.cards,
+      hardToGetData.characters,
+      (skillId) => evaluateSkillActivation(skillId, course, runningStyle, raceParams).activates,
+    );
+  }, [hardToGetData, course, runningStyle, raceParams]);
+  const hardToGetSkillDetails = useMemo(
+    () => new Map((hardToGetData?.skills ?? []).map((skill) => [skill.id, skill])),
+    [hardToGetData],
+  );
+
   // Precompute activation results for all parent & lineage skills under current course & style
   const activationMap = useMemo(() => {
     const map = new Map<number, SkillActivationResult>();
@@ -200,7 +233,19 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
   }), [unifiedSkillList, uniqueTargetIds, parentCardDuplicateSkillIdSet]);
   const { state, view, dispatch } = usePickerController(parentSkillPickerAdapter, pickerInput);
   const { filter, sourceFilter, rarityFilter, viewMode, search } = state;
-  const filtered = view.filteredSkills;
+  const categoryFiltered = sourceFilter === "hard_to_get"
+    ? filterParentSkills(hardToGetSkills, {
+        filter,
+        sourceFilter: "all",
+        rarityFilter,
+        search,
+        uniqueTargetIds: new Set(hardToGetSkills.map((skill) => skill.id)),
+        duplicateInParentIds: new Set(),
+      })
+    : view.filteredSkills;
+  const filtered = sourceFilter === "hard_to_get" && hardToGetEffects.length > 0
+    ? categoryFiltered.filter((skill) => matchesSkillEffectFilter(hardToGetSkillDetails.get(skill.id), hardToGetEffects))
+    : categoryFiltered;
 
   // Persist the selected view without putting browser storage in the reducer.
   useEffect(() => {
@@ -229,14 +274,16 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-              All Possible Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({unifiedSkillList.length})</span>
+              {sourceFilter === "hard_to_get" ? "Hard to Get" : "All Possible Skills"} <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({sourceFilter === "hard_to_get" ? hardToGetSkills.length : unifiedSkillList.length})</span>
             </h2>
-            <Badge size="compact" tone="emerald" className="font-bold">
-              Cards + Lineage
+            <Badge size="compact" tone={sourceFilter === "hard_to_get" ? "amber" : "emerald"} className="font-bold">
+              {sourceFilter === "hard_to_get" ? "Track + Uma" : "Cards + Lineage"}
             </Badge>
           </div>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {hasParentDeck || hasLineage ? (
+            {sourceFilter === "hard_to_get" ? (
+              "Skills that activate on the selected course, have no support card source, and can be inherited from the Uma sources shown below."
+            ) : hasParentDeck || hasLineage ? (
               <>
                 <span className="font-semibold text-emerald-700 dark:text-emerald-400">{uniqueCount} total targets</span> to farm ·{" "}
                 <span className="font-semibold text-amber-700 dark:text-amber-400">{duplicateCount} overlapping</span> with Main Deck.
@@ -287,10 +334,21 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             >
               Parents Only
             </button>
+            <button
+              onClick={() => dispatch({ type: "sourceFilterChanged", value: "hard_to_get" })}
+              title="Track active skills available from Uma lineage but not from any support card"
+              className={`rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+                sourceFilter === "hard_to_get"
+                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+              }`}
+            >
+              Others
+            </button>
           </div>
 
           {/* View Mode Toggle (Unified List vs Group by Card vs Group by Parent) */}
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          {sourceFilter !== "hard_to_get" && <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
             <button
               type="button"
               onClick={() => dispatch({ type: "viewModeChanged", value: "list" })}
@@ -324,12 +382,25 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             >
               Group by Parent
             </button>
-          </div>
+          </div>}
         </div>
       </div>
 
+      {sourceFilter === "hard_to_get" && (
+        <div className="mt-3 border-t border-zinc-200/80 pt-3 dark:border-zinc-800/80">
+          <SkillEffectFilter
+            selectedEffects={hardToGetEffects}
+            onToggle={(category) => setHardToGetEffects((current) => current.includes(category)
+              ? current.filter((effect) => effect !== category)
+              : [...current, category])}
+            onClear={() => setHardToGetEffects([])}
+            ariaLabel="Filter hard-to-get skills by effect"
+          />
+        </div>
+      )}
+
       {/* Filter Tabs Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-zinc-200/80 dark:border-zinc-800/80">
+      {sourceFilter !== "hard_to_get" && <div className="flex flex-wrap items-center justify-between gap-2 mt-3 pt-3 border-t border-zinc-200/80 dark:border-zinc-800/80">
         <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
           <button
             onClick={() => dispatch({ type: "filterChanged", value: "all" })}
@@ -428,18 +499,55 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             </button>
           )}
         </div>
-      </div>
+      </div>}
 
       </MobileFilters>
       {/* Skill List Body */}
-      {loading && !hasParentDeck && !hasLineage ? (
+      {sourceFilter !== "hard_to_get" && loading && !hasParentDeck && !hasLineage ? (
         <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading skills…</p>
-      ) : unifiedSkillList.length === 0 ? (
+      ) : unifiedSkillList.length === 0 && sourceFilter !== "hard_to_get" ? (
         <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-zinc-400 dark:text-zinc-500">
           No skills in pool yet. Add cards above or configure parents in Parenting to view all possible skills.
         </div>
+      ) : sourceFilter === "hard_to_get" && !course ? (
+        <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          Select a course and running style to find track active skills that can be inherited from Uma but are unavailable from support cards.
+        </div>
+      ) : sourceFilter === "hard_to_get" && !hardToGetData ? (
+        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading Uma skill sources…</p>
       ) : filtered.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">No skills match the selected filter.</p>
+      ) : sourceFilter === "hard_to_get" ? (
+        <div className="mt-4">
+          <div className="mb-2 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+            <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Hard-to-get skills on this track</h3>
+            <span className="text-xs text-zinc-500 dark:text-zinc-400">{filtered.length} skills · no support card source · sources shown below</span>
+          </div>
+          <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900">
+            {filtered.map((skill) => {
+              const isBanned = isSkillBanned(skill.id, activePvpEvent);
+              const sources = (skill.grants ?? []).map((grant) => ({
+                kind: "character" as const,
+                cardId: grant.cardId,
+                charId: grant.charId,
+                name: grant.cardName,
+                label: grant.source,
+              }));
+              return (
+                <li key={skill.id} className="px-4 py-3">
+                  <SkillItem skill={{ ...skill, cardName: skill.sourceLabel }} size="md" isBanned={isBanned} isParentMode>
+                    {skill.descEn && <p className="mt-1 line-clamp-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">{skill.descEn}</p>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <span className="font-medium uppercase tracking-wide">SOURCE</span>
+                      <SkillSourceIcons sources={sources} />
+                      <span>· #{skill.id}</span>
+                    </div>
+                  </SkillItem>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : viewMode === "card" || viewMode === "parent" ? (
         <div className="mt-4 space-y-6">
           {/* Helper blocks for Cards Section & Lineage Section */}

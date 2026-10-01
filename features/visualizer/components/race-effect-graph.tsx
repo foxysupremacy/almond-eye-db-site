@@ -1,6 +1,9 @@
 "use client";
 
 import React, { useCallback, useMemo, useRef, useState } from "react";
+import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { AlertCircleIcon, XIcon } from "@/app/common/ui/primitives/icons";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { RaceImpactResult } from "@/lib/race-impact/types";
@@ -254,15 +257,15 @@ export function RaceEffectGraph({
               Board 3 · Race / Skill Effect Graph
             </span>
             {/* Physics Status Badge */}
-            <button
-              type="button"
-              onClick={() => setShowPhysicsInfo((v) => !v)}
+            <AppButton variant="quiet"
+              onPress={() => setShowPhysicsInfo((v) => !v)}
+              aria-expanded={showPhysicsInfo}
+              aria-label="Physics model details"
               className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-semibold border ${statusConfig.color} cursor-pointer`}
-              title="Click to view physics model details"
             >
               <span>{statusConfig.label}</span>
-              <span className="opacity-60 text-[9px]">ℹ</span>
-            </button>
+              <AlertCircleIcon className="h-3 w-3 opacity-60" />
+            </AppButton>
           </div>
           <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
             Simplified estimate · Speed vs elapsed time · Cruising target assumes distance aptitude A
@@ -272,30 +275,26 @@ export function RaceEffectGraph({
         {/* Units & Interaction Controls */}
         <div className="flex items-center gap-2 text-xs">
           {/* Unit Toggle: Meters vs Bashin */}
-          <div className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 p-0.5">
-            <button
-              type="button"
-              onClick={() => onUnitChange("meters")}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+          <ToggleButtonGroup aria-label="Distance units" selectionMode="single" disallowEmptySelection selectedKeys={[unit]} onSelectionChange={(keys) => { const key = [...keys][0]; if (key === "meters" || key === "bashin") onUnitChange(key); }} className="inline-flex rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800/60 p-0.5">
+            <ToggleButton id="meters"
+              className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                 unit === "meters"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Distance (Δx)
-            </button>
-            <button
-              type="button"
-              onClick={() => onUnitChange("bashin")}
-              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+            </ToggleButton>
+            <ToggleButton id="bashin"
+              className={`min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-md px-2.5 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
                 unit === "bashin"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
               Bashin (バ)
-            </button>
-          </div>
+            </ToggleButton>
+          </ToggleButtonGroup>
         </div>
       </div>
 
@@ -304,13 +303,13 @@ export function RaceEffectGraph({
         <div className="mb-3 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-800/50 p-3 text-xs text-zinc-600 dark:text-zinc-300">
           <div className="flex items-center justify-between font-semibold text-zinc-900 dark:text-zinc-100">
             <span>Simulation Model Parameters</span>
-            <button
-              type="button"
-              onClick={() => setShowPhysicsInfo(false)}
+            <AppButton variant="quiet" iconOnly
+              aria-label="Close physics model details"
+              onPress={() => setShowPhysicsInfo(false)}
               className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 text-sm"
             >
-              ✕
-            </button>
+              <XIcon className="h-4 w-4" />
+            </AppButton>
           </div>
           <p className="mt-1 leading-relaxed text-[11px]">
             {impact?.physicsNote ??

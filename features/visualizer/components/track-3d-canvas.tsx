@@ -1,5 +1,7 @@
 "use client";
 
+import { AppButton } from "@/app/common/ui/controls/app-button";
+
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import type { Course } from "@/lib/skill-engine/types";
@@ -406,14 +408,13 @@ export function Track3DCanvas({
 
       {/* Quick controls: Reset view + Legend pills */}
       <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5 z-10">
-        <button
-          type="button"
-          onClick={handleResetView}
+        <AppButton variant="secondary"
+          onPress={handleResetView}
           className="text-[11px] font-medium px-2 py-1 rounded-md bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/60 backdrop-blur-xs shadow-xs transition-colors cursor-pointer"
-          title="Reset camera zoom and center"
+          aria-label="Reset camera zoom and center"
         >
           Reset View
-        </button>
+        </AppButton>
       </div>
 
       {/* Bottom slope guide legend */}
