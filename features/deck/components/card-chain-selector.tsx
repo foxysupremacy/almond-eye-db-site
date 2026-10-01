@@ -299,7 +299,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
         header={
           <div className="flex shrink-0 items-start justify-between border-b border-zinc-100 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex min-w-0 items-center gap-3">
-              <img src={card.portraitUrl || card.imgUrl} alt="" className="h-11 w-11 shrink-0 rounded-lg border border-zinc-200 bg-zinc-50/70 object-cover dark:border-zinc-700 dark:bg-zinc-800/40" />
+              <img src={card.portraitUrl || card.imgUrl} alt="" className="h-11 w-11 shrink-0 border border-zinc-200 bg-zinc-50/70 object-cover dark:border-zinc-700 dark:bg-zinc-800/40" />
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="rounded border border-amber-400/80 bg-amber-200/90 px-1.5 py-0.5 text-[9px] font-bold uppercase text-amber-950 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">SSR</span>
