@@ -323,54 +323,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
           </div>
         }
       >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <img
-                  src={card.imgUrl}
-                  alt={cardTitle}
-                  className="h-11 w-11 shrink-0 rounded-lg object-contain border border-zinc-200 dark:border-zinc-700 bg-zinc-50/70 dark:bg-zinc-800/40 p-0.5"
-                />
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="rounded bg-amber-200/90 dark:bg-amber-950 px-1.5 py-0.5 text-[9px] font-bold text-amber-950 dark:text-amber-100 border border-amber-400/80 dark:border-amber-700 uppercase">
-                      SSR
-                    </span>
-                    <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-                      Continuous Event Chain
-                    </span>
-                  </div>
-                  <h3 id="chain-modal-title" className="mt-0.5 truncate text-sm font-bold text-zinc-900 dark:text-zinc-100" title={cardTitle}>
-                    {cardTitle}
-                  </h3>
-                  <p className="truncate text-[11px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => resetCardChainChoices(mode, card.id)}
-                  className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-2xs active:scale-[0.98] transition-all ease-out-quart duration-150 cursor-pointer"
-                  title="Reset all choices for this card to recommended defaults"
-                >
-                  Reset
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 active:scale-[0.95] transition-all ease-out-quart duration-150 cursor-pointer"
-                  aria-label="Close dialog"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                    <path d="M4 4l8 8M12 4l-8 8" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            {/* Modal Body - List of Continuous Steps */}
-            <div className="flex-1 divide-y divide-zinc-100 overflow-y-auto overscroll-contain px-4 dark:divide-zinc-800">
+            <div className="divide-y divide-zinc-100 px-4 dark:divide-zinc-800">
               {chainEvents.map((ev) => {
                 const defaultChoice = getDefaultChoiceIndex(ev, (id) => {
                   const sk = cardSkills?.eventSkills.find((s) => s.id === id);
