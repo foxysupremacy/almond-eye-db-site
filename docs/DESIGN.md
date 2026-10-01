@@ -320,13 +320,13 @@ There are currently **no exit animations** (overlays conditionally unmount); add
 
 ### 13.5 Popover Placement & Origin Contract (`SkillHoverCard`)
 
-The desktop skill popover must be positioned relative to its trigger, never covering it:
+The desktop skill inspector stays positioned relative to its active skill trigger without coupling content reflow to a `ResizeObserver` callback:
 
 1. **Horizontal**: beside the trigger — right side preferred (`rect.right + 8`); flip to the left (`rect.left - width - 8`) when it would overflow the viewport's right edge; clamp to 16px from the edge as a last resort.
-2. **Vertical**: centered on the trigger (`rect.top + rect.height / 2 - cardHeight / 2`), clamped to `[16, innerHeight - cardHeight - 16]` so it never gets cut by the top or bottom of the screen.
-3. **Measured height**: use the real rendered height from `popoverRef` (fallback estimate only on first paint); the card is fixed `w-[340px]` but its height varies.
-4. **Re-measure** via `useLayoutEffect` after mount and after async content loads (height changes).
-5. **Origin-aware scale**: `transform-origin` must track the placement side (`${originX} center` — the edge nearest the trigger), so the enter animation scales *from the trigger*, not from the popover's center.
+2. **Vertical**: center on the trigger (`rect.top + rect.height / 2 - panelHeight / 2`), clamped to the visible viewport with 16px padding.
+3. **Measured size**: use the rendered panel's actual bounds and cap its height to the visible viewport; long content scrolls inside the panel.
+4. **Frame-coalesced updates**: observe the trigger and panel, plus scroll and viewport changes, but schedule all reads and writes through one `requestAnimationFrame`. The inspector owns placement, so React Aria `Popover` must use `shouldUpdatePosition={false}` here; do not update layout synchronously from a resize callback.
+5. **Composited placement**: apply coordinates with `translate3d` and only when they change. Keep scale animation on an inner content wrapper so it cannot overwrite the positioned outer popover; its origin follows the side nearest the trigger.
 
 ---
 

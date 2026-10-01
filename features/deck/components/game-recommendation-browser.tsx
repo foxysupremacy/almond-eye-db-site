@@ -160,9 +160,9 @@ export function GameRecommendedBrowser({
         className="mt-2"
       >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 pb-2 dark:border-zinc-800">
-        <TabList className="flex min-h-9 items-center gap-1 rounded-lg bg-zinc-100 p-1 dark:bg-zinc-800/70">
-          <Tab id="skills" className="min-h-11 rounded-md px-2.5 text-xs font-medium text-zinc-500 outline-none transition-colors data-[selected]:bg-white data-[selected]:text-zinc-900 data-[selected]:shadow-2xs data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:data-[selected]:bg-zinc-700 dark:data-[selected]:text-zinc-100">By Skill</Tab>
-          <Tab id="cards" className="min-h-11 rounded-md px-2.5 text-xs font-medium text-zinc-500 outline-none transition-colors data-[selected]:bg-white data-[selected]:text-zinc-900 data-[selected]:shadow-2xs data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:data-[selected]:bg-zinc-700 dark:data-[selected]:text-zinc-100">By Card</Tab>
+        <TabList className="flex min-h-10 items-center gap-1 rounded-xl border border-zinc-200/80 bg-zinc-50 p-1 shadow-inner dark:border-zinc-700/80 dark:bg-zinc-950/50">
+          <Tab id="skills" className="min-h-9 rounded-lg px-3 text-xs font-semibold text-zinc-500 outline-none transition-colors hover:bg-white/70 hover:text-zinc-800 data-[selected]:bg-emerald-500/15 data-[selected]:text-emerald-800 data-[selected]:shadow-xs data-[selected]:ring-1 data-[selected]:ring-inset data-[selected]:ring-emerald-500/25 data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:data-[selected]:bg-emerald-400/15 dark:data-[selected]:text-emerald-300">By Skill</Tab>
+          <Tab id="cards" className="min-h-9 rounded-lg px-3 text-xs font-semibold text-zinc-500 outline-none transition-colors hover:bg-white/70 hover:text-zinc-800 data-[selected]:bg-emerald-500/15 data-[selected]:text-emerald-800 data-[selected]:shadow-xs data-[selected]:ring-1 data-[selected]:ring-inset data-[selected]:ring-emerald-500/25 data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 dark:data-[selected]:bg-emerald-400/15 dark:data-[selected]:text-emerald-300">By Card</Tab>
         </TabList>
         <span className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500">Effect filters apply to both views</span>
       </div>

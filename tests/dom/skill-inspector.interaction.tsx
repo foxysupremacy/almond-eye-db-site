@@ -27,7 +27,8 @@ function finePointer() {
   window.matchMedia = ((query: string) => ({ matches: query.includes("pointer: fine"), media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } })) as typeof window.matchMedia;
 }
 function detail(id: number): SkillDetail {
-  return { id, nameEn: `Loaded skill ${id}`, nameJp: "テストスキル", descEn: "Inspection data", rarity: 1, conditionGroups: [] };
+  const descEn = id === 980006 ? `Long inspection data ${"tactical verdict mechanics ".repeat(80)}` : "Inspection data";
+  return { id, nameEn: `Loaded skill ${id}`, nameJp: "テストスキル", descEn, rarity: 1, conditionGroups: [] };
 }
 function Inspector({ children }: { children: React.ReactNode }) {
   return <SkillInspectorProvider course={null} racerCount={12} runningStyle={null} activePvpEvent={null} raceParams={{}}>{children}</SkillInspectorProvider>;
@@ -73,6 +74,91 @@ describe("skill inspection overlays", () => {
       await act(async () => { await new Promise((resolve) => setTimeout(resolve, 150)); });
       expect(screen.getByRole("dialog", { name: "Skill details" })).toBeTruthy();
     } finally { request.mockRestore(); }
+  });
+
+  test("rapidly hovering different skills reuses the same preview popover", async () => {
+    finePointer();
+    const request = replaceSkillRequest(async (id) => detail(id));
+    try {
+      render(
+        <Inspector>
+          <SkillHoverCard skillId={980005} fallbackSkill={{ nameEn: "First rapid skill" }}>First</SkillHoverCard>
+          <SkillHoverCard skillId={980006} fallbackSkill={{ nameEn: "Second rapid skill" }}>Second</SkillHoverCard>
+        </Inspector>,
+      );
+      const first = screen.getByRole("button", { name: "Inspect First rapid skill" });
+      const second = screen.getByRole("button", { name: "Inspect Second rapid skill" });
+
+      fireEvent.pointerEnter(first, { pointerType: "mouse" });
+      await screen.findByText("Loaded skill 980005");
+      const preview = document.querySelector('[aria-label="Skill details"]');
+      expect(preview).toBeTruthy();
+      await waitFor(() => expect(preview?.getAttribute("data-inspector-placement")).toBe("right"));
+      expect(preview?.className).toContain("[overflow-anchor:none]");
+
+      fireEvent.pointerLeave(first, { pointerType: "mouse" });
+      fireEvent.pointerEnter(second, { pointerType: "mouse" });
+      await screen.findByText("Loaded skill 980006");
+      expect(screen.getByText("Tactical Verdict & Mechanics")).toBeTruthy();
+      expect(screen.getByText(/Long inspection data tactical verdict mechanics/)).toBeTruthy();
+      expect(document.querySelector('[aria-label="Skill details"]')).toBe(preview);
+    } finally { request.mockRestore(); }
+  });
+
+  test("coalesces ResizeObserver bursts into one animation-frame position update", async () => {
+    const originalResizeObserver = window.ResizeObserver;
+    const originalRequestAnimationFrame = window.requestAnimationFrame;
+    const originalCancelAnimationFrame = window.cancelAnimationFrame;
+    const observers: Array<{ fire: () => void }> = [];
+    const frames = new Map<number, FrameRequestCallback>();
+    let frameId = 0;
+    class MockResizeObserver {
+      constructor(callback: ResizeObserverCallback) {
+        observers.push({ fire: () => callback([], this as unknown as ResizeObserver) });
+      }
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+    Object.defineProperty(window, "ResizeObserver", { configurable: true, value: MockResizeObserver });
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      const id = ++frameId;
+      frames.set(id, callback);
+      return id;
+    }) as typeof window.requestAnimationFrame;
+    window.cancelAnimationFrame = ((id: number) => { frames.delete(id); }) as typeof window.cancelAnimationFrame;
+
+    const request = replaceSkillRequest(async () => detail(980007));
+    try {
+      const user = userEvent.setup();
+      render(<Inspector><SkillHoverCard skillId={980007} fallbackSkill={{ nameEn: "Measured skill" }}>Measured</SkillHoverCard></Inspector>);
+      const trigger = screen.getByRole("button", { name: "Inspect Measured skill" });
+      act(() => trigger.focus());
+      await user.keyboard("{Enter}");
+      await screen.findByText("Loaded skill 980007");
+      const popover = document.querySelector<HTMLElement>('[aria-label="Skill details"]');
+      expect(popover).toBeTruthy();
+
+      act(() => {
+        const initialFrames = [...frames.values()];
+        frames.clear();
+        initialFrames.forEach((callback) => callback(performance.now()));
+      });
+      frames.clear();
+      for (let i = 0; i < 12; i++) observers.forEach((observer) => observer.fire());
+      expect(frames.size).toBe(1);
+      act(() => {
+        const pending = [...frames.values()];
+        frames.clear();
+        pending.forEach((callback) => callback(performance.now()));
+      });
+      expect(popover?.style.transform).toMatch(/^translate3d\(/);
+    } finally {
+      request.mockRestore();
+      window.ResizeObserver = originalResizeObserver;
+      window.requestAnimationFrame = originalRequestAnimationFrame;
+      window.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
   });
 
   test("singleton inspector dismisses before its parent dialog", async () => {

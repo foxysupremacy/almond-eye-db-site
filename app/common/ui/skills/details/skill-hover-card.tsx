@@ -2,9 +2,9 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useId } from "react";
 import { useButton } from "react-aria/useButton";
+import { Popover } from "react-aria-components/Popover";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
-import { AppPopover } from "@/app/common/ui/controls/app-popover";
 import { api, type SkillDetail } from "@/lib/api";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
 import { isSkillBanned } from "@/lib/pvp/events";
@@ -15,6 +15,7 @@ import type { RunningStyle } from "@/lib/deck/types";
 import type { VisualizerSkillOrigin } from "@/lib/visualizer/skills";
 import { XIcon } from "@/app/common/ui/primitives/icons";
 import { SkillDetailPanel } from "@/app/common/ui/skills/details/skill-detail-panel";
+import { useSkillInspectorPosition } from "@/app/common/ui/skills/details/skill-inspector-position";
 import type { Course } from "@/lib/skill-engine/types";
 import type { PvpEvent } from "@/lib/pvp/events";
 
@@ -39,6 +40,7 @@ interface SkillInspectorContextValue {
   preview: (target: Omit<SkillInspectorTarget, "mode">) => void;
   togglePinned: (target: Omit<SkillInspectorTarget, "mode">) => void;
   closePreview: (key: string) => void;
+  cancelPreviewClose: () => void;
   close: (key?: string) => void;
 }
 
@@ -47,6 +49,49 @@ const skillDetailCache = new Map<number, SkillDetail>();
 
 function useSkillInspector() {
   return useContext(SkillInspectorContext);
+}
+
+function DesktopSkillInspectorPopover({
+  active,
+  onOpenChange,
+  children,
+}: {
+  active: SkillInspectorTarget;
+  onOpenChange: (open: boolean) => void;
+  children: React.ReactNode;
+}) {
+  const triggerRef = useMemo(() => ({ current: active.anchor }), [active.anchor]);
+  const [popoverElement, setPopoverElement] = useState<HTMLElement | null>(null);
+  const { positioned, side } = useSkillInspectorPosition(active.anchor, popoverElement);
+
+  return (
+    <Popover
+      ref={setPopoverElement}
+      triggerRef={triggerRef}
+      isOpen
+      onOpenChange={onOpenChange}
+      shouldUpdatePosition={false}
+      shouldSkipAnimation
+      isNonModal={active.mode === "preview"}
+      aria-label="Skill details"
+      aria-hidden={active.mode === "preview" || undefined}
+      inert={active.mode === "preview" || undefined}
+      data-inspector-placement={side}
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        maxHeight: "calc(100dvh - 32px)",
+        "--trigger-width": "0px",
+      } as React.CSSProperties}
+      className={`outline-none z-[400] w-[420px] max-w-[calc(100vw-32px)] overflow-y-auto overscroll-contain [overflow-anchor:none] text-left ${positioned ? "visible" : "invisible"} ${active.mode === "preview" ? "pointer-events-none" : "pointer-events-auto"}`}
+    >
+      <div className="skill-inspector-content animate-in fade-in zoom-in-95 duration-200 ease-out-expo" style={{ transformOrigin: side === "right" ? "left center" : "right center" }}>
+        {active.mode === "pinned" && <AppButton variant="quiet" iconOnly onPress={() => onOpenChange(false)} aria-label="Close skill details" className="absolute right-3 top-3 z-10"><XIcon className="h-4 w-4" /></AppButton>}
+        {children}
+      </div>
+    </Popover>
+  );
 }
 
 export interface SkillInspectorContext {
@@ -62,8 +107,13 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   const [detail, setDetail] = useState<SkillDetail | null>(null);
   const [loading, setLoading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const anchorRef = useMemo(() => ({ current: active?.anchor ?? null }), [active?.anchor]);
+  const previewCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deckRaceParams = raceParams;
+
+  const cancelPreviewClose = useCallback(() => {
+    if (previewCloseTimer.current) clearTimeout(previewCloseTimer.current);
+    previewCloseTimer.current = null;
+  }, []);
 
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 768);
@@ -73,21 +123,29 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   }, []);
 
   const close = useCallback((key?: string) => {
+    cancelPreviewClose();
     setActive((current) => {
       if (!current || (key && current.key !== key)) return current;
       return null;
     });
-  }, []);
+  }, [cancelPreviewClose]);
   const preview = useCallback((target: Omit<SkillInspectorTarget, "mode">) => {
+    cancelPreviewClose();
     if (window.innerWidth < 768) return;
     setActive((current) => current?.key === target.key && current.mode === "pinned" ? current : { ...target, mode: "preview" });
-  }, []);
+  }, [cancelPreviewClose]);
   const togglePinned = useCallback((target: Omit<SkillInspectorTarget, "mode">) => {
+    cancelPreviewClose();
     setActive((current) => current?.key === target.key && current.mode === "pinned" ? null : { ...target, mode: "pinned" });
-  }, []);
+  }, [cancelPreviewClose]);
   const closePreview = useCallback((key: string) => {
-    setActive((current) => current?.key === key && current.mode === "preview" ? null : current);
-  }, []);
+    cancelPreviewClose();
+    previewCloseTimer.current = setTimeout(() => {
+      previewCloseTimer.current = null;
+      setActive((current) => current?.key === key && current.mode === "preview" ? null : current);
+    }, 120);
+  }, [cancelPreviewClose]);
+  useEffect(() => cancelPreviewClose, [cancelPreviewClose]);
 
   useEffect(() => {
     if (!active) {
@@ -129,7 +187,7 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), zones ?? [], effectiveRaceParams);
   }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, zones, effectiveRaceParams]);
 
-  const value = useMemo<SkillInspectorContextValue>(() => ({ activeKey: active?.key ?? null, preview, togglePinned, closePreview, close }), [active?.key, preview, togglePinned, closePreview, close]);
+  const value = useMemo<SkillInspectorContextValue>(() => ({ activeKey: active?.key ?? null, preview, togglePinned, closePreview, cancelPreviewClose, close }), [active?.key, preview, togglePinned, closePreview, cancelPreviewClose, close]);
   const inspector = (cardName?: string, cardId?: number | null) => (
     <SkillDetailPanel
       skillDetail={detail}
@@ -162,21 +220,9 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
         <div className="p-3 pb-[max(2.5rem,env(safe-area-inset-bottom))]">{inspector(active.cardName, active.cardId)}</div>
       </AppDialog>
     ) : (
-      <AppPopover
-        key={`${active.key}:${active.mode}`}
-        triggerRef={anchorRef}
-        isOpen
-        onOpenChange={dismiss}
-        isNonModal={active.mode === "preview"}
-        aria-label="Skill details"
-        aria-hidden={active.mode === "preview" || undefined}
-        inert={active.mode === "preview" || undefined}
-        style={{ transformOrigin: "var(--trigger-anchor-point)" }}
-        className={`relative w-[420px] max-w-[calc(100vw-32px)] max-h-[85vh] overflow-y-auto text-left data-[entering]:animate-in data-[entering]:fade-in data-[entering]:zoom-in-95 data-[entering]:duration-200 data-[entering]:ease-out-expo ${active.mode === "preview" ? "pointer-events-none" : "pointer-events-auto"}`}
-      >
-        {active.mode === "pinned" && <AppButton variant="quiet" iconOnly onPress={() => close()} aria-label="Close skill details" className="absolute right-3 top-3 z-10"><XIcon className="h-4 w-4" /></AppButton>}
+      <DesktopSkillInspectorPopover active={active} onOpenChange={dismiss}>
         {inspector(active.cardName, active.cardId)}
-      </AppPopover>
+      </DesktopSkillInspectorPopover>
     )
   );
 
@@ -204,12 +250,9 @@ export function SkillHoverCard({ skillId, fallbackSkill, cardName, cardId, origi
   const triggerRef = useRef<HTMLSpanElement>(null);
   const triggerKey = useId();
   const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clearTimers = useCallback(() => {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
-    if (leaveTimer.current) clearTimeout(leaveTimer.current);
     hoverTimer.current = null;
-    leaveTimer.current = null;
   }, []);
   useEffect(() => clearTimers, [clearTimers]);
   const target = useCallback(() => triggerRef.current ? ({ key: triggerKey, skillId, anchor: triggerRef.current, fallbackSkill, cardName, cardId, origins, isParentMode, runningStyle, raceParams }) : null, [triggerKey, skillId, fallbackSkill, cardName, cardId, origins, isParentMode, runningStyle, raceParams]);
@@ -228,13 +271,14 @@ export function SkillHoverCard({ skillId, fallbackSkill, cardName, cardId, origi
     <span {...(interactiveChild ? { onClick: (event: React.MouseEvent) => { event.stopPropagation(); clearTimers(); togglePinned(); } } : buttonProps)} ref={triggerRef}
       onPointerEnter={(event) => {
         if (!inspector || event.pointerType !== "mouse" || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+        inspector.cancelPreviewClose();
         clearTimers();
         hoverTimer.current = setTimeout(preview, 350);
       }}
       onPointerLeave={() => {
         if (!inspector) return;
         if (hoverTimer.current) clearTimeout(hoverTimer.current);
-        leaveTimer.current = setTimeout(() => inspector.closePreview(triggerKey), 120);
+        inspector.closePreview(triggerKey);
       }}
       className={`inline-block cursor-pointer rounded-sm focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-emerald-600 ${className}`}
     >{children}</span>

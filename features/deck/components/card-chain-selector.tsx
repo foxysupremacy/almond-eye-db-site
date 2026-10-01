@@ -178,8 +178,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
     <>
       <div className="flex flex-col gap-2">
         {/* Top 2 Skills from Selected Chain (or fallback for non-chain) */}
-        {displayedSkills.length > 0 && (
-          <div className="flex flex-col gap-1.5">
+        <div className="flex min-h-[58px] flex-col gap-1.5">
             {displayedSkills.map((item) => (
               <SkillHoverCard
                 key={item.key}
@@ -228,8 +227,7 @@ export default function CardChainSelector({ card, mode }: CardChainSelectorProps
                 </div>
               </SkillHoverCard>
             ))}
-          </div>
-        )}
+        </div>
 
         {/* Previous Chain Path Button */}
         {chainEvents.length > 0 ? (

@@ -29,12 +29,12 @@ export function SupportCardItem({
           ? lb === 4
             ? "border-amber-500/50 shadow-xs ring-1 ring-amber-500/20 hover:border-amber-500 hover:shadow-md"
             : "border-zinc-200 dark:border-zinc-800 shadow-2xs hover:border-zinc-300 dark:hover:border-zinc-700 hover:shadow-md"
-          : "border-dashed border-zinc-200 dark:border-zinc-800/80 grayscale opacity-60 hover:grayscale-0 hover:opacity-100 hover:border-emerald-500/50 hover:shadow-md"
+        : "border-zinc-200 dark:border-zinc-800 shadow-2xs hover:border-emerald-500/50 hover:shadow-md"
       }`}
     >
       <div>
         {/* Card Art / Portrait (1:1 with overflow hidden) */}
-        <div className="relative aspect-square w-full mb-2 overflow-hidden rounded-xl bg-zinc-50 dark:bg-zinc-800/50">
+        <div className="relative mb-2 aspect-square w-full overflow-hidden bg-zinc-50 dark:bg-zinc-800/50">
           <img
             src={card.portraitUrl}
             alt={card.nameEn || card.nameJp}
@@ -47,42 +47,26 @@ export function SupportCardItem({
             }}
           />
 
-          {/* Rarity & Type Badge */}
-          <div className="absolute top-1.5 left-1.5 flex items-center gap-1">
-            <span
-              className={`px-1.5 py-0.2 text-[10px] font-black rounded ${
-                card.rarity === 3
-                  ? "bg-amber-400 text-amber-950"
-                  : card.rarity === 2
-                    ? "bg-sky-400 text-sky-950"
-                    : "bg-zinc-300 text-zinc-800"
-              }`}
-            >
-              {card.rarity === 3 ? "SSR" : card.rarity === 2 ? "SR" : "R"}
-            </span>
-            <span className="p-0.5 rounded bg-black/60 backdrop-blur-xs">
-              <CardTypeIcon type={card.type} className="h-3.5 w-3.5 text-white" />
-            </span>
-          </div>
+          {/* Type marker sits flush at the artwork's top-right corner without a badge. */}
+          <CardTypeIcon
+            type={card.type}
+            className="absolute right-0 top-0 h-6 w-6 object-contain drop-shadow-md"
+          />
 
-          {/* Ownership / LB Status Badge (Strict adherence to DESIGN.md section 4) */}
-          <div className="absolute top-1.5 right-1.5">
-            {isOwned ? (
+          {/* Keep limit-break information for owned cards; omit the unowned state. */}
+          {isOwned && (
+            <div className="absolute left-2 top-2">
               <span
-                className={`px-2 py-0.5 rounded text-[10px] font-bold shadow-xs inline-flex items-center justify-center ${
+                className={`inline-flex items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold shadow-xs ${
                   lb === 4
                     ? "bg-amber-500 text-black border border-amber-300 font-black"
                     : "bg-sky-500/90 text-white font-bold"
                 }`}
               >
-                {lb !== undefined ? LB_LABELS[lb] : "Unowned"}
+                {lb !== undefined ? LB_LABELS[lb] : null}
               </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded text-[9px] font-medium bg-black/60 text-zinc-400 backdrop-blur-xs">
-                Unowned
-              </span>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Card Title & Character Name */}
@@ -95,12 +79,9 @@ export function SupportCardItem({
       </div>
 
       {/* Bottom Inspection Indicator */}
-      <div className="mt-1 pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-[11px] text-zinc-400 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-        <span className="text-[10px] font-medium">
-          {isOwned && lb !== undefined ? LB_LABELS[lb] : "Tap to inspect"}
-        </span>
-        <span className="text-xs font-bold opacity-70 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
-          Skills & Stats ↗
+      <div className="mt-1 flex min-h-8 items-center border-t border-zinc-100 pt-2 text-[10px] font-semibold text-zinc-400 transition-colors group-hover:text-emerald-600 dark:border-zinc-800/80 dark:group-hover:text-emerald-400">
+        <span className="truncate">
+          {isOwned && lb !== undefined ? `${LB_LABELS[lb]} · ` : "Inspect · "}Skills & Stats ↗
         </span>
       </div>
     </Button>
