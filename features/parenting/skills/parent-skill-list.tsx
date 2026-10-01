@@ -270,7 +270,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       </div>
       <MobileFilters count={Number(sourceFilter !== "all") + Number(filter !== "all")} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
       {/* Header & Controls */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
