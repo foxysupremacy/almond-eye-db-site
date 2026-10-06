@@ -86,6 +86,24 @@ body {
   background-image: linear-gradient(to right, rgb(92 34 54 / 0.34), rgb(130 44 99 / 0.34));
 }
 
+.parenting-aptitude-cell {
+  container-type: inline-size;
+}
+
+.parenting-aptitude-label-compact {
+  display: none;
+}
+
+@container (max-width: 3.5rem) {
+  .parenting-aptitude-label-has-compact {
+    display: none;
+  }
+
+  .parenting-aptitude-label-compact {
+    display: inline;
+  }
+}
+
 /* Skill rows keep the title and status badges on one desktop line while
    moving the complete badge cluster below the description on small screens. */
 .skill-item-layout {

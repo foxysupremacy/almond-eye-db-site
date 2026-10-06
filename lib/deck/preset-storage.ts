@@ -9,7 +9,7 @@ import {
   VISUALIZER_SAVE_KEY,
 } from "./constants";
 import { cleanChoices } from "./event-choices";
-import { DEFAULT_PARENTING_SETUP, type ParentingSetup } from "../parenting/state";
+import { DEFAULT_PARENTING_SETUP, normalizeParentingSetup, type ParentingSetup } from "../parenting/state";
 
 export function createDefaultPreset(id: string, name: string): DeckPreset {
   return {
@@ -78,18 +78,7 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
       mainChainChoices: cleanChoices(p.mainChainChoices),
       parentChainChoices: cleanChoices(p.parentChainChoices),
       parentingSetup: p.parentingSetup
-        ? {
-            targetCharaId: p.parentingSetup.targetCharaId ?? null,
-            targetCharaCardId: p.parentingSetup.targetCharaCardId ?? null,
-            parent1: p.parentingSetup.parent1 ?? null,
-            parent2: p.parentingSetup.parent2 ?? null,
-            p1IsBorrow: p.parentingSetup.p1IsBorrow ?? false,
-            p2IsBorrow: p.parentingSetup.p2IsBorrow ?? true,
-            gpOverrides: p.parentingSetup.gpOverrides ?? {},
-            supportCardIds: Array.isArray(p.parentingSetup.supportCardIds)
-              ? p.parentingSetup.supportCardIds
-              : [null, null, null, null, null, null],
-          }
+        ? normalizeParentingSetup(p.parentingSetup)
         : idx === 0 && legacyParenting
         ? {
             targetCharaId: legacyParenting.targetCharaId ?? null,

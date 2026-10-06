@@ -6,11 +6,12 @@
 // - GameTora-style compatibility lists: best legacies + per-branch sub-legacies,
 //   ranked by affinity and filtered by unique-skill track/style suitability.
 
-import { useState, useEffect, useMemo, useTransition } from "react";
+import { useState, useEffect, useMemo, useTransition, useRef } from "react";
 import { api, type CharacterIndexEntry } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
 import {
   serializeParentingToHash,
+  deserializeParentingFromHash,
   getRunBorrowState,
   type GrandparentSlot,
   type PickerSlotKey,
@@ -24,12 +25,9 @@ import {
 } from "@/lib/lineage/affinity-engine";
 import {
   calculateLineageStatBonuses,
-  extractSlotPrimaryFactors,
-  type SlotPrimaryFactors,
 } from "@/lib/lineage/factor-decoder";
 import {
   candidateToVeteran,
-  evaluateAptitudePatch,
   type LegacyCandidate,
   type SlotRecommendations,
 } from "@/lib/parenting";
@@ -39,12 +37,13 @@ import InheritedSkillsModal from "@/features/parenting/components/inherited-skil
 import type { ParticipantSlot } from "@/lib/parenting/types";
 import { LineageAffinityHeader } from "@/features/parenting/components/lineage-affinity-header";
 import { TraineeSpotlight } from "@/features/parenting/components/trainee-spotlight";
-import { PedigreeSlotCard } from "@/features/parenting/components/pedigree-slot-card";
 import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { CheckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
+import { ParentingLoopOptimizer } from "./loop-optimizer";
+import { LOOP_ANCESTOR_SLOTS, type LoopAncestorSlot } from "@/lib/parenting/loop-planner";
 
 export interface ParentingViewProps {
   onNavigateToParentDeck?: () => void;
@@ -62,12 +61,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
   const {
     setup,
+    loaded: setupLoaded,
     setTargetChara,
     setParent1,
     setParent2,
     setP1IsBorrow,
     setP2IsBorrow,
     setGpOverride,
+    updateSetup,
     resetParenting,
   } = useParentingSetup();
 
@@ -83,6 +84,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   const [pickerRecommendationsError, setPickerRecommendationsError] = useState<string | null>(null);
   const [isInheritedSkillsOpen, setIsInheritedSkillsOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const restoredShareRef = useRef<string | null>(null);
   const [, startTransition] = useTransition();
 
   const loadData = async () => {
@@ -111,6 +113,22 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       window.removeEventListener("almondeye_veterans_updated", handleUpdate);
     };
   }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!setupLoaded || loading || !hash.startsWith("#parenting=") || restoredShareRef.current === hash) return;
+    restoredShareRef.current = hash;
+    let cancelled = false;
+    void deserializeParentingFromHash(hash, veterans).then((restored) => {
+      if (cancelled) return;
+      updateSetup(() => restored);
+      window.history.replaceState(window.history.state, "", `${window.location.pathname}${window.location.search}#parenting`);
+    }).catch((error) => {
+      console.error("Could not restore Parenting share link:", error);
+      restoredShareRef.current = null;
+    });
+    return () => { cancelled = true; };
+  }, [setupLoaded, loading, veterans, updateSetup]);
 
   const charaMap = useMemo(() => {
     return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
@@ -165,32 +183,6 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     ]);
   }, [setup.parent1, p1_gp1, p1_gp2, setup.parent2, p2_gp1, p2_gp2]);
 
-  // Primary factors for the 6 bloodline slots
-  const p1Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(setup.parent1?.factor_info_array),
-    [setup.parent1]
-  );
-  const p1Gp1Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(p1_gp1?.factor_info_array),
-    [p1_gp1]
-  );
-  const p1Gp2Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(p1_gp2?.factor_info_array),
-    [p1_gp2]
-  );
-  const p2Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(setup.parent2?.factor_info_array),
-    [setup.parent2]
-  );
-  const p2Gp1Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(p2_gp1?.factor_info_array),
-    [p2_gp1]
-  );
-  const p2Gp2Factors: SlotPrimaryFactors = useMemo(
-    () => extractSlotPrimaryFactors(p2_gp2?.factor_info_array),
-    [p2_gp2]
-  );
-
   // Participants list for Inherited Skills modal
   const participantsList: ParticipantSlot[] = useMemo(() => {
     return buildParticipantsList(
@@ -220,18 +212,34 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       }`
     : null;
 
+  const selectedAncestorForPicker = (slot: string): KyumaruVeteranItem | null => {
+    if (slot === "p1") return setup.parent1;
+    if (slot === "p2") return setup.parent2;
+    if (slot === "p1_gp1") return p1_gp1 as unknown as KyumaruVeteranItem | null;
+    if (slot === "p1_gp2") return p1_gp2 as unknown as KyumaruVeteranItem | null;
+    if (slot === "p2_gp1") return p2_gp1 as unknown as KyumaruVeteranItem | null;
+    if (slot === "p2_gp2") return p2_gp2 as unknown as KyumaruVeteranItem | null;
+    const selectedKey = setup.loopConfig?.selectedSlots[slot as LoopAncestorSlot];
+    if (!selectedKey) return null;
+    const [source, identityText] = selectedKey.split(":");
+    const identity = Number(identityText);
+    const veteran = source === "v"
+      ? veterans.find((entry) => entry.trained_chara_id === identity || entry.card_id === identity)
+      : null;
+    if (veteran) return veteran;
+    const character = charaMap.get(identity);
+    return character ? { card_id: character.id, trained_chara_id: character.id, name: character.nameEn } as KyumaruVeteranItem : null;
+  };
+
   // Per-slot recommendations for the picker's "Recommended" tab.
   // Parent slots score by trainee affinity; GP slots add affinity with the branch parent.
   const pickerRequest = useMemo(() => {
     if (!activePickerSlot || !setup.targetCharaId) return null;
 
-    const branchPrefix = activePickerSlot.startsWith("p1_gp")
-      ? "p1"
-      : activePickerSlot.startsWith("p2_gp")
-      ? "p2"
-      : null;
-    const branchParent =
-      branchPrefix === "p1" ? setup.parent1 : branchPrefix === "p2" ? setup.parent2 : null;
+    const branchPrefix = activePickerSlot.startsWith("p1") ? "p1" : activePickerSlot.startsWith("p2") ? "p2" : null;
+    const isDescendant = activePickerSlot.split("_").length > 2;
+    const parentSlot = activePickerSlot.slice(0, activePickerSlot.lastIndexOf("_"));
+    const branchParent = isDescendant ? selectedAncestorForPicker(parentSlot) : branchPrefix === "p1" ? setup.parent1 : branchPrefix === "p2" ? setup.parent2 : null;
 
     const excludedCharIds: number[] = [];
     if (activePickerSlot === "p1" && setup.parent2) {
@@ -241,15 +249,11 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     } else if (branchPrefix) {
       if (setup.parent1) excludedCharIds.push(getCharaIdFromCardId(setup.parent1.card_id));
       if (setup.parent2) excludedCharIds.push(getCharaIdFromCardId(setup.parent2.card_id));
-      const siblingKey = activePickerSlot.endsWith("gp1") ? "gp2" : "gp1";
-      const sibling =
-        branchPrefix === "p1"
-          ? siblingKey === "gp1"
-            ? p1_gp1
-            : p1_gp2
-          : siblingKey === "gp1"
-          ? p2_gp1
-          : p2_gp2;
+      const finalSegment = activePickerSlot.slice(activePickerSlot.lastIndexOf("_") + 1);
+      const siblingKey = isDescendant
+        ? `${parentSlot}_${finalSegment === "g1" ? "g2" : "g1"}`
+        : `${branchPrefix}_${finalSegment === "gp1" ? "gp2" : "gp1"}`;
+      const sibling = selectedAncestorForPicker(siblingKey);
       if (sibling) excludedCharIds.push(getCharaIdFromCardId(sibling.card_id));
     }
 
@@ -270,6 +274,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     setup.p1IsBorrow,
     setup.p2IsBorrow,
     setup.supportCardIds,
+    setup.loopConfig?.selectedSlots,
     p1_gp1,
     p1_gp2,
     p2_gp1,
@@ -277,6 +282,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     course,
     runningStyle,
     veterans,
+    charaMap,
   ]);
 
   useEffect(() => {
@@ -307,11 +313,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       } else {
         const runBorrow = getRunBorrowState(setup, activePickerSlot);
         const branchParent = pickerRequest.branchParent;
+        const generationLabel = activePickerSlot.split("_").length <= 2
+          ? "Grandparent"
+          : activePickerSlot.split("_").length === 3 ? "Great-grandparent" : "Great-great-grandparent";
         const branchName = branchParent
           ? charaMap.get(branchParent.card_id)?.nameEn ?? branchParent.name ?? null
           : null;
         const contextNote = branchName
-          ? `Grandparent slot — ranked by affinity with the trainee + ${branchName}${courseLabel ? ` · ${courseLabel}` : ""}`
+          ? `${generationLabel} slot — ranked by affinity with the trainee + ${branchName}${courseLabel ? ` · ${courseLabel}` : ""}`
           : `Parent slot — ranked by affinity with ${targetChara?.nameEn ?? "trainee"}${courseLabel ? ` · ${courseLabel}` : ""}`;
         setPickerRecommendations({
           ...recommendations,
@@ -349,16 +358,51 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     if (!activePickerSlot) return null;
     if (activePickerSlot === "p1") return setup.parent2;
     if (activePickerSlot === "p2") return setup.parent1;
-    if (activePickerSlot.startsWith("p1_gp")) return setup.parent1;
-    if (activePickerSlot.startsWith("p2_gp")) return setup.parent2;
-    return null;
-  }, [activePickerSlot, setup.parent1, setup.parent2]);
+    return selectedAncestorForPicker(activePickerSlot.slice(0, activePickerSlot.lastIndexOf("_")));
+  }, [activePickerSlot, setup.parent1, setup.parent2, setup.loopConfig?.selectedSlots, veterans, charaMap, p1_gp1, p1_gp2, p2_gp1, p2_gp2]);
+
+  const loopKeyForCandidate = (candidate: LegacyCandidate) => candidate.isVeteran
+    ? `v:${candidate.veteran?.trained_chara_id ?? candidate.cardId}:${candidate.veteran?.create_time ?? ""}`
+    : `${candidate.isUntrained ? "r" : "b"}:${candidate.cardId}`;
+  const selectLoopSlot = (slot: LoopAncestorSlot, candidateKey: string, factors?: { factor_id: number }[]) => updateSetup((prev) => {
+    const factorGoals = { ...(prev.loopConfig?.factorGoals ?? {}) };
+    const selectedSlots = { ...(prev.loopConfig?.selectedSlots ?? {}) };
+    const lockedSlots = { ...(prev.loopConfig?.lockedSlots ?? {}) };
+    if (selectedSlots[slot] && selectedSlots[slot] !== candidateKey) {
+      for (const descendant of LOOP_ANCESTOR_SLOTS.filter((key) => key.startsWith(`${slot}_`))) {
+        delete selectedSlots[descendant];
+        delete lockedSlots[descendant];
+        if (descendant.split("_").length < 4) delete factorGoals[descendant];
+      }
+    }
+    if (factors) {
+      const blueId = factors.find(({ factor_id }) => factor_id >= 101 && factor_id <= 503)?.factor_id;
+      const pinkId = factors.find(({ factor_id }) => factor_id >= 1101 && factor_id <= 3403)?.factor_id;
+      const pinkCode = pinkId == null ? 0 : Math.floor(pinkId / 100);
+      const pink = ({ 11: "Turf", 12: "Dirt", 21: "Sprint", 22: "Mile", 23: "Medium", 24: "Long", 31: "Runner", 32: "Leader", 33: "Betweener", 34: "Chaser" } as const)[pinkCode as 11 | 12 | 21 | 22 | 23 | 24 | 31 | 32 | 33 | 34] ?? null;
+      factorGoals[slot] = { blue: blueId == null ? null : Math.floor(blueId / 100), blueStars: blueId == null ? 0 : blueId % 10, pink, pinkStars: pinkId == null ? 0 : pinkId % 10 };
+    } else delete factorGoals[slot];
+    return {
+      ...prev,
+      loopConfig: {
+        ...prev.loopConfig,
+        geneGoals: prev.loopConfig?.geneGoals ?? {},
+        factorGoals,
+        selectedSlots: { ...selectedSlots, [slot]: candidateKey },
+        lockedSlots: { ...lockedSlots, [slot]: candidateKey },
+        aptitudeGoals: prev.loopConfig?.aptitudeGoals ?? {},
+        includeTripleCrownAffinity: prev.loopConfig?.includeTripleCrownAffinity ?? false,
+        includeTiaraAffinity: prev.loopConfig?.includeTiaraAffinity ?? false,
+      },
+    };
+  });
 
   const handleSelectCandidate = (candidate: LegacyCandidate) => {
     if (!activePickerSlot) return;
     // Untrained picks are owned Umas — they never consume the run's borrow.
     const isBorrow = !candidate.isVeteran && !candidate.isUntrained;
     const vet = candidateToVeteran(candidate);
+    selectLoopSlot(activePickerSlot, loopKeyForCandidate(candidate), candidate.isVeteran ? vet.factor_info_array : undefined);
 
     if (activePickerSlot === "p1") {
       setParent1(vet);
@@ -386,11 +430,12 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   };
 
   const handlePickerSelect = (vet: KyumaruVeteranItem) => {
+    selectLoopSlot(activePickerSlot!, `v:${vet.trained_chara_id ?? vet.card_id}:${vet.create_time ?? ""}`, vet.factor_info_array);
     if (activePickerSlot === "p1") {
       setParent1(vet);
     } else if (activePickerSlot === "p2") {
       setParent2(vet);
-    } else if (activePickerSlot) {
+    } else if (activePickerSlot === "p1_gp1" || activePickerSlot === "p1_gp2" || activePickerSlot === "p2_gp1" || activePickerSlot === "p2_gp2") {
       setGpOverride(activePickerSlot, {
         card_id: vet.card_id,
         name: vet.name ?? undefined,
@@ -406,6 +451,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
   const handlePickerTemplate = (chara: CharacterIndexEntry) => {
     const stub: KyumaruVeteranItem = createCharacterVeteranTemplate(chara);
+    selectLoopSlot(activePickerSlot!, `b:${chara.id}`);
 
     if (activePickerSlot === "p1") {
       setParent1(stub);
@@ -413,7 +459,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     } else if (activePickerSlot === "p2") {
       setParent2(stub);
       setP2IsBorrow(true);
-    } else if (activePickerSlot) {
+    } else if (activePickerSlot === "p1_gp1" || activePickerSlot === "p1_gp2" || activePickerSlot === "p2_gp1" || activePickerSlot === "p2_gp2") {
       setGpOverride(activePickerSlot, {
         card_id: chara.id,
         name: chara.nameEn,
@@ -424,13 +470,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     }
   };
 
-  const getSlotAptitudeWarning = (cardId?: number | null): string | undefined => {
-    if (!cardId || !course) return undefined;
-    const patch = evaluateAptitudePatch(cardId, course);
-    return patch.requiresPatch ? patch.warningMessage : undefined;
-  };
-
-  const openPicker = (slot: PickerSlotKey) => {
+  const openPicker = (slot: LoopAncestorSlot) => {
     setPickerRecommendations(null);
     setPickerRecommendationsError(null);
     setPickerRecommendationsLoading(Boolean(setup.targetCharaId));
@@ -484,136 +524,20 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         </div>
       </div>
 
-      {/* 1. TRAINEE STAGE + AFFINITY HEADER */}
-      <div className="relative rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/75 dark:bg-zinc-900/75 p-4 sm:p-6 shadow-sm overflow-hidden backdrop-blur-md">
-        <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        <LineageAffinityHeader
-          affinityBreakdown={affinityBreakdown}
-          onOpenInheritedSkills={() => setIsInheritedSkillsOpen(true)}
-        />
-
-        <TraineeSpotlight
-          targetChara={targetChara}
-          statBonuses={statBonuses}
-          onSelectTrainee={() => setIsTraineeModalOpen(true)}
-        />
-      </div>
-
-      {/* 2. PEDIGREE SLOTS (Parents + Auto-resolved Grandparents) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-6">
-        {/* Parent 1 branch */}
-        <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
-              Legacy 1
-            </span>
-            {setup.parent1 && (
-              <AppButton
-                variant="quiet"
-                aria-pressed={setup.p1IsBorrow}
-                onPress={() => setP1IsBorrow(!setup.p1IsBorrow)}
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-emerald-600 cursor-pointer transition-colors"
-              >
-                {setup.p1IsBorrow ? "Borrow" : "Your Uma"}
-              </AppButton>
-            )}
-          </div>
-          <div className="flex min-w-0 items-start justify-center gap-2">
-            <PedigreeSlotCard
-              slotLabel="P1"
-              isParentSlot
-              cardId={setup.parent1?.card_id}
-              name={
-                (setup.parent1 && charaMap.get(setup.parent1.card_id)?.nameEn) ||
-                setup.parent1?.name ||
-                "Select"
-              }
-              rank={setup.parent1?.rank}
-              factors={p1Factors}
-              isBorrow={setup.parent1 ? setup.p1IsBorrow : undefined}
-              aptitudeWarning={getSlotAptitudeWarning(setup.parent1?.card_id)}
-              onClick={() => openPicker("p1")}
-            />
-            <div className="flex min-w-0 gap-1.5">
-              <PedigreeSlotCard
-                slotLabel="GP"
-                cardId={p1_gp1?.card_id}
-                name={(p1_gp1 && charaMap.get(p1_gp1.card_id)?.nameEn) || p1_gp1?.name || "GP 1"}
-                rank={p1_gp1?.rank}
-                factors={p1Gp1Factors}
-                isBorrow={p1_gp1?.isBorrow}
-                onClick={() => openPicker("p1_gp1")}
-              />
-              <PedigreeSlotCard
-                slotLabel="GP"
-                cardId={p1_gp2?.card_id}
-                name={(p1_gp2 && charaMap.get(p1_gp2.card_id)?.nameEn) || p1_gp2?.name || "GP 2"}
-                rank={p1_gp2?.rank}
-                factors={p1Gp2Factors}
-                isBorrow={p1_gp2?.isBorrow}
-                onClick={() => openPicker("p1_gp2")}
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Parent 2 branch */}
-        <div className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
-              Legacy 2
-            </span>
-            {setup.parent2 && (
-              <AppButton
-                variant="quiet"
-                aria-pressed={setup.p2IsBorrow}
-                onPress={() => setP2IsBorrow(!setup.p2IsBorrow)}
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:text-emerald-600 cursor-pointer transition-colors"
-              >
-                {setup.p2IsBorrow ? "Borrow" : "Your Uma"}
-              </AppButton>
-            )}
-          </div>
-          <div className="flex min-w-0 items-start justify-center gap-2">
-            <PedigreeSlotCard
-              slotLabel="P2"
-              isParentSlot
-              cardId={setup.parent2?.card_id}
-              name={
-                (setup.parent2 && charaMap.get(setup.parent2.card_id)?.nameEn) ||
-                setup.parent2?.name ||
-                "Select"
-              }
-              rank={setup.parent2?.rank}
-              factors={p2Factors}
-              isBorrow={setup.parent2 ? setup.p2IsBorrow : undefined}
-              aptitudeWarning={getSlotAptitudeWarning(setup.parent2?.card_id)}
-              onClick={() => openPicker("p2")}
-            />
-            <div className="flex min-w-0 gap-1.5">
-              <PedigreeSlotCard
-                slotLabel="GP"
-                cardId={p2_gp1?.card_id}
-                name={(p2_gp1 && charaMap.get(p2_gp1.card_id)?.nameEn) || p2_gp1?.name || "GP 1"}
-                rank={p2_gp1?.rank}
-                factors={p2Gp1Factors}
-                isBorrow={p2_gp1?.isBorrow}
-                onClick={() => openPicker("p2_gp1")}
-              />
-              <PedigreeSlotCard
-                slotLabel="GP"
-                cardId={p2_gp2?.card_id}
-                name={(p2_gp2 && charaMap.get(p2_gp2.card_id)?.nameEn) || p2_gp2?.name || "GP 2"}
-                rank={p2_gp2?.rank}
-                factors={p2Gp2Factors}
-                isBorrow={p2_gp2?.isBorrow}
-                onClick={() => openPicker("p2_gp2")}
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Unified 14-ancestor pedigree and loop planner */}
+      <ParentingLoopOptimizer
+        target={targetChara}
+        targetStage={<div className="relative rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/75 dark:bg-zinc-900/75 p-4 sm:p-6 shadow-sm overflow-hidden backdrop-blur-md">
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <LineageAffinityHeader affinityBreakdown={affinityBreakdown} onOpenInheritedSkills={() => setIsInheritedSkillsOpen(true)} />
+          <TraineeSpotlight targetChara={targetChara} statBonuses={statBonuses} onSelectTrainee={() => setIsTraineeModalOpen(true)} />
+        </div>}
+        veterans={veterans}
+        roster={characters}
+        setup={setup}
+        onOpenPicker={openPicker}
+        updateSetup={updateSetup}
+      />
 
       {/* 3. NAVIGATION BANNER TO PARENT DECK */}
       <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
@@ -655,13 +579,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       <VeteranPickerModal
         isOpen={activePickerSlot !== null}
         onClose={() => setActivePickerSlot(null)}
-        slotLabel={
-          activePickerSlot === "p1"
-            ? "Parent 1"
-            : activePickerSlot === "p2"
-            ? "Parent 2"
-            : "Sub-Parent (Grandparent)"
-        }
+        slotLabel={activePickerSlot === "p1" ? "Parent 1" : activePickerSlot === "p2" ? "Parent 2" : activePickerSlot ? activePickerSlot.split("_").length <= 2 ? "Grandparent" : activePickerSlot.split("_").length === 3 ? "Great-grandparent" : "Great-great-grandparent" : "Ancestor"}
         recommendations={pickerRecommendations ?? undefined}
         recommendationsLoading={pickerRecommendationsLoading}
         recommendationsError={pickerRecommendationsError}

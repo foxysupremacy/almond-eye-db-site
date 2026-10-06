@@ -1,6 +1,6 @@
 import type { Course } from "../skill-engine/types";
 import type { CharacterIndexEntry } from "../api";
-import { characters } from "../data/registry";
+import { characters, successionFactors } from "../data/registry";
 import { getCharaIdFromCardId } from "../lineage/affinity-engine";
 import type { AptitudePatchInfo } from "./types";
 
@@ -100,10 +100,8 @@ export function evaluateAptitudePatch(
   const primaryRank = distDiff > 0 ? distRank : surfDiff > 0 ? surfRank : medRank;
 
   let requiredPinkStars = 0;
-  if (primaryDiff === 1) requiredPinkStars = 1;
-  else if (primaryDiff === 2) requiredPinkStars = 4;
-  else if (primaryDiff === 3) requiredPinkStars = 7;
-  else if (primaryDiff === 4) requiredPinkStars = 10;
+  const threshold = successionFactors.aptitudeThresholds.find((entry) => entry.factorType === 2 && entry.addRank >= primaryDiff);
+  if (threshold) requiredPinkStars = threshold.minStars;
   else requiredPinkStars = 10 + (primaryDiff - 4) * 3;
 
   const canPatch = primaryDiff <= 4;

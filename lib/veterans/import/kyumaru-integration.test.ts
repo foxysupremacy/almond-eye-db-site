@@ -57,7 +57,7 @@ describe("Kyumaru Data Ingest & Integration", () => {
       if (vet.factor_info_array) {
         for (const factor of vet.factor_info_array) {
           const decoded = decodeFactor(factor.factor_id);
-          expect(["blue", "pink", "green", "white"]).toContain(decoded.type);
+          expect(["blue", "pink", "distance", "surface", "style", "green", "white"]).toContain(decoded.type);
           expect(decoded.stars).toBeGreaterThanOrEqual(1);
           expect(decoded.stars).toBeLessThanOrEqual(3);
         }

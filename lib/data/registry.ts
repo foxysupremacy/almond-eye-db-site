@@ -15,6 +15,7 @@ import rawSkillsInheritJson from "./generated/skills-inherit.json";
 import rawCharactersJson from "./generated/characters.json";
 import rawAffinityJson from "./generated/affinity.json";
 import rawCareersJson from "./generated/careers.json";
+import rawG1CalendarJson from "./generated/g1-calendar.json";
 import rawUniqueInheritJson from "./generated/unique-inherit-map.json";
 import rawCharacterEvolutionsJson from "./generated/character-evolutions.json";
 import rawCardEffectsJson from "./generated/card-effects.json";
@@ -23,8 +24,12 @@ import rawSkillMetaJson from "./generated/skill-meta.json";
 import rawRaceImpactPriorsJson from "./generated/race-impact-priors.json";
 import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
 import rawFactorsCompactJson from "./generated/factors-compact.json";
+import rawSuccessionFactorsJson from "./generated/succession-factors.json";
+
+export const g1Calendar = rawG1CalendarJson as G1CalendarData;
 
 import type {
+  G1CalendarData,
   AffinityDataPayload,
   CardEffectEntry,
   CardIndexEntry,
@@ -39,6 +44,7 @@ import type {
   RaceImpactPriorsPayload,
   PvpRecommendationsPayload,
   CompactFactorEntry,
+  SuccessionFactorsPayload,
   RacetrackDetail,
 } from "./types";
 
@@ -265,6 +271,9 @@ export const pvpRecommendations = rawPvpRecommendationsJson as PvpRecommendation
 
 /** Compact factor metadata used by the veteran decoder. */
 export const compactFactors = rawFactorsCompactJson as Record<string, CompactFactorEntry>;
+
+/** MDB factor_type catalog and pink aptitude rank thresholds. */
+export const successionFactors = rawSuccessionFactorsJson as SuccessionFactorsPayload;
 
 /** Racetrack data is loaded lazily through this gateway to keep it code-split. */
 export async function loadRacetracks(): Promise<RacetrackDetail[]> {

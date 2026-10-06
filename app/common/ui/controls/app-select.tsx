@@ -17,12 +17,13 @@ export interface AppSelectProps {
   className?: string;
   id?: string;
   triggerLabel?: string;
+  size?: "default" | "compact";
 }
 
 const groups = (options: readonly AppSelectOption[]) => Array.from(new Set(options.map((option) => option.group)));
 
 /** Shared single-value selector, backed by React Aria's keyboard/focus model. */
-export function AppSelect({ value, onValueChange, options, label, placeholder = "Choose…", disabled, variant = "field", className = "", id, triggerLabel }: AppSelectProps) {
+export function AppSelect({ value, onValueChange, options, label, placeholder = "Choose…", disabled, variant = "field", className = "", id, triggerLabel, size = "default" }: AppSelectProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((option) => option.value === value);
   const unavailable = disabled || !options.some((option) => !option.disabled);
@@ -35,7 +36,7 @@ export function AppSelect({ value, onValueChange, options, label, placeholder = 
     return () => query.removeEventListener("change", update);
   }, []);
 
-  const triggerClass = `group inline-flex min-h-11 min-w-0 items-center justify-between gap-2 rounded-lg text-xs font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/70 disabled:cursor-not-allowed disabled:opacity-40 md:min-h-8 ${variant === "field" ? "border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-800 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600" : "border px-1.5 py-0.5"} ${className}`;
+  const triggerClass = `group inline-flex ${size === "compact" ? "min-h-7 text-[9px] gap-1" : "min-h-11 text-xs gap-2 md:min-h-8"} min-w-0 items-center justify-between rounded-lg font-semibold outline-none transition-colors focus-visible:ring-2 focus-visible:ring-emerald-500/70 disabled:cursor-not-allowed disabled:opacity-40 ${variant === "field" ? "border border-zinc-200 bg-white px-2.5 py-1.5 text-zinc-800 hover:border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:border-zinc-600" : "border px-1.5 py-0.5"} ${className}`;
 
   return (
     <Select

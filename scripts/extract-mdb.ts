@@ -18,6 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { loadEnv } from "./env.ts";
+import { extractG1Calendar } from "./extract-g1-calendar.ts";
 
 loadEnv();
 
@@ -31,6 +32,7 @@ const CHARACTERS_PATH = path.resolve(__dirname, "../lib/data/generated/character
 const CARDS_PATH = path.resolve(__dirname, "../lib/data/generated/cards.json");
 const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/affinity.json");
 const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/careers.json");
+const SUCCESSION_FACTORS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/succession-factors.json");
 
 interface GameToraFactor {
   id: string;
@@ -74,6 +76,55 @@ function openMdb(): DatabaseSync {
 
 export function extractAffinityData() {
   const db = openMdb();
+
+  // MDB succession factor catalog. Preserve factor_type as the primary
+  // discriminator: pink aptitude sparks (2) are separate from gene factors
+  // (8 distance, 10 surface, 11 running style).
+  const geneNames: Record<number, { en: string; ja: string }> = {
+    50001: { en: "Turf", ja: "芝" }, 50002: { en: "Dirt", ja: "ダート" },
+    50003: { en: "Sprint", ja: "短距離" }, 50004: { en: "Mile", ja: "マイル" },
+    50005: { en: "Medium", ja: "中距離" }, 50006: { en: "Long", ja: "長距離" },
+    50007: { en: "Front Runner", ja: "逃げ" }, 50008: { en: "Pace Chaser", ja: "先行" },
+    50009: { en: "Late Surger", ja: "差し" }, 50010: { en: "End Closer", ja: "追込" },
+  };
+  const factorRows = db.prepare(
+    "SELECT factor_id, factor_group_id, rarity, factor_type FROM succession_factor WHERE factor_type IN (2, 8, 10, 11) ORDER BY factor_type, factor_id"
+  ).all() as Record<string, number>[];
+  const effectTargets = new Map<number, number[]>();
+  for (const row of db.prepare(
+    "SELECT factor_group_id, target_type FROM succession_factor_effect ORDER BY factor_group_id, target_type"
+  ).all() as Record<string, number>[]) {
+    const list = effectTargets.get(Number(row.factor_group_id)) ?? [];
+    if (!list.includes(Number(row.target_type))) list.push(Number(row.target_type));
+    effectTargets.set(Number(row.factor_group_id), list);
+  }
+  const aptitudeNames: Record<number, { en: string; ja: string }> = {
+    11: { en: "Turf Aptitude", ja: "芝適性" }, 12: { en: "Dirt Aptitude", ja: "ダート適性" },
+    21: { en: "Sprint Aptitude", ja: "短距離適性" }, 22: { en: "Mile Aptitude", ja: "マイル適性" },
+    23: { en: "Medium Aptitude", ja: "中距離適性" }, 24: { en: "Long Aptitude", ja: "長距離適性" },
+    31: { en: "Front Runner Aptitude", ja: "逃げ適性" }, 32: { en: "Pace Chaser Aptitude", ja: "先行適性" },
+    33: { en: "Late Surger Aptitude", ja: "差し適性" }, 34: { en: "End Closer Aptitude", ja: "追込適性" },
+  };
+  const successionFactors = factorRows.map((row) => {
+    const factorGroupId = Number(row.factor_group_id);
+    const factorType = Number(row.factor_type);
+    const name = factorType === 2
+      ? aptitudeNames[factorGroupId]
+      : geneNames[factorGroupId];
+    return {
+      factorId: Number(row.factor_id), factorGroupId, factorType,
+      rarity: Number(row.rarity), nameEn: name?.en ?? `Factor ${factorGroupId}`,
+      nameJa: name?.ja ?? `因子 ${factorGroupId}`,
+      targetTypes: effectTargets.get(factorGroupId) ?? [],
+    };
+  });
+  const aptitudeThresholds = (db.prepare(
+    "SELECT factor_type, value_1, value_2, add_point FROM succession_initial_factor WHERE factor_type = 2 ORDER BY value_1"
+  ).all() as Record<string, number>[]).map((row) => ({
+    factorType: Number(row.factor_type), minStars: Number(row.value_1),
+    maxStars: Number(row.value_2), addRank: Number(row.add_point),
+  }));
+  fs.writeFileSync(SUCCESSION_FACTORS_OUTPUT_PATH, JSON.stringify({ factors: successionFactors, aptitudeThresholds }));
 
   // 1. relation_type -> relation_point
   const relationPoints: Record<number, number> = {};
@@ -402,6 +453,7 @@ export function extractAffinityData() {
   console.log(`Factor names: ${Object.keys(factorNames).length} (JP from mdb, +${gtFactorNames} EN from GameTora)`);
   if (coverage) console.log(coverage);
   if (careerCoverage) console.log(careerCoverage);
+  extractG1Calendar(db);
 }
 
 extractAffinityData();

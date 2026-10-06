@@ -241,6 +241,30 @@ export interface CompactFactorEntry {
   statType?: number;
 }
 
+/** MDB succession factor metadata. Factor type 2 (aptitude sparks) stays
+ * distinct from 8 (distance), 10 (surface), and 11 (running style genes). */
+export interface SuccessionFactorEntry {
+  factorId: number;
+  factorGroupId: number;
+  factorType: number;
+  rarity: number;
+  nameEn: string;
+  nameJa: string;
+  targetTypes: number[];
+}
+
+export interface SuccessionInitialFactorThreshold {
+  factorType: number;
+  minStars: number;
+  maxStars: number;
+  addRank: number;
+}
+
+export interface SuccessionFactorsPayload {
+  factors: SuccessionFactorEntry[];
+  aptitudeThresholds: SuccessionInitialFactorThreshold[];
+}
+
 // ---------------------------------------------------------------------------
 // Race-impact telemetry aggregate (lib/data/generated/race-impact-priors.json)
 // ---------------------------------------------------------------------------
@@ -346,6 +370,22 @@ export interface CareerG1Race {
   terrain: number;
   /** True when the objective requires winning the race (cond_value 1). */
   mustWin: boolean;
+}
+
+export interface CalendarG1Race extends Omit<CareerG1Race, "mustWin"> {
+  programId: number;
+  baseProgramId: number;
+  month: number;
+  half: number;
+  years: number[];
+  needFans: number;
+  fillyOnly: boolean;
+  defaultProgram: boolean;
+  nameJp: string;
+}
+export interface G1CalendarData {
+  races: CalendarG1Race[];
+  objectivesByCharId: Record<string, { turn: number; programIds: number[] }[]>;
 }
 
 // ---------------------------------------------------------------------------

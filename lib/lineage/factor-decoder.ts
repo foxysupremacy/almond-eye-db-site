@@ -1,7 +1,7 @@
 // Factor / Spark decoder for Umamusume veterans data.
 // Maps numeric factor IDs to human-readable names, types (blue, pink, green, white), and star levels.
 
-export type FactorType = "blue" | "pink" | "green" | "white";
+export type FactorType = "blue" | "pink" | "distance" | "surface" | "style" | "green" | "white";
 
 export interface DecodedFactor {
   factorId: number;
@@ -36,7 +36,7 @@ const PINK_APTITUDE_NAMES: Record<number, string> = {
   34: "Chaser",
 };
 
-import { compactFactors } from "../data/registry";
+import { compactFactors, successionFactors } from "../data/registry";
 import type { CompactFactorEntry } from "../data/types";
 
 export type { CompactFactorEntry };
@@ -59,6 +59,29 @@ export function decodeFactor(factorId: number): DecodedFactor {
     const name = PINK_APTITUDE_NAMES[prefix] || "Aptitude";
     const nameJa = PINK_APTITUDE_NAMES_JA[prefix];
     return { factorId, type: "pink", name, nameEn: name, nameJa, stars, category: "pink" };
+  }
+
+  // MDB gene factors use independent factor_type values; keep pink sparks
+  // separate even when both affect aptitude inheritance.
+  const successionFactor = successionFactors.factors.find((factor) => factor.factorId === factorId);
+  if (successionFactor) {
+    const geneType = successionFactor.factorType === 8
+      ? "distance"
+      : successionFactor.factorType === 10
+        ? "surface"
+        : successionFactor.factorType === 11
+          ? "style"
+          : "pink";
+    return {
+      factorId,
+      type: geneType,
+      name: successionFactor.nameEn,
+      nameEn: successionFactor.nameEn,
+      nameJa: successionFactor.nameJa,
+      stars: successionFactor.rarity,
+      category: geneType,
+      statType: successionFactor.factorGroupId,
+    };
   }
 
   // 3. Try matching against factorsCompact (Green & White: skills, races, scenarios)
@@ -147,7 +170,7 @@ export const PINK_APTITUDE_NAMES_JA: Record<number, string> = {
 
 export interface SlotPrimaryFactor {
   factorId: number;
-  type: "blue" | "pink" | "green";
+  type: "blue" | "pink" | "distance" | "surface" | "style" | "green";
   nameJa: string;
   nameEn: string;
   shortJa?: string;
@@ -158,6 +181,7 @@ export interface SlotPrimaryFactors {
   blue?: SlotPrimaryFactor;
   pink?: SlotPrimaryFactor;
   green?: SlotPrimaryFactor;
+  genes?: SlotPrimaryFactor[];
 }
 
 /** Extract primary blue, pink, and green factor for in-game formation cards */
@@ -169,6 +193,14 @@ export function extractSlotPrimaryFactors(factorArray?: { factor_id: number }[])
     const id = f.factor_id;
     const str = String(id);
     const stars = Number(str.slice(-1)) || 1;
+
+    const decoded = decodeFactor(id);
+    if (decoded.type === "distance" || decoded.type === "surface" || decoded.type === "style") {
+      (res.genes ??= []).push({
+        factorId: id, type: decoded.type, nameJa: decoded.nameJa ?? decoded.name,
+        nameEn: decoded.nameEn ?? decoded.name, stars: decoded.stars,
+      });
+    }
 
     // Blue Stat Factor (101..503)
     if (!res.blue && id >= 101 && id <= 503) {
