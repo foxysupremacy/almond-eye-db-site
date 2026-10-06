@@ -260,6 +260,7 @@ Before approving any UI change involving cards, skills, or deck pickers:
 - [ ] **Bilingual Typography**: Is Japanese text muted (`text-zinc-400 dark:text-zinc-500`) and 1-2 font sizes smaller than English?
 - [ ] **Icon Centering**: Is the skill icon vertically centered (`items-center`) against the combined 2-line title block?
 - [ ] **Aspect Ratio**: Does the icon have `flex-none` / `shrink-0` to avoid aspect ratio distortion on narrow viewports?
+- [ ] **Parenting Portrait Layers**: Does the pop-out use a circle-sized wrapper with the top 90° sector and hidden left/right tangent bounds, above the clipped image and circular frame (Section 20)?
 - [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat and divider-based rather than nested cards?
 - [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `app/common/ui/primitives/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
 - [ ] **Multi-Skill Matching Integrity**: In Parent Deck mode, does skill filtering support ANY/ALL toggling and bi-directional Gold <-> White mapping?
@@ -475,3 +476,48 @@ Before finalizing a new or updated toolbar, filter row, selector group, or actio
 - [ ] Have redundant summary rows, status labels, and outer surfaces been removed?
 - [ ] Do functional icons use shared SVG components and accessible names?
 - [ ] Do responsive layouts retain readable labels and usable hit targets without overflow?
+
+---
+
+## 20. Parenting Ancestor Portrait Layering
+
+`AncestorIdentityButton` in `features/parenting/loop-optimizer.tsx` uses the same
+portrait layering at every selectable ancestor generation. Only the **top 90°
+sector**, from 10:30 to 1:30 around the circle's center, may pop out over the
+frame. The remaining 270° stays inside the circular crop. This quarter is an
+angular sector, not the top 25% of the circle's height.
+
+### Layer Order and Geometry
+
+| Layer | Stacking | Contract |
+|---|---|---|
+| Back image (`data-portrait-layer="back"`) | `z-0` | Circle-sized wrapper with `overflow-hidden rounded-full`. |
+| Circular frame (`data-portrait-layer="frame"`) | `z-10` | Full amber ring, `ring-[2.5px] ring-amber-400/95 dark:ring-amber-400/80`. |
+| Front image (`data-portrait-layer="front"`) | `z-20` | Circle-sized wrapper with `overflow-visible`; clip the wrapper to the upward sector. |
+
+- The outer portrait container is `relative`, square, and `overflow-visible`.
+  Each layer uses `absolute inset-0` so its coordinates match the circle.
+- Apply `clip-path` to the **front wrapper**, never directly to the scaled
+  image. Use `polygon(0 -100%, 100% -100%, 100% 0, 50% 50%, 0 0)`.
+  The diagonal edges extend from the center through the endpoints of the top
+  90° arc. Above the circle, the region is bounded by invisible vertical
+  tangents at its leftmost and rightmost points (`x = 0%` and `x = 100%`).
+- Both image copies use the same source and transform:
+  `absolute inset-0 h-full w-full object-contain object-top drop-shadow-xs scale-[1.65] origin-top -translate-y-[17%]`.
+  Keeping them aligned prevents a seam between the circular crop and pop-out.
+- Do not restore a horizontal upper/lower cutoff or use background-colored
+  covers to hide overflow. The clipping geometry must work in both themes.
+- Frame and front wrapper use `pointer-events-none`; all portrait layers are
+  `aria-hidden="true"` and images have empty `alt`. The owning button provides
+  the accessible name and picker action.
+- Preserve the existing responsive sizes, name placement, and top clearance.
+  Hover scaling belongs on the outer portrait container so all layers move
+  together under the motion rules in Section 13.
+
+### Verification
+
+Keep the existing portrait regression test aligned with the layer order and
+wrapper clipping. User-owned browser checks should include Satono Crown's wide
+hat, portraits with tall ears, all ancestor sizes, both themes, and hover:
+only the top sector may cross the frame, no image may cross the side tangents,
+and the hat must not acquire a horizontal cutoff through its middle.

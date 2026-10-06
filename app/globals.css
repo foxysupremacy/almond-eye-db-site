@@ -10,6 +10,12 @@
   --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
   --ease-out-quart: cubic-bezier(0.165, 0.84, 0.44, 1);
   --ease-in-out-cubic: cubic-bezier(0.645, 0.045, 0.355, 1);
+  --animate-ancestor-highlight: ancestor-highlight 250ms var(--ease-in-out-cubic) 2;
+
+  @keyframes ancestor-highlight {
+    0%, 100% { opacity: 0.2; }
+    50% { opacity: 1; }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

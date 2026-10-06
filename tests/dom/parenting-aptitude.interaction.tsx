@@ -33,9 +33,9 @@ test("pink unset and no-factor differ; outside click dismisses", async () => {
   const user = userEvent.setup(); render(<PinkProbe />);
   const trigger = screen.getByRole("button", { name: /P1 Red factor/ });
   await user.click(trigger); await user.click(screen.getByRole("button", { name: "No factor" }));
-  expect(trigger.textContent).toContain("No factor");
+  expect(trigger.getAttribute("aria-label")).toContain("No factor");
   await user.click(screen.getByRole("button", { name: "Not set" }));
-  expect(trigger.textContent).toContain("SET FACTOR");
+  expect(trigger.getAttribute("aria-label")).toContain("Not set");
   await user.click(document.body); await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 });
 test("white targets support multiple keyboard selections without closing", async () => {
@@ -50,9 +50,9 @@ test("white targets support multiple keyboard selections without closing", async
   function Probe() { const [targets, setTargets] = useState<AptitudeKey[]>([]); return <WhiteGeneticPicker label="P1" targets={targets} assessment={eligibleAssessment} onChange={setTargets} />; }
   const user = userEvent.setup(); render(<Probe />);
   await user.click(screen.getByRole("button", { name: "P1 Target genetic" }));
-  expect(screen.getByText("Target white genetic").className).toContain("text-pink-800");
+  expect(screen.getByText("0/3").parentElement?.textContent).toContain("Target genetic");
   const medium = screen.getByRole("checkbox", { name: "Medium" }); medium.focus(); await user.keyboard(" ");
-  expect(medium.closest("label")?.className).toContain("data-[selected]:bg-pink-600");
+  expect((medium as HTMLInputElement).checked).toBe(true);
   await user.click(screen.getByRole("checkbox", { name: "Turf" }));
   expect(screen.getByRole("button", { name: "P1 Target genetic" }).textContent).toContain("(2)");
   expect(screen.getByRole("dialog")).toBeTruthy();

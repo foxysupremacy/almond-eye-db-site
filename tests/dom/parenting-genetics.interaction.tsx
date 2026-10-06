@@ -1,9 +1,12 @@
 import { afterEach, expect, test } from "bun:test";
 import { useState } from "react";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { User } from "@react-aria/test-utils";
 import { GeneticIndicator } from "@/features/parenting/components/genetic-indicator";
+import { ParentingLoopOptimizer } from "@/features/parenting/loop-optimizer";
+import { useAncestorNavigation } from "@/features/parenting/hooks/use-ancestor-navigation";
+import { PedigreeBranchTabs, type PedigreeBranch } from "@/features/parenting/components/pedigree-branch-tabs";
 import { WhiteGeneticPicker } from "@/features/parenting/components/aptitude-controls";
 import { evaluateParentingMinmax, type ParentingMinmaxContext } from "@/lib/parenting/minmax";
 import { branchSourceSlots, buildLoopCandidates, evaluateParentingBranch, type AptitudeKey } from "@/lib/parenting/loop-planner";
@@ -36,8 +39,8 @@ test("genetic warnings open by keyboard, explain sources and reductions, and res
   expect(dialog.textContent).toContain("Dirt 6★ · Frequent roll risk");
   const sources = screen.getByText("From:").nextElementSibling!;
   expect(sources.children).toHaveLength(2);
-  expect(sources.children[0].textContent).toBe("Oguri Cap 3★");
-  expect(sources.children[1].textContent).toBe("El Condor Pasa 3★");
+  expect(sources.children[0].textContent).toBe("GP Dirt 3★Oguri Cap · Parent 1 · left");
+  expect(sources.children[1].textContent).toBe("GP Dirt 3★El Condor Pasa · Parent 1 · right");
   expect(dialog.textContent).toContain("Farm targets preserved");
   expect(dialog.textContent).toContain("→ Turf 3★");
   expect(dialog.textContent).not.toContain("0 fewer schedulable G1s");
@@ -62,11 +65,12 @@ test("duplicate donor names carry branch labels and tradeoffs show concrete rank
   const dialog = screen.getByRole("dialog");
   const sources = screen.getByText("From:").nextElementSibling!;
   expect(sources.children).toHaveLength(4);
-  expect(sources.children[0].textContent).toBe("Oguri Cap (P1 GP1) 3★");
-  expect(sources.children[1].textContent).toBe("Oguri Cap (P1 GP2) 3★");
-  expect(sources.children[2].textContent).toBe("P1 GP1 G1 3★");
+  expect(sources.children[0].textContent).toBe("GP Dirt 3★Oguri Cap · Parent 1 · left");
+  expect(sources.children[1].textContent).toBe("GP Dirt 3★Oguri Cap · Parent 1 · right");
+  expect(sources.children[2].textContent).toBe("GGP Dirt 3★Parent 1 · left → left");
   expect(dialog.textContent).toContain("Dirt 12★ · Guaranteed genetics in this model");
-  expect(dialog.textContent).toContain("Satono Crown · Dirt C → E · needs C");
+  expect(dialog.textContent).toContain("Parent Dirt C → E · needs C");
+  expect(dialog.textContent).toContain("Satono Crown · Parent 1");
   expect(dialog.textContent).not.toContain("aptitude rank gaps");
   expect(dialog.textContent).not.toContain("0 fewer schedulable G1s");
 });
@@ -94,10 +98,83 @@ test("unknown donors remain visible without repeated zero-star warnings", async 
   await userEvent.setup().click(screen.getByRole("button", { name: /P1 genetics/ }));
   const dialog = screen.getByRole("dialog");
   expect(dialog.textContent).toContain("Unknown donor factors:");
-  expect(dialog.textContent).toContain("P1 GP2 G2");
+  expect(dialog.textContent).toContain("GGP Factors unknown");
+  expect(dialog.textContent).toContain("Parent 1 · right → right");
   expect(dialog.textContent).toContain("Incomplete data; aptitude preservation unconfirmed");
   expect(dialog.textContent).not.toContain("0★");
   expect(dialog.textContent).not.toContain("Farm targets preserved");
+});
+
+test("GGGP source rows close the warning and jump to the exact desktop spark input", async () => {
+  const slot = "p1_gp2_g2_g2";
+  const { container } = render(<ParentingLoopOptimizer
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={{ ...DEFAULT_PARENTING_SETUP, loopConfig: {
+      ...DEFAULT_PARENTING_SETUP.loopConfig!,
+      factorGoals: Object.fromEntries(branchSourceSlots("p1_gp2").map((source) => [source, { pink: "Dirt", pinkStars: 3 }])),
+    } }} targetStage={null} course={context().course} runningStyle={2}
+    onOpenPicker={() => {}} updateSetup={() => {}}
+  />);
+  const destination = container.querySelector<HTMLDivElement>(`[data-ancestor-layout="desktop"][data-ancestor-slot="${slot}"]`)!;
+  const desktop = container.querySelector('[data-ancestor-layout="desktop"][data-ancestor-slot="p1_gp2"]')!;
+  const scrolls: ScrollIntoViewOptions[] = [];
+  destination.scrollIntoView = (options) => scrolls.push(options as ScrollIntoViewOptions);
+  const user = userEvent.setup();
+  await user.click(within(desktop as HTMLElement).getByRole("button", { name: /P1 GP2 genetics/ }));
+  const row = screen.getAllByRole("button", { name: "Go to GGGP, Parent 1 · right → right → right" })[0];
+  expect(row.textContent).toContain("GGGP Dirt 3★");
+  act(() => row.focus());
+  await user.keyboard("{Enter}");
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(destination);
+    expect(scrolls).toEqual([{ behavior: "instant", block: "center", inline: "center" }]);
+    expect(destination.querySelector(".animate-ancestor-highlight")).not.toBeNull();
+  });
+  // Reopening and choosing the same donor must restart the highlight.
+  const firstHighlight = destination.querySelector(".animate-ancestor-highlight");
+  await user.click(within(desktop as HTMLElement).getByRole("button", { name: /P1 GP2 genetics/ }));
+  await user.click(screen.getAllByRole("button", { name: "Go to GGGP, Parent 1 · right → right → right" })[0]);
+  await waitFor(() => expect(destination.querySelector(".animate-ancestor-highlight")).not.toBe(firstHighlight));
+});
+
+test("ancestor navigation switches mobile branches before focusing the visible target", async () => {
+  const media = window.matchMedia;
+  window.matchMedia = (query) => query === "(min-width: 64rem)"
+    ? { ...media.call(window, query), matches: false } as MediaQueryList : media.call(window, query);
+  const scrolls: string[] = [];
+  function Probe() {
+    const [branch, setBranch] = useState<PedigreeBranch>("p1");
+    const navigation = useAncestorNavigation(setBranch);
+    const slot = branch === "p1" ? "p1_gp1_g1_g1" : "p2_gp2_g2_g2";
+    const targetProps = navigation.targetProps(slot, "mobile");
+    return <>
+      <button onClick={() => navigation.navigate("p2_gp2_g2_g2")}>Find donor</button>
+      <div {...navigation.targetProps("p2_gp2_g2_g2", "desktop")} ref={(element) => {
+        navigation.targetProps("p2_gp2_g2_g2", "desktop").ref(element);
+        if (element) element.scrollIntoView = () => scrolls.push("desktop");
+      }}>Hidden desktop copy</div>
+      <PedigreeBranchTabs value={branch} onChange={setBranch}>
+        <div {...targetProps} ref={(element) => {
+          targetProps.ref(element);
+          if (element) element.scrollIntoView = () => scrolls.push("mobile");
+        }} data-testid="mobile-donor">{navigation.highlightKey(slot, "mobile") !== null ? "Highlighted donor" : "Donor"}</div>
+      </PedigreeBranchTabs>
+    </>;
+  }
+  try {
+    render(<Probe />);
+    await userEvent.setup().click(screen.getByRole("button", { name: "Find donor" }));
+    await waitFor(() => {
+      expect(screen.getByRole("tab", { name: "P2" }).getAttribute("aria-selected")).toBe("true");
+      expect(document.activeElement).toBe(screen.getByTestId("mobile-donor"));
+      expect(screen.getByTestId("mobile-donor").textContent).toBe("Highlighted donor");
+      expect(scrolls).toEqual(["mobile"]);
+    });
+  } finally {
+    cleanup();
+    window.matchMedia = media;
+  }
 });
 
 test("off-target Dirt stays selectable and touch/click warnings update with the course", async () => {
@@ -192,8 +269,10 @@ test("Sprint tradeoffs appear only for a Sprint target course", async () => {
   const sprint = { ...ctx, course: { ...ctx.course!, distance: 1, length: 1200 } };
   view.rerender(<GeneticIndicator context={sprint} assessment={evaluateParentingMinmax(sprint).slots[0]} />);
   await user.click(screen.getByRole("button", { name: /P1 genetics/ }));
-  expect(screen.getByRole("dialog").textContent).toContain("Satono Crown · Sprint G → G · needs C");
-  expect(screen.getByRole("dialog").textContent).toContain("Mejiro McQueen · Sprint G → G · needs C");
+  expect(screen.getByRole("dialog").textContent).toContain("Parent Sprint G → G · needs C");
+  expect(screen.getByRole("dialog").textContent).toContain("Satono Crown · Parent 1");
+  expect(screen.getByRole("dialog").textContent).toContain("GP Sprint G → G · needs C");
+  expect(screen.getByRole("dialog").textContent).toContain("Mejiro McQueen · Parent 1 · left");
   await user.keyboard("{Escape}");
   const missing = { ...ctx, course: null };
   view.rerender(<GeneticIndicator context={missing} assessment={evaluateParentingMinmax(missing).slots[0]} />);

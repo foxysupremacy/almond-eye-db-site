@@ -137,7 +137,7 @@ test("Parent Planning identity buttons use Trained Umas portrait and name stylin
   expect(markup).not.toContain("bg-gradient-to-b");
 });
 
-test("selected ancestor portrait layers the clipped image, circular frame, and upper arch in order", () => {
+test("selected ancestor portrait clips the top 90-degree pop-out relative to the circle, outside the scaled image", () => {
   const tachyon = characters.find((character) => character.nameEn === "Agnes Tachyon")!;
   const setup = {
     ...DEFAULT_PARENTING_SETUP,
@@ -164,7 +164,12 @@ test("selected ancestor portrait layers the clipped image, circular frame, and u
   expect(backLayer).toBeGreaterThanOrEqual(0);
   expect(frameLayer).toBeGreaterThan(backLayer);
   expect(frontLayer).toBeGreaterThan(frameLayer);
-  expect(markup).toContain("clip-path:polygon(50% -20%, 64% -16%, 78% -8%, 89% 5%, 96% 20%, 100% 41%, 0 41%");
+  const frontWrapper = markup.match(/<div[^>]*data-portrait-layer="front"[^>]*>(<img[^>]*>)<\/div>/);
+  expect(frontWrapper).not.toBeNull();
+  expect(frontWrapper![0]).toContain('class="pointer-events-none absolute inset-0 z-20 overflow-visible"');
+  expect(frontWrapper![0]).toContain("clip-path:polygon(0 -100%, 100% -100%, 100% 0, 50% 50%, 0 0)");
+  expect(frontWrapper![1]).toContain("scale-[1.65] origin-top -translate-y-[17%]");
+  expect(frontWrapper![1]).not.toContain("clip-path");
   expect(markup).not.toContain("bg-gradient-to-b");
 });
 

@@ -21,6 +21,8 @@ import type { Course } from "@/lib/skill-engine/types";
 import { extractSlotPrimaryFactors } from "@/lib/lineage/factor-decoder";
 import { ParentingPopover } from "./components/parenting-popover";
 import { PedigreeBranchTabs } from "./components/pedigree-branch-tabs";
+import { useAncestorNavigation } from "./hooks/use-ancestor-navigation";
+import { ancestorLabel } from "./components/ancestor-label";
 
 interface Props {
   target: CharacterIndexEntry | null;
@@ -199,16 +201,22 @@ function AncestorIdentityButton({
             aria-hidden="true"
             className="pointer-events-none absolute inset-0 z-10 rounded-full ring-[2.5px] ring-amber-400/95 dark:ring-amber-400/80"
           />
-          <img
-            src={getCharacterImageUrl(getCharaIdFromCardId(candidate.cardId), candidate.cardId, "01")}
-            alt=""
+          <div
             aria-hidden="true"
             data-portrait-layer="front"
-            className={`${portraitImageClass} z-20`}
+            className="pointer-events-none absolute inset-0 z-20 overflow-visible"
             style={{
-              clipPath: "polygon(50% -20%, 64% -16%, 78% -8%, 89% 5%, 96% 20%, 100% 41%, 0 41%, 4% 20%, 11% 5%, 22% -8%, 36% -16%)",
+              // Circle-relative top 90° sector, bounded by the left/right tangents.
+              // Extend above the circle so the enlarged portrait can pop out.
+              clipPath: "polygon(0 -100%, 100% -100%, 100% 0, 50% 50%, 0 0)",
             }}
-          />
+          >
+            <img
+              src={getCharacterImageUrl(getCharaIdFromCardId(candidate.cardId), candidate.cardId, "01")}
+              alt=""
+              className={portraitImageClass}
+            />
+          </div>
         </div>
       ) : (
         <div className={`${size} flex flex-col flex-none items-center justify-center rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-white/60 dark:bg-zinc-800/70 text-zinc-400 transition-colors duration-150 ease-out-quart group-hover/avatar:border-emerald-500 group-hover/avatar:text-emerald-500`}>
@@ -397,6 +405,7 @@ function AncestorCard({
 export function ParentingLoopOptimizer(props: Props) {
   const [mobileBranch, setMobileBranch] = useState<"p1" | "p2">("p1");
   const [mobileBranchZoom, setMobileBranchZoom] = useState(1);
+  const ancestorNavigation = useAncestorNavigation(setMobileBranch);
   const branchTouchStart = useRef<{ x: number; y: number } | null>(null);
   const stored = props.setup.loopConfig;
   const pedigree = useMemo(() => resolveMinmaxPedigree(props.setup, props.veterans, props.roster), [props.setup, props.veterans, props.roster]);
@@ -427,7 +436,7 @@ export function ParentingLoopOptimizer(props: Props) {
   const setFactorGoal = (slot: LoopAncestorSlot, goal: EditableFactorPlan) => {
     updateConfig({ ...config, factorGoals: { ...config.factorGoals, [slot]: goal } });
   };
-  const ancestorCard = (slot: LoopAncestorSlot, density: "parent" | "grandparent" | "great-grandparent" | "great-great-grandparent") => {
+  const ancestorContent = (slot: LoopAncestorSlot, density: "parent" | "grandparent" | "great-grandparent" | "great-great-grandparent") => {
     if (density === "great-great-grandparent") return <SparkInput key={slot} slot={slot} goal={config.factorGoals?.[slot] ?? {}} onChange={(goal) => setFactorGoal(slot, goal)} />;
     const umaSlot = slot as LoopUmaSlot;
     const candidate = selectedCandidates[umaSlot];
@@ -438,10 +447,18 @@ export function ParentingLoopOptimizer(props: Props) {
       ?? (uniqueId == null ? undefined : skillsById.get(uniqueId));
     const uniqueSkillForInspector = uniqueSkill ? { id: uniqueSkill.id, nameEn: uniqueSkill.nameEn, nameJp: uniqueSkill.nameJp, iconId: uniqueSkill.iconId } : undefined;
     const geneticAssessment = minmax.slots.find((entry) => entry.slot === slot);
-    return <AncestorCard geneticIndicator={geneticAssessment ? <GeneticIndicator assessment={geneticAssessment} context={minmaxContext} /> : undefined} key={slot} slot={umaSlot} whiteTargets={config.slotWhiteTargets?.[umaSlot] ?? []} onWhiteTargetsChange={(targets) => updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [umaSlot]: targets } })} sources={assessment.sourceSlots.map((sourceSlot) => { const sourceCandidate = selectedCandidates[sourceSlot as LoopUmaSlot] ?? null; const plan = editableFactorPlan(sourceCandidate, config.factorGoals?.[sourceSlot]); return { label: SLOT_LABEL[sourceSlot], pink: plan.pink, stars: plan.pinkStars }; })} assessment={assessment} candidate={candidate} density={density} factorGoal={editableFactorPlan(candidate, config.factorGoals?.[slot])} uniqueSkill={uniqueSkillForInspector} onFactorGoalChange={(goal) => setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
+    return <AncestorCard geneticIndicator={geneticAssessment ? <GeneticIndicator assessment={geneticAssessment} context={minmaxContext} onNavigate={ancestorNavigation.navigate} /> : undefined} key={slot} slot={umaSlot} whiteTargets={config.slotWhiteTargets?.[umaSlot] ?? []} onWhiteTargetsChange={(targets) => updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [umaSlot]: targets } })} sources={assessment.sourceSlots.map((sourceSlot) => { const sourceCandidate = selectedCandidates[sourceSlot as LoopUmaSlot] ?? null; const plan = editableFactorPlan(sourceCandidate, config.factorGoals?.[sourceSlot]); return { label: SLOT_LABEL[sourceSlot], pink: plan.pink, stars: plan.pinkStars }; })} assessment={assessment} candidate={candidate} density={density} factorGoal={editableFactorPlan(candidate, config.factorGoals?.[slot])} uniqueSkill={uniqueSkillForInspector} onFactorGoalChange={(goal) => setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
   };
 
-  const renderBranch = (parentSlot: "p1" | "p2") => {
+  const renderBranch = (parentSlot: "p1" | "p2", layout: "desktop" | "mobile") => {
+    const ancestorCard = (slot: LoopAncestorSlot, density: "parent" | "grandparent" | "great-grandparent" | "great-great-grandparent") => {
+      const highlightKey = ancestorNavigation.highlightKey(slot, layout);
+      const label = ancestorLabel(slot);
+      return <div key={slot} {...ancestorNavigation.targetProps(slot, layout)} aria-label={`${label.generation}, ${label.location}`}>
+        {ancestorContent(slot, density)}
+        {highlightKey !== null && <span key={highlightKey} aria-hidden="true" className="pointer-events-none absolute -inset-1 z-30 rounded-lg bg-amber-400/10 ring-2 ring-amber-500 animate-ancestor-highlight motion-reduce:animate-none" />}
+      </div>;
+    };
     const gpSlots = parentSlot === "p1" ? ["p1_gp1", "p1_gp2"] as const : ["p2_gp1", "p2_gp2"] as const;
     return <section key={parentSlot} aria-label={`${parentSlot.toUpperCase()} lineage branch`} className="min-w-0">
       {ancestorCard(parentSlot, "parent")}
@@ -494,7 +511,7 @@ export function ParentingLoopOptimizer(props: Props) {
       <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-3">
         <div className="relative hidden lg:block">
           <svg aria-hidden="true" className="pointer-events-none block h-7 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 28" preserveAspectRatio="none"><path d="M500 0V12H250V28M500 12H750V28" fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg>
-          <div className="grid grid-cols-2 gap-1 sm:gap-3">{renderBranch("p1")}{renderBranch("p2")}</div>
+          <div className="grid grid-cols-2 gap-1 sm:gap-3">{renderBranch("p1", "desktop")}{renderBranch("p2", "desktop")}</div>
         </div>
         <div className="lg:hidden">
           <PedigreeBranchTabs value={mobileBranch} onChange={setMobileBranch} trailing={<div className="flex items-center gap-1">
@@ -504,7 +521,7 @@ export function ParentingLoopOptimizer(props: Props) {
               </div>}>
             <svg aria-hidden="true" className="pointer-events-none block h-5 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 20" preserveAspectRatio="none"><path d="M500 0V20" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>
             <div onTouchStart={handleBranchTouchStart} onTouchEnd={handleBranchTouchEnd} className="touch-pan-y overflow-x-auto" aria-label="Pedigree branch. Swipe left or right to switch between P1 and P2.">
-              <div className="origin-top-left" style={{ zoom: mobileBranchZoom * MOBILE_BRANCH_BASE_ZOOM }}>{renderBranch(mobileBranch)}</div>
+              <div className="origin-top-left" style={{ zoom: mobileBranchZoom * MOBILE_BRANCH_BASE_ZOOM }}>{renderBranch(mobileBranch, "mobile")}</div>
             </div>
           </PedigreeBranchTabs>
           <p className="mt-1 text-center text-[10px] text-zinc-500">Swipe left or right to view {mobileBranch === "p1" ? "P2" : "P1"}</p>
