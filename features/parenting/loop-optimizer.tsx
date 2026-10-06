@@ -538,13 +538,13 @@ export function ParentingLoopOptimizer(props: Props) {
       <div><h3 className="font-bold text-zinc-900 dark:text-zinc-100">Parent Planning</h3>
         <p className="text-xs text-zinc-500 mt-1">Set pink sparks below each branch to support its planned aptitude, G1 farming and white genetics.</p></div>
     </header>
+    {props.targetStage && <div>{props.targetStage}</div>}
     {!props.target ? <p className="text-sm text-zinc-500">Select a target Uma to build the pedigree.</p> : <>
       <div className="border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800">
         <span className="text-zinc-400">MDB gene catalog: {successionFactors.factors.length} factors; aptitude thresholds are data-backed.</span>
       </div>
 
       <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-3">
-        {props.targetStage && <div>{props.targetStage}</div>}
         <div className="relative hidden lg:block">
           <svg aria-hidden="true" className="pointer-events-none block h-7 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 28" preserveAspectRatio="none"><path d="M500 0V12H250V28M500 12H750V28" fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg>
           <div className="grid grid-cols-2 gap-1 sm:gap-3">{renderBranch("p1")}{renderBranch("p2")}</div>

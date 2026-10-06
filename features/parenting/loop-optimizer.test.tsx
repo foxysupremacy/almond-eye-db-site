@@ -44,6 +44,20 @@ test("Parent Planning keeps the pedigree controls without optimizer analysis clu
   expect(markup).toContain('aria-hidden="true" class="h-10 w-full"');
 });
 
+test("an empty Parent Planning setup keeps the target picker visible without pedigree slots", () => {
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer
+    target={null} veterans={[]} roster={[]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={<button aria-label="Select target trainee">Select target trainee</button>}
+    onOpenPicker={() => {}} updateSetup={() => {}}
+  />);
+
+  expect(markup).toContain('aria-label="Select target trainee"');
+  expect(markup).toContain("Select a target Uma to build the pedigree.");
+  expect(markup).not.toContain('aria-label="Choose P1"');
+  expect(markup).not.toContain('aria-label="Choose P2"');
+  expect(markup).not.toContain("MDB gene catalog:");
+});
+
 test("unique skill row uses dark surfaces in dark mode", () => {
   const tachyon = characters.find((character) => character.nameEn === "Agnes Tachyon")!;
   const setup = {
