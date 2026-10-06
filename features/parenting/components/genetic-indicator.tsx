@@ -86,7 +86,8 @@ export function GeneticIndicator({ assessment, context, onNavigate }: { assessme
   const unknown = assessment.forecasts.some((entry) => entry.risk === "unknown");
   const warning = assessment.actual.length > 0 || guaranteed + frequent > 0 || assessment.mismatchedTargets.length > 0;
   const active = assessment.forecasts.length > 0;
-  const goodPlanning = active && !warning && !unknown && (!assessment.useActual || assessment.actualKnown);
+  const completeTarget = Object.values(aceGeneticTarget(context.course, context.runningStyle)).every(Boolean);
+  const goodPlanning = completeTarget && active && !warning && !unknown && (!assessment.useActual || assessment.actualKnown);
   const text = assessment.actual.length ? `${assessment.actual.length} unwanted genetics present`
     : guaranteed ? `${guaranteed} guaranteed ${assessment.useActual ? "retrain" : "genetic"} risks`
     : frequent ? `${frequent} frequent ${assessment.useActual ? "retrain" : "genetic"} risks`
@@ -94,7 +95,7 @@ export function GeneticIndicator({ assessment, context, onNavigate }: { assessme
     : !active ? "Select course / style"
     : assessment.useActual && !assessment.actualKnown ? "Imported genetics unknown"
     : unknown ? assessment.useActual && assessment.actualKnown ? "No off-target genetics · retrain data incomplete" : "Genetic data incomplete"
-    : "Good genetic planning";
+    : goodPlanning ? "Good genetic planning" : "Select course / style";
   const StatusIcon = warning || unknown || !active || assessment.useActual && !assessment.actualKnown ? AlertTriangleIcon : CheckIcon;
   return <ParentingPopover
     isOpen={isOpen}
