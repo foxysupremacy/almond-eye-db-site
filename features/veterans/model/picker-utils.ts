@@ -1,6 +1,7 @@
+import { compareMinmax } from "@/lib/parenting/minmax";
 import type { LegacyCandidate, LegacyUniqueEval } from "@/lib/parenting/types";
 
-export type VeteranPickerSort = "affinity" | "rank_score" | "blue_stars" | "skill_effect" | "unique_tier";
+export type VeteranPickerSort = "minmax" | "affinity" | "rank_score" | "blue_stars" | "skill_effect" | "unique_tier";
 
 export interface WhiteUniqueInfo {
   skillId: number;
@@ -31,13 +32,18 @@ export function sortRecommended(
   candidates: LegacyCandidate[],
   mode: VeteranPickerSort,
 ): LegacyCandidate[] {
+  if (mode === "minmax") return [...candidates].sort((a, b) => compareMinmax(a.minmax, b.minmax) || b.totalScore - a.totalScore || a.nameEn.localeCompare(b.nameEn));
   const fire = (candidate: LegacyCandidate) => -uniqueFireState(candidate.uniqueEval);
   if (mode === "affinity") {
     return [...candidates].sort((a, b) => fire(a) - fire(b) || b.totalScore - a.totalScore);
   }
 
   const sorted = [...candidates];
-  if (mode === "skill_effect") {
+  if (mode === "rank_score") {
+    sorted.sort((a, b) => (b.veteran?.rank_score ?? 0) - (a.veteran?.rank_score ?? 0) || b.totalScore - a.totalScore);
+  } else if (mode === "blue_stars") {
+    sorted.sort((a, b) => (b.blueStarsTotal ?? 0) - (a.blueStarsTotal ?? 0) || b.totalScore - a.totalScore);
+  } else if (mode === "skill_effect") {
     sorted.sort(
       (a, b) =>
         fire(a) - fire(b) ||

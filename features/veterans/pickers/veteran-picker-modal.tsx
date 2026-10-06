@@ -4,7 +4,7 @@ import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
-import { XIcon, StarIcon } from "@/app/common/ui/primitives/icons";
+import { XIcon, StarIcon, AlertTriangleIcon } from "@/app/common/ui/primitives/icons";
 
 import { useState, useMemo, useEffect } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
@@ -75,6 +75,7 @@ interface VeteranPickerModalProps {
   characters: CharacterIndexEntry[];
   /** The other fixed uma for shared-G1 context (branch parent for GP slots, other parent otherwise). */
   contextParent?: KyumaruVeteranItem | null;
+  minmaxEnabled?: boolean;
   initialTab?: "recommended" | "owned" | "veterans" | "templates";
 }
 
@@ -83,9 +84,10 @@ type SortBy = VeteranPickerSort;
 const SORT_STORAGE_KEY = "almond_parent_picker_sort";
 const TAB_STORAGE_KEY = "almond_parent_picker_tab";
 
-function loadSort(): SortBy {
+function loadSort(minmaxEnabled = false): SortBy {
   try {
     const v = localStorage.getItem(SORT_STORAGE_KEY);
+    if (v === "minmax" && minmaxEnabled) return v;
     if (
       v === "affinity" ||
       v === "rank_score" ||
@@ -96,7 +98,7 @@ function loadSort(): SortBy {
       return v;
     }
   } catch {}
-  return "affinity";
+  return minmaxEnabled ? "minmax" : "affinity";
 }
 
 function loadTab(): PickerTab {
@@ -186,6 +188,9 @@ function RecommendedRow({
             {candidate.reasons.join(" · ")}
           </span>
         )}
+        {candidate.geneticWarnings && candidate.geneticWarnings.length > 0 && <p className="mt-0.5 text-[10px] text-amber-800 dark:text-amber-300" title={candidate.geneticWarnings.join("; ")}>
+          <AlertTriangleIcon className="mr-1 inline h-3 w-3 shrink-0" />{candidate.geneticWarnings[0]}{candidate.geneticWarnings.length > 1 ? ` (+${candidate.geneticWarnings.length - 1})` : ""}
+        </p>}
         {isBorrow && borrowUsed && (
           <span className="block text-[10px] font-bold text-amber-600 dark:text-amber-400">
             ⚠ This run's friend borrow is already used
@@ -484,15 +489,17 @@ export default function VeteranPickerModal({
   characters,
   contextParent,
   initialTab,
+  minmaxEnabled = false,
 }: VeteranPickerModalProps) {
-  const [initialPickerPreferences] = useState(() => ({ initialTab: loadTab(), initialSort: loadSort() }));
+  const [initialPickerPreferences] = useState(() => ({ initialTab: loadTab(), initialSort: loadSort(minmaxEnabled) }));
   const pickerInput = {
     ...initialPickerPreferences,
     recommendationsAvailable: Boolean(recommendations || recommendationsLoading || recommendationsError),
   };
   const { state: pickerState, view: pickerView, dispatch } = usePickerController(veteranPickerAdapter, pickerInput);
-  const { search, sortBy } = pickerState;
+  const { search, sortBy: savedSortBy } = pickerState;
   const activeTab = pickerView.activeTab;
+  const sortBy = savedSortBy === "minmax" && activeTab !== "recommended" ? "affinity" : savedSortBy;
   const normalizedSearch = pickerView.normalizedSearch;
   const [visibleLimit, setVisibleLimit] = useState(36);
 
@@ -755,7 +762,7 @@ export default function VeteranPickerModal({
               value={sortBy}
               onValueChange={(value) => dispatch({ type: "sortChanged", value: value as SortBy })}
               className=""
-             label="Sort trained Umas" options={[{ value: "affinity", label: "Compatibility Affinity", disabled: !targetCharaId }, { value: "rank_score", label: "Evaluation Score" }, { value: "blue_stars", label: "Lineage Blue Stars" }, { value: "skill_effect", label: "Unique Skill Effect", disabled: !course }, { value: "unique_tier", label: "Unique Rating (S/A/B/C)", disabled: !course }]} />
+             label="Sort trained Umas" options={[...(minmaxEnabled ? [{ value: "minmax", label: "Minmax Genetics", disabled: activeTab !== "recommended" }] : []), { value: "affinity", label: "Compatibility Affinity", disabled: !targetCharaId }, { value: "rank_score", label: "Evaluation Score" }, { value: "blue_stars", label: "Lineage Blue Stars" }, { value: "skill_effect", label: "Unique Skill Effect", disabled: !course }, { value: "unique_tier", label: "Unique Rating (S/A/B/C)", disabled: !course }]} />
           </div>
         </div>
 

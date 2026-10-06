@@ -34,7 +34,7 @@ export function PinkSparkPicker({ label, value, stars, onChange }: { label: stri
   const triggerLabel = value
     ? `${value}, ${stars ?? "unknown"} star${stars === 1 ? "" : "s"}`
     : value === null ? "No factor" : "Not set";
-  return <ParentingPopover label={`${label} Red factor: ${triggerLabel}`} className={`${BUTTON} parenting-aptitude-cell flex h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 border border-pink-300 bg-pink-50 text-[9px] leading-tight text-pink-900 dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100`} trigger={<>
+  return <ParentingPopover label={`${label} Red factor: ${triggerLabel}`} className={`${BUTTON} parenting-aptitude-cell flex h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-pink-300 bg-pink-50/80 text-[9px] leading-tight text-pink-900 shadow-2xs hover:bg-pink-100/90 transition-colors dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100`} trigger={<>
     <span className="max-w-full truncate">{value && <AptitudeName value={value} />}{value === null ? "None" : value === undefined ? "Set" : null}</span>
     <span aria-hidden="true" className="flex shrink-0 gap-px leading-none">{[1, 2, 3].map((star) => <span key={star} className={value && star <= (stars ?? 0) ? "text-pink-600 dark:text-pink-400" : "text-zinc-400/60 dark:text-zinc-600"}>★</span>)}</span>
   </>}>
@@ -75,12 +75,12 @@ export function AptitudeCell({
   return (
     <ParentingPopover
       label={`${label} ${aptitude}: base ${projection.base}, projected ${result}`}
-      className={`parenting-aptitude-cell group flex min-h-9 min-w-0 flex-col overflow-hidden rounded-md border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"} ${
+      className={`parenting-aptitude-cell group flex min-h-9 min-w-0 flex-col overflow-hidden rounded-lg border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"} ${
         isBoosted
           ? "border-pink-400 dark:border-pink-500 ring-2 ring-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.6)] dark:shadow-[0_0_12px_rgba(236,72,153,0.5)] z-1"
           : isPinkFactor
           ? "border-[#e4007f] ring-1 ring-[#e4007f] shadow-xs"
-          : "border-zinc-200/90 dark:border-zinc-700/80 hover:border-zinc-400 dark:hover:border-zinc-600 shadow-2xs"
+          : "border-zinc-200/90 dark:border-zinc-700/80 hover:border-zinc-300 dark:hover:border-zinc-600 shadow-2xs"
       }`}
       trigger={
         <div
@@ -150,7 +150,7 @@ export function AptitudeTable(props: { assessment: BranchAssessment; label: stri
     </div>
   );
 }
-export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 2, className = "w-full min-w-0" }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string }) {
+export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 3, className = "w-full min-w-0" }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string }) {
   useEffect(() => {
     const validTargets = targets.filter((key) => {
       const factor = assessment.whiteFactors.find((item) => item.name === key);
@@ -225,7 +225,7 @@ export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTa
           </CheckboxGroup>
           <p className="text-xs text-zinc-500">
             {targets.length >= maxTargets
-              ? "Max 2 genetics selected. Uncheck one to change."
+              ? `Max ${maxTargets} genetics selected. Uncheck one to change.`
               : "Requires ≥ 6★ pink factor in 3-generation lineage to unlock."}
           </p>
           <div className="mt-2 flex border-t border-zinc-200 pt-2 dark:border-zinc-800">

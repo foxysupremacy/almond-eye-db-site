@@ -213,8 +213,8 @@ describe("normalizeParentingSetup — exact costume and legacy data", () => {
 });
 
 test("white targets normalize valid Uma slots and aptitude keys without migrating global targets", async () => {
-  const config = normalizeLoopConfig({ slotWhiteTargets: { p1: ["Medium", "Medium", "Turf", "invalid"], p2: ["Dirt"], p1_gp1: ["Mile"], p2_gp2: ["Long"], p1_gp1_g1: ["Medium"], p1_gp1_g1_g1: ["Dirt"] }, whiteFactorGoals: { 10001: 3 } } as unknown as ParentingLoopConfig);
-  expect(config.slotWhiteTargets).toEqual({ p1: ["Medium", "Turf"], p2: ["Dirt"], p1_gp1: ["Mile"], p2_gp2: ["Long"] });
+  const config = normalizeLoopConfig({ slotWhiteTargets: { p1: ["Medium", "Medium", "Turf", "Leader", "invalid"], p2: ["Dirt"], p1_gp1: ["Mile"], p2_gp2: ["Long"], p1_gp1_g1: ["Medium"], p1_gp1_g1_g1: ["Dirt"] }, whiteFactorGoals: { 10001: 3 } } as unknown as ParentingLoopConfig);
+  expect(config.slotWhiteTargets).toEqual({ p1: ["Medium", "Turf", "Leader"], p2: ["Dirt"], p1_gp1: ["Mile"], p2_gp2: ["Long"] });
   expect(normalizeLoopConfig({ whiteFactorGoals: { 10001: 3 } } as unknown as ParentingLoopConfig).slotWhiteTargets).toEqual({});
   const encoded = await serializeParentingToHash(makeSetup({ loopConfig: config }));
   const decoded = await deserializeParentingFromHash(encoded, []);

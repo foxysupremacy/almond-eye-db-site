@@ -56,6 +56,26 @@ function fixtureRequest(): ParentingLoopRequest {
 }
 
 describe("parenting loop optimizer", () => {
+  test("Minmax retains a clean low-blue run before candidate and beam pruning", () => {
+    const request = fixtureRequest();
+    delete request.config.lockedSlots.p1;
+    request.config.factorGoals = {};
+    request.runningStyle = 1;
+    request.roster = [];
+    request.veterans = request.veterans.map((veteran) => ({ ...veteran,
+      factor_info_array: [...veteran.factor_info_array!, { factor_id: 5000803 }],
+      proper_ground_turf: 7, proper_ground_dirt: 7, proper_distance_short: 7, proper_distance_mile: 7,
+      proper_distance_middle: 7, proper_distance_long: 7, proper_running_style_nige: 7,
+      proper_running_style_senko: 7, proper_running_style_sashi: 7, proper_running_style_oikomi: 7,
+    }));
+    const dirty = request.veterans.find((veteran) => veteran.card_id === FIXTURE_IDS.p1)!;
+    for (let index = 0; index < 20; index++) request.veterans.push({ ...dirty, trained_chara_id: 900000 + index, rank_score: 50000 });
+    const clean = { ...dirty, trained_chara_id: 999999, rank_score: 1000, factor_info_array: [{ factor_id: 101 }, { factor_id: 2403 }] };
+    request.veterans.push(clean);
+    const result = planParentingLoop(request);
+    expect(result.blueprints[0].ancestors.p1.veteran?.trained_chara_id).toBe(clean.trained_chara_id);
+    expect(result.blueprints[0].minmax.slots.find((slot) => slot.slot === "p1")?.actual).toHaveLength(0);
+  });
   test("a Uma's pink factor boosts its child, not its own aptitude projection", () => {
     const config = fixtureRequest().config;
     const gp = buildLoopCandidates([makeVeteran(FIXTURE_IDS.p1_gp1)], [])[0];

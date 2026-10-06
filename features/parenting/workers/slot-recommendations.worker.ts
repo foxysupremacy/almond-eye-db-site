@@ -1,10 +1,12 @@
 import type { Course } from "@/lib/skill-engine/types";
 import type { RunningStyle } from "@/lib/deck/types";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
+import type { SlotRecommendationOptions } from "@/lib/parenting/compatibility";
 import { getSlotRecommendations } from "@/lib/parenting";
 
 interface SlotRecommendationsRequest {
   targetCharaId: number;
+  minmax?: SlotRecommendationOptions["minmax"];
   branchParent: KyumaruVeteranItem | null;
   excludedCharIds: number[];
   course: Course | null;

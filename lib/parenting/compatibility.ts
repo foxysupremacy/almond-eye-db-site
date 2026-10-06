@@ -36,6 +36,8 @@ import {
   getCareerG1Saddles,
   getCareerMustWinSaddles,
 } from "./career-engine";
+import { evaluateParentingMinmax, compareMinmax, type ParentingMinmaxContext } from "./minmax";
+import { buildLoopCandidates, type LoopAncestorSlot } from "./loop-planner";
 import type { LegacyCandidate, LegacyUniqueEval } from "./types";
 
 
@@ -76,6 +78,7 @@ export interface SlotRecommendationOptions {
   veterans?: KyumaruVeteranItem[];
   supportCardIds?: (number | null)[];
   limit?: number;
+  minmax?: ParentingMinmaxContext & { slot: LoopAncestorSlot };
 }
 
 export interface SlotRecommendations {
@@ -168,7 +171,8 @@ function buildCandidate(
   targetCharaId: number,
   branchParent: KyumaruVeteranItem | null,
   course: Course | null | undefined,
-  runningStyle: RunningStyle | number | null | undefined
+  runningStyle: RunningStyle | number | null | undefined,
+  minmax?: SlotRecommendationOptions["minmax"],
 ): LegacyCandidate | null {
   const chara = characterMap.get(entry.cardId) || characterByCharIdMap.get(entry.charId);
   if (!chara) return null;
@@ -226,7 +230,19 @@ function buildCandidate(
     ? (entry.vet.factor_info_array || []).map((f) => decodeFactor(f.factor_id))
     : [];
 
+  const replacement = minmax ? buildLoopCandidates(entry.vet ? [entry.vet] : [], entry.vet ? [] : [chara]).find((candidate) => entry.vet ? candidate.source === "veteran" : candidate.source === (entry.isUntrained ? "roster-goal" : "borrow-placeholder")) : undefined;
+  const factorGoals = { ...minmax?.config.factorGoals };
+  if (minmax) delete factorGoals[minmax.slot];
+  const minmaxAssessment = minmax && replacement ? evaluateParentingMinmax({ ...minmax, course, runningStyle, ancestors: { ...minmax.ancestors, [minmax.slot]: replacement }, config: { ...minmax.config, factorGoals } }) : undefined;
+  const geneticWarnings = minmaxAssessment?.slots.flatMap((slot) => [
+    ...slot.actual.map((gene) => `${slot.slot.toUpperCase()}: ${gene.aptitude} genetic present`),
+    ...(!slot.useActual ? slot.forecasts.filter((gene) => gene.risk === "guaranteed" || gene.risk === "frequent").map((gene) => `${slot.slot.toUpperCase()}: ${gene.aptitude} ${gene.stars}★ ${gene.risk} risk`) : []),
+  ]);
+  if (minmaxAssessment) reasons.push(`${minmaxAssessment.score.actualJunk} unwanted genetics · ${minmaxAssessment.score.guaranteed + minmaxAssessment.score.frequent} planned risks · ${minmaxAssessment.score.unknown} unknown`);
+
   return {
+    minmax: minmaxAssessment?.score,
+    geneticWarnings,
     charId: entry.charId,
     cardId: entry.cardId,
     nameEn: chara.nameEn,
@@ -252,7 +268,7 @@ function buildCandidate(
 
 function sortCandidates(candidates: LegacyCandidate[]): LegacyCandidate[] {
   return candidates.sort(
-    (a, b) => b.totalScore - a.totalScore || a.nameEn.localeCompare(b.nameEn)
+    (a, b) => compareMinmax(a.minmax, b.minmax) || b.totalScore - a.totalScore || a.nameEn.localeCompare(b.nameEn)
   );
 }
 
@@ -272,6 +288,7 @@ export function getSlotRecommendations(
     veterans = [],
     supportCardIds,
     limit = 20,
+    minmax,
   } = options;
   if (!targetCharaId) return { owned: [], borrow: [] };
 
@@ -291,17 +308,10 @@ export function getSlotRecommendations(
     veteransByCharId.set(cId, list);
   }
   for (const [cId, runs] of veteransByCharId.entries()) {
-    const sorted = [...runs].sort((a, b) => {
-      const aStars = calculateLineageBlueStars(a).total;
-      const bStars = calculateLineageBlueStars(b).total;
-      return bStars - aStars || (b.rank_score || 0) - (a.rank_score || 0);
-    });
-    ownedEntries.set(cId, {
-      charId: cId,
-      cardId: sorted[0].card_id,
-      vet: sorted[0],
-      allRuns: sorted,
-    });
+    const scored = runs.map((vet) => ({ vet, candidate: buildCandidate({ charId: cId, cardId: vet.card_id, vet }, targetCharaId, branchParent, course, runningStyle, minmax) }));
+    scored.sort((a, b) => compareMinmax(a.candidate?.minmax, b.candidate?.minmax) || calculateLineageBlueStars(b.vet).total - calculateLineageBlueStars(a.vet).total || (b.vet.rank_score || 0) - (a.vet.rank_score || 0));
+    const sorted = scored.map((entry) => entry.vet);
+    ownedEntries.set(cId, { charId: cId, cardId: sorted[0].card_id, vet: sorted[0], allRuns: sorted });
   }
 
   // Borrow pool + untrained picks: character templates not covered by a veteran.
@@ -318,17 +328,17 @@ export function getSlotRecommendations(
 
   const owned: LegacyCandidate[] = [];
   for (const entry of ownedEntries.values()) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
     if (c) owned.push(c);
   }
   for (const entry of untrainedEntries) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
     if (c) owned.push(c);
   }
 
   const borrow: LegacyCandidate[] = [];
   for (const entry of borrowEntries) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
     if (c) borrow.push(c);
   }
 

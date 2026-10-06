@@ -3,6 +3,24 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { characters, charactersById } from "@/lib/data/registry";
 import { DEFAULT_PARENTING_SETUP } from "@/lib/parenting/state";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
+import type { KyumaruVeteranItem } from "@/lib/veterans/types";
+
+test("Parent Planning shows the Ace profile and actual Dirt warning only on its six P/GP slots", () => {
+  const parent = { card_id: 103201, factor_info_array: [{ factor_id: 5000203 }] } as KyumaruVeteranItem;
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={{ ...DEFAULT_PARENTING_SETUP, parent1: parent }} targetStage={null}
+    course={{ id: 1, terrain: 1, distance: 4, length: 2500, turn: 1, inout: 1, corners: [], straights: [], slopes: [] }} runningStyle={2}
+    onOpenPicker={() => {}} updateSetup={() => {}}
+  />);
+  expect(markup).toContain("Ace genetics: Turf · Long · Leader");
+  expect(markup).not.toContain("planned risks");
+  expect(markup).not.toContain("Pink boosts:");
+  expect(markup).not.toContain("MDB gene catalog:");
+  expect(markup).toContain('aria-label="P1 genetics: 1 unwanted genetics present"');
+  for (const slot of ["P2", "P1 GP1", "P1 GP2", "P2 GP1", "P2 GP2"]) expect(markup).toContain(`aria-label="${slot} genetics:`);
+  expect(markup).not.toContain('aria-label="P1 GP1 G1 genetics:');
+});
 
 test("Parent Planning keeps the pedigree controls without optimizer analysis clutter", () => {
   const markup = renderToStaticMarkup(<ParentingLoopOptimizer
@@ -16,7 +34,7 @@ test("Parent Planning keeps the pedigree controls without optimizer analysis clu
   expect(markup).not.toContain("Compare alternatives");
   expect(markup).not.toContain("Triple Crown tie-break");
   expect(markup).not.toContain("Tiara tie-break");
-  expect(markup).toContain("MDB gene catalog:");
+  expect(markup).not.toContain("MDB gene catalog:");
   expect(markup).not.toContain("Lineage and pink spark inputs");
   expect(markup).not.toContain("G1 ? · White");
   expect(markup).not.toContain("possible (RNG)");

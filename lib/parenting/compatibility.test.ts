@@ -11,6 +11,7 @@ import type { Course } from "../skill-engine/types";
 import type { KyumaruVeteranItem } from "../veterans/types";
 import { characters as rawCharactersData } from "../data/registry";
 import type { CharacterIndexEntry } from "../api";
+import { DEFAULT_PARENTING_SETUP } from "./state";
 
 const characters = rawCharactersData;
 const charByCharId = new Map<number, CharacterIndexEntry>(characters.map((c) => [c.charId, c]));
@@ -65,6 +66,28 @@ const seiunSkySecondRun: KyumaruVeteranItem = {
   rank_score: 15000,
   win_saddle_id_array: [10],
 };
+
+test("Minmax chooses a clean run before the high-blue-star run and preserves affinity points", () => {
+  const dirty = { ...seiunSkyVeteran, factor_info_array: [{ factor_id: 103 }, { factor_id: 5000803 }],
+    proper_ground_turf: 7, proper_ground_dirt: 7, proper_distance_short: 7, proper_distance_mile: 7,
+    proper_distance_middle: 7, proper_distance_long: 7, proper_running_style_nige: 7,
+    proper_running_style_senko: 7, proper_running_style_sashi: 7, proper_running_style_oikomi: 7 };
+  const clean = { ...dirty, trained_chara_id: 999999, factor_info_array: [{ factor_id: 101 }], rank_score: 1000 };
+  const options = {
+    targetCharaId: TARGET_CHARA_ID, veterans: [dirty, clean], runningStyle: 1,
+    minmax: { ancestors: {}, config: DEFAULT_PARENTING_SETUP.loopConfig!, slot: "p1" as const },
+  };
+  const result = getSlotRecommendations(options);
+  const candidate = result.owned.find((entry) => entry.charId === 1020)!;
+  expect(candidate.veteran?.trained_chara_id).toBe(clean.trained_chara_id);
+  expect(candidate.allRuns?.map((run) => run.trained_chara_id)).toEqual([clean.trained_chara_id, dirty.trained_chara_id]);
+  expect(candidate.totalScore).toBe(candidate.affinityScore);
+  expect(candidate.minmax?.actualJunk).toBe(0);
+  const dirtyOnly = getSlotRecommendations({ ...options, veterans: [dirty] }).owned.find((entry) => entry.charId === 1020)!;
+  expect(dirtyOnly.minmax?.actualJunk).toBe(1);
+  expect(dirtyOnly.geneticWarnings).toContain("P1: Leader genetic present");
+  expect(dirtyOnly.veteran).toBe(dirty);
+});
 
 describe("getSlotRecommendations — parent slots", () => {
   test("returns empty pools without a target trainee", () => {

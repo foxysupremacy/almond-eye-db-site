@@ -1,3 +1,4 @@
+import { evaluateParentingMinmax, compareMinmax, type MinmaxScore, type ParentingMinmaxAssessment } from "./minmax";
 import type { CharacterIndexEntry } from "../data/types";
 import type { CareerG1Race } from "./career-engine";
 import { characters, careersByCharId, successionFactors, uniqueInheritMap } from "../data/registry";
@@ -104,6 +105,7 @@ export interface RankedLoopBlueprint {
   targetAptitude: AptitudeProjection[];
   parentAptitude: Record<"p1" | "p2", AptitudeProjection[]>;
   factorGoalScore: number;
+  minmax: ParentingMinmaxAssessment;
   affinityBreakdown: { p1: number; p2: number; parents: number; total: number; confidence: "confirmed" | "projected" | "feasible"; tripleCrown: number; tiara: number };
   notes: string[];
 }
@@ -309,7 +311,7 @@ const PINK_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
   31: "Runner", 32: "Leader", 33: "Betweener", 34: "Chaser",
 };
 
-const WHITE_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
+export const WHITE_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
   50001: "Turf", 50002: "Dirt", 50003: "Sprint", 50004: "Mile", 50005: "Medium", 50006: "Long",
   50007: "Runner", 50008: "Leader", 50009: "Betweener", 50010: "Chaser",
 };
@@ -322,7 +324,7 @@ function hasSpark(candidate: LoopCandidate, color: "blue" | "pink", goal: number
   });
 }
 
-function factorPlan(candidate: LoopCandidate | null | undefined, slot: LoopAncestorSlot, config: ParentingLoopConfig) {
+export function factorPlan(candidate: LoopCandidate | null | undefined, slot: LoopAncestorSlot, config: ParentingLoopConfig) {
   const goal = config.factorGoals?.[slot];
   const explicit = goal != null;
   const actualBlueId = candidate?.factorIds.find((id) => id >= 101 && id <= 503);
@@ -443,8 +445,10 @@ function scoreCandidate(candidate: LoopCandidate, request: ParentingLoopRequest,
 function currentSlotCandidates(request: ParentingLoopRequest, all: LoopCandidate[], slot: LoopAncestorSlot): LoopCandidate[] {
   const lockedKey = request.config.lockedSlots[slot] ?? (request.mode === "score-current" ? request.current?.[slot] : undefined);
   if (lockedKey) return all.filter((candidate) => candidate.key === lockedKey).slice(0, 1);
+  const current = Object.fromEntries(slots.map((key) => [key, all.find((candidate) => candidate.key === (request.current?.[key] ?? request.config.selectedSlots[key] ?? request.config.lockedSlots[key]))]));
+  const scores = new Map(all.map((candidate) => [candidate.key, evaluateParentingMinmax({ ancestors: { ...current, [slot]: candidate }, config: request.config, target: request.target, course: request.course, runningStyle: request.runningStyle }).score]));
   return [...all]
-    .sort((a, b) => scoreCandidate(b, request, 0, slot) - scoreCandidate(a, request, 0, slot) || a.key.localeCompare(b.key));
+    .sort((a, b) => factorGoalScore(b, request.config.factorGoals?.[slot]) - factorGoalScore(a, request.config.factorGoals?.[slot]) || compareMinmax(scores.get(a.key), scores.get(b.key)) || scoreCandidate(b, request, 0, slot) - scoreCandidate(a, request, 0, slot) || a.key.localeCompare(b.key));
 }
 
 function borrowRulesSatisfied(partial: Partial<Record<LoopAncestorSlot, LoopCandidate>>): boolean {
@@ -479,7 +483,7 @@ function slotOptions(request: ParentingLoopRequest, candidates: LoopCandidate[],
  * prunes incomplete trees, and enforces borrow capacity as soon as a training
  * run's donor pair is known. Reusing a donor in another run remains allowed. */
 function searchBlueprints(request: ParentingLoopRequest, candidates: LoopCandidate[]): Record<LoopUmaSlot, LoopCandidate>[] {
-  let beam: { ancestors: Partial<Record<LoopAncestorSlot, LoopCandidate>>; score: number }[] = [{ ancestors: {}, score: 0 }];
+  let beam: { ancestors: Partial<Record<LoopAncestorSlot, LoopCandidate>>; score: number; factorScore: number; minmax?: MinmaxScore }[] = [{ ancestors: {}, score: 0, factorScore: 0 }];
   const beamWidth = 48;
   for (const slot of slots) {
     const options = slotOptions(request, candidates, slot);
@@ -496,10 +500,14 @@ function searchBlueprints(request: ParentingLoopRequest, candidates: LoopCandida
       }
       const newGeneCoverage = Object.values(geneTypes(candidate)).flat().filter((id) =>
         Object.values(request.config.geneGoals).flat().includes(id) && !previouslyCovered.has(id)).length;
-      expanded.push({ ancestors, score: state.score + scoreCandidate(candidate, request, 0, slot) + newGeneCoverage * 15 });
+      expanded.push({ ancestors, score: state.score + scoreCandidate(candidate, request, 0, slot) + newGeneCoverage * 15,
+        factorScore: state.factorScore + factorGoalScore(candidate, request.config.factorGoals?.[slot]),
+        minmax: evaluateParentingMinmax({ ancestors, config: request.config, target: request.target, course: request.course, runningStyle: request.runningStyle }).score });
     }
     if (!expanded.length) return [];
-    expanded.sort((a, b) => b.score - a.score || JSON.stringify(a.ancestors).localeCompare(JSON.stringify(b.ancestors)));
+    // Prune by the same minmax order used for final results, so high-affinity
+    // dirty trees do not crowd clean alternatives out of the search beam.
+    expanded.sort((a, b) => b.factorScore - a.factorScore || compareMinmax(a.minmax, b.minmax) || b.score - a.score || JSON.stringify(a.ancestors).localeCompare(JSON.stringify(b.ancestors)));
     beam = expanded.slice(0, beamWidth);
   }
   return beam.flatMap((state) => slots.every((slot) => state.ancestors[slot])
@@ -602,6 +610,7 @@ function evaluateBlueprint(ancestors: Record<LoopUmaSlot, LoopCandidate>, reques
   ];
   return {
     id: `loop-${Object.values(ancestors).map((candidate) => candidate.key).join("|")}`,
+    minmax: evaluateParentingMinmax({ ancestors, config: request.config, target: request.target, course: request.course, runningStyle: request.runningStyle }),
     rank: strategy, ancestors, trainingSteps, aptitudeFloorGaps: gaps, aptitudeGoalGaps: goalGaps, floorMet,
     eligibleG1: g1, g1OpportunityCount: g1.reduce((sum, row) => sum + row.count, 0), targetAptitude, parentAptitude, factorGoalScore: plannedFactorScore,
     geneCoverage: genes, whiteFactorProduction: whiteOutputs, aptitudeSparkCoverage, deckSkillOverlap: [...skillCounts].map(([skillId, count]) => ({ skillId, count })),
@@ -630,7 +639,7 @@ export function planParentingLoop(request: ParentingLoopRequest): ParentingLoopR
   const uniqueScore = (plan: RankedLoopBlueprint) => plan.uniqueEvaluations.reduce((sum, item) =>
     sum + ({ "S+": 7, S: 6, A: 5, B: 4, C: 3, D: 2, F: 0 }[item.tier] ?? 0), 0);
   const optionalAffinity = (plan: RankedLoopBlueprint) => plan.affinityBreakdown.tripleCrown + plan.affinityBreakdown.tiara;
-  blueprints.sort((a, b) => Number(Boolean(b.isCurrent)) - Number(Boolean(a.isCurrent)) || Number(b.floorMet) - Number(a.floorMet) || b.factorGoalScore - a.factorGoalScore || b.affinityBreakdown.total - a.affinityBreakdown.total || b.g1OpportunityCount - a.g1OpportunityCount ||
+  blueprints.sort((a, b) => Number(Boolean(b.isCurrent)) - Number(Boolean(a.isCurrent)) || b.factorGoalScore - a.factorGoalScore || compareMinmax(a.minmax.score, b.minmax.score) || Number(b.floorMet) - Number(a.floorMet) || b.affinityBreakdown.total - a.affinityBreakdown.total || b.g1OpportunityCount - a.g1OpportunityCount ||
     optionalAffinity(b) - optionalAffinity(a) ||
     Object.values(b.geneCoverage).reduce((sum, g) => sum + g.count, 0) - Object.values(a.geneCoverage).reduce((sum, g) => sum + g.count, 0) ||
     a.deckSkillOverlap.reduce((sum, skill) => sum + skill.count, 0) - b.deckSkillOverlap.reduce((sum, skill) => sum + skill.count, 0) ||

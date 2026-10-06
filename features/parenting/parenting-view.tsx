@@ -43,6 +43,7 @@ import { Badge } from "@/app/common/ui/primitives/badge";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { CheckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
+import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
 import { LOOP_ANCESTOR_SLOTS, type LoopAncestorSlot } from "@/lib/parenting/loop-planner";
 
 export interface ParentingViewProps {
@@ -231,6 +232,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     return character ? { card_id: character.id, trained_chara_id: character.id, name: character.nameEn } as KyumaruVeteranItem : null;
   };
 
+  const minmaxPedigree = useMemo(() => resolveMinmaxPedigree(setup, veterans, characters), [setup, veterans, characters]);
+
   // Per-slot recommendations for the picker's "Recommended" tab.
   // Parent slots score by trainee affinity; GP slots add affinity with the branch parent.
   const pickerRequest = useMemo(() => {
@@ -259,6 +262,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
     return {
       targetCharaId: setup.targetCharaId,
+      minmax: { ancestors: minmaxPedigree.ancestors, config: minmaxPedigree.config, target: targetChara, slot: activePickerSlot },
       branchParent,
       excludedCharIds,
       course: course ?? null,
@@ -268,6 +272,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     };
   }, [
     activePickerSlot,
+    minmaxPedigree,
+    targetChara,
     setup.targetCharaId,
     setup.parent1,
     setup.parent2,
@@ -320,8 +326,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
           ? charaMap.get(branchParent.card_id)?.nameEn ?? branchParent.name ?? null
           : null;
         const contextNote = branchName
-          ? `${generationLabel} slot — ranked by affinity with the trainee + ${branchName}${courseLabel ? ` · ${courseLabel}` : ""}`
-          : `Parent slot — ranked by affinity with ${targetChara?.nameEn ?? "trainee"}${courseLabel ? ` · ${courseLabel}` : ""}`;
+          ? `${generationLabel} slot — ranked by aptitude, genetic risk, G1 and affinity with the trainee + ${branchName}${courseLabel ? ` · ${courseLabel}` : ""}`
+          : `Parent slot — ranked by aptitude, genetic risk, G1 and affinity with ${targetChara?.nameEn ?? "trainee"}${courseLabel ? ` · ${courseLabel}` : ""}`;
         setPickerRecommendations({
           ...recommendations,
           borrowUsed: runBorrow.used,
@@ -527,6 +533,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       {/* Unified 14-ancestor pedigree and loop planner */}
       <ParentingLoopOptimizer
         target={targetChara}
+        course={course}
+        runningStyle={runningStyle}
         targetStage={<div className="relative rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/75 dark:bg-zinc-900/75 p-4 sm:p-6 shadow-sm overflow-hidden backdrop-blur-md">
           <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <LineageAffinityHeader affinityBreakdown={affinityBreakdown} onOpenInheritedSkills={() => setIsInheritedSkillsOpen(true)} />
@@ -578,6 +586,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       {/* Veteran / Template Picker Modal (Recommended tab first) */}
       <VeteranPickerModal
         isOpen={activePickerSlot !== null}
+        minmaxEnabled
         onClose={() => setActivePickerSlot(null)}
         slotLabel={activePickerSlot === "p1" ? "Parent 1" : activePickerSlot === "p2" ? "Parent 2" : activePickerSlot ? activePickerSlot.split("_").length <= 2 ? "Grandparent" : activePickerSlot.split("_").length === 3 ? "Great-grandparent" : "Great-great-grandparent" : "Ancestor"}
         recommendations={pickerRecommendations ?? undefined}

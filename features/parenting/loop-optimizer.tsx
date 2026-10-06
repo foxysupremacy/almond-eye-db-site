@@ -4,16 +4,20 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components/Button";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import type { CharacterIndexEntry } from "@/lib/data/types";
-import { characters as allCharacters, skillsById, successionFactors, uniqueInheritMap } from "@/lib/data/registry";
+import { characters as allCharacters, skillsById, uniqueInheritMap } from "@/lib/data/registry";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
-import { buildLoopCandidates, LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig } from "@/lib/parenting/loop-planner";
-import { normalizeLoopConfig, type GrandparentSlot, type ParentingSetup } from "@/lib/parenting/state";
+import { LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig } from "@/lib/parenting/loop-planner";
+import { type ParentingSetup } from "@/lib/parenting/state";
 import { AptitudeCell, AptitudeGrid, AptitudeName, BUTTON, CHOICE, PinkSparkPicker, SHORT, WhiteGeneticPicker, nextPinkStars, type SparkSource } from "./components/aptitude-controls";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import { StatIcon, type StatName } from "@/app/common/ui/primitives/status-icons";
 import { getCharacterImageUrl } from "@/lib/api";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
+import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
+import { evaluateParentingMinmax, type ParentingMinmaxContext } from "@/lib/parenting/minmax";
+import { GeneticIndicator } from "./components/genetic-indicator";
+import type { Course } from "@/lib/skill-engine/types";
 import { extractSlotPrimaryFactors } from "@/lib/lineage/factor-decoder";
 import { ParentingPopover } from "./components/parenting-popover";
 import { PedigreeBranchTabs } from "./components/pedigree-branch-tabs";
@@ -24,6 +28,8 @@ interface Props {
   roster: CharacterIndexEntry[];
   setup: ParentingSetup;
   targetStage: ReactNode;
+  course?: Course | null;
+  runningStyle?: number | null;
   onOpenPicker: (slot: LoopAncestorSlot) => void;
   updateSetup: (updater: (prev: ParentingSetup) => ParentingSetup) => void;
 }
@@ -36,9 +42,6 @@ const SLOT_LABEL = Object.fromEntries(LOOP_ANCESTOR_SLOTS.map((slot) => {
 const MOBILE_BRANCH_BASE_ZOOM = 1.3;
 const MIN_MOBILE_BRANCH_ZOOM = 0.8;
 const MAX_MOBILE_BRANCH_ZOOM = 1.3;
-function defaultConfig(): ParentingLoopConfig {
-  return { geneGoals: {}, aptitudeGoals: {}, slotAptitudeGoals: {}, factorGoals: {}, selectedSlots: {}, lockedSlots: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false };
-}
 
 const APTITUDE_GROUPS = [
   { label: "Surface", indices: [0, 1], names: ["Turf", "Dirt"] },
@@ -232,6 +235,7 @@ function AncestorCard({
   sources,
   whiteTargets,
   onWhiteTargetsChange,
+  geneticIndicator,
 }: {
   slot: LoopUmaSlot;
   candidate: LoopCandidate | null;
@@ -244,17 +248,18 @@ function AncestorCard({
   sources: SparkSource[];
   whiteTargets: AptitudeKey[];
   onWhiteTargetsChange: (targets: AptitudeKey[]) => void;
+  geneticIndicator?: ReactNode;
 }) {
   if (density === "great-grandparent") {
     return (
-      <div className="relative min-w-0 rounded-xl border border-zinc-300/80 bg-zinc-200/85 p-1 shadow-2xs dark:border-zinc-700/80 dark:bg-zinc-900/90">
+      <div className="relative min-w-0 rounded-xl border border-zinc-200/90 bg-white/95 p-1 shadow-2xs dark:border-zinc-800/80 dark:bg-zinc-900/95">
         <div className="flex flex-col items-center justify-center px-1 pb-1 pt-3">
           <AncestorIdentityButton slot={slot} candidate={candidate} density="great-grandparent" onOpenPicker={onOpenPicker} />
         </div>
         <div className="mt-1">
           <ParentingPopover
             label={`${SLOT_LABEL[slot]} Red factor: ${factorGoal.pink ?? (factorGoal.pink === null ? "No factor" : "Not set")}`}
-            className="parenting-aptitude-cell flex h-10 w-full min-w-0 items-center justify-center gap-1 rounded-lg border border-pink-300 bg-pink-50 px-1.5 text-center font-bold text-[10px] text-pink-900 transition-colors hover:bg-pink-100 cursor-pointer dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100 dark:hover:bg-pink-900/40 outline-none focus-visible:ring-2 focus-visible:ring-pink-500 shadow-2xs"
+            className="parenting-aptitude-cell flex h-10 w-full min-w-0 items-center justify-center gap-1 rounded-lg border border-pink-300 bg-pink-50/80 px-1.5 text-center font-bold text-[10px] text-pink-900 transition-colors hover:bg-pink-100/90 cursor-pointer dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100 dark:hover:bg-pink-900/40 outline-none focus-visible:ring-2 focus-visible:ring-pink-500 shadow-2xs"
             trigger={
               <div className="flex items-center justify-center gap-1 w-full truncate">
                 <span className={`text-[10px] font-bold ${factorGoal.pink ? "text-pink-600 dark:text-pink-400" : "text-zinc-700 dark:text-zinc-300"}`}>
@@ -296,7 +301,7 @@ function AncestorCard({
 
   return (
     <div className="relative min-w-0">
-      <div className="w-full min-w-0 rounded-2xl border border-zinc-300/80 bg-zinc-200/85 p-1 pt-3 sm:p-2 sm:pt-4 shadow-sm dark:border-zinc-700/80 dark:bg-zinc-900/90">
+      <div className="w-full min-w-0 rounded-2xl border border-zinc-200/90 bg-white/95 p-1 pt-3 sm:p-2 sm:pt-4 shadow-2xs dark:border-zinc-800/80 dark:bg-zinc-900/95">
         <div className="w-full text-center h-auto flex flex-col gap-1 sm:gap-1.5">
             <div data-aptitude-group="Surface" className="w-full grid grid-cols-4 justify-items-stretch gap-1 sm:gap-1.5 items-end">
             <div className="col-span-2 flex flex-col items-center justify-center p-0.5 min-w-0">
@@ -318,13 +323,14 @@ function AncestorCard({
             <AptitudeCell aptitude="Chaser" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
           </div>
         </div>
-        <div className="mt-1 sm:mt-1.5 h-10 min-h-10 min-w-0 flex-none">
+        {geneticIndicator}
+        <div className="mt-1.5 sm:mt-2 h-10 min-h-10 min-w-0 flex-none">
           {uniqueSkill ? (
             <SkillHoverCard
               skillId={uniqueSkill.id}
               fallbackSkill={uniqueSkill}
               isParentMode
-              className="group inline-flex h-full w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-zinc-300/80 bg-white/95 px-2 py-1 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:hover:bg-zinc-700/90"
+              className="group inline-flex h-full w-full min-w-0 cursor-pointer items-center gap-2.5 rounded-lg border border-zinc-200/90 bg-white/95 px-2 py-1 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:hover:bg-zinc-700/90"
             >
               <SkillIcon iconId={uniqueSkill.iconId} name={uniqueSkill.nameEn} className="h-5 w-5 flex-none object-contain drop-shadow-2xs sm:h-6 sm:w-6" />
               <div className="min-w-0 flex-1 text-left">
@@ -336,10 +342,10 @@ function AncestorCard({
             <div aria-hidden="true" className="h-10 w-full" />
           )}
         </div>
-        <div className="mt-1 sm:mt-1.5">
+        <div className="mt-1.5 sm:mt-2">
           <ParentingPopover
             label={`${SLOT_LABEL[slot]} Red factor: ${factorGoal.pink ?? (factorGoal.pink === null ? "No factor" : "Not set")}`}
-            className="flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-pink-300 bg-pink-50 px-3 text-center font-bold text-xs text-pink-900 transition-colors cursor-pointer hover:bg-pink-100 dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100 dark:hover:bg-pink-900/40 outline-none focus-visible:ring-2 focus-visible:ring-pink-500 shadow-2xs"
+            className="flex h-10 w-full min-w-0 items-center justify-center gap-1.5 rounded-lg border border-pink-300 bg-pink-50/80 px-3 text-center font-bold text-xs text-pink-900 transition-colors cursor-pointer hover:bg-pink-100 dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100 dark:hover:bg-pink-900/40 outline-none focus-visible:ring-2 focus-visible:ring-pink-500 shadow-2xs"
             trigger={
               <div className="flex items-center justify-center gap-1.5 w-full">
                 <span className="text-[11px] sm:text-xs font-bold text-pink-700 dark:text-pink-300">
@@ -375,13 +381,12 @@ function AncestorCard({
             </div>
           </ParentingPopover>
         </div>
-        <div className="mt-1 sm:mt-1.5">
+        <div className="mt-1.5 sm:mt-2">
           <WhiteGeneticPicker
             label={SLOT_LABEL[slot]}
             assessment={assessment}
             targets={whiteTargets}
             onChange={onWhiteTargetsChange}
-            maxTargets={2}
           />
         </div>
       </div>
@@ -394,72 +399,13 @@ export function ParentingLoopOptimizer(props: Props) {
   const [mobileBranchZoom, setMobileBranchZoom] = useState(1);
   const branchTouchStart = useRef<{ x: number; y: number } | null>(null);
   const stored = props.setup.loopConfig;
-  const candidateVeterans = useMemo(() => {
-    const extras: KyumaruVeteranItem[] = [];
-    if (props.setup.parent1) extras.push(props.setup.parent1);
-    if (props.setup.parent2) extras.push(props.setup.parent2);
-    for (const parent of [props.setup.parent1, props.setup.parent2]) {
-      for (const ancestor of parent?.succession_chara_array ?? []) {
-        if (ancestor.card_id) extras.push(ancestor as unknown as KyumaruVeteranItem);
-      }
-    }
-    for (const slot of Object.values(props.setup.gpOverrides)) {
-      if (slot) extras.push({
-        card_id: slot.card_id, trained_chara_id: slot.trained_chara_id,
-        name: slot.name, factor_info_array: slot.factor_info_array,
-        win_saddle_id_array: slot.win_saddle_id_array,
-      } as KyumaruVeteranItem);
-    }
-    const seen = new Set<string>();
-    return [...props.veterans, ...extras].filter((vet) => {
-      const identity = `${vet.trained_chara_id ?? vet.card_id}:${vet.create_time ?? ""}`;
-      if (seen.has(identity)) return false;
-      seen.add(identity);
-      return true;
-    });
-  }, [props.veterans, props.setup.parent1, props.setup.parent2, props.setup.gpOverrides]);
-  const current = useMemo(() => {
-    const candidates = buildLoopCandidates(candidateVeterans, props.roster);
-    const find = (cardId?: number | null, trainedId?: number) => {
-      if (!cardId) return undefined;
-      return candidates.find((candidate) => candidate.cardId === cardId && candidate.source === "veteran" && (trainedId == null || candidate.veteran?.trained_chara_id === trainedId))?.key
-        ?? candidates.find((candidate) => candidate.key === `r:${cardId}`)?.key;
-    };
-    const gp = (parent: KyumaruVeteranItem | null, position: 10 | 20, override?: GrandparentSlot | null) => {
-      const succession = parent?.succession_chara_array?.find((entry) => entry.position_id === position);
-      const slot = override ?? succession;
-      return slot ? find(slot.card_id, override?.trained_chara_id) : undefined;
-    };
-    const map: Partial<Record<LoopAncestorSlot, string>> = {};
-    const p1 = find(props.setup.parent1?.card_id, props.setup.parent1?.trained_chara_id);
-    const p2 = find(props.setup.parent2?.card_id, props.setup.parent2?.trained_chara_id);
-    if (p1) map.p1 = p1; if (p2) map.p2 = p2;
-    const gp1 = gp(props.setup.parent1, 10, props.setup.gpOverrides.p1_gp1);
-    const gp2 = gp(props.setup.parent1, 20, props.setup.gpOverrides.p1_gp2);
-    const gp3 = gp(props.setup.parent2, 10, props.setup.gpOverrides.p2_gp1);
-    const gp4 = gp(props.setup.parent2, 20, props.setup.gpOverrides.p2_gp2);
-    if (gp1) map.p1_gp1 = gp1; if (gp2) map.p1_gp2 = gp2;
-    if (gp3) map.p2_gp1 = gp3; if (gp4) map.p2_gp2 = gp4;
-    return map;
-  }, [candidateVeterans, props.roster, props.setup.parent1, props.setup.parent2, props.setup.gpOverrides]);
-  const allCandidates = useMemo(() => buildLoopCandidates(candidateVeterans, props.roster), [candidateVeterans, props.roster]);
-  const config = useMemo(() => ({ ...defaultConfig(), ...normalizeLoopConfig(stored, candidateVeterans) }), [stored, candidateVeterans]);
+  const pedigree = useMemo(() => resolveMinmaxPedigree(props.setup, props.veterans, props.roster), [props.setup, props.veterans, props.roster]);
+  const config = pedigree.config;
+  const selectedCandidates = pedigree.ancestors as Record<LoopUmaSlot, LoopCandidate | null>;
   useEffect(() => {
     if (!stored || !LOOP_ANCESTOR_SLOTS.some((slot) => slot.split("_").length === 4 && stored.selectedSlots[slot] && !config.selectedSlots[slot])) return;
     props.updateSetup((prev) => ({ ...prev, loopConfig: config }));
   }, [stored, config, props.updateSetup]);
-  const selectedSlots = useMemo(() => ({ ...current, ...config.selectedSlots }), [current, config.selectedSlots]);
-  const selectedCandidates = useMemo(() => Object.fromEntries(LOOP_UMA_SLOTS.map((slot) => {
-    const key = selectedSlots[slot];
-    const exact = allCandidates.find((candidate) => candidate.key === key);
-    if (exact || !key) return [slot, exact ?? null];
-    const [source, identity] = key.split(":");
-    const id = Number(identity);
-    const match = source === "v"
-      ? allCandidates.find((candidate) => candidate.source === "veteran" && (candidate.veteran?.trained_chara_id === id || candidate.cardId === id))
-      : allCandidates.find((candidate) => candidate.cardId === id && (source === "b" ? candidate.source === "borrow-placeholder" : candidate.source === "roster-goal"));
-    return [slot, match ?? null];
-  })) as Record<LoopUmaSlot, LoopCandidate | null>, [allCandidates, selectedSlots]);
   const plannedConfig = useMemo(() => {
     const factorGoals = { ...config.factorGoals };
     for (const slot of LOOP_UMA_SLOTS) {
@@ -473,6 +419,8 @@ export function ParentingLoopOptimizer(props: Props) {
   const assessments = useMemo(() => Object.fromEntries(
     LOOP_UMA_SLOTS.map((slot) => [slot, evaluateParentingBranch(slot, selectedCandidates, plannedConfig, props.target)]),
   ) as Record<LoopUmaSlot, BranchAssessment>, [selectedCandidates, plannedConfig, props.target]);
+  const minmaxContext: ParentingMinmaxContext = useMemo(() => ({ ancestors: selectedCandidates, config: plannedConfig, target: props.target, course: props.course, runningStyle: props.runningStyle }), [selectedCandidates, plannedConfig, props.target, props.course, props.runningStyle]);
+  const minmax = useMemo(() => evaluateParentingMinmax(minmaxContext), [minmaxContext]);
   const updateConfig = (next: ParentingLoopConfig) => {
     props.updateSetup((prev) => ({ ...prev, loopConfig: next }));
   };
@@ -489,7 +437,8 @@ export function ParentingLoopOptimizer(props: Props) {
     const uniqueSkill = (inheritedUniqueId == null ? undefined : skillsById.get(inheritedUniqueId))
       ?? (uniqueId == null ? undefined : skillsById.get(uniqueId));
     const uniqueSkillForInspector = uniqueSkill ? { id: uniqueSkill.id, nameEn: uniqueSkill.nameEn, nameJp: uniqueSkill.nameJp, iconId: uniqueSkill.iconId } : undefined;
-    return <AncestorCard key={slot} slot={umaSlot} whiteTargets={config.slotWhiteTargets?.[umaSlot] ?? []} onWhiteTargetsChange={(targets) => updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [umaSlot]: targets } })} sources={assessment.sourceSlots.map((sourceSlot) => { const sourceCandidate = selectedCandidates[sourceSlot as LoopUmaSlot] ?? null; const plan = editableFactorPlan(sourceCandidate, config.factorGoals?.[sourceSlot]); return { label: SLOT_LABEL[sourceSlot], pink: plan.pink, stars: plan.pinkStars }; })} assessment={assessment} candidate={candidate} density={density} factorGoal={editableFactorPlan(candidate, config.factorGoals?.[slot])} uniqueSkill={uniqueSkillForInspector} onFactorGoalChange={(goal) => setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
+    const geneticAssessment = minmax.slots.find((entry) => entry.slot === slot);
+    return <AncestorCard geneticIndicator={geneticAssessment ? <GeneticIndicator assessment={geneticAssessment} context={minmaxContext} /> : undefined} key={slot} slot={umaSlot} whiteTargets={config.slotWhiteTargets?.[umaSlot] ?? []} onWhiteTargetsChange={(targets) => updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [umaSlot]: targets } })} sources={assessment.sourceSlots.map((sourceSlot) => { const sourceCandidate = selectedCandidates[sourceSlot as LoopUmaSlot] ?? null; const plan = editableFactorPlan(sourceCandidate, config.factorGoals?.[sourceSlot]); return { label: SLOT_LABEL[sourceSlot], pink: plan.pink, stars: plan.pinkStars }; })} assessment={assessment} candidate={candidate} density={density} factorGoal={editableFactorPlan(candidate, config.factorGoals?.[slot])} uniqueSkill={uniqueSkillForInspector} onFactorGoalChange={(goal) => setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
   };
 
   const renderBranch = (parentSlot: "p1" | "p2") => {
@@ -504,12 +453,10 @@ export function ParentingLoopOptimizer(props: Props) {
             {ancestorCard(gpSlot, "grandparent")}
             <div className="mt-1">
               <svg data-pedigree-connector="grandparent-to-great-grandparent" aria-hidden="true" className="pointer-events-none block h-4 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 16" preserveAspectRatio="none"><path d="M500 0V6H250V16M500 6H750V16" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>
-              <div className="grid grid-cols-2 items-stretch gap-1">{ggpSlots.map((slot) => <div key={slot} className="flex min-w-0 flex-col rounded-lg bg-zinc-50/70 dark:bg-zinc-900/60">
+              <div className="grid grid-cols-2 items-stretch gap-1">{ggpSlots.map((slot) => <div key={slot} className="flex min-w-0 flex-col">
                 {ancestorCard(slot, "great-grandparent")}
-                <div className="px-1.5 pb-1">
-                  <svg data-pedigree-connector="great-grandparent-to-great-great-grandparent" aria-hidden="true" className="pointer-events-none block h-4 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 16" preserveAspectRatio="none"><path d="M500 0V6H250V16M500 6H750V16" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>
-                  <div className="grid grid-cols-2 items-stretch gap-1">{([`${slot}_g1`, `${slot}_g2`] as LoopAncestorSlot[]).map((gggpSlot) => ancestorCard(gggpSlot, "great-great-grandparent"))}</div>
-                </div>
+                <svg data-pedigree-connector="great-grandparent-to-great-great-grandparent" aria-hidden="true" className="pointer-events-none block h-4 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 16" preserveAspectRatio="none"><path d="M500 0V6H250V16M500 6H750V16" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>
+                <div className="grid grid-cols-2 items-stretch gap-1">{([`${slot}_g1`, `${slot}_g2`] as LoopAncestorSlot[]).map((gggpSlot) => ancestorCard(gggpSlot, "great-great-grandparent"))}</div>
               </div>)}</div>
             </div>
           </div>;
@@ -540,8 +487,8 @@ export function ParentingLoopOptimizer(props: Props) {
     </header>
     {props.targetStage && <div>{props.targetStage}</div>}
     {!props.target ? <p className="text-sm text-zinc-500">Select a target Uma to build the pedigree.</p> : <>
-      <div className="border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800">
-        <span className="text-zinc-400">MDB gene catalog: {successionFactors.factors.length} factors; aptitude thresholds are data-backed.</span>
+      <div className="border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800" aria-live="polite">
+        <p className="font-semibold text-zinc-900 dark:text-zinc-100">Ace genetics: {[minmax.target.surface, minmax.target.distance, minmax.target.style].filter(Boolean).join(" · ") || "Select a course and style"}</p>
       </div>
 
       <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-3">

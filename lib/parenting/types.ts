@@ -65,11 +65,13 @@ export interface LegacyCandidate {
   affinityScore: number;
   /** Affinity points with the fixed parent (sub-legacy lists only). */
   pairScore?: number;
-  /** Sort key: affinityScore + (pairScore ?? 0). */
+  /** Affinity points only: affinityScore + (pairScore ?? 0). Minmax sorts separately. */
   totalScore: number;
 
   /** Track/style suitability of the inheritable unique (absent when no course selected). */
   uniqueEval?: LegacyUniqueEval;
 
+  minmax?: import("./minmax").MinmaxScore;
+  geneticWarnings?: string[];
   reasons: string[];
 }
