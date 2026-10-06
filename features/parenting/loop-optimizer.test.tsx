@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { characters, charactersById } from "@/lib/data/registry";
 import { DEFAULT_PARENTING_SETUP } from "@/lib/parenting/state";
+import { LOOP_ANCESTOR_SLOTS } from "@/lib/parenting/loop-planner";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 
@@ -195,9 +196,7 @@ test("empty Parent Planning character slots keep accessible pick labels and touc
   expect(markup).toContain('aria-label="Choose P1 GP1"');
   expect(markup).toContain('aria-label="Choose P1 GP1 GGP1"');
   expect(markup).toContain("min-h-9 max-w-full");
-  expect(markup).toContain(">Select P1</span>");
-  expect(markup).toContain(">Select P1 GP1</span>");
-  expect(markup).toContain(">Select P1 GP1 GGP1</span>");
+  expect(markup.match(/>Select parent<\/span>/g)?.length).toBe(LOOP_ANCESTOR_SLOTS.length);
 });
 
 test("a selected factor does not highlight aptitude on the same Uma card", () => {

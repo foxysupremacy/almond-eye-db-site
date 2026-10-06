@@ -225,7 +225,7 @@ function AncestorIdentityButton({
         </div>
       )}
       <span className={`mt-1 w-full ${nameWidth} truncate text-center font-bold ${nameSize} text-zinc-800 dark:text-zinc-100 leading-tight transition-colors duration-150 group-hover/avatar:text-emerald-700 dark:group-hover/avatar:text-emerald-400`}>
-        {candidate?.name ?? `Select ${SLOT_LABEL[slot]}`}
+        {candidate?.name ?? "Select parent"}
       </span>
     </Button>
   );
