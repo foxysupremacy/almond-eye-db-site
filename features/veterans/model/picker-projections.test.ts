@@ -52,6 +52,7 @@ const dependencies: PickerProjectionDependencies = {
 describe("veteran picker projections", () => {
   const characters = [character(100101, 1001, "Alpha"), character(100102, 1001, "Alpha Alt"), character(100201, 1002, "Beta"), character(100301, 1003, "Gamma")];
   const byCardId = new Map(characters.map((entry) => [entry.id, entry]));
+  const eligibleCardIds = new Set(characters.map((entry) => entry.id));
 
   test("owned Uma projection filters duplicate parents and search, scores and sorts entries", () => {
     const entries = projectOwnedUmaEntries({
@@ -64,6 +65,7 @@ describe("veteran picker projections", () => {
       search: "alp",
       sortBy: "affinity",
       uniqueEvalByCardId: new Map(),
+      eligibleCardIds,
       dependencies,
     });
 
@@ -97,6 +99,7 @@ describe("veteran picker projections", () => {
       search: "alpha",
       sortBy: "rank_score",
       uniqueEvalByCardId: new Map(),
+      eligibleCardIds,
       dependencies,
     });
 
@@ -128,10 +131,30 @@ describe("veteran picker projections", () => {
       search: "",
       sortBy: "affinity",
       uniqueEvalByCardId: evals,
+      eligibleCardIds,
       calculateAffinity: (cardId) => cardId,
     });
 
     expect(templates.map((item) => item.id)).toEqual([100201, 100102, 100101]);
     expect(characters.map((item) => item.id)).toEqual([100101, 100102, 100201, 100301]);
+  });
+
+  test("all manual tabs exclude weak variants before grouping, searching and sorting", () => {
+    const eligibleCardIds = new Set([100102, 100201]);
+    const weakRun = veteran(100101, 9999, [1, 2, 3]);
+    const strongRun = veteran(100102, 1, [1]);
+    const common = { targetCharaId: 1003, search: "alpha", sortBy: "affinity" as const,
+      uniqueEvalByCardId: new Map<number, LegacyUniqueEval>(), eligibleCardIds };
+    const templates = projectCharacterTemplates({ ...common, characters, calculateAffinity: (id) => id });
+    expect(templates.map((entry) => entry.id)).toEqual([100102]);
+    const owned = projectOwnedUmaEntries({ ...common, ownedUmas: { "100101": [3, 0], "100102": [3, 0] },
+      charactersByCardId: byCardId, veterans: [weakRun, strongRun], dependencies });
+    expect(owned.map((entry) => entry.chara.id)).toEqual([100102]);
+    const groups = projectVeteranGroups({ ...common, charactersByCardId: byCardId,
+      veterans: [weakRun, strongRun], dependencies });
+    expect(groups).toHaveLength(1);
+    expect(groups[0].bestVet).toBe(strongRun);
+    expect(groups[0].runs).toEqual([strongRun]);
+    expect(weakRun.rank_score).toBe(9999);
   });
 });

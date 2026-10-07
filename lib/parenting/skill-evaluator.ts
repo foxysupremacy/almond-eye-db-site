@@ -11,6 +11,11 @@ import type { LegacyUniqueEval } from "./types";
 import type { SkillDetail } from "../data/types";
 import { isSkillMatchingFilter } from "../recommendation/engine";
 import { BANNED_DEBUFF_SKILL_IDS } from "../pvp/events";
+import { getInheritableSkillForUnique } from "../skills/rarity";
+
+export function isFirstPlaceInsuranceUnique(skillId: number): boolean {
+  return [100201, 102001, 110201].some((id) => id === skillId || getInheritableSkillForUnique(id) === skillId);
+}
 
 
 export function runningStyleToNum(
@@ -279,7 +284,7 @@ export function evaluateUniqueSkill(
 
   const styleNum = runningStyleToNum(runningStyle);
 
-  const isAnki = uniqueSkillId === 100201 || uniqueSkillId === 102001 || uniqueSkillId === 110201;
+  const isAnki = isFirstPlaceInsuranceUnique(uniqueSkillId);
   if (isAnki && styleNum === 2) {
     const runnerEval = evaluateSkillForTrack(
       rawSkill,

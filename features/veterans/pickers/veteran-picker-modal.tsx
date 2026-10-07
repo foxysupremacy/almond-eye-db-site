@@ -18,14 +18,13 @@ import { decodeFactor, calculateLineageBlueStars } from "@/lib/lineage/factor-de
 import type { LegacyCandidate } from "@/lib/parenting";
 import type { LegacyUniqueEval } from "@/lib/parenting/types";
 import { evaluateUniqueSkill, runningStyleToNum } from "@/lib/parenting/skill-evaluator";
+import { getParentInheritedUnique, hasMinimumParentSkillEffect } from "@/lib/parenting/unique-effect-filter";
 import { getCareerG1Saddles } from "@/lib/parenting/career-engine";
 import { useOwnedUmas } from "@/app/common/hooks/use-owned-umas";
 import {
   charactersById,
   charactersByCharId,
-  skillsById,
 } from "@/lib/api";
-import { getInheritableSkillForUnique } from "@/lib/skills/rarity";
 import { useDeck } from "@/features/deck/state";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
@@ -116,11 +115,10 @@ function resolveWhiteUnique(cardId: number): WhiteUniqueInfo | null {
   const chara =
     charactersById.get(cardId) ?? charactersByCharId.get(getCharaIdFromCardId(cardId));
   if (!chara?.uniqueSkillId) return null;
-  const skillId = getInheritableSkillForUnique(chara.uniqueSkillId) ?? chara.uniqueSkillId;
-  const raw = skillsById.get(skillId);
+  const raw = getParentInheritedUnique(chara.uniqueSkillId);
   if (!raw) return null;
   return {
-    skillId,
+    skillId: raw.id,
     nameEn: raw.nameEn,
     nameJp: raw.nameJp,
     rarity: raw.rarity,
@@ -547,6 +545,27 @@ export default function VeteranPickerModal({
     return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
   }, [characters]);
 
+  const eligibleCardIds = useMemo(() => {
+    const eligible = new Set<number>();
+    if (!isOpen || activeTab === "recommended") return eligible;
+    const eligibleBySkill = new Map<number, boolean>();
+    const cardIds = activeTab === "veterans" ? veterans.map((vet) => vet.card_id)
+      : activeTab === "owned" ? Object.keys(ownedUmas).map(Number)
+      : characters.map((character) => character.id);
+    for (const cardId of cardIds) {
+      const chara = charactersById.get(cardId) ?? charactersByCharId.get(getCharaIdFromCardId(cardId));
+      const skill = getParentInheritedUnique(chara?.uniqueSkillId);
+      if (!skill) continue;
+      let passes = eligibleBySkill.get(skill.id);
+      if (passes === undefined) {
+        passes = hasMinimumParentSkillEffect(skill, course, runningStyle);
+        eligibleBySkill.set(skill.id, passes);
+      }
+      if (passes) eligible.add(cardId);
+    }
+    return eligible;
+  }, [isOpen, activeTab, veterans, ownedUmas, characters, course, runningStyle]);
+
   // White-unique track/style evaluation per card id (tier chips + skill_effect /
   // unique_tier sorting). Only computed while the modal is open and a course is
   // selected; deduped by white skill id since variants share the same unique.
@@ -601,9 +620,10 @@ export default function VeteranPickerModal({
       search: normalizedSearch,
       sortBy,
       uniqueEvalByCardId,
+      eligibleCardIds,
       dependencies: projectionDependencies,
     }),
-    [isOpen, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
   );
 
   const handleSelectOwnedUma = (entry: OwnedUmaEntry) => {
@@ -641,9 +661,10 @@ export default function VeteranPickerModal({
       search: normalizedSearch,
       sortBy,
       uniqueEvalByCardId,
+      eligibleCardIds,
       dependencies: projectionDependencies,
     }),
-    [isOpen, activeTab, veterans, charaMap, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, veterans, charaMap, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
   );
 
   const processedTemplates = useMemo(
@@ -654,9 +675,10 @@ export default function VeteranPickerModal({
       search: normalizedSearch,
       sortBy,
       uniqueEvalByCardId,
+      eligibleCardIds,
       calculateAffinity: (cardId, targetId) => calculateAffinity({ card_id: cardId }, targetId).total,
     }),
-    [isOpen, activeTab, characters, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId],
+    [isOpen, activeTab, characters, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
   );
 
   if (!isOpen) return null;
@@ -1106,22 +1128,19 @@ export default function VeteranPickerModal({
                             titleClassName="!text-[10px]"
                             subtitleClassName="!text-[8px]"
                             className="mt-1"
-                            trailing={
-                              <>
-                                {uniqueEval && (
-                                  <TierChip
-                                    tier={uniqueEval.tier}
-                                    title={uniqueEval.explanation}
-                                  />
-                                )}
-                                <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained">
-                                  Untrained
-                                </Badge>
-                              </>
-                            }
                           />
                         )}
                       </div>
+                      {whiteUnique && (
+                        <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                          {uniqueEval && (
+                            <TierChip tier={uniqueEval.tier} title={uniqueEval.explanation} />
+                          )}
+                          <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained">
+                            Untrained
+                          </Badge>
+                        </div>
+                      )}
                       <AppButton
                         variant="secondary"
                         className="col-span-2 w-full"

@@ -39,6 +39,7 @@ import {
 import { evaluateParentingMinmax, compareMinmax, type ParentingMinmaxContext } from "./minmax";
 import { buildLoopCandidates, type LoopAncestorSlot } from "./loop-planner";
 import type { LegacyCandidate, LegacyUniqueEval } from "./types";
+import { getParentInheritedUnique, hasMinimumParentSkillEffect } from "./unique-effect-filter";
 
 
 /** Avatar image URL for a character */
@@ -109,7 +110,7 @@ function evaluateUnique(
   const chara =
     characterMap.get(cardId) || characterByCharIdMap.get(getCharaIdFromCardId(cardId));
   const evalResult = evaluateUniqueSkill(
-    chara?.uniqueSkillId ?? undefined,
+    getParentInheritedUnique(chara?.uniqueSkillId)?.id,
     course,
     runningStyleToNum(runningStyle)
   );
@@ -176,6 +177,8 @@ function buildCandidate(
 ): LegacyCandidate | null {
   const chara = characterMap.get(entry.cardId) || characterByCharIdMap.get(entry.charId);
   if (!chara) return null;
+
+  if (!hasMinimumParentSkillEffect(getParentInheritedUnique(chara.uniqueSkillId), course, runningStyle)) return null;
 
   const uniqueEval = evaluateUnique(entry.cardId, course, runningStyle);
   if (isUniqueFiltered(uniqueEval)) return null;
@@ -308,7 +311,9 @@ export function getSlotRecommendations(
     veteransByCharId.set(cId, list);
   }
   for (const [cId, runs] of veteransByCharId.entries()) {
-    const scored = runs.map((vet) => ({ vet, candidate: buildCandidate({ charId: cId, cardId: vet.card_id, vet }, targetCharaId, branchParent, course, runningStyle, minmax) }));
+    const scored = runs.map((vet) => ({ vet, candidate: buildCandidate({ charId: cId, cardId: vet.card_id, vet }, targetCharaId, branchParent, course, runningStyle, minmax) }))
+      .filter((entry) => entry.candidate !== null);
+    if (!scored.length) continue;
     scored.sort((a, b) => compareMinmax(a.candidate?.minmax, b.candidate?.minmax) || calculateLineageBlueStars(b.vet).total - calculateLineageBlueStars(a.vet).total || (b.vet.rank_score || 0) - (a.vet.rank_score || 0));
     const sorted = scored.map((entry) => entry.vet);
     ownedEntries.set(cId, { charId: cId, cardId: sorted[0].card_id, vet: sorted[0], allRuns: sorted });

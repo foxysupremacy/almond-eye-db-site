@@ -12,6 +12,8 @@ import type { KyumaruVeteranItem } from "../veterans/types";
 import { characters as rawCharactersData } from "../data/registry";
 import type { CharacterIndexEntry } from "../api";
 import { DEFAULT_PARENTING_SETUP } from "./state";
+import { getParentInheritedUnique, hasMinimumParentSkillEffect } from "./unique-effect-filter";
+import { evaluateUniqueSkill } from "./skill-evaluator";
 
 const characters = rawCharactersData;
 const charByCharId = new Map<number, CharacterIndexEntry>(characters.map((c) => [c.charId, c]));
@@ -90,6 +92,35 @@ test("Minmax chooses a clean run before the high-blue-star run and preserves aff
 });
 
 describe("getSlotRecommendations — parent slots", () => {
+  test("filters weak inherited uniques without a course, and retains an eligible HoF variant", () => {
+    const weakRuby = { ...seiunSkyVeteran, card_id: 108501, trained_chara_id: 10850101, rank_score: 99999 };
+    const strongRuby = { ...weakRuby, card_id: 108502, trained_chara_id: 10850201, rank_score: 1 };
+    const options = { targetCharaId: TARGET_CHARA_ID, limit: 500 };
+    const templates = getSlotRecommendations(options);
+    expect([...templates.owned, ...templates.borrow].some((candidate) => candidate.cardId === 108501)).toBe(false);
+    expect([...templates.owned, ...templates.borrow].every((candidate) =>
+      hasMinimumParentSkillEffect(getParentInheritedUnique(characters.find((chara) => chara.id === candidate.cardId)?.uniqueSkillId)))).toBe(true);
+    const hof = getSlotRecommendations({ ...options, veterans: [weakRuby, strongRuby] });
+    const ruby = hof.owned.find((candidate) => candidate.charId === 1085)!;
+    expect(ruby.cardId).toBe(108502);
+    expect(ruby.veteran).toBe(strongRuby);
+    expect(ruby.allRuns).toEqual([strongRuby]);
+    expect(weakRuby.rank_score).toBe(99999);
+  });
+
+  test("recommended tier and score evaluate the inherited skill", () => {
+    const result = getSlotRecommendations({ targetCharaId: TARGET_CHARA_ID, course: kyoto2200Course, runningStyle: 1, limit: 500 });
+    expect(result.owned.length).toBeGreaterThan(0);
+    for (const candidate of [...result.owned, ...result.borrow]) {
+      const character = characters.find((chara) => chara.id === candidate.cardId)!;
+      const inherited = getParentInheritedUnique(character.uniqueSkillId)!;
+      expect(hasMinimumParentSkillEffect(inherited, kyoto2200Course, 1)).toBe(true);
+      const evaluation = evaluateUniqueSkill(inherited.id, kyoto2200Course, 1);
+      expect(candidate.uniqueEval?.skillName).toBe(evaluation.skillName);
+      expect(candidate.uniqueEval?.score).toBe(evaluation.score);
+      expect(candidate.uniqueEval?.tier).toBe(evaluation.tier);
+    }
+  });
   test("returns empty pools without a target trainee", () => {
     const res = getSlotRecommendations({ targetCharaId: null, veterans: [seiunSkyVeteran] });
     expect(res.owned).toHaveLength(0);
@@ -144,7 +175,7 @@ describe("getSlotRecommendations — parent slots", () => {
     expect(seiun!.veteran?.trained_chara_id).toBe(10200101); // higher blue-star run wins
   });
 
-  test("applies the unique-skill F-tier filter when a course is set, and no filter otherwise", () => {
+  test("applies the unique-skill F-tier filter only when a course is set", () => {
     const filtered = getSlotRecommendations({
       targetCharaId: TARGET_CHARA_ID,
       course: kyoto2200Course,

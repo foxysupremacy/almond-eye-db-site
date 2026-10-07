@@ -60,6 +60,7 @@ export function projectOwnedUmaEntries(input: {
   search: string;
   sortBy: VeteranPickerSort;
   uniqueEvalByCardId: Map<number, LegacyUniqueEval>;
+  eligibleCardIds: ReadonlySet<number>;
   dependencies: PickerProjectionDependencies;
 }): OwnedUmaEntry[] {
   const {
@@ -72,6 +73,7 @@ export function projectOwnedUmaEntries(input: {
     search,
     sortBy,
     uniqueEvalByCardId,
+    eligibleCardIds,
     dependencies,
   } = input;
   if (!targetCharaId) return [];
@@ -84,7 +86,7 @@ export function projectOwnedUmaEntries(input: {
 
   for (const [cardIdString, details] of Object.entries(ownedUmas)) {
     const chara = charactersByCardId.get(Number(cardIdString));
-    if (!chara || excluded.has(chara.charId)) continue;
+    if (!chara || !eligibleCardIds.has(chara.id) || excluded.has(chara.charId)) continue;
     const searchable = `${chara.nameEn || ""} ${chara.nameJp} ${chara.titleEn ?? ""}`.toLowerCase();
     if (query && !searchable.includes(query)) continue;
 
@@ -134,13 +136,15 @@ export function projectVeteranGroups(input: {
   search: string;
   sortBy: VeteranPickerSort;
   uniqueEvalByCardId: Map<number, LegacyUniqueEval>;
+  eligibleCardIds: ReadonlySet<number>;
   dependencies: PickerProjectionDependencies;
 }): VeteranGroup[] {
-  const { veterans, charactersByCardId, targetCharaId, excludedCharId, search, sortBy, uniqueEvalByCardId, dependencies } = input;
+  const { veterans, charactersByCardId, targetCharaId, excludedCharId, search, sortBy, uniqueEvalByCardId, eligibleCardIds, dependencies } = input;
   const query = search.trim().toLowerCase();
   const groupsByCharId = new Map<number, KyumaruVeteranItem[]>();
 
   for (const veteran of veterans) {
+    if (!eligibleCardIds.has(veteran.card_id)) continue;
     const charId = dependencies.getCharaIdFromCardId(veteran.card_id);
     if ((targetCharaId && charId === targetCharaId) || (excludedCharId && charId === excludedCharId)) continue;
     const character = charactersByCardId.get(veteran.card_id);
@@ -201,11 +205,13 @@ export function projectCharacterTemplates(input: {
   search: string;
   sortBy: VeteranPickerSort;
   uniqueEvalByCardId: Map<number, LegacyUniqueEval>;
+  eligibleCardIds: ReadonlySet<number>;
   calculateAffinity(cardId: number, targetCharaId: number): number;
 }): CharacterIndexEntry[] {
-  const { characters, targetCharaId, excludedCharId, search, sortBy, uniqueEvalByCardId, calculateAffinity } = input;
+  const { characters, targetCharaId, excludedCharId, search, sortBy, uniqueEvalByCardId, eligibleCardIds, calculateAffinity } = input;
   const query = search.trim().toLowerCase();
   const filtered = characters.filter((character) => {
+    if (!eligibleCardIds.has(character.id)) return false;
     if ((targetCharaId && character.charId === targetCharaId) || (excludedCharId && character.charId === excludedCharId)) return false;
     const searchable = `${character.nameEn || ""} ${character.nameJp || ""} ${character.titleEn || ""}`.toLowerCase();
     return !query || searchable.includes(query);
