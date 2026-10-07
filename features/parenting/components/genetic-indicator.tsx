@@ -7,10 +7,11 @@ import { branchSourceSlots, factorPlan, type LoopAncestorSlot } from "@/lib/pare
 import { aceGeneticTarget, suggestPinkReduction, type ParentingMinmaxContext, type SlotGeneticAssessment } from "@/lib/parenting/minmax";
 import { ParentingPopover } from "./parenting-popover";
 import { ancestorLabel } from "./ancestor-label";
+import { GENETIC_TONE_CLASS, geneticStatus } from "./genetic-status";
 
 function slotLabel(slot: string) { return slot.toUpperCase().replaceAll("_", " "); }
 
-function GeneticDetails({ assessment, context, onNavigate }: { assessment: SlotGeneticAssessment; context: ParentingMinmaxContext; onNavigate?: (slot: LoopAncestorSlot) => void }) {
+export function GeneticDetails({ assessment, context, onNavigate }: { assessment: SlotGeneticAssessment; context: ParentingMinmaxContext; onNavigate?: (slot: LoopAncestorSlot) => void }) {
   const forecasts = assessment.forecasts.filter((forecast) => forecast.stars >= 6);
   const suggestions = useMemo(() => assessment.forecasts.map((forecast) => forecast.stars >= 6
     ? suggestPinkReduction(context, assessment.slot, forecast.aptitude) : null), [assessment, context]);
@@ -81,27 +82,13 @@ function GeneticDetails({ assessment, context, onNavigate }: { assessment: SlotG
 
 export function GeneticIndicator({ assessment, context, onNavigate }: { assessment: SlotGeneticAssessment; context: ParentingMinmaxContext; onNavigate?: (slot: LoopAncestorSlot) => void }) {
   const [isOpen, setIsOpen] = useState(false);
-  const guaranteed = assessment.forecasts.filter((entry) => entry.risk === "guaranteed").length;
-  const frequent = assessment.forecasts.filter((entry) => entry.risk === "frequent").length;
-  const unknown = assessment.forecasts.some((entry) => entry.risk === "unknown");
-  const warning = assessment.actual.length > 0 || guaranteed + frequent > 0 || assessment.mismatchedTargets.length > 0;
-  const active = assessment.forecasts.length > 0;
-  const completeTarget = Object.values(aceGeneticTarget(context.course, context.runningStyle)).every(Boolean);
-  const goodPlanning = completeTarget && active && !warning && !unknown && (!assessment.useActual || assessment.actualKnown);
-  const text = assessment.actual.length ? `${assessment.actual.length} unwanted genetics present`
-    : guaranteed ? `${guaranteed} guaranteed ${assessment.useActual ? "retrain" : "genetic"} risks`
-    : frequent ? `${frequent} frequent ${assessment.useActual ? "retrain" : "genetic"} risks`
-    : assessment.mismatchedTargets.length ? "Off-target genetic selected"
-    : !active ? "Select course / style"
-    : assessment.useActual && !assessment.actualKnown ? "Imported genetics unknown"
-    : unknown ? assessment.useActual && assessment.actualKnown ? "No off-target genetics · retrain data incomplete" : "Genetic data incomplete"
-    : goodPlanning ? "Good genetic planning" : "Select course / style";
-  const StatusIcon = warning || unknown || !active || assessment.useActual && !assessment.actualKnown ? AlertTriangleIcon : CheckIcon;
+  const { text, tone, alert } = geneticStatus(assessment, context);
+  const StatusIcon = alert ? AlertTriangleIcon : CheckIcon;
   return <ParentingPopover
     isOpen={isOpen}
     onOpenChange={setIsOpen}
     label={`${slotLabel(assessment.slot)} genetics: ${text}`}
-    className={`mt-2 flex min-h-7 w-full min-w-0 items-center justify-center gap-1 border-t border-zinc-100 px-1 py-1 text-[10px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-800 ${warning ? "text-amber-800 dark:text-amber-300" : goodPlanning ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`}
+    className={`mt-2 flex min-h-7 w-full min-w-0 items-center justify-center gap-1 border-t border-zinc-100 px-1 py-1 text-[10px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-800 ${GENETIC_TONE_CLASS[tone]}`}
     trigger={<><StatusIcon className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 truncate">{text}</span></>}
   ><GeneticDetails assessment={assessment} context={context} onNavigate={onNavigate ? (slot) => { setIsOpen(false); onNavigate(slot); } : undefined} /></ParentingPopover>;
 }

@@ -6,13 +6,14 @@ import { AppButton } from "./app-button";
 import { XIcon } from "../primitives/icons";
 
 /** Responsive modal sheet with focus containment and focus restoration. */
-export function MobileSheet({ open, onClose, title, description, children, footer }: {
+export function MobileSheet({ open, onClose, title, description, children, footer, placement = "bottom" }: {
   open: boolean;
   onClose: () => void;
   title: string;
   description?: string;
   children: ReactNode;
   footer?: ReactNode;
+  placement?: "bottom" | "side";
 }) {
   return (
     <AppDialog
@@ -20,12 +21,12 @@ export function MobileSheet({ open, onClose, title, description, children, foote
       onOpenChange={(next) => { if (!next) onClose(); }}
       title={title}
       description={description}
-      size="sheet"
+      size={placement === "side" ? "side" : "sheet"}
       overlayLayer="mobile"
-      overlayClassName="md:p-6"
+      overlayClassName={placement === "side" ? "md:items-stretch md:justify-end md:bg-black/20 md:p-0 md:backdrop-blur-none" : "md:p-6"}
       className="mobile-sheet"
       headerAction={
-        <AppButton variant="quiet" iconOnly aria-label={`Close ${title}`} onPress={onClose}>
+        <AppButton variant="quiet" iconOnly aria-label={`Close ${title}`} onPress={onClose} className={placement === "side" ? "md:w-11 md:min-h-11" : undefined}>
           <XIcon className="h-5 w-5" />
         </AppButton>
       }

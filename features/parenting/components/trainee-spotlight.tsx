@@ -5,11 +5,14 @@ import type { LineageStatBonuses } from "@/lib/lineage/factor-decoder";
 import { getStatRankBadge } from "@/lib/parenting/constants";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { StatIcon, StatusRankIcon, type StatName } from "@/app/common/ui/primitives/status-icons";
+import { AppDisclosure } from "@/app/common/ui/controls/app-disclosure";
 
 export interface TraineeSpotlightProps {
   targetChara: CharacterIndexEntry | null;
   statBonuses: LineageStatBonuses;
   onSelectTrainee: () => void;
+  /** Phone/tablet: one-row strip with the stats and aptitudes collapsed behind a disclosure. */
+  compact?: boolean;
   className?: string;
 }
 
@@ -17,8 +20,49 @@ export function TraineeSpotlight({
   targetChara,
   statBonuses,
   onSelectTrainee,
+  compact = false,
   className = "",
 }: TraineeSpotlightProps) {
+  if (compact) {
+    return (
+      <div className={className}>
+        {targetChara ? (
+          <div className="flex items-center gap-3">
+            <img
+              src={getCharacterImageUrl(targetChara.charId, targetChara.id, "01")}
+              alt=""
+              className="h-14 w-14 flex-none rounded-xl bg-zinc-100 object-cover object-top dark:bg-zinc-800"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{targetChara.nameEn}</p>
+              <p className="mt-0.5 text-[11px] text-zinc-400 dark:text-zinc-500">Target trainee</p>
+            </div>
+            <Button
+              aria-label="Select target trainee"
+              onPress={onSelectTrainee}
+              className="inline-flex min-h-11 flex-none cursor-pointer items-center rounded-xl border border-zinc-200 bg-white px-3 text-xs font-semibold text-zinc-700 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300"
+            >
+              Change
+            </Button>
+          </div>
+        ) : (
+          <Button
+            onPress={onSelectTrainee}
+            className="flex min-h-11 w-full cursor-pointer items-center justify-center rounded-xl border-2 border-dashed border-emerald-500/70 bg-emerald-500/10 px-3 text-sm font-bold text-emerald-800 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:text-emerald-200"
+          >
+            Select trainee
+          </Button>
+        )}
+        <AppDisclosure
+          className="mt-1"
+          title={<span className="text-xs font-semibold text-zinc-600 dark:text-zinc-300">Trainee stats &amp; aptitudes</span>}
+        >
+          <TraineeStatsPanel targetChara={targetChara} statBonuses={statBonuses} />
+        </AppDisclosure>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       {/* Target Trainee Spotlight Stage */}
@@ -60,6 +104,14 @@ export function TraineeSpotlight({
         </Button>
       </div>
 
+      <TraineeStatsPanel targetChara={targetChara} statBonuses={statBonuses} />
+    </div>
+  );
+}
+
+function TraineeStatsPanel({ targetChara, statBonuses }: Pick<TraineeSpotlightProps, "targetChara" | "statBonuses">) {
+  return (
+    <>
       {/* Floating Blue Stat Bonus Pills (Directly above the 5 stat columns) */}
       <div className="grid grid-cols-5 gap-1 sm:gap-2 max-w-xl mx-auto mb-1 px-1 text-center">
         {/* Speed Bonus Pill */}
@@ -235,6 +287,6 @@ export function TraineeSpotlight({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

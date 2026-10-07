@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { LoopAncestorSlot } from "@/lib/parenting/loop-planner";
-import type { PedigreeBranch } from "../components/pedigree-branch-tabs";
+import type { LoopAncestorSlot, LoopUmaSlot } from "@/lib/parenting/loop-planner";
+import { parentSlot } from "../pedigree/pedigree-slots";
+import type { PedigreeTier } from "./use-pedigree-tier";
 
-type Layout = "desktop" | "mobile";
+export type Layout = "desktop" | "tablet" | "sheet";
 
-/** Each layout renders its own tree; navigate only to the visible copy. */
-export function useAncestorNavigation(setMobileBranch: (branch: PedigreeBranch) => void) {
+/** Phone/tablet open a sheet for P/GP/GGP slots; desktop (and tablet GGGP) focus the inline target. */
+export function useAncestorNavigation({ tier, openSlot, closeSheet }: { tier: PedigreeTier; openSlot: (slot: LoopUmaSlot) => void; closeSheet: () => void }) {
   const elements = useRef(new Map<string, HTMLDivElement>());
   const sequence = useRef(0);
   const [destination, setDestination] = useState<{ slot: LoopAncestorSlot; layout: Layout; sequence: number } | null>(null);
@@ -15,14 +16,20 @@ export function useAncestorNavigation(setMobileBranch: (branch: PedigreeBranch) 
 
   useEffect(() => {
     if (!destination) return;
-    // Let the popover close and the mobile branch mount before moving focus.
-    const frame = requestAnimationFrame(() => {
+    // Let the popover close and, on phone, the sheet mount before moving focus.
+    let frame = 0;
+    let attempts = 0;
+    const attempt = () => {
       const element = elements.current.get(`${destination.layout}:${destination.slot}`);
-      if (!element) return;
+      if (!element) {
+        if (++attempts < 10) frame = requestAnimationFrame(attempt);
+        return;
+      }
       element.focus({ preventScroll: true });
       element.scrollIntoView({ behavior: "instant", block: "center", inline: "center" });
       setHighlight(destination);
-    });
+    };
+    frame = requestAnimationFrame(attempt);
     return () => cancelAnimationFrame(frame);
   }, [destination]);
 
@@ -34,9 +41,16 @@ export function useAncestorNavigation(setMobileBranch: (branch: PedigreeBranch) 
 
   return {
     navigate(slot: LoopAncestorSlot) {
-      const layout: Layout = window.matchMedia("(min-width: 64rem)").matches ? "desktop" : "mobile";
-      if (layout === "mobile") setMobileBranch(slot.startsWith("p1") ? "p1" : "p2");
-      setDestination({ slot, layout, sequence: ++sequence.current });
+      const deepest = slot.split("_").length === 4;
+      if (tier === "desktop") return setDestination({ slot, layout: "desktop", sequence: ++sequence.current });
+      if (!deepest) return openSlot(slot as LoopUmaSlot);
+      if (tier === "tablet") {
+        // The tablet chip sits behind the modal sheet; close it first (the focus retry covers the unmount).
+        closeSheet();
+        return setDestination({ slot, layout: "tablet", sequence: ++sequence.current });
+      }
+      openSlot(parentSlot(slot) as LoopUmaSlot);
+      setDestination({ slot, layout: "sheet", sequence: ++sequence.current });
     },
     targetProps(slot: LoopAncestorSlot, layout: Layout) {
       return {

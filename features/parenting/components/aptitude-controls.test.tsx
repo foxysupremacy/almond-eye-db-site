@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { AptitudeTable, PinkSparkPicker, WhiteGeneticPicker, nextPinkStars } from "./aptitude-controls";
+import { AptitudeTable, WhiteGeneticPicker, isProjectionBoosted, nextPinkStars, projectionDisplayGrade } from "./aptitude-controls";
+import { PinkSparkPicker } from "./pink-spark-fields";
 import { evaluateParentingBranch } from "@/lib/parenting/loop-planner";
 import { charactersById } from "@/lib/data/registry";
 const config = { geneGoals: {}, aptitudeGoals: {}, selectedSlots: {}, lockedSlots: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false };
@@ -68,4 +69,14 @@ test("white genetic selections stay on the button without a summary row", () => 
   expect(markup).not.toContain("Medium · 6★ · 6★");
   expect(markup).toContain("h-10 min-h-10");
   expect(markup).toContain("dark:bg-violet-950/30");
+});
+
+test("projection display grade and boost branches", () => {
+  const p = (base: string, projected: string, availablePinkStars = 0) => ({ aptitude: "Turf" as const, base, projected, availablePinkStars, confidence: "projected" as const, needsOutputA: false });
+  expect([isProjectionBoosted(p("?", "?")), projectionDisplayGrade(p("?", "?"))]).toEqual([false, "?"]);
+  expect([isProjectionBoosted(p("B", "A")), projectionDisplayGrade(p("B", "A"))]).toEqual([true, "A"]);
+  expect([isProjectionBoosted(p("B", "-", 1)), projectionDisplayGrade(p("B", "-", 1))]).toEqual([true, "B"]);
+  expect([isProjectionBoosted(p("B", "?")), projectionDisplayGrade(p("B", "?"))]).toEqual([false, "B"]);
+  expect([isProjectionBoosted(p("B", "B")), projectionDisplayGrade(p("B", "B"))]).toEqual([false, "B"]);
+  expect(projectionDisplayGrade(p("?", "A", 1))).toBe("A");
 });

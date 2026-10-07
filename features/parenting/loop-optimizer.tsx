@@ -1,28 +1,26 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components/Button";
-import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import type { CharacterIndexEntry } from "@/lib/data/types";
-import { characters as allCharacters, skillsById, uniqueInheritMap } from "@/lib/data/registry";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
-import { LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig } from "@/lib/parenting/loop-planner";
+import type { AptitudeKey, BranchAssessment, LoopUmaSlot, LoopAncestorSlot, LoopCandidate } from "@/lib/parenting/loop-planner";
 import { type ParentingSetup } from "@/lib/parenting/state";
-import { AptitudeCell, AptitudeGrid, AptitudeName, BUTTON, CHOICE, PinkSparkPicker, SHORT, WhiteGeneticPicker, nextPinkStars, type SparkSource } from "./components/aptitude-controls";
+import { AptitudeCell, AptitudeName, WhiteGeneticPicker, type SparkSource } from "./components/aptitude-controls";
+import { PinkSparkFields, withPinkSpark } from "./components/pink-spark-fields";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
-import { StatIcon, type StatName } from "@/app/common/ui/primitives/status-icons";
-import { getCharacterImageUrl } from "@/lib/api";
-import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
-import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
-import { evaluateParentingMinmax, type ParentingMinmaxContext } from "@/lib/parenting/minmax";
 import { GeneticIndicator } from "./components/genetic-indicator";
 import type { Course } from "@/lib/skill-engine/types";
-import { extractSlotPrimaryFactors } from "@/lib/lineage/factor-decoder";
 import { ParentingPopover } from "./components/parenting-popover";
-import { PedigreeBranchTabs } from "./components/pedigree-branch-tabs";
 import { useAncestorNavigation } from "./hooks/use-ancestor-navigation";
-import { ancestorLabel } from "./components/ancestor-label";
+import { usePedigreeTier, type PedigreeTier } from "./hooks/use-pedigree-tier";
+import { AncestorNavTarget } from "./pedigree/ancestor-nav-target";
+import { AncestorSheet } from "./pedigree/ancestor-sheet";
+import { PedigreeTree, SparkInput } from "./pedigree/pedigree-tree";
+import { SLOT_LABEL } from "./pedigree/pedigree-slots";
+import { AncestorPortrait } from "./pedigree/ancestor-portrait";
+import { usePedigreeModel, type EditableFactorPlan } from "./hooks/use-pedigree-model";
 
 interface Props {
   target: CharacterIndexEntry | null;
@@ -32,128 +30,10 @@ interface Props {
   targetStage: ReactNode;
   course?: Course | null;
   runningStyle?: number | null;
+  /** Test override; normally measured from the container width. */
+  tier?: PedigreeTier;
   onOpenPicker: (slot: LoopAncestorSlot) => void;
   updateSetup: (updater: (prev: ParentingSetup) => ParentingSetup) => void;
-}
-
-const SLOT_LABEL = Object.fromEntries(LOOP_ANCESTOR_SLOTS.map((slot) => {
-  const [branch, gp, ...descendants] = slot.split("_");
-  const labels = descendants.map((part, index) => `${index === 0 ? "GGP" : "GGGP"}${part.slice(1)}`);
-  return [slot, [branch.toUpperCase(), gp?.toUpperCase(), ...labels].filter(Boolean).join(" ")];
-})) as Record<LoopAncestorSlot, string>;
-const MOBILE_BRANCH_BASE_ZOOM = 1.3;
-const MIN_MOBILE_BRANCH_ZOOM = 0.8;
-const MAX_MOBILE_BRANCH_ZOOM = 1.3;
-
-const APTITUDE_GROUPS = [
-  { label: "Surface", indices: [0, 1], names: ["Turf", "Dirt"] },
-  { label: "Distance", indices: [2, 3, 4, 5], names: ["Short", "Mile", "Medium", "Long"] },
-  { label: "Style", indices: [6, 7, 8, 9], names: ["Runner", "Leader", "Between", "Chaser"] },
-] as const;
-const FACTOR_APTITUDE_OPTIONS = ["Turf", "Dirt", "Sprint", "Mile", "Medium", "Long", "Runner", "Leader", "Betweener", "Chaser"] as const;
-const BLUE_FACTOR_NAMES: Record<number, { name: string; short: string }> = {
-  1: { name: "Speed", short: "SPD" }, 2: { name: "Stamina", short: "STA" }, 3: { name: "Power", short: "PWR" },
-  4: { name: "Guts", short: "GUT" }, 5: { name: "Wit", short: "WIT" },
-};
-const BLUE_FACTOR_STATS: Record<number, StatName> = {
-  1: "Speed", 2: "Stamina", 3: "Power", 4: "Guts", 5: "Wit",
-};
-const RED_FACTOR_NAMES: Record<AptitudeKey, { name: string; short: string }> = {
-  Turf: { name: "Turf", short: "TURF" }, Dirt: { name: "Dirt", short: "DIRT" }, Sprint: { name: "Sprint", short: "SPRT" },
-  Mile: { name: "Mile", short: "MILE" }, Medium: { name: "Medium", short: "MED" }, Long: { name: "Long", short: "LONG" },
-  Runner: { name: "Runner", short: "RUN" }, Leader: { name: "Leader", short: "LEAD" },
-  Betweener: { name: "Betweener", short: "BTWN" }, Chaser: { name: "Chaser", short: "CHAS" },
-};
-type EditableFactorPlan = { blue?: number | null; blueStars?: number; pink?: AptitudeKey | null; pinkStars?: number };
-
-function editableFactorPlan(candidate: LoopCandidate | null, saved?: { blue?: number | null; blueStars?: number | null; pink?: AptitudeKey | null; pinkStars?: number | null }): EditableFactorPlan {
-  const actual = extractSlotPrimaryFactors(candidate?.veteran?.factor_info_array);
-  const has = (key: "blue" | "blueStars" | "pink" | "pinkStars") => saved != null && Object.prototype.hasOwnProperty.call(saved, key);
-  const actualPink = (actual.pink?.nameEn === "Med" ? "Medium" : actual.pink?.nameEn) as AptitudeKey | undefined;
-  const pink = has("pink") ? saved?.pink ?? null : actualPink ?? null;
-  return {
-    blue: has("blue") ? saved?.blue ?? null : actual.blue ? Math.floor(actual.blue.factorId / 100) : candidate?.factorKnowledge ? null : undefined,
-    blueStars: has("blueStars") ? saved?.blueStars ?? 0 : actual.blue?.stars ?? (candidate?.factorKnowledge ? 0 : undefined),
-    pink: has("pink") ? pink : actualPink ?? (candidate?.factorKnowledge ? null : undefined),
-    pinkStars: has("pinkStars") ? saved?.pinkStars ?? 0 : pink ? (pink === actualPink ? actual.pink?.stars ?? 1 : 1) : 0,
-  };
-}
-
-function FactorGoalRow(props: FactorGoalRowProps) {
-  if (props.kind === "pink") return <PinkSparkPicker label={SLOT_LABEL[props.slot]} value={props.value as AptitudeKey | null | undefined} stars={props.stars} onChange={props.onChange} />;
-  return <BlueFactorGoalRow {...props} />;
-}
-
-interface FactorGoalRowProps {
-  slot: LoopAncestorSlot;
-  kind: "blue" | "pink";
-  value: number | AptitudeKey | null | undefined;
-  stars?: number;
-  onChange: (nextValue: number | AptitudeKey | null | undefined, nextStars?: number) => void;
-}
-function BlueFactorGoalRow({ slot, kind, value, stars, onChange }: FactorGoalRowProps) {
-  const isBlue = kind === "blue";
-  const selected = isBlue
-    ? typeof value === "number" ? BLUE_FACTOR_NAMES[value] : undefined
-    : typeof value === "string" ? RED_FACTOR_NAMES[value as AptitudeKey] : undefined;
-  const starCount = typeof stars === "number" && stars >= 1 && stars <= 3 ? stars : undefined;
-  const iconIndex = isBlue ? 0 : 3;
-  const asset = selected && starCount
-    ? `/assets/factor/utx_ico_factor_rarity_${String(iconIndex + starCount - 1).padStart(2, "0")}.png`
-    : null;
-  const label = isBlue ? "Blue" : "Red";
-  const factorOptions = isBlue
-    ? Object.entries(BLUE_FACTOR_NAMES).map(([id, name]) => ({ value: Number(id), ...name }))
-    : FACTOR_APTITUDE_OPTIONS.map((key) => ({ value: key, ...RED_FACTOR_NAMES[key] }));
-
-  const radioClass = "flex min-h-9 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-zinc-800 bg-zinc-900 px-2 text-left text-[10px] text-zinc-300 outline-none data-[selected]:border-emerald-500 data-[selected]:bg-emerald-950/60 data-[selected]:text-emerald-200 data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500";
-  const triggerClass = isBlue
-    ? "border-sky-800/60 bg-sky-950/30 text-sky-100 hover:bg-sky-900/50 dark:border-sky-700/70"
-    : "border-pink-800/60 bg-pink-950/25 text-pink-100 hover:bg-pink-900/40 dark:border-pink-700/70";
-  const trigger = isBlue ? (
-    <><span className="min-w-0 truncate">{selected?.short ?? (value === null ? "NONE" : "SET FACTOR")}</span>{asset ? <img src={asset} alt={`${starCount} star${starCount === 1 ? "" : "s"}`} className="h-3.5 w-8 shrink-0 object-contain" /> : <span className="shrink-0 text-[8px] font-semibold text-zinc-400">{value === null ? "—" : "?"}</span>}</>
-  ) : (
-    <span className="flex min-w-0 flex-col items-center justify-center gap-0.5 leading-none">
-      <span className="max-w-full truncate text-[8px]">{selected?.name ?? (value === null ? "None" : "Set")}</span>
-      <span aria-hidden="true" className="flex gap-px text-[8px]">
-        {[1, 2, 3].map((star) => <span key={star} className={value && star <= (starCount ?? 0) ? "text-pink-300" : "text-zinc-500/70"}>★</span>)}
-      </span>
-    </span>
-  );
-  return <ParentingPopover
-    label={`${SLOT_LABEL[slot]} ${label} factor: ${selected ? `${selected.name}, ${starCount ?? "no"} stars` : value === null ? "No factor" : "Not set"}`}
-    className={`flex h-8 w-full min-w-0 flex-none items-center justify-center gap-1 rounded-md border px-1.5 text-center text-[8px] font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${triggerClass}`}
-    trigger={trigger}
-  >
-    <div className="space-y-2" aria-label={`${SLOT_LABEL[slot]} ${label} factor options`}>
-      <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{label} factor</p>
-        <RadioGroup aria-label={`${label} factor`} value={value == null ? "" : String(value)} onChange={(next) => onChange(isBlue ? Number(next) : next as AptitudeKey, starCount ?? 3)} className={`grid ${isBlue ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-3"} gap-1`}>
-          {factorOptions.map((option) => <Radio key={option.value} value={String(option.value)} className={radioClass}>
-            {isBlue && typeof option.value === "number" && <StatIcon stat={BLUE_FACTOR_STATS[option.value]} className="h-4 w-4 shrink-0" />}
-            <span className="font-normal">{option.name}</span>
-          </Radio>)}
-        </RadioGroup>
-        <div className="mt-1.5 flex gap-1"><Button onPress={() => onChange(undefined, undefined)} className="min-h-8 flex-1 rounded-md border border-zinc-800 px-2 text-[10px] text-zinc-300 hover:bg-zinc-800">Not set</Button><Button onPress={() => onChange(null, 0)} className="min-h-8 flex-1 rounded-md border border-zinc-800 px-2 text-[10px] text-zinc-300 hover:bg-zinc-800">No factor</Button></div>
-      </div>
-      {selected && <div>
-        <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Stars</p>
-        <RadioGroup aria-label={`${label} factor stars`} value={starCount ? String(starCount) : ""} onChange={(count) => onChange(value, Number(count))} className="flex gap-1">
-          {[1, 2, 3].map((count) => <Radio key={count} value={String(count)} aria-label={`${count} star${count === 1 ? "" : "s"}`} className={`${radioClass} flex-1`}><img src={`/assets/factor/utx_ico_factor_rarity_${String(iconIndex + count - 1).padStart(2, "0")}.png`} alt="" className="h-4 w-9 object-contain" /></Radio>)}
-        </RadioGroup>
-      </div>}
-    </div>
-  </ParentingPopover>;
-}
-
-function SparkInput({ slot, goal, onChange }: {
-  slot: LoopAncestorSlot;
-  goal: NonNullable<ParentingLoopConfig["factorGoals"]>[LoopAncestorSlot];
-  onChange: (goal: EditableFactorPlan) => void;
-}) {
-  return <div role="group" aria-label={`${SLOT_LABEL[slot]} pink spark input`} className="min-w-0 px-0.5 pt-1">
-    <FactorGoalRow slot={slot} kind="pink" value={goal?.pink} stars={goal?.pinkStars ?? undefined} onChange={(pink, pinkStars) => onChange({ ...(pink === undefined ? {} : { pink: pink as AptitudeKey | null }), ...(pinkStars === undefined ? {} : { pinkStars }) })} />
-  </div>;
 }
 
 function AncestorIdentityButton({
@@ -178,7 +58,6 @@ function AncestorIdentityButton({
       ? "text-[9px] sm:text-[10px]"
       : "text-[8px] sm:text-[9px]";
   const nameWidth = density === "parent" ? "max-w-[125px]" : density === "grandparent" ? "max-w-[95px]" : "max-w-[82px]";
-  const portraitImageClass = "absolute inset-0 h-full w-full object-contain object-top drop-shadow-xs scale-[1.65] origin-top -translate-y-[17%]";
 
   return (
     <Button
@@ -187,43 +66,7 @@ function AncestorIdentityButton({
       data-ancestor-identity={density}
       className="group/avatar flex min-h-9 max-w-full flex-col items-center justify-center outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-lg"
     >
-      {candidate ? (
-        <div className={`relative ${size} flex-none overflow-visible rounded-full shadow-sm transition-transform duration-150 ease-out-quart group-hover/avatar:scale-105`}>
-          <div data-portrait-layer="back" aria-hidden="true" className="absolute inset-0 z-0 overflow-hidden rounded-full">
-            <img
-              src={getCharacterImageUrl(getCharaIdFromCardId(candidate.cardId), candidate.cardId, "01")}
-              alt=""
-              className={portraitImageClass}
-            />
-          </div>
-          <div
-            data-portrait-layer="frame"
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 z-10 rounded-full ring-[2.5px] ring-amber-400/95 dark:ring-amber-400/80"
-          />
-          <div
-            aria-hidden="true"
-            data-portrait-layer="front"
-            className="pointer-events-none absolute inset-0 z-20 overflow-visible"
-            style={{
-              // Circle-relative top 90° sector, bounded by the left/right tangents.
-              // Extend above the circle so the enlarged portrait can pop out.
-              clipPath: "polygon(0 -100%, 100% -100%, 100% 0, 50% 50%, 0 0)",
-            }}
-          >
-            <img
-              src={getCharacterImageUrl(getCharaIdFromCardId(candidate.cardId), candidate.cardId, "01")}
-              alt=""
-              className={portraitImageClass}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className={`${size} flex flex-col flex-none items-center justify-center rounded-full border-2 border-dashed border-zinc-300 dark:border-zinc-700 bg-white/60 dark:bg-zinc-800/70 text-zinc-400 transition-colors duration-150 ease-out-quart group-hover/avatar:border-emerald-500 group-hover/avatar:text-emerald-500`}>
-          <span className="text-xl font-bold leading-none">+</span>
-          <span className="mt-0.5 text-[7px] font-semibold uppercase tracking-wider">Select</span>
-        </div>
-      )}
+      <AncestorPortrait candidate={candidate} className={size} />
       <span className={`mt-1 w-full ${nameWidth} truncate text-center font-bold ${nameSize} text-zinc-800 dark:text-zinc-100 leading-tight transition-colors duration-150 group-hover/avatar:text-emerald-700 dark:group-hover/avatar:text-emerald-400`}>
         {candidate?.name ?? "Select parent"}
       </span>
@@ -290,17 +133,12 @@ function AncestorCard({
               </div>
             }
           >
-            <p className="mb-2 text-xs font-semibold">Pink factor (Aptitude spark)</p>
-            <RadioGroup aria-label="Stars" value={factorGoal.pinkStars ? String(factorGoal.pinkStars) : ""} isDisabled={!factorGoal.pink} onChange={(count) => onFactorGoalChange({ ...factorGoal, pinkStars: Number(count) })} className="mb-2 flex gap-1">
-              {[1, 2, 3].map((count) => <Radio key={count} value={String(count)} aria-label={`${count} stars`} className={`${CHOICE} flex-1`}>{"★".repeat(count)}</Radio>)}
-            </RadioGroup>
-            <RadioGroup aria-label="Pink aptitude" value={factorGoal.pink ?? ""} onChange={(key) => onFactorGoalChange({ ...factorGoal, pink: key as AptitudeKey, pinkStars: nextPinkStars(factorGoal.pinkStars) })}>
-              <AptitudeGrid render={(key) => <Radio key={key} value={key} aria-label={key} className={CHOICE}>{SHORT[key]}</Radio>} />
-            </RadioGroup>
-            <div className="mt-2 flex gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-              <button type="button" onClick={() => { const next = { ...factorGoal }; delete next.pink; delete next.pinkStars; onFactorGoalChange(next); }} className={`${BUTTON} flex-1`}>Not set</button>
-              <button type="button" onClick={() => onFactorGoalChange({ ...factorGoal, pink: null, pinkStars: 0 })} className={`${BUTTON} flex-1`}>No factor</button>
-            </div>
+            <PinkSparkFields
+              title="Pink factor (Aptitude spark)"
+              value={factorGoal.pink}
+              stars={factorGoal.pinkStars}
+              onChange={(value, stars) => onFactorGoalChange(withPinkSpark(factorGoal, value, stars))}
+            />
           </ParentingPopover>
         </div>
       </div>
@@ -376,17 +214,11 @@ function AncestorCard({
               </div>
             }
           >
-            <p className="mb-2 text-xs font-semibold">Pink spark</p>
-            <RadioGroup aria-label="Stars" value={factorGoal.pinkStars ? String(factorGoal.pinkStars) : ""} isDisabled={!factorGoal.pink} onChange={(count) => onFactorGoalChange({ ...factorGoal, pinkStars: Number(count) })} className="mb-2 flex gap-1">
-              {[1, 2, 3].map((count) => <Radio key={count} value={String(count)} aria-label={`${count} stars`} className={`${CHOICE} flex-1`}>{"★".repeat(count)}</Radio>)}
-            </RadioGroup>
-            <RadioGroup aria-label="Pink aptitude" value={factorGoal.pink ?? ""} onChange={(key) => onFactorGoalChange({ ...factorGoal, pink: key as AptitudeKey, pinkStars: nextPinkStars(factorGoal.pinkStars) })}>
-              <AptitudeGrid render={(key) => <Radio key={key} value={key} aria-label={key} className={CHOICE}>{SHORT[key]}</Radio>} />
-            </RadioGroup>
-            <div className="mt-2 flex gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-              <button type="button" onClick={() => { const next = { ...factorGoal }; delete next.pink; delete next.pinkStars; onFactorGoalChange(next); }} className={`${BUTTON} flex-1`}>Not set</button>
-              <button type="button" onClick={() => onFactorGoalChange({ ...factorGoal, pink: null, pinkStars: 0 })} className={`${BUTTON} flex-1`}>No factor</button>
-            </div>
+            <PinkSparkFields
+              value={factorGoal.pink}
+              stars={factorGoal.pinkStars}
+              onChange={(value, stars) => onFactorGoalChange(withPinkSpark(factorGoal, value, stars))}
+            />
           </ParentingPopover>
         </div>
         <div className="mt-1.5 sm:mt-2">
@@ -403,61 +235,25 @@ function AncestorCard({
 }
 
 export function ParentingLoopOptimizer(props: Props) {
-  const [mobileBranch, setMobileBranch] = useState<"p1" | "p2">("p1");
-  const [mobileBranchZoom, setMobileBranchZoom] = useState(1);
-  const ancestorNavigation = useAncestorNavigation(setMobileBranch);
-  const branchTouchStart = useRef<{ x: number; y: number } | null>(null);
-  const stored = props.setup.loopConfig;
-  const pedigree = useMemo(() => resolveMinmaxPedigree(props.setup, props.veterans, props.roster), [props.setup, props.veterans, props.roster]);
-  const config = pedigree.config;
-  const selectedCandidates = pedigree.ancestors as Record<LoopUmaSlot, LoopCandidate | null>;
-  useEffect(() => {
-    if (!stored || !LOOP_ANCESTOR_SLOTS.some((slot) => slot.split("_").length === 4 && stored.selectedSlots[slot] && !config.selectedSlots[slot])) return;
-    props.updateSetup((prev) => ({ ...prev, loopConfig: config }));
-  }, [stored, config, props.updateSetup]);
-  const plannedConfig = useMemo(() => {
-    const factorGoals = { ...config.factorGoals };
-    for (const slot of LOOP_UMA_SLOTS) {
-      const candidate = selectedCandidates[slot];
-      if (!candidate) continue;
-      const plan = editableFactorPlan(candidate, factorGoals[slot]);
-      if (candidate.factorKnowledge || plan.blue !== undefined || (plan.pink !== undefined && plan.pinkStars !== undefined)) factorGoals[slot] = plan;
-    }
-    return { ...config, factorGoals };
-  }, [config, selectedCandidates]);
-  const assessments = useMemo(() => Object.fromEntries(
-    LOOP_UMA_SLOTS.map((slot) => [slot, evaluateParentingBranch(slot, selectedCandidates, plannedConfig, props.target)]),
-  ) as Record<LoopUmaSlot, BranchAssessment>, [selectedCandidates, plannedConfig, props.target]);
-  const minmaxContext: ParentingMinmaxContext = useMemo(() => ({ ancestors: selectedCandidates, config: plannedConfig, target: props.target, course: props.course, runningStyle: props.runningStyle }), [selectedCandidates, plannedConfig, props.target, props.course, props.runningStyle]);
-  const minmax = useMemo(() => evaluateParentingMinmax(minmaxContext), [minmaxContext]);
-  const updateConfig = (next: ParentingLoopConfig) => {
-    props.updateSetup((prev) => ({ ...prev, loopConfig: next }));
-  };
-  const setFactorGoal = (slot: LoopAncestorSlot, goal: EditableFactorPlan) => {
-    updateConfig({ ...config, factorGoals: { ...config.factorGoals, [slot]: goal } });
-  };
+  const containerRef = useRef<HTMLElement>(null);
+  const measuredTier = usePedigreeTier(containerRef);
+  const tier = props.tier ?? measuredTier;
+  const [sheetSlot, setSheetSlot] = useState<LoopUmaSlot | null>(null);
+  useEffect(() => { if (tier === "desktop") setSheetSlot(null); }, [tier]);
+  const ancestorNavigation = useAncestorNavigation({ tier, openSlot: setSheetSlot, closeSheet: () => setSheetSlot(null) });
+  const model = usePedigreeModel(props);
   const ancestorContent = (slot: LoopAncestorSlot, density: "parent" | "grandparent" | "great-grandparent" | "great-great-grandparent") => {
-    if (density === "great-great-grandparent") return <SparkInput key={slot} slot={slot} goal={config.factorGoals?.[slot] ?? {}} onChange={(goal) => setFactorGoal(slot, goal)} />;
+    if (density === "great-great-grandparent") return <SparkInput key={slot} slot={slot} goal={model.config.factorGoals?.[slot] ?? {}} onChange={(goal) => model.setFactorGoal(slot, goal)} />;
     const umaSlot = slot as LoopUmaSlot;
-    const candidate = selectedCandidates[umaSlot];
-    const assessment = assessments[umaSlot];
-    const uniqueId = candidate ? allCharacters.find((character) => character.charId === candidate.charId)?.uniqueSkillId : undefined;
-    const inheritedUniqueId = uniqueId == null ? undefined : uniqueInheritMap[String(uniqueId)];
-    const uniqueSkill = (inheritedUniqueId == null ? undefined : skillsById.get(inheritedUniqueId))
-      ?? (uniqueId == null ? undefined : skillsById.get(uniqueId));
-    const uniqueSkillForInspector = uniqueSkill ? { id: uniqueSkill.id, nameEn: uniqueSkill.nameEn, nameJp: uniqueSkill.nameJp, iconId: uniqueSkill.iconId } : undefined;
-    const geneticAssessment = minmax.slots.find((entry) => entry.slot === slot);
-    return <AncestorCard geneticIndicator={geneticAssessment ? <GeneticIndicator assessment={geneticAssessment} context={minmaxContext} onNavigate={ancestorNavigation.navigate} /> : undefined} key={slot} slot={umaSlot} whiteTargets={config.slotWhiteTargets?.[umaSlot] ?? []} onWhiteTargetsChange={(targets) => updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [umaSlot]: targets } })} sources={assessment.sourceSlots.map((sourceSlot) => { const sourceCandidate = selectedCandidates[sourceSlot as LoopUmaSlot] ?? null; const plan = editableFactorPlan(sourceCandidate, config.factorGoals?.[sourceSlot]); return { label: SLOT_LABEL[sourceSlot], pink: plan.pink, stars: plan.pinkStars }; })} assessment={assessment} candidate={candidate} density={density} factorGoal={editableFactorPlan(candidate, config.factorGoals?.[slot])} uniqueSkill={uniqueSkillForInspector} onFactorGoalChange={(goal) => setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
+    const geneticAssessment = model.geneticAssessment(umaSlot);
+    return <AncestorCard geneticIndicator={geneticAssessment ? <GeneticIndicator assessment={geneticAssessment} context={model.minmaxContext} onNavigate={ancestorNavigation.navigate} /> : undefined} key={slot} slot={umaSlot} whiteTargets={model.whiteTargets(umaSlot)} onWhiteTargetsChange={(targets) => model.setWhiteTargets(umaSlot, targets)} sources={model.sparkSources(umaSlot)} assessment={model.assessments[umaSlot]} candidate={model.selectedCandidates[umaSlot]} density={density} factorGoal={model.factorPlan(slot)} uniqueSkill={model.uniqueSkill(umaSlot)} onFactorGoalChange={(goal) => model.setFactorGoal(slot, goal)} onOpenPicker={() => props.onOpenPicker(slot)} />;
   };
 
-  const renderBranch = (parentSlot: "p1" | "p2", layout: "desktop" | "mobile") => {
+  const renderBranch = (parentSlot: "p1" | "p2") => {
     const ancestorCard = (slot: LoopAncestorSlot, density: "parent" | "grandparent" | "great-grandparent" | "great-great-grandparent") => {
-      const highlightKey = ancestorNavigation.highlightKey(slot, layout);
-      const label = ancestorLabel(slot);
-      return <div key={slot} {...ancestorNavigation.targetProps(slot, layout)} aria-label={`${label.generation}, ${label.location}`}>
+      return <AncestorNavTarget key={slot} slot={slot} layout="desktop" navigation={ancestorNavigation}>
         {ancestorContent(slot, density)}
-        {highlightKey !== null && <span key={highlightKey} aria-hidden="true" className="pointer-events-none absolute -inset-1 z-30 rounded-lg bg-amber-400/10 ring-2 ring-amber-500 animate-ancestor-highlight motion-reduce:animate-none" />}
-      </div>;
+      </AncestorNavTarget>;
     };
     const gpSlots = parentSlot === "p1" ? ["p1_gp1", "p1_gp2"] as const : ["p2_gp1", "p2_gp2"] as const;
     return <section key={parentSlot} aria-label={`${parentSlot.toUpperCase()} lineage branch`} className="min-w-0">
@@ -482,22 +278,7 @@ export function ParentingLoopOptimizer(props: Props) {
     </section>;
   };
 
-  const handleBranchTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
-    const touch = event.touches[0];
-    if (touch) branchTouchStart.current = { x: touch.clientX, y: touch.clientY };
-  };
-  const handleBranchTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
-    const start = branchTouchStart.current;
-    const touch = event.changedTouches[0];
-    branchTouchStart.current = null;
-    if (!start || !touch) return;
-    const dx = touch.clientX - start.x;
-    const dy = touch.clientY - start.y;
-    if (Math.abs(dx) < 48 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
-    setMobileBranch(dx < 0 ? "p2" : "p1");
-  };
-
-  return <section className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 sm:p-5 space-y-4">
+  return <section ref={containerRef} className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 sm:p-5 space-y-4">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div><h3 className="font-bold text-zinc-900 dark:text-zinc-100">Parent Planning</h3>
         <p className="text-xs text-zinc-500 mt-1">Set pink sparks below each branch to support its planned aptitude, G1 farming and white genetics.</p></div>
@@ -505,28 +286,18 @@ export function ParentingLoopOptimizer(props: Props) {
     {props.targetStage && <div>{props.targetStage}</div>}
     {!props.target ? <p className="text-sm text-zinc-500">Select a target Uma to build the pedigree.</p> : <>
       <div className="border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800" aria-live="polite">
-        <p className="font-semibold text-zinc-900 dark:text-zinc-100">Ace genetics: {[minmax.target.surface, minmax.target.distance, minmax.target.style].filter(Boolean).join(" · ") || "Select a course and style"}</p>
+        <p className="font-semibold text-zinc-900 dark:text-zinc-100">Ace genetics: {[model.minmax.target.surface, model.minmax.target.distance, model.minmax.target.style].filter(Boolean).join(" · ") || "Select a course and style"}</p>
       </div>
 
-      <div className="border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-3">
-        <div className="relative hidden lg:block">
-          <svg aria-hidden="true" className="pointer-events-none block h-7 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 28" preserveAspectRatio="none"><path d="M500 0V12H250V28M500 12H750V28" fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg>
-          <div className="grid grid-cols-2 gap-1 sm:gap-3">{renderBranch("p1", "desktop")}{renderBranch("p2", "desktop")}</div>
-        </div>
-        <div className="lg:hidden">
-          <PedigreeBranchTabs value={mobileBranch} onChange={setMobileBranch} trailing={<div className="flex items-center gap-1">
-                <Button aria-label="Zoom out branch" isDisabled={mobileBranchZoom <= MIN_MOBILE_BRANCH_ZOOM} onPress={() => setMobileBranchZoom((zoom) => Math.max(MIN_MOBILE_BRANCH_ZOOM, Math.round((zoom - 0.1) * 10) / 10))} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white text-lg font-medium text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">−</Button>
-                <span className="min-w-10 text-center text-[10px] tabular-nums text-zinc-500">{Math.round(mobileBranchZoom * 100)}%</span>
-                <Button aria-label="Zoom in branch" isDisabled={mobileBranchZoom >= MAX_MOBILE_BRANCH_ZOOM} onPress={() => setMobileBranchZoom((zoom) => Math.min(MAX_MOBILE_BRANCH_ZOOM, Math.round((zoom + 0.1) * 10) / 10))} className="min-h-9 min-w-9 rounded-lg border border-zinc-200 bg-white text-lg font-medium text-zinc-700 disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200">+</Button>
-              </div>}>
-            <svg aria-hidden="true" className="pointer-events-none block h-5 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 20" preserveAspectRatio="none"><path d="M500 0V20" fill="none" stroke="currentColor" strokeWidth="1.5" vectorEffect="non-scaling-stroke" /></svg>
-            <div onTouchStart={handleBranchTouchStart} onTouchEnd={handleBranchTouchEnd} className="touch-pan-y overflow-x-auto" aria-label="Pedigree branch. Swipe left or right to switch between P1 and P2.">
-              <div className="origin-top-left" style={{ zoom: mobileBranchZoom * MOBILE_BRANCH_BASE_ZOOM }}>{renderBranch(mobileBranch, "mobile")}</div>
-            </div>
-          </PedigreeBranchTabs>
-          <p className="mt-1 text-center text-[10px] text-zinc-500">Swipe left or right to view {mobileBranch === "p1" ? "P2" : "P1"}</p>
-        </div>
+      <div className={`border-t border-zinc-100 dark:border-zinc-800 pt-3 space-y-3 ${tier === "phone" ? "-mx-4" : ""}`}>
+        {tier === "desktop"
+          ? <div className="relative">
+            <svg aria-hidden="true" className="pointer-events-none block h-7 w-full text-emerald-700/50 dark:text-emerald-300/50" viewBox="0 0 1000 28" preserveAspectRatio="none"><path d="M500 0V12H250V28M500 12H750V28" fill="none" stroke="currentColor" strokeWidth="2" vectorEffect="non-scaling-stroke" /></svg>
+            <div className="grid grid-cols-2 gap-1 sm:gap-3">{renderBranch("p1")}{renderBranch("p2")}</div>
+          </div>
+          : <PedigreeTree tier={tier} model={model} navigation={ancestorNavigation} course={props.course} runningStyle={props.runningStyle} onOpenSheet={setSheetSlot} />}
       </div>
+      {tier !== "desktop" && <AncestorSheet slot={sheetSlot} tier={tier} model={model} navigation={ancestorNavigation} onNavigate={setSheetSlot} onChooseUma={(slot) => props.onOpenPicker(slot)} onClose={() => setSheetSlot(null)} />}
     </>}
   </section>;
 }

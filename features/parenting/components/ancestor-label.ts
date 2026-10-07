@@ -9,3 +9,8 @@ export function ancestorLabel(slot: LoopAncestorSlot) {
     location: path.length ? `${branch} · ${path.map((part) => part.endsWith("1") ? "left" : "right").join(" → ")}` : branch,
   };
 }
+
+export function ancestorTitle(slot: LoopAncestorSlot) {
+  const { generation, location } = ancestorLabel(slot);
+  return slot.includes("_") ? `${generation} · ${location}` : location;
+}

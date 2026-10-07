@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { characters, charactersById } from "@/lib/data/registry";
 import { DEFAULT_PARENTING_SETUP } from "@/lib/parenting/state";
-import { LOOP_ANCESTOR_SLOTS } from "@/lib/parenting/loop-planner";
+import { LOOP_UMA_SLOTS } from "@/lib/parenting/loop-planner";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 
@@ -196,7 +196,7 @@ test("empty Parent Planning character slots keep accessible pick labels and touc
   expect(markup).toContain('aria-label="Choose P1 GP1"');
   expect(markup).toContain('aria-label="Choose P1 GP1 GGP1"');
   expect(markup).toContain("min-h-9 max-w-full");
-  expect(markup.match(/>Select parent<\/span>/g)?.length).toBe(LOOP_ANCESTOR_SLOTS.length);
+  expect(markup.match(/>Select parent<\/span>/g)?.length).toBe(LOOP_UMA_SLOTS.length);
 });
 
 test("a selected factor does not highlight aptitude on the same Uma card", () => {
@@ -301,4 +301,43 @@ test("AptitudeCell displays boosted grade and highlights when pink sparks are su
   expect(sprintMarkup).toContain('alt="G"');
   expect(sprintMarkup).not.toContain("ring-pink-500");
   expect(sprintMarkup).toContain("Sprint: Base G");
+});
+
+const course = { id: 1, terrain: 1, distance: 4, length: 2500, turn: 1, inout: 1, corners: [], straights: [], slopes: [] };
+test("phone tier renders the full lineage overview without zoom, swipe or branch tabs", () => {
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="phone" course={course} runningStyle={2}
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={<p>Target</p>}
+    onOpenPicker={() => {}} updateSetup={() => {}} />);
+  expect(markup.match(/data-ancestor-tile="parent"/g)).toHaveLength(2);
+  expect(markup.match(/data-ancestor-tile="grandparent"/g)).toHaveLength(4);
+  expect(markup.match(/data-ancestor-tile="great-grandparent"/g)).toHaveLength(8);
+  expect(markup.match(/data-tile-grade=/g)).toHaveLength(6 * 3);
+  expect(markup).not.toContain("pink spark input");
+  expect(markup).not.toContain("Zoom in branch");
+  expect(markup).not.toContain("Swipe left or right");
+  expect(markup).not.toContain('role="tablist"');
+  expect(markup).toContain("Ace genetics: Turf · Long · Leader");
+});
+
+test("tablet tier shows both branches and all 16 deepest-row spark inputs", () => {
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="tablet"
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={<p>Target</p>}
+    onOpenPicker={() => {}} updateSetup={() => {}} />);
+  expect(markup.match(/pink spark input/g)).toHaveLength(16);
+  expect(markup.match(/data-ancestor-layout="tablet"/g)).toHaveLength(16);
+  expect(markup.match(/data-tile-grade=/g)).toHaveLength(6 * 10);
+});
+
+test("tablet GGGP chips stack under their own great-grandparent tile in tree order", () => {
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="tablet"
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={null}
+    onOpenPicker={() => {}} updateSetup={() => {}} />);
+  expect(markup).not.toContain("repeat(16");
+  expect(markup).not.toContain("great-grandparent-to-great-great-grandparent");
+  const order = [...markup.matchAll(/data-ancestor-slot="(\w+)" data-ancestor-layout="tablet"/g)].map((m) => m[1]);
+  expect(order).toHaveLength(16);
+  expect(order.slice(0, 2)).toEqual(["p1_gp1_g1_g1", "p1_gp1_g1_g2"]);
 });

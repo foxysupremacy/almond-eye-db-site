@@ -20,12 +20,13 @@ export interface AppDialogProps {
   titleClassName?: string;
   isDismissable?: boolean;
   ariaLabel?: string;
-  size?: "sheet" | "sm" | "md" | "lg" | "full";
+  size?: "sheet" | "side" | "sm" | "md" | "lg" | "full";
   dialogRef?: Ref<HTMLDivElement>;
 }
 
 const sizes = {
   sheet: "max-h-[90dvh] w-full rounded-t-3xl md:max-w-xl md:rounded-2xl",
+  side: "max-h-[90dvh] w-full rounded-t-3xl md:h-dvh md:max-h-dvh md:rounded-none md:border-y-0 md:border-r-0",
   sm: "max-h-[90dvh] w-full max-w-md rounded-2xl",
   md: "max-h-[90dvh] w-full max-w-xl rounded-2xl",
   lg: "max-h-[92dvh] w-full max-w-3xl rounded-2xl",
@@ -33,6 +34,7 @@ const sizes = {
 } as const;
 const modalWidths = {
   sheet: "max-w-full md:max-w-xl",
+  side: "max-w-full md:ml-auto md:mr-0 md:h-dvh md:max-w-md",
   sm: "max-w-md",
   md: "max-w-xl",
   lg: "max-w-3xl",

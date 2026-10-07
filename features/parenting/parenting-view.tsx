@@ -17,6 +17,7 @@ import {
   type PickerSlotKey,
 } from "@/lib/parenting/state";
 import { useParentingSetup } from "./hooks";
+import { usePedigreeTier } from "./hooks/use-pedigree-tier";
 import { getAllVeterans } from "@/lib/IndexDB/veterans-db";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import {
@@ -59,6 +60,9 @@ const STYLE_LABELS: Record<number, string> = {
 
 export default function ParentingView({ onNavigateToParentDeck }: ParentingViewProps) {
   const { course, runningStyle } = useDeck();
+  const pageRef = useRef<HTMLElement>(null);
+  const pageTier = usePedigreeTier(pageRef);
+  const isCompactPage = pageTier !== "desktop";
 
   const {
     setup,
@@ -484,16 +488,48 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   };
 
   if (loading) {
+    // Keeps the same <section> element across loading -> loaded so pageRef stays observed.
     return (
-      <div className="py-24 flex flex-col items-center justify-center gap-3">
-        <div className="w-9 h-9 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs text-zinc-400">Loading Parenting Hub & Inheritance Engine...</p>
-      </div>
+      <section ref={pageRef} className="w-full">
+        <div className="py-24 flex flex-col items-center justify-center gap-3">
+          <div className="w-9 h-9 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-zinc-400">Loading Parenting Hub & Inheritance Engine...</p>
+        </div>
+      </section>
     );
   }
 
+  const parentDeckBanner = (
+    <div className={isCompactPage
+      ? "rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-3 flex items-center justify-between gap-3 shadow-xs"
+      : "rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs"}>
+      <div className="flex items-center gap-3">
+        <span className="text-2xl">🃏</span>
+        <div>
+          <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
+            Ready to build your support cards & farm skills?
+          </h4>
+          {!isCompactPage && (
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              Go to the Parent Deck tab to select 6 support cards and inspect all inheritable skills.
+            </p>
+          )}
+        </div>
+      </div>
+      {onNavigateToParentDeck && (
+        <AppButton
+          variant="quiet"
+          onPress={onNavigateToParentDeck}
+          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm active:scale-95 cursor-pointer transition-all shrink-0"
+        >
+          Go to Parent Deck ➔
+        </AppButton>
+      )}
+    </div>
+  );
+
   return (
-    <section className="w-full flex flex-col gap-6">
+    <section ref={pageRef} className="w-full flex flex-col gap-6">
       {/* Header Strip */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3">
         <div>
@@ -538,7 +574,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         targetStage={<div className="relative rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/75 dark:bg-zinc-900/75 p-4 sm:p-6 shadow-sm overflow-hidden backdrop-blur-md">
           <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
           <LineageAffinityHeader affinityBreakdown={affinityBreakdown} onOpenInheritedSkills={() => setIsInheritedSkillsOpen(true)} />
-          <TraineeSpotlight targetChara={targetChara} statBonuses={statBonuses} onSelectTrainee={() => setIsTraineeModalOpen(true)} />
+          <TraineeSpotlight compact={isCompactPage} targetChara={targetChara} statBonuses={statBonuses} onSelectTrainee={() => setIsTraineeModalOpen(true)} />
         </div>}
         veterans={veterans}
         roster={characters}
@@ -547,32 +583,14 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         updateSetup={updateSetup}
       />
 
-      {/* 3. NAVIGATION BANNER TO PARENT DECK */}
-      <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl">🃏</span>
-          <div>
-            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-              Ready to build your support cards & farm skills?
-            </h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Go to the Parent Deck tab to select 6 support cards and inspect all inheritable skills.
-            </p>
-          </div>
-        </div>
-        {onNavigateToParentDeck && (
-          <AppButton
-            variant="quiet"
-            onPress={onNavigateToParentDeck}
-            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm active:scale-95 cursor-pointer transition-all shrink-0"
-          >
-            Go to Parent Deck ➔
-          </AppButton>
-        )}
-      </div>
+      {/* 3. NAVIGATION BANNER TO PARENT DECK (desktop: before the skills section) */}
+      {!isCompactPage && parentDeckBanner}
 
       {/* 4. PEDIGREE INHERITABLE SKILLS (Innate, Awakening, Events, Uniques, Factors) */}
       <PedigreeSkillsSection />
+
+      {/* Phone/tablet: the banner moves after the skills section as a single row */}
+      {isCompactPage && parentDeckBanner}
 
       {/* Trainee Character Picker Modal */}
       <CharacterPickerModal

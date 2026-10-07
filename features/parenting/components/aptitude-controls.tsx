@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { RadioGroup, Radio } from "react-aria-components/RadioGroup";
 import { CheckboxGroup, Checkbox } from "react-aria-components/CheckboxGroup";
-import { APTITUDE_KEYS, type AptitudeKey, type BranchAssessment, type FarmAptitude, type FarmRank } from "@/lib/parenting/loop-planner";
+import { APTITUDE_KEYS, type AptitudeKey, type AptitudeProjection, type BranchAssessment, type FarmAptitude, type FarmRank } from "@/lib/parenting/loop-planner";
 import { StatusRankIcon } from "@/app/common/ui/primitives/status-icons";
 import { ParentingPopover } from "./parenting-popover";
 
@@ -30,21 +30,17 @@ export function AptitudeGrid({ render }: { render: (aptitude: AptitudeKey) => Re
   return <div className="space-y-1">{GROUPS.map((group, index) => <div key={index} className={`grid gap-1 ${index === 0 ? "grid-cols-2" : "grid-cols-4"}`} data-aptitude-group={["Surface", "Distance", "Style"][index]}>{group.map(render)}</div>)}</div>;
 }
 export function nextPinkStars(stars?: number) { return stars && stars >= 1 && stars <= 3 ? stars : 3; }
-export function PinkSparkPicker({ label, value, stars, onChange }: { label: string; value?: AptitudeKey | null; stars?: number; onChange: (value?: AptitudeKey | null, stars?: number) => void }) {
-  const triggerLabel = value
-    ? `${value}, ${stars ?? "unknown"} star${stars === 1 ? "" : "s"}`
-    : value === null ? "No factor" : "Not set";
-  return <ParentingPopover label={`${label} Red factor: ${triggerLabel}`} className={`${BUTTON} parenting-aptitude-cell flex h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-pink-300 bg-pink-50/80 text-[9px] leading-tight text-pink-900 shadow-2xs hover:bg-pink-100/90 transition-colors dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100`} trigger={<>
-    <span className="max-w-full truncate">{value && <AptitudeName value={value} />}{value === null ? "None" : value === undefined ? "Set" : null}</span>
-    <span aria-hidden="true" className="flex shrink-0 gap-px leading-none">{[1, 2, 3].map((star) => <span key={star} className={value && star <= (stars ?? 0) ? "text-pink-600 dark:text-pink-400" : "text-zinc-400/60 dark:text-zinc-600"}>★</span>)}</span>
-  </>}>
-    <p className="mb-2 text-xs font-semibold">Pink spark</p>
-    <RadioGroup aria-label="Stars" value={stars ? String(stars) : ""} isDisabled={!value} onChange={(count) => onChange(value, Number(count))} className="mb-2 flex gap-1">{[1, 2, 3].map((count) => <Radio key={count} value={String(count)} aria-label={`${count} stars`} className={`${CHOICE} flex-1`}>{"★".repeat(count)}</Radio>)}</RadioGroup>
-    <RadioGroup aria-label="Pink aptitude" value={value ?? ""} onChange={(key) => onChange(key as AptitudeKey, nextPinkStars(stars))}><AptitudeGrid render={(key) => <Radio key={key} value={key} aria-label={key} className={CHOICE}>{SHORT[key]}</Radio>} /></RadioGroup>
-    <div className="mt-2 flex gap-1 border-t border-zinc-200 pt-2 dark:border-zinc-800"><button type="button" onClick={() => onChange(undefined, undefined)} className={`${BUTTON} flex-1`}>Not set</button><button type="button" onClick={() => onChange(null, 0)} className={`${BUTTON} flex-1`}>No factor</button></div>
-  </ParentingPopover>;
-}
 export interface SparkSource { label: string; pink?: AptitudeKey | null; stars?: number | null }
+export function isProjectionBoosted(projection: AptitudeProjection): boolean {
+  return projection.availablePinkStars > 0 || (projection.base !== "?" && projection.projected !== "?" && projection.base !== projection.projected);
+}
+
+export function projectionDisplayGrade(projection: AptitudeProjection): string {
+  const baseGrade = projection.base === "?" ? "-" : projection.base;
+  const grade = isProjectionBoosted(projection) && projection.projected !== "?" && projection.projected !== "-" ? projection.projected : baseGrade;
+  return grade === "-" ? "?" : grade;
+}
+
 export function AptitudeCell({
   aptitude,
   assessment,
@@ -66,11 +62,9 @@ export function AptitudeCell({
 }) {
   const projection = assessment.projections.find((item) => item.aptitude === aptitude)!;
   const result = projection.confidence === "unknown" ? "?" : projection.projected;
-  const baseGrade = projection.base === "?" ? "-" : projection.base;
-  const isBoosted = projection.availablePinkStars > 0 || (projection.base !== "?" && projection.projected !== "?" && projection.base !== projection.projected);
-  const displayGrade = (isBoosted && projection.projected !== "?" && projection.projected !== "-")
-    ? projection.projected
-    : baseGrade;
+  const isBoosted = isProjectionBoosted(projection);
+  const grade = projectionDisplayGrade(projection);
+  const displayGrade = grade === "?" ? "-" : grade;
 
   return (
     <ParentingPopover

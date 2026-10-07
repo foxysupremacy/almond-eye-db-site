@@ -6,7 +6,6 @@ import { User } from "@react-aria/test-utils";
 import { GeneticIndicator } from "@/features/parenting/components/genetic-indicator";
 import { ParentingLoopOptimizer } from "@/features/parenting/loop-optimizer";
 import { useAncestorNavigation } from "@/features/parenting/hooks/use-ancestor-navigation";
-import { PedigreeBranchTabs, type PedigreeBranch } from "@/features/parenting/components/pedigree-branch-tabs";
 import { WhiteGeneticPicker } from "@/features/parenting/components/aptitude-controls";
 import { evaluateParentingMinmax, type ParentingMinmaxContext } from "@/lib/parenting/minmax";
 import { branchSourceSlots, buildLoopCandidates, evaluateParentingBranch, type AptitudeKey } from "@/lib/parenting/loop-planner";
@@ -138,42 +137,58 @@ test("GGGP source rows close the warning and jump to the exact desktop spark inp
   await waitFor(() => expect(destination.querySelector(".animate-ancestor-highlight")).not.toBe(firstHighlight));
 });
 
-test("ancestor navigation switches mobile branches before focusing the visible target", async () => {
-  const media = window.matchMedia;
-  window.matchMedia = (query) => query === "(min-width: 64rem)"
-    ? { ...media.call(window, query), matches: false } as MediaQueryList : media.call(window, query);
-  const scrolls: string[] = [];
+test("phone navigation opens the GGP sheet and focuses the inline GGGP spark", async () => {
+  const opened: string[] = []; const scrolls: string[] = [];
   function Probe() {
-    const [branch, setBranch] = useState<PedigreeBranch>("p1");
-    const navigation = useAncestorNavigation(setBranch);
-    const slot = branch === "p1" ? "p1_gp1_g1_g1" : "p2_gp2_g2_g2";
-    const targetProps = navigation.targetProps(slot, "mobile");
+    const [sheet, setSheet] = useState<string | null>(null);
+    const navigation = useAncestorNavigation({ tier: "phone", openSlot: (slot) => { opened.push(slot); setSheet(slot); }, closeSheet: () => {} });
+    const props = navigation.targetProps("p2_gp2_g2_g2", "sheet");
     return <>
       <button onClick={() => navigation.navigate("p2_gp2_g2_g2")}>Find donor</button>
-      <div {...navigation.targetProps("p2_gp2_g2_g2", "desktop")} ref={(element) => {
-        navigation.targetProps("p2_gp2_g2_g2", "desktop").ref(element);
-        if (element) element.scrollIntoView = () => scrolls.push("desktop");
-      }}>Hidden desktop copy</div>
-      <PedigreeBranchTabs value={branch} onChange={setBranch}>
-        <div {...targetProps} ref={(element) => {
-          targetProps.ref(element);
-          if (element) element.scrollIntoView = () => scrolls.push("mobile");
-        }} data-testid="mobile-donor">{navigation.highlightKey(slot, "mobile") !== null ? "Highlighted donor" : "Donor"}</div>
-      </PedigreeBranchTabs>
+      {sheet && <div {...props} ref={(element) => { props.ref(element); if (element) element.scrollIntoView = () => scrolls.push("sheet"); }} data-testid="sheet-donor">
+        {navigation.highlightKey("p2_gp2_g2_g2", "sheet") !== null ? "Highlighted donor" : "Donor"}</div>}
     </>;
   }
-  try {
+  render(<Probe />);
+  await userEvent.setup().click(screen.getByRole("button", { name: "Find donor" }));
+  await waitFor(() => {
+    expect(opened).toEqual(["p2_gp2_g2"]);
+    expect(document.activeElement).toBe(screen.getByTestId("sheet-donor"));
+    expect(screen.getByTestId("sheet-donor").textContent).toBe("Highlighted donor");
+    expect(scrolls).toEqual(["sheet"]);
+  });
+});
+
+test("tablet navigation to a GGGP closes the sheet then focuses the inline chip", async () => {
+  const opened: string[] = []; let closed = 0; const scrolls: string[] = [];
+  function Probe() {
+    const navigation = useAncestorNavigation({ tier: "tablet", openSlot: (slot) => opened.push(slot), closeSheet: () => { closed++; } });
+    const props = navigation.targetProps("p1_gp2_g2_g2", "tablet");
+    return <>
+      <button onClick={() => navigation.navigate("p1_gp2_g2_g2")}>Find donor</button>
+      <div {...props} ref={(element) => { props.ref(element); if (element) element.scrollIntoView = () => scrolls.push("tablet"); }} data-testid="tablet-donor">
+        {navigation.highlightKey("p1_gp2_g2_g2", "tablet") !== null ? "Highlighted donor" : "Donor"}</div>
+    </>;
+  }
+  render(<Probe />);
+  await userEvent.setup().click(screen.getByRole("button", { name: "Find donor" }));
+  await waitFor(() => {
+    expect(closed).toBe(1);
+    expect(opened).toEqual([]);
+    expect(document.activeElement).toBe(screen.getByTestId("tablet-donor"));
+    expect(screen.getByTestId("tablet-donor").textContent).toBe("Highlighted donor");
+    expect(scrolls).toEqual(["tablet"]);
+  });
+});
+
+test("phone and tablet navigation to a P/GP/GGP slot opens its sheet", async () => {
+  for (const tier of ["phone", "tablet"] as const) {
+    const opened: string[] = [];
+    function Probe() { const navigation = useAncestorNavigation({ tier, openSlot: (slot) => opened.push(slot), closeSheet: () => {} }); return <button onClick={() => navigation.navigate("p1_gp2")}>Go</button>; }
     render(<Probe />);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Find donor" }));
-    await waitFor(() => {
-      expect(screen.getByRole("tab", { name: "P2" }).getAttribute("aria-selected")).toBe("true");
-      expect(document.activeElement).toBe(screen.getByTestId("mobile-donor"));
-      expect(screen.getByTestId("mobile-donor").textContent).toBe("Highlighted donor");
-      expect(scrolls).toEqual(["mobile"]);
-    });
-  } finally {
+    await userEvent.setup().click(screen.getByRole("button", { name: "Go" }));
+    expect(opened).toEqual(["p1_gp2"]);
     cleanup();
-    window.matchMedia = media;
   }
 });
 
