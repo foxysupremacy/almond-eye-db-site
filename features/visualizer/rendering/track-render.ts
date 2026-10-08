@@ -517,6 +517,8 @@ function buildSpeedLane(
 export interface RenderCourseOptions {
   zones?: SkillZoneResult[];
   trace?: RaceEffectTrace | null;
+  /** Compact activation-only previews can omit the estimated-speed lane. */
+  showSpeedLane?: boolean;
   onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void;
 }
 
@@ -537,7 +539,7 @@ export function renderCourse(
   const W = 960;
   const H_track = 240;
   const H_speed = 82;
-  const H_total = H_track + H_speed + 6;
+  const H_total = opts.showSpeedLane === false ? H_track : H_track + H_speed + 6;
   const xOff = 12;
   const yOff = 6;
   const yExtra = 10;
@@ -625,9 +627,13 @@ export function renderCourse(
   innerWrap.appendChild(innerTrack);
 
   // band 6: estimated speed by course position
-  const { element: speedEl, updateHoverDot } = buildSpeedLane(course, opts.trace, opts.zones, W, H_speed);
-  const speedSvg = el("svg", { x: "0", y: String(H_track + 4), width: String(W), height: String(H_speed), class: "speedLane" }, [speedEl]);
-  innerWrap.appendChild(speedSvg);
+  let updateHoverDot: ((meter: number | null) => void) | undefined;
+  if (opts.showSpeedLane !== false) {
+    const lane = buildSpeedLane(course, opts.trace, opts.zones, W, H_speed);
+    updateHoverDot = lane.updateHoverDot;
+    const speedSvg = el("svg", { x: "0", y: String(H_track + 4), width: String(W), height: String(H_speed), class: "speedLane" }, [lane.element]);
+    innerWrap.appendChild(speedSvg);
+  }
 
   // mouseover line across all bands
   innerWrap.appendChild(el("line", { class: "mouseoverLine", x1: "-5", y1: "0", x2: "-5", y2: "100%", stroke: "var(--track-hover-line, #0284c7)", "stroke-width": "2" }));

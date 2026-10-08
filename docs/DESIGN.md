@@ -487,6 +487,14 @@ sector**, from 10:30 to 1:30 around the circle's center, may pop out over the
 frame. The remaining 270° stays inside the circular crop. This quarter is an
 angular sector, not the top 25% of the circle's height.
 
+The shared implementation is `app/common/ui/primitives/character-portrait.tsx`
+(`CharacterPortrait`). Both Parenting Hub and the landing pedigree use it.
+Pass the canonical character `imgUrl` from the data gateway (the currently
+published `01.png` stand), not a guessed `02.png` thumbnail URL. Reserve top
+clearance around the portrait so ears and hats can extend above the circle.
+Both image layers share one failure state; an unavailable image falls back to
+the lineage icon inside the ring, including failures before hydration.
+
 ### Layer Order and Geometry
 
 | Layer | Stacking | Contract |
