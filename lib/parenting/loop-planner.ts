@@ -6,7 +6,8 @@ import type { KyumaruVeteranItem } from "../veterans/types";
 import { decodeFactor } from "../lineage/factor-decoder";
 import { calculateLineageAffinity, getCharaIdFromCardId } from "../lineage/affinity-engine";
 import { evaluateUniqueSkill, runningStyleToNum } from "./skill-evaluator";
-import type { Course } from "../skill-engine/types";
+import type { RaceImpactProfile } from "../race-impact/types";
+import type { Course, RaceParameters } from "../skill-engine/types";
 import type { RunningStyle } from "../deck/types";
 import { evaluateG1Calendar, type G1CalendarAssessment } from "./g1-calendar";
 
@@ -101,7 +102,7 @@ export interface RankedLoopBlueprint {
   whiteFactorProduction: WhiteFactorProduction[];
   aptitudeSparkCoverage: { factorGroupId: number; name: string; count: number; stars: number; confidence: "confirmed" | "projected" | "feasible" }[];
   deckSkillOverlap: { skillId: number; count: number }[];
-  uniqueEvaluations: { slot: LoopAncestorSlot; name: string; tier: string; explanation: string }[];
+  uniqueEvaluations: { slot: LoopAncestorSlot; name: string; tier: string; explanation: string; score?: number }[];
   targetAptitude: AptitudeProjection[];
   parentAptitude: Record<"p1" | "p2", AptitudeProjection[]>;
   factorGoalScore: number;
@@ -149,6 +150,8 @@ export interface ParentingLoopRequest {
   roster: CharacterIndexEntry[];
   course: Course | null;
   runningStyle: RunningStyle | number | null;
+  raceParams?: Partial<RaceParameters>;
+  raceImpactProfile?: RaceImpactProfile;
   mainDeckSkillIds: number[];
   config: ParentingLoopConfig;
   current?: Partial<Record<LoopAncestorSlot, string>>;
@@ -573,8 +576,8 @@ function evaluateBlueprint(ancestors: Record<LoopUmaSlot, LoopCandidate>, reques
     if (!request.course) return [];
     const char = charFor(ancestors[slot].cardId, ancestors[slot].charId);
     const skillId = char?.uniqueSkillId == null ? undefined : uniqueInheritMap[String(char.uniqueSkillId)];
-    const result = evaluateUniqueSkill(skillId, request.course, runningStyleToNum(request.runningStyle));
-    return [{ slot, name: result.skillName || char?.nameEn || ancestors[slot].name, tier: result.tier, explanation: result.explanation }];
+    const result = evaluateUniqueSkill(skillId, request.course, runningStyleToNum(request.runningStyle), { raceImpactProfile: request.raceImpactProfile, raceParams: request.raceParams, racerCount: request.raceParams?.numUmas });
+    return [{ slot, name: result.skillName || char?.nameEn || ancestors[slot].name, tier: result.tier ?? "Unrated", explanation: result.explanation, score: result.score }];
   });
   const targetG1 = careersByCharId[String(request.target.charId)] ?? [];
   const targetSaddles = new Set(targetG1.flatMap((race) => race.saddleId == null ? [] : [race.saddleId]));
@@ -637,7 +640,7 @@ export function planParentingLoop(request: ParentingLoopRequest): ParentingLoopR
     if (!blueprints.some((entry) => slots.every((slot) => entry.ancestors[slot].key === result.ancestors[slot].key))) blueprints.push(result);
   }
   const uniqueScore = (plan: RankedLoopBlueprint) => plan.uniqueEvaluations.reduce((sum, item) =>
-    sum + ({ "S+": 7, S: 6, A: 5, B: 4, C: 3, D: 2, F: 0 }[item.tier] ?? 0), 0);
+    sum + (item.score ?? 0), 0);
   const optionalAffinity = (plan: RankedLoopBlueprint) => plan.affinityBreakdown.tripleCrown + plan.affinityBreakdown.tiara;
   blueprints.sort((a, b) => Number(Boolean(b.isCurrent)) - Number(Boolean(a.isCurrent)) || b.factorGoalScore - a.factorGoalScore || compareMinmax(a.minmax.score, b.minmax.score) || Number(b.floorMet) - Number(a.floorMet) || b.affinityBreakdown.total - a.affinityBreakdown.total || b.g1OpportunityCount - a.g1OpportunityCount ||
     optionalAffinity(b) - optionalAffinity(a) ||

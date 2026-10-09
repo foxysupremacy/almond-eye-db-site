@@ -18,16 +18,6 @@ const STAT_LABELS: Record<RaceImpactStat, string> = {
   wisdom: "Wisdom",
 };
 
-const DYNAMIC_LABELS: Record<DynamicConditionKey, string> = {
-  blocked: "Blocked",
-  overtake: "Overtake",
-  nearby: "Nearby runners",
-  surrounded: "Surrounded",
-  activate_count: "Activation count",
-  other_skill: "Prior skill trigger",
-  visibility: "Visibility",
-};
-
 export function RaceImpactProfilePanel({
   profile,
   dynamicKeys,
@@ -40,18 +30,11 @@ export function RaceImpactProfilePanel({
   const updateStat = (key: RaceImpactStat, parsed: number) => {
     onChange({ ...profile, stats: { ...profile.stats, [key]: Number.isFinite(parsed) ? parsed : profile.stats[key] } });
   };
-  const updateDynamic = (key: DynamicConditionKey, percentage: number) => {
-    const probability = Number.isFinite(percentage) ? Math.max(0, Math.min(100, percentage)) / 100 : undefined;
-    const dynamicOverrides = { ...profile.dynamicOverrides };
-    if (probability === undefined) delete dynamicOverrides[key];
-    else dynamicOverrides[key] = probability;
-    onChange({ ...profile, dynamicOverrides });
-  };
   return (
     <AppDisclosure className="border-y border-zinc-200/80 py-2.5 dark:border-zinc-800" title={
       <span>
         <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Race-impact profile</span>
-        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">Stats and dynamic-condition assumptions are saved locally.</span>
+        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">Shared race stats are saved locally and used across the app.</span>
       </span>
     }>
         <div className="mt-3 divide-y divide-zinc-200/80 border-t border-zinc-200/80 pt-3 dark:divide-zinc-800 dark:border-zinc-800">
@@ -65,21 +48,9 @@ export function RaceImpactProfilePanel({
               </NumberField>
             ))}
           </div>
-          {dynamicKeys.length > 0 && (
-            <div className="grid grid-cols-1 gap-x-4 gap-y-2 py-3 sm:grid-cols-2">
-              {dynamicKeys.map((key) => (
-                <NumberField key={key} minValue={0} maxValue={100} step={1} value={profile.dynamicOverrides[key] === undefined ? Number.NaN : Math.round(profile.dynamicOverrides[key]! * 100)} onChange={(value) => updateDynamic(key, value)} className="flex items-center justify-between gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
-                  <Label>{DYNAMIC_LABELS[key]}</Label>
-                  <span className="flex items-center gap-1">
-                    <Input placeholder="Telemetry"
-                      className="w-16 border-b border-zinc-300 bg-transparent py-0.5 text-right font-mono text-xs font-semibold text-zinc-900 outline-none dark:border-zinc-700 dark:text-zinc-100"
-                    />
-                    <span>%</span>
-                  </span>
-                </NumberField>
-              ))}
-            </div>
-          )}
+          {dynamicKeys.length > 0 && <p className="py-3 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+            Dynamic race conditions are assumed to be met for this conditional rating. The inspector highlights each assumed clause.
+          </p>}
           <AppButton
             variant="quiet"
             onPress={() => onChange({ version: 1, stats: { ...DEFAULT_RACE_IMPACT_STATS }, dynamicOverrides: {} })}

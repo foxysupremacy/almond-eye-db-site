@@ -12,19 +12,18 @@ export interface WhiteUniqueInfo {
 }
 
 const TIER_ORDER: Record<string, number> = {
-  "S+": 0,
-  S: 1,
-  A: 2,
-  B: 3,
-  C: 4,
-  D: 5,
-  F: 6,
+  S: 0,
+  A: 1,
+  B: 2,
+  C: 3,
+  D: 4,
+  F: 5,
 };
 
 /** Prioritize unique skills that can activate on the selected course/style. */
 export function uniqueFireState(uniqueEval?: LegacyUniqueEval): number {
   if (!uniqueEval) return 1;
-  return uniqueEval.tier === "F" ? 0 : 2;
+  return uniqueEval.canonicalRating?.eligibility.state === "eligible" ? 2 : 0;
 }
 
 /** Stable candidate ordering shared by the recommendation and owned tabs. */

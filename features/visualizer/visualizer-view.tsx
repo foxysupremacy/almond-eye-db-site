@@ -6,23 +6,18 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, type SkillDetail } from "@/lib/api";
-import { horseForStrategy, type SkillZoneResult } from "@/lib/skill-engine/zones";
-import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
+import { type SkillZoneResult } from "@/lib/skill-engine/zones";
 import { useDeck } from "@/features/deck/state";
 import { type RarityFilterKey } from "@/lib/skills/rarity";
+import { createApplicationRatingSession } from "@/lib/skill-rating/application";
+import { skillRatingZones } from "@/app/common/ui/skills/details/skill-rating-presentation";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
 import { TrackCanvas } from "./components/track-canvas";
 import { TrackSkillSidebar } from "./components/track-skill-sidebar";
 import { SkillDetailPanel } from "@/app/common/ui/skills/details/skill-detail-panel";
 import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
-import {
-  defaultRaceImpactProfile,
-  dynamicConditionKeys,
-  loadRaceImpactProfile,
-  saveRaceImpactProfile,
-  subscribeRaceImpactProfile,
-  type RaceImpactProfile,
-} from "@/lib/race-impact";
+import { dynamicConditionKeys } from "@/lib/race-impact";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { useParentingSetup } from "@/features/parenting/hooks";
 import {
   buildVisualizerSkillPools,
@@ -63,8 +58,7 @@ export default function TrackView() {
   const [selectedSkillId, setSelectedSkillId] = useState<number | null>(null);
   const [skillDetail, setSkillDetail] = useState<SkillDetail | null>(null);
   const [skillLoading, setSkillLoading] = useState(false);
-  const [zones, setZones] = useState<SkillZoneResult[] | null>(null);
-  const [raceImpactProfile, setRaceImpactProfile] = useState<RaceImpactProfile>(() => defaultRaceImpactProfile());
+  const { raceImpactProfile, updateRaceImpactProfile } = useRaceImpactProfile();
   const conditionViewerRef = useRef<HTMLDivElement>(null);
 
 
@@ -82,24 +76,6 @@ export default function TrackView() {
       /* ignore */
     }
   }, []);
-
-  useEffect(() => {
-    const sync = () => setRaceImpactProfile(loadRaceImpactProfile());
-    sync();
-    return subscribeRaceImpactProfile(sync);
-  }, []);
-
-  const updateRaceImpactProfile = useCallback((next: RaceImpactProfile) => {
-    setRaceImpactProfile(next);
-    saveRaceImpactProfile(next);
-  }, []);
-
-  // Horse used to gate running_style conditions; undefined = default (Nige).
-  // Memoized: a fresh object each render would re-fire the zone effects forever.
-  const styleHorse = useMemo(
-    () => (runningStyle ? horseForStrategy(runningStyle) : undefined),
-    [runningStyle],
-  );
 
   // Auto-select a deck skill: the saved one when valid, else the first skill.
   // Keeps a valid selection as the deck changes.
@@ -120,35 +96,20 @@ export default function TrackView() {
     let alive = true;
     setSkillLoading(true);
     setSkillDetail(null);
-    setZones(null);
     api
       .skill(selectedSkillId)
       .then((d) => {
         if (!alive) return;
         setSkillDetail(d);
-        const groups = (d.conditionGroups ?? []).map((g) => ({
-          condition: g.condition ?? "",
-          precondition: g.precondition ?? null,
-        }));
-        if (course) setZones(computePvpSkillZones(course, groups, styleHorse, { ...raceParams, skillId: String(selectedSkillId) }));
-        else setZones([]);
       })
       .catch(() => alive && setSkillDetail(null))
       .finally(() => alive && setSkillLoading(false));
     return () => {
       alive = false;
     };
-  }, [selectedSkillId, course, styleHorse, raceParams]);
+  }, [selectedSkillId]);
 
-  // Recompute zones when the course changes and we still have a detail loaded.
-  useEffect(() => {
-    if (!course || !skillDetail) return;
-    const groups = (skillDetail.conditionGroups ?? []).map((g) => ({
-      condition: g.condition ?? "",
-      precondition: g.precondition ?? null,
-    }));
-    setZones(computePvpSkillZones(course, groups, styleHorse, { ...raceParams, skillId: String(skillDetail.id) }));
-  }, [course, skillDetail, styleHorse, raceParams]);
+  const ratingSession = useMemo(() => createApplicationRatingSession({ course, style: runningStyle, racerCount, raceParameters: raceParams, profile: raceImpactProfile }), [course, runningStyle, racerCount, raceParams, raceImpactProfile]);
 
   const evaluation = useMemo(() => {
     if (!skillDetail) return null;
@@ -158,11 +119,13 @@ export default function TrackView() {
       runningStyle,
       racerCount,
       visualizerDeck === "parent",
-      zones ?? [],
+      [],
       raceParams,
-      { raceImpactProfile },
+      { raceImpactProfile, session: ratingSession },
     );
-  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, zones, raceParams, raceImpactProfile]);
+  }, [skillDetail, course, runningStyle, racerCount, visualizerDeck, raceParams, raceImpactProfile, ratingSession]);
+
+  const ratedZones = useMemo(() => evaluation?.canonicalRating ? skillRatingZones(evaluation.canonicalRating) : null, [evaluation]);
 
   // Cache skill details so triggerability can be computed for every deck skill
   // without re-fetching on each course change.
@@ -193,21 +156,26 @@ export default function TrackView() {
       await Promise.all(activeSkills.map((s) => fetchSkillCached(s.id)));
       if (!alive) return;
       const bySkill = new Map<number, SkillZoneResult[]>();
+      const styleSessions = runningStyle ? [ratingSession] : [1, 2, 3, 4, 5].map((style) => createApplicationRatingSession({ course, style, racerCount, raceParameters: raceParams, profile: raceImpactProfile }));
       for (const s of activeSkills) {
         const d = detailCacheRef.current.get(s.id);
         if (!d) continue;
-        const groups = (d.conditionGroups ?? []).map((g) => ({
-          condition: g.condition ?? "",
-          precondition: g.precondition ?? null,
-        }));
-        bySkill.set(s.id, computePvpSkillZones(course, groups, styleHorse, { ...raceParams, skillId: String(s.id) }));
+        const variant = visualizerDeck === "parent" && d.rarity === 2 ? "parent-factor" as const
+          : visualizerDeck === "parent" && (d.rarity === 3 || d.rarity === 5) ? "inherited-unique" as const : "original" as const;
+        // No style selection means potential eligibility in at least one style.
+        const analyses = styleSessions.map((session) => session.analyze({ skill: d, variant }));
+        const viable = analyses.find((analysis) => analysis.eligibility.state === "eligible");
+        if (isSkillBanned(s.id, activePvpEvent)) bySkill.set(s.id, []);
+        else if (viable) bySkill.set(s.id, skillRatingZones(viable));
+        else if (analyses.every((analysis) => analysis.eligibility.state === "ineligible")) bySkill.set(s.id, []);
+        // Unknown parsing/data/context stays pending rather than claiming impossibility.
       }
       setZonesBySkill(bySkill);
     })();
     return () => {
       alive = false;
     };
-  }, [course, activeSkills, fetchSkillCached, styleHorse, raceParams]);
+  }, [course, activeSkills, fetchSkillCached, raceParams, ratingSession, visualizerDeck, runningStyle, racerCount, raceImpactProfile, activePvpEvent]);
 
   const selectedSkill = activeSkills.find((skill) => skill.id === selectedSkillId) ?? null;
   const hasContent = activeSkills.length > 0;
@@ -266,7 +234,7 @@ export default function TrackView() {
         <>
           <TrackCanvas
             course={course}
-            zones={zones}
+            zones={ratedZones}
             selectedSkillId={selectedSkillId?.toString() ?? null}
             evaluation={evaluation}
             skillDetail={skillDetail}
@@ -298,7 +266,7 @@ export default function TrackView() {
               skillLoading={skillLoading}
               selectedSkill={selectedSkill}
               selectedSkillId={selectedSkillId}
-              zones={zones}
+              zones={ratedZones}
               course={course}
               racerCount={racerCount}
               evaluation={evaluation}

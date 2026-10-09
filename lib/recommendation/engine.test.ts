@@ -282,7 +282,7 @@ describe("recommendation-engine", () => {
     }
   });
 
-  it("boosts or demotes skills based on raceParams (pvp conditions)", () => {
+  it("filters course-ineligible season predicates using canonical analysis", () => {
     const testSkillId = 999999;
     const testCardId = 999999;
     (skillMetaMap as any)[testSkillId] = {
@@ -330,6 +330,7 @@ describe("recommendation-engine", () => {
       const recsAutumn = recommendCardsForParent({
         mainDeckSkillIds: new Set(),
         course,
+        style: 1,
         raceParams: { season: 3 },
         limit: 1000,
       });
@@ -340,13 +341,12 @@ describe("recommendation-engine", () => {
       const recsSpring = recommendCardsForParent({
         mainDeckSkillIds: new Set(),
         course,
+        style: 1,
         raceParams: { season: 1 },
         limit: 1000,
       });
       const springCard = recsSpring.find((r) => r.cardId === testCardId);
-      expect(Boolean(springCard)).toBe(true);
-      expect(springCard?.newMatchingSkills[0].firesOnCourse).toBe(false);
-      expect((autumnCard?.score ?? 0) > (springCard?.score ?? 0)).toBe(true);
+      expect(springCard).toBeUndefined();
     } finally {
       delete (skillMetaMap as any)[testSkillId];
       delete (cardMetaMap as any)[testCardId];
@@ -462,7 +462,7 @@ describe("recommendation-engine", () => {
     }
   });
 
-  it("penalizes cards with running style traps", () => {
+  it("drops skills with an explicit unsatisfied style condition", () => {
     const betweenerOnlySkillId = 888003;
     const testCardId = 888103;
 
@@ -508,16 +508,14 @@ describe("recommendation-engine", () => {
       });
 
       const trapCard = recs.find((r) => r.cardId === testCardId);
-      expect(Boolean(trapCard)).toBe(true);
-      // Score should be heavily penalized (negative score)
-      expect(trapCard!.score).toBeLessThan(0);
+      expect(trapCard).toBeUndefined();
     } finally {
       delete (skillMetaMap as any)[betweenerOnlySkillId];
       delete (cardMetaMap as any)[testCardId];
     }
   });
 
-  it("drops style-trap skills from recommendations when the skill could still fire", () => {
+  it("retains a valid OR branch even when another branch has a style mismatch", () => {
     const orStyleSkillId = 888004;
     const testCardId = 888104;
 
@@ -554,14 +552,16 @@ describe("recommendation-engine", () => {
         limit: 1000,
       });
 
-      expect(recs.find((r) => r.cardId === testCardId)).toBeUndefined();
+      const match = recs.find((r) => r.cardId === testCardId)?.newMatchingSkills[0];
+      expect(match?.firesOnCourse).toBe(true);
+      expect(match?.canonicalRating?.eligibility.state).toBe("eligible");
     } finally {
       delete (skillMetaMap as any)[orStyleSkillId];
       delete (cardMetaMap as any)[testCardId];
     }
   });
 
-  it("drops rank-trap skills from recommendations", () => {
+  it("retains rank-constrained skills as conditional ratings", () => {
     const rankTrapSkillId = 888005;
     const testCardId = 888105;
 
@@ -595,14 +595,16 @@ describe("recommendation-engine", () => {
         limit: 1000,
       });
 
-      expect(recs.find((r) => r.cardId === testCardId)).toBeUndefined();
+      const match = recs.find((r) => r.cardId === testCardId)?.newMatchingSkills[0];
+      expect(match?.canonicalRating?.assumptions.some(a => a.kind === "rank")).toBe(true);
+      expect(match?.firesOnCourse).toBe(true);
     } finally {
       delete (skillMetaMap as any)[rankTrapSkillId];
       delete (cardMetaMap as any)[testCardId];
     }
   });
 
-  it("recommends Position Accel skills with a moderate bonus", () => {
+  it("does not award category bonuses to acceleration with no modeled gain", () => {
     const positionAccelSkillId = 888006;
     const testCardId = 888106;
 
@@ -639,9 +641,9 @@ describe("recommendation-engine", () => {
       const card = recs.find((r) => r.cardId === testCardId);
       expect(Boolean(card)).toBe(true);
       const skill = card!.newMatchingSkills.find((s) => s.id === positionAccelSkillId);
-      expect(skill?.tacticalCategory).toBe("position_accel");
-      expect(skill?.evalTier).toBe("B");
-      expect(card!.score).toBeGreaterThan(0);
+      expect(skill?.tacticalCategory).toBe("dead_accel");
+      expect(card!.score).toBe(skill?.canonicalRating?.score ?? 0);
+      expect(card!.score).toBe(0);
     } finally {
       delete (skillMetaMap as any)[positionAccelSkillId];
       delete (cardMetaMap as any)[testCardId];
@@ -659,7 +661,7 @@ describe("recommendation-engine", () => {
     expect(recs.length <= 16).toBe(true);
   });
 
-  it("penalizes and marks banned debuff skills with BANNED badge when noDebuffs is active", () => {
+  it("excludes banned debuff skills through the PvP policy wrapper", () => {
     const testCardId = 999998;
     const debuffSkillId = 201152; // 束縛 (Binding Chains), banned debuff
 
@@ -707,11 +709,7 @@ describe("recommendation-engine", () => {
         raceParams: { noDebuffs: true },
       });
       const bannedCard = bannedRecs.find((r) => r.cardId === testCardId);
-      expect(Boolean(bannedCard)).toBe(true);
-      const bannedSkill = bannedCard!.newMatchingSkills.find((s) => s.id === debuffSkillId);
-      expect(bannedSkill?.tacticalLabel).toBe("BANNED");
-      expect(bannedSkill?.firesOnCourse).toBe(false);
-      expect(bannedCard!.score).toBeLessThan(0);
+      expect(bannedCard).toBeUndefined();
     } finally {
       delete (cardMetaMap as any)[testCardId];
     }

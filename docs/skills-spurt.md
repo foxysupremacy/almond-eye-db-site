@@ -1,3 +1,10 @@
+> **Historical scoring proposal — superseded (2026-10-09).** The positional
+> overlap weights, consistency bonuses, build penalties and category/tier rules
+> below are not the current scoring contract. Read
+> [Canonical skill rating](skill_grading.md) for implemented behavior, benchmarks,
+> Recovery policy and known issues. Numerical examples below are historical,
+> not regenerated predictions from `conditional-v2`.
+
 Here is the complete mathematical breakdown of the scoring formula, including the underlying game physics, term definitions, normalization constants, and step-by-step calculations for each representative character.
 
 ---

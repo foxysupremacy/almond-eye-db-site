@@ -16,6 +16,7 @@ interface RaceEffectGraphProps {
   course: Course | null;
   zones: SkillZoneResult[] | null;
   impact?: RaceImpactResult | null;
+  conditional?: boolean;
   hoverMeter: number | null;
   onHover?: (meter: number | null, clientPos?: { clientX: number; clientY: number }) => void;
   isPinned?: boolean;
@@ -30,6 +31,7 @@ export function RaceEffectGraph({
   course,
   zones,
   impact,
+  conditional = false,
   hoverMeter,
   onHover,
   isPinned,
@@ -268,7 +270,7 @@ export function RaceEffectGraph({
             </AppButton>
           </div>
           <p className="mt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">
-            Simplified estimate · Speed vs elapsed time · Cruising target assumes distance aptitude A
+            {conditional ? "Conditional single-Uma model · Assumed conditions must be met" : "Simplified estimate · Speed vs elapsed time · Cruising target assumes distance aptitude A"}
           </p>
         </div>
 
@@ -536,7 +538,7 @@ export function RaceEffectGraph({
         </div>
 
         {/* Sub-Chart 3: Eligibility & Useful Rate vs Meter (Full Width on Bottom) */}
-        <div className="col-span-1 lg:col-span-2 rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/60 p-2.5 sm:p-3">
+        {!conditional && <div className="col-span-1 lg:col-span-2 rounded-xl border border-zinc-100 dark:border-zinc-800/70 bg-zinc-50/40 dark:bg-zinc-900/60 p-2.5 sm:p-3">
           <div className="mb-1.5 flex items-center justify-between text-[11px]">
             <span className="font-semibold text-zinc-700 dark:text-zinc-300">
               3. Spatial Activation & Useful Rate (% vs. Course Position)
@@ -590,7 +592,7 @@ export function RaceEffectGraph({
               )}
             </svg>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

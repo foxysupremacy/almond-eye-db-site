@@ -207,6 +207,9 @@ export interface SkillConditionGroup {
   condition: string | null;
   precondition?: string | null;
   base_time?: number | null;
+  /** Raw cooldown and duration scaling identifiers retained from the game source. */
+  cd?: number | null;
+  time_scale?: number | null;
   effects: RawSkillEffect[];
 }
 
@@ -216,6 +219,8 @@ export interface RawSkillEffect {
   value?: number;
   target?: number;
   target_details?: number;
+  value_scale?: number;
+  additional_activation?: number;
 }
 
 export interface SkillDetail extends SkillSummary {
@@ -420,6 +425,8 @@ export interface SkillMeta {
     condition: string;
     precondition?: string | null;
     base_time?: number | null;
+    cd?: number | null;
+    time_scale?: number | null;
     effects?: RawSkillEffect[];
   }[];
 }

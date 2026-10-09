@@ -15,6 +15,7 @@ interface TrackUnifiedTooltipProps {
   course: Course | null;
   zones: SkillZoneResult[] | null;
   impact?: RaceImpactResult | null;
+  conditional?: boolean;
   hoverMeter: number | null;
   coords: { x: number; y: number } | null;
   isPinned: boolean;
@@ -28,6 +29,7 @@ export function TrackUnifiedTooltip({
   course,
   zones,
   impact,
+  conditional = false,
   hoverMeter,
   coords,
   isPinned,
@@ -172,7 +174,7 @@ export function TrackUnifiedTooltip({
         {/* Distance Gain Metric */}
         <div className="rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-2 border border-zinc-100 dark:border-zinc-800">
           <span className="block text-[10px] font-medium text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">
-            Distance Gain
+            {conditional ? "Conditional distance gain" : "Distance Gain"}
           </span>
           <div className="mt-0.5 font-mono text-xs font-bold text-emerald-700 dark:text-emerald-400">
             {unit === "bashin" ? `${bashin.toFixed(2)} bashin` : `+${gainMeters.toFixed(2)} m`}
@@ -185,7 +187,7 @@ export function TrackUnifiedTooltip({
 
       {/* Activation Eligibility Status */}
       <div className="mt-2.5 flex items-center justify-between text-[11px] border-t border-zinc-100 dark:border-zinc-800 pt-2">
-        <span className="text-zinc-500 dark:text-zinc-400">Activation Probability</span>
+        <span className="text-zinc-500 dark:text-zinc-400">{conditional ? "Course eligibility" : "Activation Probability"}</span>
         <span
           className={`font-semibold ${
             isEligible
@@ -193,7 +195,7 @@ export function TrackUnifiedTooltip({
               : "text-zinc-400 dark:text-zinc-500"
           }`}
         >
-          {isEligible ? `${(actRate * 100).toFixed(1)}%` : "0% (Outside Zone)"}
+          {conditional ? activeZoneText ? "Possible if conditions met" : "Outside zone" : isEligible ? `${(actRate * 100).toFixed(1)}%` : "0% (Outside Zone)"}
         </span>
       </div>
 

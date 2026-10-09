@@ -11,6 +11,7 @@ import { conditionBranches, formatEffect } from "@/lib/skill-engine/describe";
 import { ZONE_COLORS } from "@/lib/visualizer/colors";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { CardSourceIcon, splitStylePrefix } from "@/app/common/ui/skills/skill-badges";
+import { SkillRatingSummary } from "@/app/common/ui/skills/details/skill-rating-summary";
 import { ConditionChips } from "@/app/common/ui/skills/details/condition-chips";
 import { hexToRgba } from "@/app/common/ui/primitives/color-utils";
 import {
@@ -171,7 +172,11 @@ export function SkillDetailPanel({
                 Course Activation Windows
               </div>
               <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800">
-                {(skillDetail.conditionGroups ?? []).map((g, gi) => {
+                {(skillDetail.conditionGroups ?? []).map((originalGroup, gi) => {
+                  const ratedPath = evaluation?.canonicalRating?.scenarios.flatMap((scenario) => scenario.paths).find((path) => path.triggerIndex === gi);
+                  const g = ratedPath ? { ...originalGroup, effects: ratedPath.effects, condition: ratedPath.condition, precondition: ratedPath.precondition,
+                    base_time: ratedPath.duration.seconds == null ? null : ratedPath.duration.seconds * 10_000 / ((course?.length ?? 1_000) / 1_000),
+                  } : originalGroup;
                   const z = zones[gi];
                   if (!z || !z.regions.length) return null;
                   const triggerEvaluation = evaluation?.triggerEvaluations?.find(
@@ -211,6 +216,10 @@ export function SkillDetailPanel({
                         <ConditionChips
                           branches={branches}
                           needsBranches={needsBranches}
+                          racerCount={racerCount}
+                          condition={g.condition}
+                          precondition={g.precondition}
+                          assumptions={evaluation?.canonicalRating?.assumptions.filter((entry) => entry.triggerIndex === gi)}
                         />
                       </div>
 
@@ -228,18 +237,15 @@ export function SkillDetailPanel({
                         )}
                       </div>
 
-                      {triggerEvaluation && (
+                      {triggerEvaluation && !evaluation?.canonicalRating && (
                         <div className="mt-3 border-t border-zinc-200/70 pt-2.5 dark:border-zinc-700/70">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                                 Trigger Verdict
                               </span>
-                              <StarRating
-                                stars={triggerEvaluation.stars}
-                                starClassName="h-3 w-3"
-                              />
-                              <StatusRankIcon grade={triggerEvaluation.tier} className="h-5 w-5" />
+                              {triggerEvaluation.stars != null && <StarRating stars={triggerEvaluation.stars} starClassName="h-3 w-3" />}
+                              {triggerEvaluation.tier ? <StatusRankIcon grade={triggerEvaluation.tier} className="h-5 w-5" /> : <span className="text-[10px] font-medium text-amber-700 dark:text-amber-300">Partial</span>}
                               <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
                                 {triggerEvaluation.score} pts
                               </span>
@@ -280,14 +286,15 @@ export function SkillDetailPanel({
           {/* Block 3: Tactical Verdict & Calculation Breakdown (Unboxed) */}
           {evaluation && (
             <div className="p-4 sm:p-5">
+              {evaluation.canonicalRating ? <SkillRatingSummary rating={evaluation.canonicalRating} compact={compact} /> : <>
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
                     Tactical Verdict & Mechanics
                   </span>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <StarRating stars={evaluation.stars} starClassName="h-3.5 w-3.5" />
-                    <StatusRankIcon grade={evaluation.tier} className="h-6 w-6" />
+                    {evaluation.stars != null && <StarRating stars={evaluation.stars} starClassName="h-3.5 w-3.5" />}
+                    {evaluation.tier ? <StatusRankIcon grade={evaluation.tier} className="h-6 w-6" /> : <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Partial rating</span>}
                     <span className="text-xs text-zinc-400 dark:text-zinc-500">
                       ({evaluation.score} pts)
                     </span>
@@ -311,6 +318,7 @@ export function SkillDetailPanel({
 
               {/* Highlighted Calculation Breakdown Panel & Math Steps */}
               <CalculationBreakdownPanel evaluation={evaluation} compact={compact} />
+              </>}
             </div>
           )}
 
@@ -365,7 +373,7 @@ export function SkillDetailPanel({
               <span className="font-semibold underline underline-offset-2">
                 {evaluation.parentMeta.inheritedWhiteNameEn}
               </span>{" "}
-              (Factor Priority: Tier {evaluation.parentMeta.factorTier}).
+              {evaluation.canonicalRating ? ". The rating uses the inherited skill’s effects." : <> (Factor Priority: Tier {evaluation.parentMeta.factorTier}).</>}
             </div>
           )}
         </>
@@ -382,6 +390,12 @@ export function SkillDetailPanel({
 export const SkillDetailInspector = SkillDetailPanel;
 
 function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResult; compact?: boolean }) {
+  const conditional = impact.physicsNote?.includes("Conditional single-Uma");
+  if (conditional) return <div className={`mt-3 border-t border-zinc-200/80 pt-2.5 text-zinc-600 dark:border-zinc-700/80 dark:text-zinc-300 ${compact ? "text-[10px]" : "text-[11px]"}`}>
+    <p className="font-semibold text-sky-700 dark:text-sky-400">Conditional simulated impact</p>
+    <p className="mt-1">{impact.expectedDistanceGainMeters == null ? "Effect value unavailable for this model." : `${impact.expectedDistanceGainMeters.toFixed(2)}m estimated when the selected path activates and its assumptions hold.`} Rank and dynamic activation probabilities are not applied.</p>
+    {impact.physicsNote && <p className="mt-1 text-zinc-500 dark:text-zinc-400">{impact.physicsNote}</p>}
+  </div>;
   const probability = Math.round(impact.activation.activationRate * 100);
   const impactText = impact.expectedBashin === null
     ? "Physics pending"

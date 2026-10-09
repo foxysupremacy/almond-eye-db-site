@@ -22,13 +22,13 @@ describe("classifyEffect — single effect table", () => {
     }
   });
 
-  test("debuffs: opponent targets, negative values, dedicated types", () => {
+  test("opponent targeting is separate from self costs", () => {
     for (const target of [9, 10, 18]) {
       expect(classifyEffect({ type: 9, value: 10, target })).toBe("debuff");
     }
-    expect(classifyEffect({ type: 21, value: -300 })).toBe("debuff");
-    expect(classifyEffect({ type: 10 })).toBe("debuff");
-    expect(classifyEffect({ type: 14 })).toBe("debuff");
+    expect(classifyEffect({ type: 21, value: -300 })).toBe("current_speed");
+    expect(classifyEffect({ type: 10 })).toBeNull();
+    expect(classifyEffect({ type: 14 })).toBeNull();
   });
 
   test("unknown types return null (evaluator ignores, UI buckets as other)", () => {
@@ -63,11 +63,11 @@ describe("classifySkillEffects — agrees with the shared table", () => {
     expect(classifySkillEffects({} as never)).toEqual(["other"]);
   });
 
-  test("negative-value speed effect classifies as debuff (not current_speed)", () => {
+  test("negative-value self speed effect keeps its effect family", () => {
     expect(
       classifySkillEffects({
         conditionGroups: [{ condition: null, effects: [{ type: 21, value: -300 }] }],
       } as never)
-    ).toEqual(["debuff"]);
+    ).toEqual(["current_speed"]);
   });
 });

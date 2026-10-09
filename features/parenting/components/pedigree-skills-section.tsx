@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useDeck } from "@/features/deck/state";
 import { useLineageSkills, type DisplayParentSkill } from "@/features/parenting/hooks";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
+import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { evaluateSkillActivation, type SkillActivationResult } from "@/lib/parenting/skill-evaluator";
 import { getPvpRaceParameters, isSkillBanned } from "@/lib/pvp/events";
 import { matchesRarityFilter, type RarityFilterKey } from "@/lib/skills/rarity";
@@ -53,15 +55,17 @@ export function PedigreeSkillsSection() {
   const [search, setSearch] = useState("");
 
   const raceParams = activeRaceParameters;
+  const { raceImpactProfile } = useRaceImpactProfile();
+  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
 
   // Precompute activation results for all pedigree skills
   const activationMap = useMemo(() => {
     const map = new Map<number, SkillActivationResult>();
     pedigreeSkills.forEach((s) => {
-      map.set(s.id, evaluateSkillActivation(s.id, course, runningStyle, raceParams));
+      map.set(s.id, evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession }));
     });
     return map;
-  }, [pedigreeSkills, course, runningStyle, raceParams]);
+  }, [pedigreeSkills, course, runningStyle, raceParams, raceImpactProfile, ratingSession]);
 
   const isSkillUniqueTarget = (s: DisplayParentSkill) => {
     if (s.isDuplicateInMain) return false;
@@ -425,7 +429,7 @@ export function PedigreeSkillsSection() {
                       const isDupeInMain = s.isDuplicateInMain ?? mainSkillIdSet.has(s.id);
                       const activation =
                         activationMap.get(s.id) ??
-                        evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+                        evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
                       const canActivate = activation.activates;
                       const isUniqueTarget = isSkillUniqueTarget(s);
                       const slotGrant = s.grants?.find((g) => g.slotLabel === slot.slotLabel);
@@ -530,7 +534,7 @@ export function PedigreeSkillsSection() {
           {filteredSkills.map((s, idx) => {
             const isBanned = isSkillBanned(s.id, activePvpEvent);
             const isDupeInMain = s.isDuplicateInMain ?? mainSkillIdSet.has(s.id);
-            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
+            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
             const canActivate = activation.activates;
             const isUniqueTarget = isSkillUniqueTarget(s);
 

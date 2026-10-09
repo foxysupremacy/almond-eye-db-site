@@ -61,10 +61,11 @@ describe("parent inherited unique effect filter", () => {
     expect(hasMinimumParentSkillEffect(multi, medium, "betweener")).toBe(true);
   });
 
-  test("a strong rank-trapped group does not rescue a weak usable group", () => {
+  test("a rank-conditioned effect remains available as an explicit conditional parenting effect", () => {
     const multi = skill([{ type: 27, value: 500 }]);
     multi.conditionGroups.push({ condition: "phase==1&order<=1", effects: [{ type: 27, value: 1500 }] });
-    expect(hasMinimumParentSkillEffect(multi, course, 4)).toBe(false);
+    // Rank mismatch is disclosed as a conditional assumption, not treated as a hard style gate.
+    expect(hasMinimumParentSkillEffect(multi, course, 4)).toBe(true);
     expect(hasMinimumParentSkillEffect(multi, course, 1)).toBe(true);
   });
 
@@ -77,13 +78,15 @@ describe("parent inherited unique effect filter", () => {
     expect(hasMinimumParentSkillEffect(skill([{ type: 27, value: 1500 }], "invalid_condition==1"), course, 1)).toBe(false);
   });
 
-  test("Ruby's 0.05 inherit is excluded despite its 0.25 original, without altering its tier", () => {
+  test("Ruby's inherited unique effect is used without a legacy tier override", () => {
     const inherited = getParentInheritedUnique(100851)!;
     expect(inherited.id).toBe(900851);
-    expect(hasMinimumParentSkillEffect(skillsById.get(100851), course, 4)).toBe(true);
+    // Parenting evaluates the mapped inherited unique (0.05), never the stronger original (0.25).
+    expect(hasMinimumParentSkillEffect(skillsById.get(100851), course, 4)).toBe(false);
     expect(hasMinimumParentSkillEffect(inherited)).toBe(false);
     expect(hasMinimumParentSkillEffect(inherited, course, 4)).toBe(false);
-    expect(evaluateUniqueSkill(inherited.id, course, 4).tier).toBe("S+");
+    const inheritedRating = evaluateUniqueSkill(inherited.id, course, 4);
+    expect(inheritedRating.tier).toBe(inheritedRating.canonicalRating?.tier);
     const alt = getParentInheritedUnique(110851)!;
     expect(hasMinimumParentSkillEffect(alt, course, 3)).toBe(true);
     expect(hasMinimumParentSkillEffect(alt, { ...course, distance: 3 }, 3)).toBe(false);
@@ -91,7 +94,9 @@ describe("parent inherited unique effect filter", () => {
 
   test("inherited Angling keeps Leader first-place insurance", () => {
     const inherited = getParentInheritedUnique(100201)!;
-    expect(evaluateUniqueSkill(inherited.id, course, 2).badge).toBe("1st-Place Insurance");
+    const rating = evaluateUniqueSkill(inherited.id, course, 2);
+    expect(rating.canonicalRating?.eligibility.state).toBe("eligible");
+    expect(rating.canonicalRating?.assumptions.some(assumption => assumption.kind === "rank")).toBe(true);
     expect(hasMinimumParentSkillEffect(inherited, course, 2)).toBe(true);
   });
 });

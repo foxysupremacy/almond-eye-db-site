@@ -152,6 +152,24 @@ conditions evaluate against a fixed max-stat horse (HORSE in `zones.ts`).
 - `_random` boolean comparators have custom `filterGt/Gte/Lt/Lte/Neq` beyond the
   default `notSupported` — don't replace them with the shared defaults.
 
+## Skill rating — session pickup (reviewed 2026-10-09)
+
+- Read [`docs/skill_grading.md`](docs/skill_grading.md) before changing ratings;
+  start at [Known issues / next pickup](docs/skill_grading.md#known-issues--next-pickup).
+  It describes the current working tree, including unfinished/uncommitted refactor work.
+- Versions: `conditional-v2`, `recovery-policy-v1`, `conditional-tier-v1`.
+  Pure API: `lib/skill-rating/index.ts`; registry adapter: `application.ts` in that
+  directory; compatibility facade: `lib/evaluator/evaluator.ts`.
+- Invariants: one canonical scorer, resolve variants before analysis, no
+  activation-probability multiplier or category bonus, shared score-derived tiers.
+  Recovery reserve points are product policy and do not add physical time/metres.
+- Next pickup: **K2** fallback is suppressed before enhanced intrinsic activation
+  is confirmed; **K1** unselected branches lose assumed labels in the inspector.
+  Both are reproduced and documented, not fixed. Add regressions before changing them.
+- Review verification: 69 related tests passed; browser checks belong to the user.
+  Mechanics remain provisional; do not claim real-race validation or treat old
+  category/rank-penalty documents as the current specification.
+
 ## Track renderer (`features/visualizer/rendering/track-render.ts`)
 
 Browser-only SVG builder ported from `track_visualizer.html` (itself a port of

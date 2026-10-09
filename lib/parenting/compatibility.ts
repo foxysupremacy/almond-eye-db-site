@@ -20,7 +20,11 @@ import {
 } from "../data/registry";
 import { getCharacterImageUrl } from "../api";
 import type { KyumaruVeteranItem } from "../veterans/types";
-import type { Course } from "../skill-engine/types";
+import type { RaceImpactProfile } from "../race-impact/types";
+import { defaultRaceImpactProfile } from "../race-impact/profile";
+import { createApplicationRatingSession } from "../skill-rating/application";
+import type { SkillRatingSession } from "../skill-rating/types";
+import type { Course, RaceParameters } from "../skill-engine/types";
 import type { RunningStyle } from "../deck/types";
 import {
   calculateAffinity,
@@ -76,6 +80,8 @@ export interface SlotRecommendationOptions {
   excludedCharIds?: number[];
   course?: Course | null | undefined;
   runningStyle?: RunningStyle | number | null | undefined;
+  raceParams?: Partial<RaceParameters>;
+  raceImpactProfile?: RaceImpactProfile;
   veterans?: KyumaruVeteranItem[];
   supportCardIds?: (number | null)[];
   limit?: number;
@@ -104,7 +110,8 @@ interface PoolEntry {
 function evaluateUnique(
   cardId: number,
   course: Course | null | undefined,
-  runningStyle: RunningStyle | number | null | undefined
+  runningStyle: RunningStyle | number | null | undefined,
+  options?: Pick<SlotRecommendationOptions, "raceParams" | "raceImpactProfile"> & { session?: SkillRatingSession },
 ): LegacyUniqueEval | undefined {
   if (!course) return undefined;
   const chara =
@@ -112,7 +119,8 @@ function evaluateUnique(
   const evalResult = evaluateUniqueSkill(
     getParentInheritedUnique(chara?.uniqueSkillId)?.id,
     course,
-    runningStyleToNum(runningStyle)
+    runningStyleToNum(runningStyle),
+    { ...options, racerCount: options?.raceParams?.numUmas },
   );
   return {
     skillName: evalResult.skillName,
@@ -122,18 +130,13 @@ function evaluateUnique(
     badgeClass: evalResult.badgeClass,
     explanation: evalResult.explanation,
     score: evalResult.score,
+    canonicalRating: evalResult.canonicalRating,
   };
 }
 
 function isUniqueFiltered(uniqueEval: LegacyUniqueEval | undefined): boolean {
   if (!uniqueEval) return false;
-  return (
-    uniqueEval.tier === "F" ||
-    uniqueEval.category === "dead_accel" ||
-    uniqueEval.category === "invalid" ||
-    uniqueEval.category === "style_invalid" ||
-    uniqueEval.category === "rank_invalid"
-  );
+  return uniqueEval.canonicalRating?.eligibility.state !== "eligible";
 }
 
 // CharacterIndexEntry.aptitude indexes: 0 Turf, 1 Dirt, 2 Short, 3 Mile,
@@ -174,13 +177,14 @@ function buildCandidate(
   course: Course | null | undefined,
   runningStyle: RunningStyle | number | null | undefined,
   minmax?: SlotRecommendationOptions["minmax"],
+  ratingOptions?: Pick<SlotRecommendationOptions, "raceParams" | "raceImpactProfile"> & { session?: SkillRatingSession },
 ): LegacyCandidate | null {
   const chara = characterMap.get(entry.cardId) || characterByCharIdMap.get(entry.charId);
   if (!chara) return null;
 
-  if (!hasMinimumParentSkillEffect(getParentInheritedUnique(chara.uniqueSkillId), course, runningStyle)) return null;
+  if (!hasMinimumParentSkillEffect(getParentInheritedUnique(chara.uniqueSkillId), course, runningStyle, ratingOptions)) return null;
 
-  const uniqueEval = evaluateUnique(entry.cardId, course, runningStyle);
+  const uniqueEval = evaluateUnique(entry.cardId, course, runningStyle, ratingOptions);
   if (isUniqueFiltered(uniqueEval)) return null;
 
   // Untrained picks are gated: they cannot be trained to win the course.
@@ -292,8 +296,11 @@ export function getSlotRecommendations(
     supportCardIds,
     limit = 20,
     minmax,
+    raceParams,
+    raceImpactProfile,
   } = options;
   if (!targetCharaId) return { owned: [], borrow: [] };
+  const session = course ? createApplicationRatingSession({ course, style: runningStyleToNum(runningStyle) ?? null, racerCount: raceParams?.numUmas ?? 9, raceParameters: raceParams, profile: raceImpactProfile ?? defaultRaceImpactProfile() }) : undefined;
 
   const excluded = new Set<number>([targetCharaId, ...excludedCharIds]);
   if (branchParent) excluded.add(getCharaIdFromCardId(branchParent.card_id));
@@ -311,7 +318,7 @@ export function getSlotRecommendations(
     veteransByCharId.set(cId, list);
   }
   for (const [cId, runs] of veteransByCharId.entries()) {
-    const scored = runs.map((vet) => ({ vet, candidate: buildCandidate({ charId: cId, cardId: vet.card_id, vet }, targetCharaId, branchParent, course, runningStyle, minmax) }))
+    const scored = runs.map((vet) => ({ vet, candidate: buildCandidate({ charId: cId, cardId: vet.card_id, vet }, targetCharaId, branchParent, course, runningStyle, minmax, { raceParams, raceImpactProfile, session }) }))
       .filter((entry) => entry.candidate !== null);
     if (!scored.length) continue;
     scored.sort((a, b) => compareMinmax(a.candidate?.minmax, b.candidate?.minmax) || calculateLineageBlueStars(b.vet).total - calculateLineageBlueStars(a.vet).total || (b.vet.rank_score || 0) - (a.vet.rank_score || 0));
@@ -333,17 +340,17 @@ export function getSlotRecommendations(
 
   const owned: LegacyCandidate[] = [];
   for (const entry of ownedEntries.values()) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax, { raceParams, raceImpactProfile, session });
     if (c) owned.push(c);
   }
   for (const entry of untrainedEntries) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax, { raceParams, raceImpactProfile, session });
     if (c) owned.push(c);
   }
 
   const borrow: LegacyCandidate[] = [];
   for (const entry of borrowEntries) {
-    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax);
+    const c = buildCandidate(entry, targetCharaId, branchParent, course, runningStyle, minmax, { raceParams, raceImpactProfile, session });
     if (c) borrow.push(c);
   }
 

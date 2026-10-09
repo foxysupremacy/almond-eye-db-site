@@ -11,10 +11,12 @@ import { getInheritableSkillForGold, EVOL_TO_UNIQUE_MAP } from "../skills/rarity
 import {
   evaluateSkillForTrack,
   type SkillTacticalCategory,
-  type EvaluatorZoneInput,
 } from "../evaluator";
 import { computePvpSkillZones } from "../pvp/skill-zones";
 import { BANNED_DEBUFF_SKILL_IDS } from "../pvp/events";
+import { defaultRaceImpactProfile, type RaceImpactProfile } from "../race-impact";
+import { createApplicationRatingSession } from "../skill-rating/application";
+import type { SkillRating, RatingStatus, SkillRatingSession } from "../skill-rating/types";
 import { matchSkillFilter } from "./skill-filter";
 
 // Dataset types (SkillMeta/CardMeta) and lookup maps live in lib/data —
@@ -44,6 +46,8 @@ export interface NewSkillMatch {
   tacticalLabel?: string;
   tacticalBadgeClass?: string;
   evalScore?: number;
+  canonicalRating?: SkillRating;
+  ratingStatus?: RatingStatus;
 }
 
 export interface CardRecommendation {
@@ -144,6 +148,8 @@ export function recommendCardsForParent({
   tacticalCategories,
   requireFiresOnCourse,
   chainChoicesMap,
+  raceImpactProfile,
+  ratingSession,
 }: {
   mainDeckSkillIds: Set<number>;
   equippedParentCardIds?: (number | null)[];
@@ -162,12 +168,15 @@ export function recommendCardsForParent({
   requireFiresOnCourse?: boolean;
   /** Active event chain choices for deck cards */
   chainChoicesMap?: Record<string, number>;
+  raceImpactProfile?: RaceImpactProfile;
+  ratingSession?: SkillRatingSession;
 }): CardRecommendation[] {
   const equippedSet = new Set(equippedParentCardIds.filter((id): id is number => typeof id === "number"));
   const combinedExclusions = excludeSkillIds
     ? new Set([...mainDeckSkillIds, ...excludeSkillIds])
     : mainDeckSkillIds;
   const recommendations: CardRecommendation[] = [];
+  const session = course ? ratingSession ?? createApplicationRatingSession({ course, style, racerCount: raceParams?.numUmas ?? 9, raceParameters: raceParams, profile: raceImpactProfile ?? defaultRaceImpactProfile() }) : undefined;
 
   // When a course is provided, derive target distance & surface directly from it
   const effDistance = course ? (course.distance as number) : distance;
@@ -199,6 +208,8 @@ export function recommendCardsForParent({
       tacticalLabel?: string;
       tacticalBadgeClass?: string;
       evalScore?: number;
+      canonicalRating?: SkillRating;
+      ratingStatus?: RatingStatus;
       score: number;
     } | null => {
       const rawMeta = skillMetaMap[rawSid];
@@ -214,12 +225,13 @@ export function recommendCardsForParent({
 
       if (combinedExclusions.has(sid) || seenSkillIds.has(sid)) return null;
       const filterCheck = isSkillMatchingFilter(sid, style, effDistance, effSurface);
-      if (!filterCheck.matches) return null;
+      if (!course && !filterCheck.matches) return null;
 
       const rawMetaResolved = skillMetaMap[sid] || rawMeta;
       if (!rawMetaResolved) return null;
 
-      const rawSkill = skillsById.get(sid) || skillsById.get(rawSid);
+      const rawSkill = skillsById.get(sid);
+      if (sid !== rawSid && !rawSkill) return null;
       const meta: SkillMeta = {
         ...rawMetaResolved,
         nameEn: rawSkill?.nameEn || rawMetaResolved.nameEn,
@@ -231,107 +243,26 @@ export function recommendCardsForParent({
       let tacticalLabel: string | undefined = undefined;
       let tacticalBadgeClass: string | undefined = undefined;
       let evalScore: number | undefined = undefined;
-      let tacticalBonus = 0;
+      let canonicalRating: SkillRating | undefined;
 
       if (course) {
-        const horse = style ? horseForStrategy(style) : undefined;
-        let zones: EvaluatorZoneInput[] = [];
         const sourceGroups = rawSkill?.conditionGroups ?? meta.conditions ?? [];
-        const condGroups = sourceGroups.map((group) => ({
-          condition: group.condition ?? "",
-          precondition: group.precondition ?? null,
-          base_time: group.base_time ?? 0,
-          effects: group.effects ?? [],
-        }));
-
         const isBanned = Boolean(raceParams?.noDebuffs && BANNED_DEBUFF_SKILL_IDS.has(sid));
-
-        try {
-          zones = isBanned ? [] : computePvpSkillZones(course, condGroups, horse, { ...raceParams, skillId: String(sid) });
-        } catch {
-          zones = [];
-        }
-
+        if (isBanned) return null;
         const skillInput = rawSkill ?? {
-          id: sid,
-          rarity: meta.rarity,
-          nameEn: meta.nameEn,
-          nameJp: meta.nameJp,
-          descEn: meta.descEn,
-          conditionGroups: condGroups,
+          id: sid, rarity: meta.rarity, nameEn: meta.nameEn, nameJp: meta.nameJp, descEn: meta.descEn,
+          conditionGroups: sourceGroups,
         };
-
-        const evalResult = evaluateSkillForTrack(
-          skillInput,
-          course,
-          style == null ? undefined : (style as RunningStyle),
-          raceParams?.numUmas ?? 9,
-          true, // isParentMode = true
-          zones
-        );
-
-        const hasZones = zones.some((z) => z.regions.length > 0);
-        const isStyleMismatch = evalResult.specialEffects.some((e) => e.id === "style_mismatch");
-        const isRankMismatch = evalResult.specialEffects.some((e) => e.id === "rank_mismatch");
-        firesOnCourse = hasZones && evalResult.category !== "invalid" && !isBanned && !isStyleMismatch && !isRankMismatch;
+        const evalResult = evaluateSkillForTrack(skillInput, course, style == null ? undefined : (style as RunningStyle), raceParams?.numUmas ?? 9, true, [], raceParams, { session, raceImpactProfile, detail: "summary" });
+        canonicalRating = evalResult.canonicalRating;
+        if (canonicalRating?.eligibility.state === "ineligible") return null;
+        firesOnCourse = canonicalRating?.eligibility.state === "eligible";
         tacticalCategory = evalResult.category;
-        evalTier = evalResult.tier;
-        evalStars = evalResult.stars;
+        evalTier = canonicalRating?.tier ?? undefined;
+        evalStars = canonicalRating?.stars ?? undefined;
         tacticalLabel = evalResult.primaryBadge.label;
         tacticalBadgeClass = evalResult.primaryBadge.badgeClass;
         evalScore = evalResult.score;
-
-        if (isBanned) {
-          tacticalBonus = -50;
-          tacticalLabel = "BANNED";
-          tacticalBadgeClass = "bg-rose-100 text-rose-800 dark:bg-rose-950/80 dark:text-rose-300 border-rose-300 dark:border-rose-800";
-        } else {
-          // Style/rank traps are dropped outright (parity with
-          // evaluateSkillActivation): a skill that can never trigger under the
-          // trainee's style or rank envelope is dead weight, not a low pick.
-          if (isStyleMismatch || isRankMismatch) return null;
-
-          switch (evalResult.category) {
-            case "fastest_accel":
-              tacticalBonus = source === "hint" ? 18 : 14;
-              break;
-            case "carry_over":
-              tacticalBonus = source === "hint" ? 12 : 10;
-              break;
-            case "current_speed":
-              tacticalBonus = source === "hint" ? 8 : 6;
-              break;
-            case "late_speed":
-            case "mid_speed":
-              tacticalBonus = source === "hint" ? 5 : 4;
-              break;
-            case "position_accel":
-              tacticalBonus = source === "hint" ? 4 : 3;
-              break;
-            case "recovery":
-            case "passive":
-              tacticalBonus = source === "hint" ? 3 : 2.5;
-              break;
-            case "delayed_accel":
-              tacticalBonus = source === "hint" ? 1 : 0.5;
-              break;
-            case "dead_accel":
-              tacticalBonus = -6;
-              break;
-            case "invalid":
-              tacticalBonus = -4;
-              break;
-            default:
-              tacticalBonus = hasZones ? (source === "hint" ? 2 : 1) : -3;
-              break;
-          }
-
-          // Graded position-overlap penalties (mirror the evaluator's rank_weak)
-          const rankWeak = evalResult.specialEffects.find((e) => e.id === "rank_weak");
-          if (rankWeak) {
-            tacticalBonus -= rankWeak.type === "warning" ? 6 : 3;
-          }
-        }
       }
 
       // Opt-in hard gates (both need a course: the data comes from track evaluation)
@@ -344,7 +275,7 @@ export function recommendCardsForParent({
         ? (filterCheck.isSpecialized ? 3 : 1)
         : (filterCheck.isSpecialized ? 2 : 0.5);
 
-      const skillScore = baseScore + tacticalBonus;
+      const skillScore = course ? (evalScore ?? 0) : baseScore;
 
       return {
         sid,
@@ -358,6 +289,8 @@ export function recommendCardsForParent({
         tacticalLabel,
         tacticalBadgeClass,
         evalScore,
+        canonicalRating,
+        ratingStatus: canonicalRating?.status,
         score: skillScore,
       };
     };
@@ -387,6 +320,8 @@ export function recommendCardsForParent({
         tacticalLabel: res.tacticalLabel,
         tacticalBadgeClass: res.tacticalBadgeClass,
         evalScore: res.evalScore,
+        canonicalRating: res.canonicalRating,
+        ratingStatus: res.ratingStatus,
       });
     }
 
@@ -484,6 +419,8 @@ export function recommendCardsForParent({
               tacticalLabel: evalResult.tacticalLabel,
               tacticalBadgeClass: evalResult.tacticalBadgeClass,
               evalScore: evalResult.evalScore,
+              canonicalRating: evalResult.canonicalRating,
+              ratingStatus: evalResult.ratingStatus,
             });
           }
         } else {
@@ -521,6 +458,8 @@ export function recommendCardsForParent({
               tacticalLabel: evalResult.tacticalLabel,
               tacticalBadgeClass: evalResult.tacticalBadgeClass,
               evalScore: evalResult.evalScore,
+              canonicalRating: evalResult.canonicalRating,
+              ratingStatus: evalResult.ratingStatus,
             });
           }
 
@@ -551,6 +490,8 @@ export function recommendCardsForParent({
                 tacticalLabel: evalResult.tacticalLabel,
                 tacticalBadgeClass: evalResult.tacticalBadgeClass,
                 evalScore: evalResult.evalScore,
+              canonicalRating: evalResult.canonicalRating,
+              ratingStatus: evalResult.ratingStatus,
               });
             }
           }
@@ -584,6 +525,8 @@ export function recommendCardsForParent({
         tacticalLabel: res.tacticalLabel,
         tacticalBadgeClass: res.tacticalBadgeClass,
         evalScore: res.evalScore,
+        canonicalRating: res.canonicalRating,
+        ratingStatus: res.ratingStatus,
       });
     }
 

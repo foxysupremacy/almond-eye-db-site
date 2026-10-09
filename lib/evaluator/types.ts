@@ -55,9 +55,11 @@ export interface CalculationBreakdown {
 }
 
 export interface SkillEvaluationResult {
+  /** Canonical result. Legacy display fields are projections of this value. */
+  canonicalRating?: import("../skill-rating/types").SkillRating;
   score: number;
-  stars: 1 | 2 | 3 | 4 | 5;
-  tier: "S" | "A" | "B" | "C" | "D" | "F";
+  stars: 1 | 2 | 3 | 4 | 5 | null;
+  tier: "S" | "A" | "B" | "C" | "D" | "F" | null;
   category: SkillTacticalCategory;
   primaryBadge: {
     label: string;
@@ -91,7 +93,7 @@ export interface SkillEvaluationResult {
     inheritedWhiteNameEn?: string;
     inheritedWhiteNameJp?: string;
     isGoldTransformed: boolean;
-    factorTier: "S" | "A" | "B" | "C";
+    factorTier: "S" | "A" | "B" | "C" | "D" | "F" | null;
   };
 }
 
@@ -111,6 +113,8 @@ export interface SkillDetailInput {
     precondition?: string | null;
     effects?: import("../data/types").RawSkillEffect[];
     base_time?: number | null;
+    cd?: number | null;
+    time_scale?: number | null;
   }>;
 }
 

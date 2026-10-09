@@ -22,6 +22,7 @@ import rawCardEffectsJson from "./generated/card-effects.json";
 import rawGoldToWhiteJson from "./generated/gold-to-white.json";
 import rawSkillMetaJson from "./generated/skill-meta.json";
 import rawRaceImpactPriorsJson from "./generated/race-impact-priors.json";
+import rawSkillRatingBenchmarksJson from "./generated/skill-rating-benchmarks.json";
 import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
 import rawFactorsCompactJson from "./generated/factors-compact.json";
 import rawSuccessionFactorsJson from "./generated/succession-factors.json";
@@ -265,6 +266,7 @@ export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Recor
 
 /** Aggregate race telemetry for the optional Visualizer race-impact model. */
 export const raceImpactPriors = rawRaceImpactPriorsJson as RaceImpactPriorsPayload;
+export const skillRatingBenchmarks = rawSkillRatingBenchmarksJson as import("../skill-rating/types").RatingBenchmarks;
 
 /** Game-provided race fit recommendations, normalized from the captured response. */
 export const pvpRecommendations = rawPvpRecommendationsJson as PvpRecommendationsPayload;

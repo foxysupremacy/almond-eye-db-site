@@ -29,21 +29,19 @@ const kyoto2200Course: Course = {
   ],
 };
 
-describe("evaluateUniqueSkill — style/position mismatch filter", () => {
-  // Almond Eye's unique: clean S with Runner, rank-trapped for Chaser
-  // (its accel group requires order<=3, which never overlaps a Chaser's
-  // expected 4th–9th place under the current game version).
+describe("evaluateUniqueSkill — canonical conditional rating", () => {
+  // Rank requirements are conditional assumptions, not physical impossibilities.
   const ALMOND_EYE_UNIQUE = 101291;
 
-  test("a unique whose rank window is unreachable under the trainee style is F (rank_invalid)", () => {
+  test("retains a rank-constrained unique and exposes its conditional assumptions", () => {
     const asRunner = evaluateUniqueSkill(ALMOND_EYE_UNIQUE, kyoto2200Course, 1);
     expect(asRunner.tier).toBe("S");
     expect(asRunner.category).toBe("current_speed");
 
     const asChaser = evaluateUniqueSkill(ALMOND_EYE_UNIQUE, kyoto2200Course, 4);
-    expect(asChaser.tier).toBe("F");
-    expect(asChaser.category).toBe("rank_invalid");
-    expect(asChaser.badge).toBe("Rank Trap");
+    expect(asChaser.canonicalRating?.eligibility.state).toBe("eligible");
+    expect(asChaser.canonicalRating?.assumptions.some(a => a.kind === "rank")).toBe(true);
+    expect(asChaser.tier).toBe(asChaser.canonicalRating?.tier);
   });
 
   test("an explicitly style-gated unique cannot trigger under another style", () => {
@@ -54,13 +52,14 @@ describe("evaluateUniqueSkill — style/position mismatch filter", () => {
     expect(asChaser.category).toBe("invalid");
   });
 
-  test("course-geometry dead accel still filters independently of style", () => {
+  test("early acceleration uses simulated benefit rather than a fixed category tier", () => {
     const asRunner = evaluateUniqueSkill(200531, kyoto2200Course, 1);
     expect(asRunner.tier).toBe("F");
-    expect(asRunner.category).toBe("dead_accel");
+    expect(asRunner.tier).toBe(asRunner.canonicalRating?.tier);
+    expect(asRunner.score).toBe(asRunner.canonicalRating?.score);
   });
 
-  test("unknown target style evaluates best-of-4 and does not style-filter", () => {
+  test("unknown target style evaluates all five styles and does not style-filter", () => {
     // Previously the evaluator silently defaulted to Runner and F-filtered
     // every non-Runner unique; now the best result across strategies wins.
     const unknown = evaluateUniqueSkill(ALMOND_EYE_UNIQUE, kyoto2200Course, null);
@@ -68,7 +67,8 @@ describe("evaluateUniqueSkill — style/position mismatch filter", () => {
     expect(unknown.category).toBe("current_speed");
 
     const asRunner = evaluateUniqueSkill(ALMOND_EYE_UNIQUE, kyoto2200Course, 1);
-    expect(unknown.tier).toBe(asRunner.tier);
+    expect(unknown.canonicalRating?.styleRatings).toHaveLength(5);
+    expect(unknown.score).toBeGreaterThanOrEqual(asRunner.score ?? 0);
   });
 });
 
@@ -84,8 +84,8 @@ describe("runningStyleToNum", () => {
 
 describe("evaluateSkillActivation", () => {
   test("activates a valid skill matching course geometry and style", () => {
-    // 200151: Corner Specialist (コーナー巧者◯) - valid on any course with corners
-    const res = evaluateSkillActivation(200151, kyoto2200Course, 2);
+    // 200151 is Good Track Condition: supply the condition needed for activation.
+    const res = evaluateSkillActivation(200151, kyoto2200Course, 2, { groundCondition: 1 });
     expect(res.activates).toBe(true);
     expect(res.category).toBeDefined();
   });
@@ -96,10 +96,11 @@ describe("evaluateSkillActivation", () => {
     expect(res.activates).toBe(false);
   });
 
-  test("rejects a skill with rank trap for the running style", () => {
+  test("retains a rank-constrained skill with an explicit assumption", () => {
     // 101291: Almond Eye unique evaluated for Chaser (4)
     const res = evaluateSkillActivation(101291, kyoto2200Course, 4);
-    expect(res.activates).toBe(false);
+    expect(res.activates).toBe(true);
+    expect(res.evalResult?.canonicalRating?.assumptions.some(a => a.kind === "rank")).toBe(true);
   });
 
   test("rejects banned debuff when noDebuffs is active in raceParams", () => {

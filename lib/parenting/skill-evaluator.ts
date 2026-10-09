@@ -1,17 +1,15 @@
 import type { Course, RaceParameters } from "../skill-engine/types";
-import { computeAllZones, horseForStrategy } from "../skill-engine/zones";
 import {
   evaluateSkillForTrack,
-  type EvaluatorZoneInput,
   type SkillEvaluationResult,
 } from "../evaluator";
 import { skillsById } from "../data/registry";
+import type { RaceImpactProfile } from "../race-impact";
 import type { RunningStyle } from "../deck/types";
 import type { LegacyUniqueEval } from "./types";
-import type { SkillDetail } from "../data/types";
-import { isSkillMatchingFilter } from "../recommendation/engine";
 import { BANNED_DEBUFF_SKILL_IDS } from "../pvp/events";
 import { getInheritableSkillForUnique } from "../skills/rarity";
+import type { SkillRatingSession } from "../skill-rating/types";
 
 export function isFirstPlaceInsuranceUnique(skillId: number): boolean {
   return [100201, 102001, 110201].some((id) => id === skillId || getInheritableSkillForUnique(id) === skillId);
@@ -23,47 +21,16 @@ export function runningStyleToNum(
 ): RunningStyle | undefined {
   if (typeof style === "number") {
     if (style >= 1 && style <= 5) return style as RunningStyle;
-    return 1;
+    return undefined;
   }
   if (!style) return undefined;
   const s = String(style).toLowerCase();
+  if (s.includes("great escape") || s.includes("oonige") || s === "5") return 5;
   if (s.includes("runner") || s.includes("nige") || s === "1") return 1;
   if (s.includes("leader") || s.includes("senkou") || s === "2") return 2;
   if (s.includes("betweener") || s.includes("sashi") || s === "3") return 3;
   if (s.includes("chaser") || s.includes("oikomi") || s === "4") return 4;
-  return 1;
-}
-
-const TRAP_BADGE_CLASS =
-  "bg-red-100 dark:bg-red-950/70 text-red-700 dark:text-red-300 border-red-400/50";
-
-function computeZonesFor(
-  rawSkill: SkillDetail,
-  course: Course,
-  styleNum?: RunningStyle,
-  raceParams?: Partial<RaceParameters>
-): EvaluatorZoneInput[] {
-  const params: RaceParameters = {
-    skillId: String(rawSkill.id),
-    numUmas: raceParams?.numUmas ?? 9,
-    ...raceParams,
-  };
-  try {
-    const computed = computeAllZones(
-      course,
-      rawSkill.conditionGroups || [],
-      styleNum ? horseForStrategy(styleNum) : undefined,
-      params
-    );
-    return computed.map((c) => ({
-      regions: c.regions.map((r) => ({ start: r.start, end: r.end })),
-      isRandom: c.isRandom,
-      earliestFire: c.earliestFire,
-    }));
-  } catch {
-    // fallback if condition parsing fails
-    return [];
-  }
+  return undefined;
 }
 
 export interface SkillActivationResult {
@@ -73,20 +40,13 @@ export interface SkillActivationResult {
   evalResult?: SkillEvaluationResult;
 }
 
-/**
- * Validates whether a support card skill can activate for a target course and running style.
- * Returns activates = false if:
- * - Skill is not found or banned
- * - Skill fails distance, surface, or running style metadata checks
- * - Skill has 0 trigger regions on the course geometry
- * - Skill evaluation returns category "invalid"
- * - Skill has a style_mismatch or rank_mismatch trap
- */
+/** Course eligibility comes from canonical analysis; rank and dynamic gates remain conditional. */
 export function evaluateSkillActivation(
   skillId: number,
   course: Course | null | undefined,
   runningStyle: RunningStyle | number | string | null | undefined,
-  raceParams?: Partial<RaceParameters>
+  raceParams?: Partial<RaceParameters>,
+  options?: { raceImpactProfile?: RaceImpactProfile; session?: SkillRatingSession }
 ): SkillActivationResult {
   const rawSkill = skillsById.get(skillId);
   if (!rawSkill) {
@@ -99,139 +59,23 @@ export function evaluateSkillActivation(
   }
 
   const styleNum = runningStyleToNum(runningStyle);
-  const distance = course ? (course.distance as number) : null;
-  const surface = course ? (course.terrain as number) : null;
-
-  // Metadata filter (Distance / Surface / Strategy)
-  const filterCheck = isSkillMatchingFilter(skillId, styleNum ?? null, distance, surface);
-  if (!filterCheck.matches) {
-    return { activates: false, reason: "Does not match track distance, surface, or running style" };
-  }
-
   if (course) {
-    const zones = computeZonesFor(rawSkill, course, styleNum, raceParams);
-    if (!zones.some((z) => z.regions.length > 0)) {
-      return { activates: false, reason: "No trigger regions on course geometry" };
-    }
-
-    const evalResult = evaluateSkillForTrack(
-      rawSkill,
-      course,
-      styleNum,
-      raceParams?.numUmas ?? 9,
-      true, // isParentMode = true
-      zones
-    );
-
-    if (evalResult.category === "invalid") {
-      return {
-        activates: false,
-        reason: evalResult.verdictSummary || "Invalid on course",
-        category: "invalid",
-        evalResult,
-      };
-    }
-
-    // Traps: style mismatch or rank mismatch
-    const trap = evalResult.specialEffects.find(
-      (e) => e.id === "style_mismatch" || e.id === "rank_mismatch"
-    );
-    if (trap) {
-      return {
-        activates: false,
-        reason: trap.title,
-        category: trap.id,
-        evalResult,
-      };
-    }
-
-    return {
-      activates: true,
-      category: evalResult.category,
-      evalResult,
-    };
+    const evalResult = evaluateSkillForTrack(rawSkill, course, styleNum, raceParams?.numUmas ?? 9, true, [], raceParams, { raceImpactProfile: options?.raceImpactProfile, session: options?.session, detail: "summary" });
+    const state = evalResult.canonicalRating?.eligibility.state;
+    return { activates: state === "eligible", reason: state === "eligible" ? undefined : evalResult.verdictSummary, category: evalResult.category, evalResult };
   }
+  return { activates: false, reason: "Select a track to check skill eligibility" };
 
-  // Fallback when no course is set: check if raw condition requires an incompatible style
-  if (styleNum && rawSkill.conditionGroups) {
-    const allCondStr = rawSkill.conditionGroups.map((group) => `${group.condition || ""} ${group.precondition || ""}`).join(" ");
-    const styleReqMatches = [...allCondStr.matchAll(/running_style==(\d+)/g)].map((m) =>
-      parseInt(m[1], 10)
-    );
-    if (styleReqMatches.length > 0) {
-      const allowedStyles = Array.from(new Set(styleReqMatches));
-      if (!allowedStyles.includes(styleNum)) {
-        return { activates: false, reason: "Incompatible running style" };
-      }
-    }
-  }
-
-  return { activates: true };
 }
 
 function mapEvalResult(
   evalResult: SkillEvaluationResult,
-  rawSkill: SkillDetail,
-  course: Course,
   skillName: string
 ): LegacyUniqueEval {
-  let tier = (evalResult.tier === "S" && (evalResult.category === "fastest_accel" || evalResult.category === "carry_over"))
-    ? "S+"
-    : (evalResult.tier as LegacyUniqueEval["tier"]);
-
-  switch (evalResult.category) {
-    case "fastest_accel":
-      tier = "S+";
-      break;
-    case "carry_over":
-      tier = "S+";
-      break;
-    case "current_speed":
-      tier = "S";
-      break;
-    case "mid_speed":
-      tier = "A";
-      break;
-    case "late_speed":
-      // Late target-speed boosts stack onto the spurt ceiling (observed max
-      // ~29 m/s), so they must not rank below mid-race speed.
-      tier = "A";
-      break;
-    case "position_accel":
-      tier = "B";
-      break;
-    case "recovery":
-      tier = course && course.length < 2400 ? "D" : "A";
-      break;
-    case "delayed_accel":
-      tier = "C";
-      break;
-    case "dead_accel":
-    case "invalid":
-      tier = "F";
-      break;
-    default:
-      break;
-  }
-
-  // Valid Accel at the spurt line + mid-race speed in one unique = Hybrid (top priority)
-  const isHybrid =
-    rawSkill?.conditionGroups &&
-    rawSkill.conditionGroups.length >= 2 &&
-    rawSkill.conditionGroups.some(
-      (group) =>
-        ((group.condition ?? "").includes("distance_rate") ||
-          (group.condition ?? "").includes("phase==1") ||
-          (group.condition ?? "").includes("phase_random==1")) &&
-        (group.effects || []).some((effect) => effect.type === 27 || effect.type === 21 || effect.type === 22)
-    ) &&
-    evalResult.category === "fastest_accel";
-
-  if (isHybrid) {
-    tier = "S+";
-  }
+  const tier = evalResult.tier as LegacyUniqueEval["tier"];
 
   return {
+    canonicalRating: evalResult.canonicalRating,
     category: evalResult.category,
     tier,
     badge: evalResult.primaryBadge.label,
@@ -242,16 +86,16 @@ function mapEvalResult(
   };
 }
 
-/** Evaluate a character's inheritable unique skill against course geometry using the 2/3 rule. */
+/** Evaluate the inherited variant using the same track/style rating as other consumers. */
 export function evaluateUniqueSkill(
   uniqueSkillId: number | undefined,
   course: Course | null | undefined,
-  runningStyle: RunningStyle | number | string | null | undefined
+  runningStyle: RunningStyle | number | string | null | undefined,
+  options?: { raceImpactProfile?: RaceImpactProfile; raceParams?: Partial<RaceParameters>; racerCount?: number; session?: SkillRatingSession }
 ): LegacyUniqueEval {
   if (!uniqueSkillId) {
     return {
       category: "other",
-      tier: "C",
       badge: "Generic",
       badgeClass: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
       explanation: "No unique skill registered",
@@ -262,7 +106,6 @@ export function evaluateUniqueSkill(
   if (!rawSkill) {
     return {
       category: "other",
-      tier: "C",
       badge: "Unique",
       badgeClass: "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400",
       explanation: "Unique skill data not found",
@@ -274,7 +117,6 @@ export function evaluateUniqueSkill(
   if (!course) {
     return {
       category: "other",
-      tier: "B",
       badge: "Unique",
       badgeClass: "bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-300",
       explanation: "Select a track to evaluate exact 2/3 spurt line timing",
@@ -284,79 +126,21 @@ export function evaluateUniqueSkill(
 
   const styleNum = runningStyleToNum(runningStyle);
 
-  const isAnki = isFirstPlaceInsuranceUnique(uniqueSkillId);
-  if (isAnki && styleNum === 2) {
-    const runnerEval = evaluateSkillForTrack(
-      rawSkill,
-      course,
-      1,
-      9,
-      true,
-      computeZonesFor(rawSkill, course, 1)
-    );
-    if (runnerEval.category === "fastest_accel") {
-      return {
-        category: "fastest_accel",
-        tier: "S",
-        badge: "1st-Place Insurance",
-        badgeClass: "bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border-amber-400/50 font-semibold",
-        explanation: "🎯 Lucky Senkou Sub-Win Condition (幸運な先行): Fires immediately at 2/3 line if Leader pulls ahead to 1st place entering late corner!",
-        skillName,
-      };
-    }
-  }
-
   if (styleNum) {
     const evalResult = evaluateSkillForTrack(
       rawSkill,
       course,
       styleNum,
-      9,
-      true, // isParentMode = true (inheritable white unique scaling)
-      computeZonesFor(rawSkill, course, styleNum)
-    );
-
-    // Style/position traps hard-fail for parent recommendations: an inherited
-    // unique that can never trigger under the trainee's style is worthless.
-    // (The zone engine already F-filters explicit `running_style==X` gates via
-    // empty zones; this additionally catches rank-window traps the evaluator
-    // normally only penalizes by 25 points.)
-    if (evalResult.category !== "invalid") {
-      const trap = evalResult.specialEffects.find(
-        (e) => e.id === "style_mismatch" || e.id === "rank_mismatch"
-      );
-      if (trap) {
-        return {
-          category: trap.id === "style_mismatch" ? "style_invalid" : "rank_invalid",
-          tier: "F",
-          badge: trap.badge,
-          badgeClass: TRAP_BADGE_CLASS,
-          explanation: `${trap.title}. ${trap.description}`,
-          skillName,
-        };
-      }
-    }
-
-    return mapEvalResult(evalResult, rawSkill, course, skillName);
-  }
-
-  // Unknown target style: evaluate every strategy and keep the best result.
-  // (Previously this silently defaulted to Runner, which F-filtered every
-  // non-Runner unique; style/position traps are not applied here.)
-  let best: SkillEvaluationResult | null = null;
-  for (const style of [1, 2, 3, 4] as RunningStyle[]) {
-    const result = evaluateSkillForTrack(
-      rawSkill,
-      course,
-      style,
-      9,
+      options?.racerCount ?? options?.raceParams?.numUmas ?? 9,
       true,
-      computeZonesFor(rawSkill, course, style)
+      [], options?.raceParams, { raceImpactProfile: options?.raceImpactProfile, session: options?.session, detail: "summary" }
     );
-    if (!best || result.score > best.score) best = result;
+
+    return mapEvalResult(evalResult, skillName);
   }
 
-  return mapEvalResult(best!, rawSkill, course, skillName);
+  const result = evaluateSkillForTrack(rawSkill, course, undefined, options?.racerCount ?? options?.raceParams?.numUmas ?? 9, true, [], options?.raceParams, { raceImpactProfile: options?.raceImpactProfile, session: options?.session, detail: "summary" });
+  return mapEvalResult(result, skillName);
 }
 
 const APTITUDE_GRADE_SCORE: Record<string, number> = {
@@ -386,7 +170,8 @@ export function getRecommendedStyleForKit(
   character: CharacterKitInput,
   evolutions: { skillId: number }[] = [],
   course?: Course | null,
-  raceParams?: Partial<RaceParameters>
+  raceParams?: Partial<RaceParameters>,
+  options?: { raceImpactProfile?: RaceImpactProfile }
 ): RunningStyle {
   const styles: RunningStyle[] = [1, 2, 3, 4];
   let bestStyle: RunningStyle = 1;
@@ -398,49 +183,15 @@ export function getRecommendedStyleForKit(
     const aptScore = APTITUDE_GRADE_SCORE[grade] ?? 0;
 
     let kitScore = 0;
-
-    // Unique skill (heaviest weight)
-    if (character.uniqueSkillId) {
-      const res = evaluateSkillActivation(character.uniqueSkillId, course, s, raceParams);
-      if (res.activates) kitScore += 35;
-    }
-
-    // Awakening Lv 3 & 5 Gold Skills
-    if (character.awakeningSkills?.[1]) {
-      const res = evaluateSkillActivation(character.awakeningSkills[1], course, s, raceParams);
-      if (res.activates) kitScore += 20;
-    }
-    if (character.awakeningSkills?.[3]) {
-      const res = evaluateSkillActivation(character.awakeningSkills[3], course, s, raceParams);
-      if (res.activates) kitScore += 20;
-    }
-
-    // Evolved skills
-    for (const ev of evolutions) {
-      const res = evaluateSkillActivation(ev.skillId, course, s, raceParams);
-      if (res.activates) kitScore += 15;
-    }
-
-    // Awakening Lv 2 & 4 White Skills
-    if (character.awakeningSkills?.[0]) {
-      const res = evaluateSkillActivation(character.awakeningSkills[0], course, s, raceParams);
-      if (res.activates) kitScore += 8;
-    }
-    if (character.awakeningSkills?.[2]) {
-      const res = evaluateSkillActivation(character.awakeningSkills[2], course, s, raceParams);
-      if (res.activates) kitScore += 8;
-    }
-
-    // Innate Skills
-    for (const sid of character.innateSkills || []) {
-      const res = evaluateSkillActivation(sid, course, s, raceParams);
-      if (res.activates) kitScore += 5;
-    }
-
-    // Event Skills
-    for (const sid of character.eventSkills || []) {
-      const res = evaluateSkillActivation(sid, course, s, raceParams);
-      if (res.activates) kitScore += 3;
+    const ids = new Set([
+      ...(character.uniqueSkillId ? [character.uniqueSkillId] : []),
+      ...(character.awakeningSkills ?? []), ...evolutions.map(evolution => evolution.skillId),
+      ...(character.innateSkills ?? []), ...(character.eventSkills ?? []),
+    ]);
+    for (const id of ids) {
+      const result = evaluateSkillActivation(id, course, s, raceParams, options);
+      const rating = result.evalResult?.canonicalRating;
+      if (rating && rating.eligibility.state === "eligible" && rating.status !== "partial" && rating.status !== "unavailable") kitScore += rating.score;
     }
 
     const totalScore = aptScore + kitScore;

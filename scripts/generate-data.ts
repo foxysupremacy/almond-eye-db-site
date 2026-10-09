@@ -144,6 +144,8 @@ const skills = rawSkills.map((s: any) => {
         condition: g.condition || "",
         precondition: g.precondition || null,
         base_time: g.base_time ?? null,
+        ...(g.cd != null ? { cd: g.cd } : {}),
+        ...(g.time_scale != null ? { time_scale: g.time_scale } : {}),
         effects: g.effects || [],
       }))
     : [];

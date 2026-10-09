@@ -262,6 +262,7 @@ export function TrackCanvas({
               course={course}
               zones={zones}
               impact={impact}
+              conditional={Boolean(evaluation?.canonicalRating)}
               hoverMeter={hoverMeter}
               onHover={handleHover}
               isPinned={isPinned}
@@ -276,6 +277,7 @@ export function TrackCanvas({
             course={course}
             zones={zones}
             impact={impact}
+            conditional={Boolean(evaluation?.canonicalRating)}
             hoverMeter={hoverMeter}
             coords={hoverCoords}
             isPinned={isPinned}

@@ -74,6 +74,10 @@ export interface RaceImpactSample {
 }
 
 export interface RaceTracePoint {
+  baselineHP?: number;
+  skillHP?: number;
+  baselineSpurt?: boolean;
+  skillSpurt?: boolean;
   timeSeconds: number;
   baselineMeter: number;
   baselineSpeed: number;

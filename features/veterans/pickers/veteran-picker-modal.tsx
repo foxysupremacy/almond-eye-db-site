@@ -25,6 +25,8 @@ import {
   charactersById,
   charactersByCharId,
 } from "@/lib/api";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
+import type { SkillRating } from "@/lib/skill-rating/types";
 import { useDeck } from "@/features/deck/state";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
@@ -126,7 +128,9 @@ function resolveWhiteUnique(cardId: number): WhiteUniqueInfo | null {
   };
 }
 
-function TierChip({ tier, title }: { tier: string; title?: string }) {
+function TierChip({ tier, title, rating }: { tier: string; title?: string; rating?: SkillRating }) {
+  if (!rating) return <Badge size="compact" tone="neutral" title={title}>Unrated</Badge>;
+  if (rating.status === "partial" || rating.status === "unavailable") return <Badge size="compact" tone="amber" title={title}>{rating.status === "partial" ? `${rating.score.toFixed(1)} pts · partial` : "Unrated"}</Badge>;
   return <Badge size="compact" className={`font-black ${TIER_CHIP_CLASSES[tier] ?? TIER_CHIP_CLASSES.C}`} title={title}>
       {tier}
     </Badge>;
@@ -198,7 +202,7 @@ function RecommendedRow({
 
       <div className="flex items-center gap-1.5 shrink-0">
         {candidate.uniqueEval && (
-          <TierChip tier={candidate.uniqueEval.tier} title={candidate.uniqueEval.explanation} />
+          <TierChip tier={candidate.uniqueEval.tier ?? "Unrated"} rating={candidate.uniqueEval.canonicalRating} title={candidate.uniqueEval.explanation} />
         )}
         {isBorrow ? (
           <Badge size="compact" emphasis="solid" tone={borrowUsed ? "neutral" : "amber"} className="font-bold">
@@ -388,7 +392,7 @@ function OwnedUmaRow({
 
       <div className="flex items-center gap-1.5 shrink-0">
         {entry.uniqueEval && (
-          <TierChip tier={entry.uniqueEval.tier} title={entry.uniqueEval.explanation} />
+          <TierChip tier={entry.uniqueEval.tier ?? "Unrated"} rating={entry.uniqueEval.canonicalRating} title={entry.uniqueEval.explanation} />
         )}
         {entry.hasHofRuns ? (
           <Badge size="compact" emphasis="solid" tone="emerald" className="font-bold" title="This Uma also has imported Hall of Fame runs">
@@ -529,7 +533,8 @@ export default function VeteranPickerModal({
     } catch {}
   }, [pickerState.activeTab]);
 
-  const { course, runningStyle } = useDeck();
+  const { course, runningStyle, activeRaceParameters, racerCount } = useDeck();
+  const { raceImpactProfile } = useRaceImpactProfile();
   const { ownedUmas } = useOwnedUmas();
 
   const [expandedCharId, setExpandedCharId] = useState<number | null>(null);
@@ -558,13 +563,13 @@ export default function VeteranPickerModal({
       if (!skill) continue;
       let passes = eligibleBySkill.get(skill.id);
       if (passes === undefined) {
-        passes = hasMinimumParentSkillEffect(skill, course, runningStyle);
+        passes = hasMinimumParentSkillEffect(skill, course, runningStyle, { raceParams: { ...activeRaceParameters, numUmas: racerCount }, raceImpactProfile });
         eligibleBySkill.set(skill.id, passes);
       }
       if (passes) eligible.add(cardId);
     }
     return eligible;
-  }, [isOpen, activeTab, veterans, ownedUmas, characters, course, runningStyle]);
+  }, [isOpen, activeTab, veterans, ownedUmas, characters, course, runningStyle, activeRaceParameters, racerCount, raceImpactProfile]);
 
   // White-unique track/style evaluation per card id (tier chips + skill_effect /
   // unique_tier sorting). Only computed while the modal is open and a course is
@@ -580,7 +585,7 @@ export default function VeteranPickerModal({
       if (!white) return;
       let e = evalByWhiteId.get(white.skillId);
       if (!e) {
-        e = evaluateUniqueSkill(white.skillId, course, styleNum);
+        e = evaluateUniqueSkill(white.skillId, course, styleNum, { raceImpactProfile, raceParams: activeRaceParameters, racerCount });
         evalByWhiteId.set(white.skillId, e);
       }
       map.set(cardId, e);
@@ -594,7 +599,7 @@ export default function VeteranPickerModal({
       for (const cardIdStr of Object.keys(ownedUmas)) addCard(Number(cardIdStr));
     }
     return map;
-  }, [isOpen, course, runningStyle, veterans, characters, activeTab, ownedUmas]);
+  }, [isOpen, course, runningStyle, veterans, characters, activeTab, ownedUmas, raceImpactProfile, activeRaceParameters, racerCount]);
 
   // Owned Umas tab: collection-owned characters scored as potential parents via
   // their career G1 schedule (same math as the recommender's untrained picks).
@@ -936,7 +941,7 @@ export default function VeteranPickerModal({
                                   <>
                                     {group.uniqueEval && (
                                       <TierChip
-                                        tier={group.uniqueEval.tier}
+                                        tier={group.uniqueEval.tier ?? "Unrated"} rating={group.uniqueEval.canonicalRating}
                                         title={group.uniqueEval.explanation}
                                       />
                                     )}
@@ -1134,7 +1139,7 @@ export default function VeteranPickerModal({
                       {whiteUnique && (
                         <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5">
                           {uniqueEval && (
-                            <TierChip tier={uniqueEval.tier} title={uniqueEval.explanation} />
+                            <TierChip tier={uniqueEval.tier ?? "Unrated"} rating={uniqueEval.canonicalRating} title={uniqueEval.explanation} />
                           )}
                           <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained">
                             Untrained

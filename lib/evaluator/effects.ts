@@ -19,25 +19,41 @@ export type EffectCategory =
 /** Raw effect shape as found in skill conditionGroups. */
 export type RawEffect = import("../data/types").RawSkillEffect;
 
+export interface EffectDescriptor {
+  family: import("../skill-rating/types").EffectFamily | null;
+  category: EffectCategory | null;
+  target: "self" | "opponents" | "allies" | "all" | "unknown";
+  sign: "benefit" | "cost" | "conditional";
+}
+
+/** Kind, recipient and sign are independent; a self cost is not a PvP debuff. */
+export function describeEffect(effect: RawEffect): EffectDescriptor {
+  const type = effect.type ?? 0;
+  const value = effect.value ?? 0;
+  const targetId = effect.target ?? 1;
+  const target: EffectDescriptor["target"] = targetId === 0 || targetId === 1 ? "self"
+    : targetId === 2 ? "all" : targetId === 11 ? "allies"
+    : [4, 7, 9, 10, 18, 19, 20, 21, 22, 23].includes(targetId) ? "opponents" : "unknown";
+  const families: Partial<Record<number, import("../skill-rating/types").EffectFamily>> = {
+    1: "passive_speed", 2: "passive_stamina", 3: "passive_power", 4: "passive_guts", 5: "passive_wisdom",
+    9: "recovery", 10: "start_delay", 14: "start_delay", 21: "current_speed_21", 22: "current_speed_22",
+    27: "target_speed", 31: "acceleration", 48: "zenkai",
+  };
+  const family = families[type] ?? null;
+  const sign = type === 14 ? "conditional" : type === 10 ? (value < 10_000 ? "benefit" : "cost") : value < 0 ? "cost" : "benefit";
+  const category: EffectCategory | null = target === "opponents" && family !== "start_delay" ? "debuff"
+    : family === "target_speed" ? "target_speed"
+    : family === "current_speed_21" || family === "current_speed_22" ? "current_speed"
+    : family === "acceleration" ? "acceleration" : family === "zenkai" ? "zenkai_acceleration"
+    : family === "recovery" ? "heal" : family?.startsWith("passive_") ? "passive" : null;
+  return { family, category, target, sign };
+}
+
 /**
  * Classify one raw effect triple.
  * Returns null for types with no gameplay category — the evaluator ignores
  * those and the UI classifier buckets them as "other".
  */
 export function classifyEffect(eff: RawEffect): EffectCategory | null {
-  const type = eff.type ?? 0;
-  const val = eff.value ?? 0;
-  const target = eff.target ?? 0;
-
-  // Debuffs target opponents (9/10/18) or inflict negative effects
-  if (target === 9 || target === 10 || target === 18 || val < 0 || type === 10 || type === 14) {
-    return "debuff";
-  }
-  if (type === 31) return "acceleration";
-  if (type === 48) return "zenkai_acceleration";
-  if (type === 27) return "target_speed";
-  if (type === 21 || type === 22) return "current_speed";
-  if (type === 9) return "heal";
-  if (type >= 1 && type <= 5) return "passive";
-  return null;
+  return describeEffect(eff).category;
 }

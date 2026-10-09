@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useMemo, useTransition, useRef } from "react";
 import { api, type CharacterIndexEntry } from "@/lib/api";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { useDeck } from "@/features/deck/state";
 import {
   serializeParentingToHash,
@@ -59,7 +60,8 @@ const STYLE_LABELS: Record<number, string> = {
 };
 
 export default function ParentingView({ onNavigateToParentDeck }: ParentingViewProps) {
-  const { course, runningStyle } = useDeck();
+  const { course, runningStyle, activeRaceParameters, racerCount } = useDeck();
+  const { raceImpactProfile } = useRaceImpactProfile();
   const pageRef = useRef<HTMLElement>(null);
   const pageTier = usePedigreeTier(pageRef);
   const isCompactPage = pageTier !== "desktop";
@@ -271,6 +273,8 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
       excludedCharIds,
       course: course ?? null,
       runningStyle: runningStyle ?? null,
+      raceParams: { ...activeRaceParameters, numUmas: racerCount },
+      raceImpactProfile,
       veterans,
       supportCardIds: setup.supportCardIds,
     };
@@ -291,6 +295,9 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     p2_gp2,
     course,
     runningStyle,
+    activeRaceParameters,
+    racerCount,
+    raceImpactProfile,
     veterans,
     charaMap,
   ]);

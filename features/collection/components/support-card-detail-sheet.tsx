@@ -1,5 +1,6 @@
 "use client";
 
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 
@@ -54,6 +55,7 @@ export function SupportCardDetailSheet({
 }: SupportCardDetailSheetProps) {
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
+  const { raceImpactProfile } = useRaceImpactProfile();
 
 
   const [activeTab, setActiveTab] = useState<"skills" | "effects">("skills");
@@ -143,7 +145,7 @@ export function SupportCardDetailSheet({
         reason: "No track selected on Global Track Bar",
       };
     }
-    return evaluateSkillActivation(skillId, course, runningStyle, raceParams);
+    return evaluateSkillActivation(skillId, course, runningStyle, raceParams, { raceImpactProfile });
   }
 
   let activatingSkillCount = 0;

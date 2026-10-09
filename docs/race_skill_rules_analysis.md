@@ -1,5 +1,12 @@
 # Báo Cáo Phân Tích Thực Chứng & Bộ Quy Luật Đánh Giá Skills Theo Track Và Style
 
+> **Historical replay research (status clarified 2026-10-09).** Preserve the
+> observations below as research context; their proposed category/rank rules are
+> not the current engine specification. Read [Canonical skill rating](skill_grading.md)
+> for implemented behavior and limitations. This documentation review did not
+> re-audit the replay dataset or validate conditional ratings against real races;
+> frame frequencies must not multiply canonical skill scores.
+
 Tài liệu này tổng hợp toàn bộ kết quả phân tích dữ liệu thực tế từ 11 trận đấu đỉnh cao (`raceData/`), kết hợp cùng mô hình vật lý và hình học đường đua trong **AlmondEyeDB**, nhằm xây dựng bộ quy luật đánh giá kỹ năng chuẩn xác cho từng đường đua và từng lối chạy.
 
 ---
@@ -8,17 +15,17 @@ Tài liệu này tổng hợp toàn bộ kết quả phân tích dữ liệu th�
 
 1. [Tổng Quan Dữ Liệu Thực Chứng (Empirical Dataset Overview)](#1-tổng-quan-dữ-liệu-thực-chứng)
 2. [Quy Luật Đánh Giá Kỹ Năng Theo Từng Đường Đua (Track-Specific Rules)](#2-quy-luật-đánh-giá-kỹ-năng-theo-từng-đường-đua)
-   - [2.1. ParisLongchamp 2400m Turf (Prix de l'Arc de Triomphe)](#21-parislongchamp-2400m-turf)
-   - [2.2. Kyoto 2200m Turf (Outer / 外回り)](#22-kyoto-2200m-turf)
-   - [2.3. Tokyo 2400m Turf (Japan Derby / Japan Cup)](#23-tokyo-2400m-turf)
+   - [2.1. ParisLongchamp 2400m Turf (Prix de l'Arc de Triomphe)](#21-parislongchamp-2400m-turf-prix-de-larc-de-triomphe)
+   - [2.2. Kyoto 2200m Turf (Outer / 外回り)](#22-kyoto-2200m-turf-outer-course--外回り)
+   - [2.3. Tokyo 2400m Turf (Japan Derby / Japan Cup)](#23-tokyo-2400m-turf-japan-derby--japan-cup)
 3. [Quy Luật Đánh Giá Kỹ Năng Theo Từng Lối Chạy (Style-Specific Rules)](#3-quy-luật-đánh-giá-kỹ-năng-theo-từng-lối-chạy)
    - [3.1. Runner (Trốn / 逃げ)](#31-runner-trốn--逃げ)
    - [3.2. Leader (Tiên phong / 先行)](#32-leader-tiên-phong--先行)
    - [3.3. Betweener (Gom cụm / 差し)](#33-betweener-gom-cụm--差し)
    - [3.4. Chaser (Bứt phá / 追込)](#34-chaser-bứt-phá--追込)
-4. [Cơ Chế Thể Lực & Ảnh Hưởng Của Mặt Sân Cỏ Nặng (Heavy Turf Stamina Breakdown)](#4-cơ-chế-thể-lực--mặt-sân-cỏ-nặng)
-5. [Phân Tích Chi Tiết Các Ca Điển Hình (Case Studies)](#5-phân-tích-chi-tiết-các-ca-điển-hình)
-6. [Ma Trận Tra Cứu Khuyến Nghị Kỹ Năng (Master Recommendation Matrix)](#6-ma-trận-tra-cứu-khuyến-nghị-kỹ-năng)
+4. [Cơ Chế Thể Lực & Ảnh Hưởng Của Mặt Sân Cỏ Nặng (Heavy Turf Stamina Breakdown)](#4-cơ-chế-thể-lực--mặt-sân-cỏ-nặng-heavy-turf)
+5. [Phân Tích Chi Tiết Các Ca Điển Hình (Case Studies)](#5-phân-tích-chi-tiết-các-ca-điển-hình-case-studies)
+6. [Ma Trận Tra Cứu Khuyến Nghị Kỹ Năng (Master Recommendation Matrix)](#6-ma-trận-tra-cứu-khuyến-nghị-kỹ-năng-master-matrix)
 
 ---
 

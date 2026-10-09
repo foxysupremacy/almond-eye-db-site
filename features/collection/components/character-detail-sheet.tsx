@@ -1,5 +1,6 @@
 "use client";
 
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 
@@ -94,6 +95,7 @@ export function CharacterDetailSheet({
 }: CharacterDetailSheetProps) {
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
+  const { raceImpactProfile } = useRaceImpactProfile();
 
 
   const [evolutions, setEvolutions] = useState<CharacterEvolutionDetail[]>([]);
@@ -103,8 +105,8 @@ export function CharacterDetailSheet({
   // Ignore runningStyle from globalTrackBar; automatically recommend best style based on kit & aptitudes
   const recommendedStyle: RunningStyle = useMemo(() => {
     if (!character) return 1;
-    return getRecommendedStyleForKit(character, evolutions, course, raceParams);
-  }, [character, evolutions, course, raceParams]);
+    return getRecommendedStyleForKit(character, evolutions, course, raceParams, { raceImpactProfile });
+  }, [character, evolutions, course, raceParams, raceImpactProfile]);
 
   // Reset selectedStyle when character changes or sheet opens
   useEffect(() => {
@@ -158,7 +160,7 @@ export function CharacterDetailSheet({
         reason: "No active track selected on Global Track Bar",
       };
     }
-    return evaluateSkillActivation(skillId, course, activeStyle, raceParams);
+    return evaluateSkillActivation(skillId, course, activeStyle, raceParams, { raceImpactProfile });
   }
 
   // Calculate track compatibility score

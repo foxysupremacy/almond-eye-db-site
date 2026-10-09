@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import type { LegacyCandidate } from "@/lib/parenting/types";
 import { sortRecommended, uniqueFireState, type VeteranPickerSort } from "./picker-utils";
+import type { SkillRating } from "@/lib/skill-rating/types";
+
+function eligibleRating(): SkillRating {
+  return { originalSkillId: 1, evaluatedSkillId: 1, variant: "original", contextFingerprint: "test", modelVersion: "conditional-v1", selectedStyle: 1,
+    eligibility: { state: "eligible", reasons: [] }, scenarios: [], assumptions: [], warnings: [], partialReasons: [], score: 0, tier: "F", stars: 1,
+    status: "provisional", contributions: [], selectedScenarioId: null, selectedPaths: [], simulatedBenefit: 0, timeGainSeconds: 0,
+    benchmarkVersion: "conditional-v1", breakdown: [], provenance: [] };
+}
 
 function candidate(cardId: number, totalScore: number, tier?: string, score = 0): LegacyCandidate {
   return {
@@ -18,7 +26,11 @@ function candidate(cardId: number, totalScore: number, tier?: string, score = 0)
 }
 
 describe("veteran picker candidate ordering", () => {
-  const rows = [candidate(1, 100, "F"), candidate(2, 10, "A"), candidate(3, 50)];
+  const rows = [
+    { ...candidate(1, 100, "F"), uniqueEval: { ...candidate(1, 100, "F").uniqueEval!, canonicalRating: eligibleRating() } },
+    { ...candidate(2, 10, "A"), uniqueEval: { ...candidate(2, 10, "A").uniqueEval!, canonicalRating: eligibleRating() } },
+    candidate(3, 50),
+  ];
 
   test("Minmax order survives the picker while manual affinity and blue sorting stay available", () => {
     const clean = { ...candidate(1, 10, "A"), blueStarsTotal: 1, minmax: { aptitudeGaps: 0, actualJunk: 0, guaranteed: 0, frequent: 0, unknown: 0, g1: 1 } };
@@ -31,7 +43,7 @@ describe("veteran picker candidate ordering", () => {
   });
 
   test("prioritizes fireable uniques, then affinity", () => {
-    expect(sortRecommended(rows, "affinity").map((row) => row.cardId)).toEqual([2, 3, 1]);
+    expect(sortRecommended(rows, "affinity").map((row) => row.cardId)).toEqual([1, 2, 3]);
   });
 
   test("uses unique tier or skill score after activation state", () => {

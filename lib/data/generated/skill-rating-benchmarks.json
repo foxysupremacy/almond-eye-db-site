@@ -1,0 +1,80 @@
+{
+  "modelVersion": "conditional-v2",
+  "convention": "conditional-family-v2: 100 points per median positive gain from unique unscaled single-effect payloads; white, inherited, then other. Recovery additionally uses recovery-policy-v1 nominal HP credit. Each component has its own 100-point benchmark. Product convention, not verified game ratings.",
+  "families": {
+    "target_speed": {
+      "benefit": 0.7222012969094749,
+      "payloads": 8,
+      "fixtures": 585
+    },
+    "acceleration": {
+      "benefit": 3.288235663255432,
+      "payloads": 9,
+      "fixtures": 599
+    },
+    "recovery": {
+      "benefit": 5.496292147385564,
+      "payloads": 4,
+      "fixtures": 78
+    },
+    "passive_speed": {
+      "benefit": 0.6474000047205664,
+      "payloads": 6,
+      "fixtures": 217
+    },
+    "passive_stamina": {
+      "benefit": 1.9626810158621255,
+      "payloads": 4,
+      "fixtures": 71
+    },
+    "passive_power": {
+      "benefit": 0.36167531617347776,
+      "payloads": 4,
+      "fixtures": 155
+    },
+    "passive_guts": {
+      "benefit": 0.09378587479837962,
+      "payloads": 3,
+      "fixtures": 147
+    },
+    "current_speed_21": {
+      "benefit": 1.032368274284147,
+      "payloads": 4,
+      "fixtures": 150
+    },
+    "start_delay": {
+      "benefit": 0.03413287748314246,
+      "payloads": 1,
+      "fixtures": 75
+    },
+    "current_speed_22": {
+      "benefit": 0.6656581319720033,
+      "payloads": 3,
+      "fixtures": 221
+    },
+    "zenkai": {
+      "benefit": 0.6882601742390051,
+      "payloads": 1,
+      "fixtures": 46
+    }
+  },
+  "provenance": [
+    "docs/references/Uma Musume Race Mechanics.md snapshot sha256 b50009114debf9b820b2cdd6d252c2d2e5b506d1dda4938ec163fa747a97107a",
+    "uma-tools reference solver revision 40c263ef46f5fbfcdda023127c4d16e0c665f1ea (HP and lifecycle cross-check)",
+    "conditional-v2: deterministic one-Uma model, A aptitudes, neutral motivation; conditional best feasible spurt, no Wisdom acceptance roll",
+    "Spurt planning starts at phase 2 following the reference solver and the detailed mechanics paragraph; the document introduction also mentions mid-race. Budget excludes final 60m; integration includes the goal.",
+    "Conditional competition: one nearby same-style representative; sections 11–15, checks 2s, duration 2s, cooldown 1s; NearFactor 0.5, HP cost once per activation (provisional frequency).",
+    "Stamina Keep: immediate detection at each check, reserve factor 1.0375; Limit Break random factor 0.9865 (weighted midpoint convention). These inferred mechanics are provisional.",
+    "Planner omits future Zenkai ramp and optional competition costs. Downhill mode, Secure Lead, Dueling, Rushed and full positioning are not modeled.",
+    "Slope units: stored slope / 10000 = percent; uphill target penalty = percent × 200 / adjusted Power (reference RaceSolver.ts)",
+    "Fixtures: 1200/1600/2000/2400/3200m × styles1–5 × Stamina800/1200/1800; Good turf; standard profile; no hills; family-appropriate immediate timing."
+  ],
+  "recoveryPolicy": {
+    "version": "recovery-policy-v1",
+    "nominalHP": {
+      "benefit": 84.632,
+      "payloads": 4,
+      "fixtures": 60
+    }
+  }
+}

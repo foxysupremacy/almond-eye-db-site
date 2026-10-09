@@ -6,10 +6,11 @@ import { Popover } from "react-aria-components/Popover";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { api, type SkillDetail } from "@/lib/api";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
+import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
+import { skillRatingZones } from "@/app/common/ui/skills/details/skill-rating-presentation";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
 import { isSkillBanned } from "@/lib/pvp/events";
-import { horseForStrategy, type SkillZoneResult } from "@/lib/skill-engine/zones";
-import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
 import type { RaceParameters } from "@/lib/skill-engine/types";
 import type { RunningStyle } from "@/lib/deck/types";
 import type { VisualizerSkillOrigin } from "@/lib/visualizer/skills";
@@ -109,6 +110,10 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   const [isMobile, setIsMobile] = useState(false);
   const previewCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const deckRaceParams = raceParams;
+  const { raceImpactProfile } = useRaceImpactProfile();
+  const effectiveRunningStyle = active?.runningStyle ?? deckRunningStyle;
+  const effectiveRaceParams = active?.raceParams ?? deckRaceParams;
+  const ratingSession = useSkillRatingSession(course, effectiveRunningStyle, racerCount, effectiveRaceParams, raceImpactProfile);
 
   const cancelPreviewClose = useCallback(() => {
     if (previewCloseTimer.current) clearTimeout(previewCloseTimer.current);
@@ -172,20 +177,10 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     return () => { alive = false; };
   }, [active?.skillId]);
 
-  const effectiveRunningStyle = active?.runningStyle ?? deckRunningStyle;
-  const effectiveRaceParams = active?.raceParams ?? deckRaceParams;
-  const styleHorse = useMemo(() => effectiveRunningStyle ? horseForStrategy(effectiveRunningStyle) : undefined, [effectiveRunningStyle]);
-  const zones: SkillZoneResult[] | null = useMemo(() => {
-    if (!detail) return null;
-    const groups = (detail.conditionGroups ?? []).map((group) => ({ condition: group.condition ?? "", precondition: group.precondition ?? null }));
-    return course
-      ? computePvpSkillZones(course, groups, styleHorse, { ...effectiveRaceParams, skillId: String(active?.skillId) })
-      : [];
-  }, [detail, course, styleHorse, effectiveRaceParams, active?.skillId]);
   const evaluation = useMemo(() => {
     if (!detail) return null;
-    return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), zones ?? [], effectiveRaceParams);
-  }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, zones, effectiveRaceParams]);
+    return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), [], effectiveRaceParams, { raceImpactProfile, session: ratingSession });
+  }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, effectiveRaceParams, raceImpactProfile, ratingSession]);
 
   const value = useMemo<SkillInspectorContextValue>(() => ({ activeKey: active?.key ?? null, preview, togglePinned, closePreview, cancelPreviewClose, close }), [active?.key, preview, togglePinned, closePreview, cancelPreviewClose, close]);
   const inspector = (cardName?: string, cardId?: number | null) => (
@@ -194,7 +189,7 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
       skillLoading={loading}
       selectedSkill={active?.origins ? { origins: active.origins } : null}
       selectedSkillId={active?.skillId ?? null}
-      zones={zones}
+      zones={evaluation?.canonicalRating ? skillRatingZones(evaluation.canonicalRating) : null}
       course={course}
       racerCount={racerCount}
       evaluation={evaluation}
