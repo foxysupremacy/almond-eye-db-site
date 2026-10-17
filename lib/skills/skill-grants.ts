@@ -13,6 +13,7 @@ export interface GrantingCardInfo {
   choiceIndex?: number;
   choiceText?: string;
   isChain?: boolean;
+  chainStep?: number;
 }
 
 /**
@@ -32,6 +33,7 @@ export function getCardsGrantingSkill(
       let matchedChoiceIndex: number | undefined;
       let matchedChoiceText: string | undefined;
       let isChain = false;
+      let chainStep: number | undefined;
 
       if (card.eventDetails) {
         for (const ev of card.eventDetails) {
@@ -42,6 +44,7 @@ export function getCardsGrantingSkill(
                 matchedChoiceIndex = ch.index;
                 matchedChoiceText = ch.textEn || ch.textJp;
                 isChain = ev.eventType === "chain";
+                chainStep = ev.chainStep;
                 break;
               }
             }
@@ -57,6 +60,7 @@ export function getCardsGrantingSkill(
         choiceIndex: matchedChoiceIndex,
         choiceText: matchedChoiceText,
         isChain,
+        chainStep,
       });
     }
 

@@ -13,6 +13,9 @@ import { SkillEffectFilter } from "@/app/common/ui/skills/skill-effect-filter";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import { Badge } from "@/app/common/ui/primitives/badge";
+import { ScanTextIcon } from "@/app/common/ui/primitives/icons";
+import { AppButton } from "@/app/common/ui/controls/app-button";
+import { SkillScannerDialog } from "@/features/skill-scan";
 import { GameRecommendedCardList } from "@/features/deck/components/game-recommended-card-list";
 import { filterRecommendedSkillsByEffect, projectGameRecommendedCards, projectTrackActiveFallbackSkills } from "@/features/deck/model/game-recommendation-projections";
 
@@ -48,6 +51,7 @@ export function GameRecommendedBrowser({
   onAddCard,
 }: GameRecommendedBrowserProps) {
   const [search, setSearch] = useState("");
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_SKILL_COUNT);
   const [expandedSkillId, setExpandedSkillId] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<"skills" | "cards">("skills");
@@ -205,16 +209,27 @@ export function GameRecommendedBrowser({
           <p className="text-xs text-zinc-400 dark:text-zinc-500">The game data does not include a separate Runaway style recommendation.</p>
         ) : (
           <>
-          <label className="mt-2 block">
-            <span className="sr-only">Search game recommended skills</span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder={isFallback ? "Search track-active skills…" : "Search game recommended skills…"}
-              className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs text-zinc-800 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-100 dark:placeholder:text-zinc-500"
-            />
-          </label>
+          <div className="mt-2 flex items-center gap-2">
+            <label className="block min-w-0 flex-1">
+              <span className="sr-only">Search game recommended skills</span>
+              <input
+                type="search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder={isFallback ? "Search track-active skills…" : "Search game recommended skills…"}
+                className="h-8 w-full rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-xs text-zinc-800 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800/70 dark:text-zinc-100 dark:placeholder:text-zinc-500"
+              />
+            </label>
+            <AppButton variant="secondary" onPress={() => setIsScannerOpen(true)} title="Scan a Japanese skill name from a screenshot">
+              <ScanTextIcon className="h-3.5 w-3.5" />Scan
+            </AppButton>
+          </div>
+          <SkillScannerDialog
+            isOpen={isScannerOpen}
+            onClose={() => setIsScannerOpen(false)}
+            onUseSkill={(skill) => setSearch(skill.nameJp)}
+            useSkillLabel="Search this list"
+          />
 
           {recommendedSkills.length === 0 ? (
             <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{isFallback ? "No eligible support-card skills activate on this track and style." : "No game recommended skills match this style and search."}</p>

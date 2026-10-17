@@ -14,10 +14,11 @@ import { ParentingFeature } from "../features/parenting";
 import { VisualizerFeature } from "../features/visualizer";
 import { VeteransFeature } from "../features/veterans";
 import { ImportModal } from "@/features/importer";
+import { SkillScannerDialog } from "@/features/skill-scan";
 import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { Badge } from "@/app/common/ui/primitives/badge";
-import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon, DownloadIcon } from "@/app/common/ui/primitives/icons";
+import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon, DownloadIcon, ScanTextIcon } from "@/app/common/ui/primitives/icons";
 import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
 import { BrandMark } from "@/app/common/ui/primitives/brand-mark";
 import { Link as AriaLink } from "react-aria-components/Link";
@@ -46,6 +47,7 @@ export default function Home() {
   const [tab, setTab] = useState<Tab>("main");
   const [isHeaderCollapsed, setIsHeaderCollapsed] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSkillScannerOpen, setIsSkillScannerOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
 
   // Tabs are addressable via URL hash (#main, #parent-deck, #parenting,
@@ -124,6 +126,16 @@ export default function Home() {
                   >
                     <DownloadIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
                     <span className="hidden sm:inline">Sync Data</span>
+                  </AppButton>
+                  <AppButton
+                    type="button"
+                    onPress={() => setIsSkillScannerOpen(true)}
+                    className={HEADER_ACTION_CLASS}
+                    title="Scan a Japanese skill name to find its sources"
+                    variant="secondary"
+                  >
+                    <ScanTextIcon className="h-3.5 w-3.5 text-emerald-700 dark:text-emerald-400" />
+                    <span className="hidden sm:inline">Scan Skill</span>
                   </AppButton>
                   <PresetManager />
                   <ThemeToggle />
@@ -231,7 +243,10 @@ export default function Home() {
           <div className="mobile-build-tools space-y-5">
             <PresetManager />
             <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-              <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsImportModalOpen(true); }}>Import game data</AppButton>
+              <div className="flex flex-wrap gap-2">
+                <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsImportModalOpen(true); }}>Import game data</AppButton>
+                <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsSkillScannerOpen(true); }}><ScanTextIcon className="h-4 w-4" />Scan skill</AppButton>
+              </div>
               <ThemeToggle />
             </div>
           </div>
@@ -245,6 +260,9 @@ export default function Home() {
           isOpen={isImportModalOpen}
           onClose={() => setIsImportModalOpen(false)}
         />
+
+        {/* OCR skill-name scanner → skill source lookup */}
+        <SkillScannerDialog isOpen={isSkillScannerOpen} onClose={() => setIsSkillScannerOpen(false)} />
 
         {/* Expired PvP Event Resolution Modal */}
         <PvpExpiredModal />

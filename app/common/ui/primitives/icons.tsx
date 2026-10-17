@@ -488,3 +488,29 @@ export function SparklesIcon({ className = "h-4 w-4", ...props }: IconProps) {
 export function WeatherIcon(props: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d="M6 19a4 4 0 0 1-.6-8 6 6 0 0 1 11.4-1A4.5 4.5 0 1 1 18 19H6Z" /></svg>;
 }
+
+/** Viewfinder with a text line — "scan text from an image". */
+export function ScanTextIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <path d="M7 9h10" />
+      <path d="M7 13h10" />
+      <path d="M7 17h6" />
+    </svg>
+  );
+}
