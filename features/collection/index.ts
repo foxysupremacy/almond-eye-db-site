@@ -1,1 +1,2 @@
-export { default as CollectionFeature } from "./collection-view";
+export { SupportsView } from "./supports-view";
+export { CharactersView } from "./characters-view";

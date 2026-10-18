@@ -1,6 +1,7 @@
 import { describe, expect, it } from "bun:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { ConditionChips } from "@/app/common/ui/skills/details/condition-chips";
+import { conditionBranches } from "@/lib/skill-engine/describe";
 
 describe("ConditionChips", () => {
   it("uses one row per OR branch without the legacy color squares", () => {
@@ -56,5 +57,24 @@ describe("ConditionChips", () => {
     expect(html).not.toContain("ASSUMED");
     expect(html).not.toContain("Arima Kinen course and 146,738+ fans");
     expect(html).not.toContain("Inputs needed to calculate");
+  });
+
+  it("intersects fully assumed order-rate bounds into one position chip", () => {
+    const condition = "distance_rate>=50&corner!=0&order_rate>=20&order_rate<=50&track_id==10005";
+    const html = renderToStaticMarkup(<ConditionChips
+      branches={conditionBranches(condition, 9).branches}
+      condition={condition}
+      racerCount={9}
+      assumptions={[
+        { clause: "order_rate>=20", source: "condition", triggerIndex: 0, kind: "rank", description: "Conditional on occupying an allowed race position" },
+        { clause: "order_rate<=50", source: "condition", triggerIndex: 0, kind: "rank", description: "Conditional on occupying an allowed race position" },
+      ]}
+    />);
+
+    expect(html).toContain("position 2–5");
+    expect(html).toContain("Assumed: order_rate&gt;=20&amp;order_rate&lt;=50");
+    expect(html).not.toContain("position 2–9");
+    expect(html).not.toContain("position 1–5");
+    expect(html.match(/uppercase\">assumed/g)).toHaveLength(1);
   });
 });

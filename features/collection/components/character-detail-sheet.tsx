@@ -1,7 +1,8 @@
 "use client";
 
 import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { CollectionDetailSurface } from "./collection-detail-surface";
+import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
@@ -31,6 +32,7 @@ import { StatIcon, StatusRankIcon, type StatName } from "@/app/common/ui/primiti
 import { uniqueInheritMap } from "@/lib/api";
 import {
   AlertTriangleIcon,
+  ChevronLeftIcon,
   CheckIcon,
   StarIcon,
   TrophyIcon,
@@ -44,6 +46,9 @@ interface CharacterDetailSheetProps {
   details: [number, number] | undefined;
   onSetUmaDetails: (charaId: number, stars: number, talent: number) => void;
   onRemoveUma: (charaId: number) => void;
+  /** Render inside the canonical /characters/:id route rather than a modal. */
+  page?: boolean;
+  backHref?: string;
 }
 
 const STAT_NAMES = ["Speed", "Stamina", "Power", "Guts", "Wit"] as const;
@@ -92,6 +97,8 @@ export function CharacterDetailSheet({
   details,
   onSetUmaDetails,
   onRemoveUma,
+  page = false,
+  backHref = "/characters",
 }: CharacterDetailSheetProps) {
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
@@ -308,14 +315,12 @@ export function CharacterDetailSheet({
   const lv5Evolutions = evolutions.filter((e) => e.rank === 5);
 
   return (
-    <AppDialog
+    <CollectionDetailSurface
+      page={page}
       isOpen={isOpen}
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      onClose={onClose}
       title={character.nameEn}
       ariaLabel={character.nameEn}
-      size="full"
-      overlayClassName="z-[350]"
-      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       header={
         <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
           <div className="flex items-start justify-between gap-3">
@@ -356,15 +361,7 @@ export function CharacterDetailSheet({
               </div>
             </div>
 
-            <AppButton
-              variant="quiet"
-              onPress={onClose}
-              className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              iconOnly
-                aria-label="Close"
-            >
-              <XIcon className="h-4 w-4" />
-            </AppButton>
+            {page ? <AriaLink href={backHref} className="inline-flex items-center gap-1 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"><ChevronLeftIcon className="h-4 w-4" /> Back to Characters</AriaLink> : <AppButton variant="quiet" onPress={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer" iconOnly aria-label="Close"><XIcon className="h-4 w-4" /></AppButton>}
           </div>
 
           {/* Star & Talent Steppers + Ownership Row */}
@@ -671,6 +668,6 @@ export function CharacterDetailSheet({
             </div>
           )}
         </div>
-    </AppDialog>
+    </CollectionDetailSurface>
   );
 }

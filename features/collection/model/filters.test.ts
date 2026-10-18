@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { filterCollectionCards, filterCollectionCharacters } from "./filters";
+import { filterCollectionCards, filterCollectionCharacters, orderOwnedFirst } from "./filters";
 
 describe("collection filters", () => {
   const cards = [
@@ -23,5 +23,11 @@ describe("collection filters", () => {
     ];
     expect(filterCollectionCharacters(characters, "dreamer", "all").map((character) => character.id)).toEqual([1]);
     expect(filterCollectionCharacters(characters, "suzuka", 2).map((character) => character.id)).toEqual([2]);
+  });
+
+  test("keeps the unified order by default and only promotes owned entries on demand", () => {
+    const entries = [{ id: 1 }, { id: 2 }, { id: 3 }];
+    expect(orderOwnedFirst(entries, (entry) => entry.id === 2, false)).toEqual(entries);
+    expect(orderOwnedFirst(entries, (entry) => entry.id === 2, true).map((entry) => entry.id)).toEqual([2, 1, 3]);
   });
 });

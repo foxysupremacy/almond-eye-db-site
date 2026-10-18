@@ -31,15 +31,47 @@ export function ConditionChips({
   selectedUma,
   racerCount,
 }: ConditionChipsProps) {
-  // Render assumed clauses individually: the normal formatter consolidates
-  // rank ranges, which would otherwise obscure the exact assumed predicate.
-  const sourceBranches = (raw: string | null | undefined, fallback: string[][], source: AssumedClause["source"]) =>
-    raw && assumptions.some((entry) => entry.source === source)
-      ? raw.split("@").map((branch) => branch.split("&").filter(Boolean).map((clause) => {
-          const assumption = assumptions.find((entry) => entry.source === source && entry.clause.replace(/\s/g, "") === clause.replace(/\s/g, ""));
-          return { text: conditionBranches(clause, racerCount).branches.flat().join(" and ") || clause, assumption };
-        }))
-      : fallback.map((branch) => branch.map((text) => ({ text, assumption: undefined as AssumedClause | undefined })));
+  const normalizedClause = (clause: string) => clause.replace(/\s/g, "");
+  const isPositionClause = (clause: string) => /^(?:order|order_rate)(?:==|!=|<|<=|>|>=)\d+$/.test(normalizedClause(clause));
+  const sourceBranches = (raw: string | null | undefined, fallback: string[][], source: AssumedClause["source"]) => {
+    const sourceAssumptions = assumptions.filter((entry) => entry.source === source);
+    if (!raw || sourceAssumptions.length === 0) {
+      return fallback.map((branch) => branch.map((text) => ({ text, assumption: undefined as AssumedClause | undefined })));
+    }
+
+    // Normally every assumed predicate is shown separately so its tooltip stays
+    // exact. A pair of assumed order/order_rate bounds is the exception: those
+    // predicates form one rank interval, so rendering them separately reports
+    // the two un-intersected ranges instead of the actual requirement.
+    return raw.split("@").map((branch) => {
+      const clauses = branch.split("&").map((clause) => clause.trim()).filter(Boolean);
+      const positionIndices = clauses.flatMap((clause, index) => isPositionClause(clause) ? [index] : []);
+      const positionAssumptions = positionIndices.map((index) => sourceAssumptions.find(
+        (entry) => normalizedClause(entry.clause) === normalizedClause(clauses[index]),
+      ));
+      const mergeAssumedPositionRange = positionIndices.length > 1 && positionAssumptions.every(Boolean);
+      const mergedPositionText = mergeAssumedPositionRange
+        ? conditionBranches(positionIndices.map((index) => clauses[index]).join("&"), racerCount).branches.flat().join(" and ")
+        : "";
+      const mergedPositionAssumption = mergeAssumedPositionRange
+        ? {
+            ...positionAssumptions[0]!,
+            clause: positionIndices.map((index) => clauses[index]).join("&"),
+            description: "Conditional on occupying the required race-position range",
+          }
+        : undefined;
+
+      return clauses.flatMap((clause, index) => {
+        if (mergeAssumedPositionRange && positionIndices.includes(index)) {
+          return index === positionIndices[0]
+            ? [{ text: mergedPositionText || clause, assumption: mergedPositionAssumption }]
+            : [];
+        }
+        const assumption = sourceAssumptions.find((entry) => normalizedClause(entry.clause) === normalizedClause(clause));
+        return [{ text: conditionBranches(clause, racerCount).branches.flat().join(" and ") || clause, assumption }];
+      });
+    });
+  };
   const renderedBranches = sourceBranches(condition, branches, "condition");
   const needs = sourceBranches(precondition, needsBranches ?? [], "precondition");
   const scalingByCode = [...new Map(scalingNeeds.filter(item => item.status !== "unchanged")

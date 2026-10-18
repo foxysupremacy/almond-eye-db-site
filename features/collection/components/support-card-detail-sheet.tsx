@@ -1,7 +1,8 @@
 "use client";
 
 import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { CollectionDetailSurface } from "./collection-detail-surface";
+import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 
 
@@ -28,6 +29,7 @@ import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain
 import { ChainArrowIcon } from "@/app/common/ui/skills/provenance/chain-arrow-icon";
 import {
   AlertTriangleIcon,
+  ChevronLeftIcon,
   CheckIcon,
   SparklesIcon,
   TrophyIcon,
@@ -41,6 +43,9 @@ interface SupportCardDetailSheetProps {
   limitBreak: number | undefined;
   onSetLimitBreak: (cardId: number, lb: number) => void;
   onRemoveCard: (cardId: number) => void;
+  /** Render inside the canonical /supports/:id route rather than a modal. */
+  page?: boolean;
+  backHref?: string;
 }
 
 const LB_LABELS = ["0 LB", "1 LB", "2 LB", "3 LB", "MLB"] as const;
@@ -52,6 +57,8 @@ export function SupportCardDetailSheet({
   limitBreak,
   onSetLimitBreak,
   onRemoveCard,
+  page = false,
+  backHref = "/supports",
 }: SupportCardDetailSheetProps) {
   const { course, runningStyle, activePvpEvent, activeRaceParameters, trackDetail } = useDeck();
   const raceParams = activeRaceParameters;
@@ -299,14 +306,12 @@ export function SupportCardDetailSheet({
   );
 
   return (
-    <AppDialog
+    <CollectionDetailSurface
+      page={page}
       isOpen={isOpen}
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      onClose={onClose}
       title={card.charName || card.nameEn}
       ariaLabel={card.charName || card.nameEn}
-      size="full"
-      overlayClassName="z-[350]"
-      bodyClassName="flex min-h-0 flex-1 flex-col overflow-hidden"
       header={
         <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
           <div className="flex items-start justify-between gap-3">
@@ -352,15 +357,7 @@ export function SupportCardDetailSheet({
               </div>
             </div>
 
-            <AppButton
-              variant="quiet"
-              onPress={onClose}
-              className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              iconOnly
-                aria-label="Close"
-            >
-              <XIcon className="h-4 w-4" />
-            </AppButton>
+            {page ? <AriaLink href={backHref} className="inline-flex items-center gap-1 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"><ChevronLeftIcon className="h-4 w-4" /> Back to Supports</AriaLink> : <AppButton variant="quiet" onPress={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer" iconOnly aria-label="Close"><XIcon className="h-4 w-4" /></AppButton>}
           </div>
 
           {/* Limit Break Stepper + Ownership Row */}
@@ -580,6 +577,6 @@ export function SupportCardDetailSheet({
             )}
           </div>
         )}
-    </AppDialog>
+    </CollectionDetailSurface>
   );
 }

@@ -61,3 +61,9 @@ export function filterCollectionCharacters<T extends FilterableCharacter>(
     return characterRarity === "all" || character.rarity === characterRarity;
   });
 }
+
+/** Keeps the current data order unless the user explicitly prioritizes ownership. */
+export function orderOwnedFirst<T>(items: T[], isOwned: (item: T) => boolean, ownedFirst: boolean): T[] {
+  if (!ownedFirst) return items;
+  return [...items].sort((a, b) => Number(isOwned(b)) - Number(isOwned(a)));
+}

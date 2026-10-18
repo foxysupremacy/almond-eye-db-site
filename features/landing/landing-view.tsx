@@ -133,7 +133,8 @@ export function LandingFeature({ data }: { data: LandingData }) {
             <p>Keep your support cards and trained Umas close to your plans.</p>
           </div>
           <div className={styles.libraryTools}>
-            <a href="/#collection" className={styles.libraryLink}><LibraryIcon className={styles.libraryIcon} /><span><strong>Collection</strong><span>Track the cards you own.</span></span><ChevronDownIcon className={styles.arrow} /></a>
+            <a href="/supports" className={styles.libraryLink}><LibraryIcon className={styles.libraryIcon} /><span><strong>Supports</strong><span>Track the support cards you own.</span></span><ChevronDownIcon className={styles.arrow} /></a>
+            <a href="/characters" className={styles.libraryLink}><LibraryIcon className={styles.libraryIcon} /><span><strong>Characters</strong><span>Browse every playable costume.</span></span><ChevronDownIcon className={styles.arrow} /></a>
             <a href="/#veterans" className={styles.libraryLink}><TrophyIcon className={styles.libraryIcon} /><span><strong>Trained Umas</strong><span>Keep your trained runners in view.</span></span><ChevronDownIcon className={styles.arrow} /></a>
           </div>
           <div className={styles.finalCta}><h3>Make your next deck count.</h3><ToolLink href="/#main" primary>Open AlmondEye DB</ToolLink></div>

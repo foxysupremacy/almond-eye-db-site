@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import type { CardIndexEntry } from "@/lib/api";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { CARD_TYPES, type CardTypeKey } from "@/features/collection/model/types";
 import { SupportCardItem } from "./support-card-item";
-import { SupportCardDetailSheet } from "./support-card-detail-sheet";
-import { Badge } from "@/app/common/ui/primitives/badge";
+import { orderOwnedFirst } from "@/features/collection/model/filters";
 
 interface CardsCollectionTabProps {
   filteredCards: CardIndexEntry[];
@@ -18,6 +18,7 @@ interface CardsCollectionTabProps {
   getLimitBreak: (cardId: number) => number | undefined;
   onSetLimitBreak: (cardId: number, lb: number) => void;
   onRemoveCard: (cardId: number) => void;
+  ownedFirst: boolean;
 }
 
 export function CardsCollectionTab({
@@ -29,16 +30,13 @@ export function CardsCollectionTab({
   getLimitBreak,
   onSetLimitBreak,
   onRemoveCard,
+  ownedFirst,
 }: CardsCollectionTabProps) {
-  const [selectedCard, setSelectedCard] = useState<CardIndexEntry | null>(null);
-
-  const ownedCards = useMemo(() => {
-    return filteredCards.filter((c) => getLimitBreak(c.id) !== undefined);
-  }, [filteredCards, getLimitBreak]);
-
-  const unownedCards = useMemo(() => {
-    return filteredCards.filter((c) => getLimitBreak(c.id) === undefined);
-  }, [filteredCards, getLimitBreak]);
+  const router = useRouter();
+  const displayedCards = useMemo(
+    () => orderOwnedFirst(filteredCards, (card) => getLimitBreak(card.id) !== undefined, ownedFirst),
+    [filteredCards, getLimitBreak, ownedFirst],
+  );
 
   return (
     <div className="flex flex-col gap-4">
@@ -91,60 +89,18 @@ export function CardsCollectionTab({
           No cards matched your filter criteria.
         </div>
       ) : (
-        <div className="flex flex-col gap-6">
-          {/* Owned Cards Section */}
-          {ownedCards.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
-              {ownedCards.map((card) => (
-                <SupportCardItem
-                  key={card.id}
-                  card={card}
-                  limitBreak={getLimitBreak(card.id)}
-                  onSelect={setSelectedCard}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Divider between Owned and Unowned */}
-          {ownedCards.length > 0 && unownedCards.length > 0 && (
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700/80" />
-              </div>
-              <div className="relative flex justify-center">
-                <Badge size="comfortable" tone="neutral" className="bg-white dark:bg-zinc-900 font-semibold shadow-2xs">
-                  Unowned Support Cards ({unownedCards.length})
-                </Badge>
-              </div>
-            </div>
-          )}
-
-          {/* Unowned Cards Section */}
-          {unownedCards.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
-              {unownedCards.map((card) => (
-                <SupportCardItem
-                  key={card.id}
-                  card={card}
-                  limitBreak={getLimitBreak(card.id)}
-                  onSelect={setSelectedCard}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          <div id="supports-results" className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3.5 md:grid-cols-5 lg:grid-cols-6">
+            {displayedCards.map((card) => (
+              <SupportCardItem
+                key={card.id}
+                card={card}
+                limitBreak={getLimitBreak(card.id)}
+                onSelect={(selected) => router.push(`/supports/${selected.id}`)}
+              />
+            ))}
+          </div>
       )}
 
-      {/* Support Card Detail Sheet Modal */}
-      <SupportCardDetailSheet
-        card={selectedCard}
-        isOpen={selectedCard !== null}
-        onClose={() => setSelectedCard(null)}
-        limitBreak={selectedCard ? getLimitBreak(selectedCard.id) : undefined}
-        onSetLimitBreak={onSetLimitBreak}
-        onRemoveCard={onRemoveCard}
-      />
     </div>
   );
 }

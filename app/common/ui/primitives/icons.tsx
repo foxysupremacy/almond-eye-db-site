@@ -8,6 +8,10 @@ export function FilterIcon(props: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" {...props}><path d="M4 7h16M4 17h16" /><circle cx="9" cy="7" r="2.5" fill="currentColor" stroke="none" /><circle cx="15" cy="17" r="2.5" fill="currentColor" stroke="none" /></svg>;
 }
 
+export function MenuIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={className} {...props}><path d="M4 7h16M4 12h16M4 17h16" /></svg>;
+}
+
 export function SunIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m13.14-13.14 1.41-1.41" /></svg>;
 }
@@ -349,6 +353,10 @@ export function ChevronDownIcon({ className = "h-4 w-4", ...props }: IconProps) 
       <polyline points="6 9 12 15 18 9" />
     </svg>
   );
+}
+
+export function ChevronLeftIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}><path d="m15 18-6-6 6-6" /></svg>;
 }
 
 /** Flat Chevron Up Icon */
