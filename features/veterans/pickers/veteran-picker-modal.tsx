@@ -6,7 +6,7 @@ import { AppButton } from "@/app/common/ui/controls/app-button";
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
 import { XIcon, StarIcon, AlertTriangleIcon } from "@/app/common/ui/primitives/icons";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import {
@@ -17,8 +17,7 @@ import {
 import { decodeFactor, calculateLineageBlueStars } from "@/lib/lineage/factor-decoder";
 import type { LegacyCandidate } from "@/lib/parenting";
 import type { LegacyUniqueEval } from "@/lib/parenting/types";
-import { evaluateUniqueSkill, runningStyleToNum } from "@/lib/parenting/skill-evaluator";
-import { getParentInheritedUnique, hasMinimumParentSkillEffect } from "@/lib/parenting/unique-effect-filter";
+import { getParentInheritedUnique } from "@/lib/parenting/unique-effect-filter";
 import { getCareerG1Saddles } from "@/lib/parenting/career-engine";
 import { useOwnedUmas } from "@/app/common/hooks/use-owned-umas";
 import {
@@ -80,6 +79,22 @@ interface VeteranPickerModalProps {
   initialTab?: "recommended" | "owned" | "veterans" | "templates";
 }
 
+interface ActiveTabProjection {
+  eligibleCardIds: Set<number>;
+  uniqueEvalByCardId: Map<number, LegacyUniqueEval>;
+  ownedUmaEntries: OwnedUmaEntry[];
+  unifiedVeterans: ReturnType<typeof projectVeteranGroups>;
+  processedTemplates: CharacterIndexEntry[];
+}
+
+const EMPTY_ACTIVE_TAB_PROJECTION: ActiveTabProjection = {
+  eligibleCardIds: new Set(),
+  uniqueEvalByCardId: new Map(),
+  ownedUmaEntries: [],
+  unifiedVeterans: [],
+  processedTemplates: [],
+};
+
 type PickerTab = VeteranPickerTab;
 type SortBy = VeteranPickerSort;
 const SORT_STORAGE_KEY = "almond_parent_picker_sort";
@@ -110,6 +125,75 @@ function loadTab(): PickerTab {
     }
   } catch {}
   return "veterans";
+}
+
+/**
+ * A modal must paint before its active source tab evaluates every candidate.
+ * This key covers every input that influences the expensive eligibility/unique
+ * evaluation while deliberately excluding search and sort, which only change
+ * the inexpensive final projection.
+ */
+function activeTabEvaluationKey({
+  activeTab,
+  targetCharaId,
+  excludedCharId,
+  contextParent,
+  courseId,
+  runningStyle,
+  racerCount,
+  activeRaceParameters,
+  raceImpactProfile,
+  veterans,
+  characters,
+  ownedUmas,
+}: {
+  activeTab: PickerTab;
+  targetCharaId: number | null;
+  excludedCharId?: number | null;
+  contextParent?: KyumaruVeteranItem | null;
+  courseId?: number;
+  runningStyle: unknown;
+  racerCount: number;
+  activeRaceParameters: unknown;
+  raceImpactProfile: unknown;
+  veterans: KyumaruVeteranItem[];
+  characters: CharacterIndexEntry[];
+  ownedUmas: Record<string, [number, number]>;
+}) {
+  return JSON.stringify({
+    activeTab,
+    targetCharaId,
+    excludedCharId: excludedCharId ?? null,
+    contextParent: contextParent ? {
+      cardId: contextParent.card_id,
+      trainedCharaId: contextParent.trained_chara_id ?? null,
+      wins: contextParent.win_saddle_id_array ?? [],
+    } : null,
+    courseId: courseId ?? null,
+    runningStyle,
+    racerCount,
+    activeRaceParameters,
+    raceImpactProfile,
+    veterans: veterans.map((veteran) => ({
+      cardId: veteran.card_id,
+      trainedCharaId: veteran.trained_chara_id ?? null,
+      createdAt: veteran.create_time ?? null,
+      rank: veteran.rank ?? null,
+      rankScore: veteran.rank_score ?? null,
+      wins: veteran.win_saddle_id_array ?? [],
+      factors: veteran.factor_info_array?.map((factor) => factor.factor_id) ?? [],
+    })),
+    characterIds: characters.map((character) => character.id),
+    ownedUmas,
+  });
+}
+
+function cacheProjection<T>(cache: Map<string, T>, key: string, value: T): T {
+  // Search/sort combinations are finite in normal use; retain enough recent
+  // contexts for re-opening a picker without allowing an unbounded session cache.
+  if (cache.size >= 48) cache.clear();
+  cache.set(key, value);
+  return value;
 }
 
 /** White (inherit) version of a character's unique skill, from the generated inherit map. */
@@ -494,9 +578,10 @@ export default function VeteranPickerModal({
   minmaxEnabled = false,
 }: VeteranPickerModalProps) {
   const [initialPickerPreferences] = useState(() => ({ initialTab: loadTab(), initialSort: loadSort(minmaxEnabled) }));
+  const hasRecommendations = Boolean(recommendations || recommendationsLoading || recommendationsError);
   const pickerInput = {
     ...initialPickerPreferences,
-    recommendationsAvailable: Boolean(recommendations || recommendationsLoading || recommendationsError),
+    recommendationsAvailable: hasRecommendations,
   };
   const { state: pickerState, view: pickerView, dispatch } = usePickerController(veteranPickerAdapter, pickerInput);
   const { search, sortBy: savedSortBy } = pickerState;
@@ -550,57 +635,6 @@ export default function VeteranPickerModal({
     return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
   }, [characters]);
 
-  const eligibleCardIds = useMemo(() => {
-    const eligible = new Set<number>();
-    if (!isOpen || activeTab === "recommended") return eligible;
-    const eligibleBySkill = new Map<number, boolean>();
-    const cardIds = activeTab === "veterans" ? veterans.map((vet) => vet.card_id)
-      : activeTab === "owned" ? Object.keys(ownedUmas).map(Number)
-      : characters.map((character) => character.id);
-    for (const cardId of cardIds) {
-      const chara = charactersById.get(cardId) ?? charactersByCharId.get(getCharaIdFromCardId(cardId));
-      const skill = getParentInheritedUnique(chara?.uniqueSkillId);
-      if (!skill) continue;
-      let passes = eligibleBySkill.get(skill.id);
-      if (passes === undefined) {
-        passes = hasMinimumParentSkillEffect(skill, course, runningStyle, { raceParams: { ...activeRaceParameters, numUmas: racerCount }, raceImpactProfile });
-        eligibleBySkill.set(skill.id, passes);
-      }
-      if (passes) eligible.add(cardId);
-    }
-    return eligible;
-  }, [isOpen, activeTab, veterans, ownedUmas, characters, course, runningStyle, activeRaceParameters, racerCount, raceImpactProfile]);
-
-  // White-unique track/style evaluation per card id (tier chips + skill_effect /
-  // unique_tier sorting). Only computed while the modal is open and a course is
-  // selected; deduped by white skill id since variants share the same unique.
-  const uniqueEvalByCardId = useMemo(() => {
-    const map = new Map<number, LegacyUniqueEval>();
-    if (!isOpen || !course || !["veterans", "templates", "owned"].includes(activeTab)) return map;
-    const styleNum = runningStyleToNum(runningStyle);
-    const evalByWhiteId = new Map<number, LegacyUniqueEval>();
-    const addCard = (cardId: number) => {
-      if (map.has(cardId)) return;
-      const white = resolveWhiteUnique(cardId);
-      if (!white) return;
-      let e = evalByWhiteId.get(white.skillId);
-      if (!e) {
-        e = evaluateUniqueSkill(white.skillId, course, styleNum, { raceImpactProfile, raceParams: activeRaceParameters, racerCount });
-        evalByWhiteId.set(white.skillId, e);
-      }
-      map.set(cardId, e);
-    };
-    if (activeTab === "veterans") {
-      for (const vet of veterans) addCard(vet.card_id);
-    }
-    if (activeTab === "templates") {
-      for (const c of characters) addCard(c.id);
-    } else if (activeTab === "owned") {
-      for (const cardIdStr of Object.keys(ownedUmas)) addCard(Number(cardIdStr));
-    }
-    return map;
-  }, [isOpen, course, runningStyle, veterans, characters, activeTab, ownedUmas, raceImpactProfile, activeRaceParameters, racerCount]);
-
   // Owned Umas tab: collection-owned characters scored as potential parents via
   // their career G1 schedule (same math as the recommender's untrained picks).
   const projectionDependencies = {
@@ -614,22 +648,139 @@ export default function VeteranPickerModal({
     resolveWhiteUnique,
   };
 
-  const ownedUmaEntries = useMemo(
-    () => !isOpen || activeTab !== "owned" ? [] : projectOwnedUmaEntries({
-      ownedUmas,
-      charactersByCardId: charaMap,
-      veterans,
+  const evaluationCacheRef = useRef(new Map<string, Pick<ActiveTabProjection, "eligibleCardIds" | "uniqueEvalByCardId">>());
+  const projectionCacheRef = useRef(new Map<string, ActiveTabProjection>());
+  const evaluationKey = useMemo(() => {
+    if (!isOpen || activeTab === "recommended") return null;
+    return activeTabEvaluationKey({
+      activeTab,
       targetCharaId,
       excludedCharId,
       contextParent,
-      search: normalizedSearch,
-      sortBy,
-      uniqueEvalByCardId,
-      eligibleCardIds,
-      dependencies: projectionDependencies,
-    }),
-    [isOpen, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
-  );
+      courseId: course?.id,
+      runningStyle,
+      racerCount,
+      activeRaceParameters,
+      raceImpactProfile,
+      veterans,
+      characters,
+      ownedUmas,
+    });
+  }, [isOpen, activeTab, targetCharaId, excludedCharId, contextParent, course?.id, runningStyle, racerCount, activeRaceParameters, raceImpactProfile, veterans, characters, ownedUmas]);
+  const projectionKey = evaluationKey === null ? null : `${evaluationKey}|${sortBy}|${normalizedSearch}`;
+  const activeCardIds = useMemo(() => activeTab === "veterans" ? veterans.map((vet) => vet.card_id)
+    : activeTab === "owned" ? Object.keys(ownedUmas).map(Number)
+    : activeTab === "templates" ? characters.map((character) => character.id)
+    : [], [activeTab, veterans, ownedUmas, characters]);
+  const [readyEvaluationKey, setReadyEvaluationKey] = useState<string | null>(null);
+  const [evaluationError, setEvaluationError] = useState<{ key: string; message: string } | null>(null);
+  const isProjectionReady = evaluationKey !== null && readyEvaluationKey === evaluationKey;
+
+  // The course-aware evaluator can simulate every unique in the active source
+  // tab. Keep it off the UI thread so the dialog paints and stays dismissable.
+  useEffect(() => {
+    if (!evaluationKey) {
+      setReadyEvaluationKey(null);
+      setEvaluationError(null);
+      return;
+    }
+    setEvaluationError(null);
+    const cached = evaluationCacheRef.current.get(evaluationKey);
+    if (cached) {
+      const frame = window.requestAnimationFrame(() => setReadyEvaluationKey(evaluationKey));
+      return () => window.cancelAnimationFrame(frame);
+    }
+
+    const worker = new Worker(
+      new URL("./veteran-picker-evaluation.worker.ts", import.meta.url),
+      { type: "module" },
+    );
+    worker.onmessage = (event: MessageEvent<{
+      eligibleCardIds: number[];
+      uniqueEvals: Array<[number, LegacyUniqueEval]>;
+      error?: string;
+    }>) => {
+      const { eligibleCardIds, uniqueEvals, error } = event.data;
+      if (error) {
+        setEvaluationError({ key: evaluationKey, message: error });
+        return;
+      }
+      cacheProjection(evaluationCacheRef.current, evaluationKey, {
+        eligibleCardIds: new Set(eligibleCardIds),
+        uniqueEvalByCardId: new Map(uniqueEvals),
+      });
+      setReadyEvaluationKey(evaluationKey);
+    };
+    worker.onerror = () => setEvaluationError({ key: evaluationKey, message: "Could not evaluate picker candidates. Close and reopen the picker to try again." });
+    worker.postMessage({
+      cardIds: activeCardIds,
+      course: course ?? null,
+      runningStyle,
+      raceParams: activeRaceParameters,
+      racerCount,
+      raceImpactProfile,
+    });
+    return () => worker.terminate();
+  }, [evaluationKey, activeCardIds, course, runningStyle, activeRaceParameters, racerCount, raceImpactProfile]);
+
+  const activeTabProjection = useMemo(() => {
+    if (!projectionKey || !isProjectionReady) return EMPTY_ACTIVE_TAB_PROJECTION;
+    const cached = projectionCacheRef.current.get(projectionKey);
+    if (cached) return cached;
+
+    const evaluation = evaluationCacheRef.current.get(evaluationKey!);
+    if (!evaluation) return EMPTY_ACTIVE_TAB_PROJECTION;
+
+    const base: ActiveTabProjection = {
+      ...evaluation,
+      ownedUmaEntries: [],
+      unifiedVeterans: [],
+      processedTemplates: [],
+    };
+    if (activeTab === "owned") {
+      base.ownedUmaEntries = projectOwnedUmaEntries({
+        ownedUmas,
+        charactersByCardId: charaMap,
+        veterans,
+        targetCharaId,
+        excludedCharId,
+        contextParent,
+        search: normalizedSearch,
+        sortBy,
+        uniqueEvalByCardId: base.uniqueEvalByCardId,
+        eligibleCardIds: base.eligibleCardIds,
+        dependencies: projectionDependencies,
+      });
+    } else if (activeTab === "veterans") {
+      base.unifiedVeterans = projectVeteranGroups({
+        veterans,
+        charactersByCardId: charaMap,
+        targetCharaId,
+        excludedCharId,
+        search: normalizedSearch,
+        sortBy,
+        uniqueEvalByCardId: base.uniqueEvalByCardId,
+        eligibleCardIds: base.eligibleCardIds,
+        dependencies: projectionDependencies,
+      });
+    } else if (activeTab === "templates") {
+      base.processedTemplates = projectCharacterTemplates({
+        characters,
+        targetCharaId,
+        excludedCharId,
+        search: normalizedSearch,
+        sortBy,
+        uniqueEvalByCardId: base.uniqueEvalByCardId,
+        eligibleCardIds: base.eligibleCardIds,
+        calculateAffinity: (cardId, targetId) => calculateAffinity({ card_id: cardId }, targetId).total,
+      });
+    }
+    return cacheProjection(projectionCacheRef.current, projectionKey, base);
+  }, [projectionKey, isProjectionReady, evaluationKey, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, characters]);
+
+  const { ownedUmaEntries, unifiedVeterans, processedTemplates, uniqueEvalByCardId } = activeTabProjection;
+  const tabContentError = activeTab !== "recommended" && evaluationError?.key === evaluationKey ? evaluationError.message : null;
+  const tabContentLoading = activeTab !== "recommended" && !isProjectionReady && !tabContentError;
 
   const handleSelectOwnedUma = (entry: OwnedUmaEntry) => {
     if (onSelectCandidate) {
@@ -655,37 +806,6 @@ export default function VeteranPickerModal({
     onClose();
   };
 
-  // Each tab has its own projection because the available metrics and fallback
-  // sort rules differ by data source.
-  const unifiedVeterans = useMemo(
-    () => !isOpen || activeTab !== "veterans" ? [] : projectVeteranGroups({
-      veterans,
-      charactersByCardId: charaMap,
-      targetCharaId,
-      excludedCharId,
-      search: normalizedSearch,
-      sortBy,
-      uniqueEvalByCardId,
-      eligibleCardIds,
-      dependencies: projectionDependencies,
-    }),
-    [isOpen, activeTab, veterans, charaMap, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
-  );
-
-  const processedTemplates = useMemo(
-    () => !isOpen || activeTab !== "templates" ? [] : projectCharacterTemplates({
-      characters,
-      targetCharaId,
-      excludedCharId,
-      search: normalizedSearch,
-      sortBy,
-      uniqueEvalByCardId,
-      eligibleCardIds,
-      calculateAffinity: (cardId, targetId) => calculateAffinity({ card_id: cardId }, targetId).total,
-    }),
-    [isOpen, activeTab, characters, targetCharaId, excludedCharId, normalizedSearch, sortBy, uniqueEvalByCardId, eligibleCardIds],
-  );
-
   if (!isOpen) return null;
 
   return (
@@ -705,7 +825,7 @@ export default function VeteranPickerModal({
                 Select {slotLabel}
               </h3>
               <Badge size="compact" tone="emerald" className="font-bold">
-                {activeTab === "veterans"
+                {tabContentLoading ? "Loading…" : activeTab === "veterans"
                   ? `${unifiedVeterans.length} Umas (${veterans.length} Runs)`
                   : activeTab === "owned"
                   ? `${ownedUmaEntries.length} Owned`
@@ -732,11 +852,11 @@ export default function VeteranPickerModal({
     >
       <Tabs selectedKey={activeTab} onSelectionChange={(key) => dispatch({ type: "tabSelected", tab: key as PickerTab })} className="flex min-h-0 flex-1 flex-col">
         {/* Source Tabs & Controls */}
-        <div className="flex flex-wrap items-center justify-between gap-3 p-3.5 border-b border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/50 dark:bg-zinc-950/40">
-          <TabList aria-label="Candidate sources" className="flex items-center gap-1.5 rounded-xl bg-zinc-200/60 dark:bg-zinc-800/60 p-1">
-            {(recommendations || recommendationsLoading || recommendationsError) && (
+        <div className="flex flex-col gap-2 border-b border-zinc-100 bg-zinc-50/50 p-3 dark:border-zinc-800/80 dark:bg-zinc-950/40">
+          <TabList aria-label="Candidate sources" className={`grid w-full grid-cols-2 gap-1 rounded-lg bg-zinc-200/60 p-0.5 dark:bg-zinc-800/60 ${hasRecommendations ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
+            {hasRecommendations && (
               <Tab id="recommended"
-                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+                className={`flex min-h-8 min-w-0 items-center justify-center rounded-md px-2 py-1 text-center text-[11px] font-semibold leading-tight transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                   activeTab === "recommended"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                     : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -746,7 +866,7 @@ export default function VeteranPickerModal({
               </Tab>
             )}
             <Tab id="owned"
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+              className={`flex min-h-8 min-w-0 items-center justify-center rounded-md px-2 py-1 text-center text-[11px] font-semibold leading-tight transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "owned"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -755,7 +875,7 @@ export default function VeteranPickerModal({
               Owned Umas
             </Tab>
             <Tab id="veterans"
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+              className={`flex min-h-8 min-w-0 items-center justify-center rounded-md px-2 py-1 text-center text-[11px] font-semibold leading-tight transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "veterans"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -764,7 +884,7 @@ export default function VeteranPickerModal({
               My Hall of Fame ({veterans.length})
             </Tab>
             <Tab id="templates"
-              className={`px-3 py-1 text-xs font-semibold rounded-lg transition-colors cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
+              className={`flex min-h-8 min-w-0 items-center justify-center rounded-md px-2 py-1 text-center text-[11px] font-semibold leading-tight transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 ${
                 activeTab === "templates"
                   ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
@@ -774,22 +894,21 @@ export default function VeteranPickerModal({
             </Tab>
           </TabList>
 
-          <div className="flex items-center gap-2 flex-1 max-w-sm">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
             <PickerSearchBar
               value={search}
               onChange={(value) => dispatch({ type: "searchChanged", value })}
               placeholder="Search by name..."
-              inputClassName="w-full rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 px-3 py-1.5 text-xs text-zinc-900 dark:text-zinc-100 placeholder-zinc-400 outline-none focus:border-emerald-500"
+              inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-900 outline-none placeholder-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[11px] text-zinc-400">Sort:</span>
             <AppSelect
               value={sortBy}
               onValueChange={(value) => dispatch({ type: "sortChanged", value: value as SortBy })}
-              className=""
-             label="Sort trained Umas" options={[...(minmaxEnabled ? [{ value: "minmax", label: "Minmax Genetics", disabled: activeTab !== "recommended" }] : []), { value: "affinity", label: "Compatibility Affinity", disabled: !targetCharaId }, { value: "rank_score", label: "Evaluation Score" }, { value: "blue_stars", label: "Lineage Blue Stars" }, { value: "skill_effect", label: "Unique Skill Effect", disabled: !course }, { value: "unique_tier", label: "Unique Rating (S/A/B/C)", disabled: !course }]} />
+              className="w-full"
+              label="Sort candidates"
+              triggerLabel="Sort"
+              options={[...(minmaxEnabled ? [{ value: "minmax", label: "Minmax Genetics", disabled: activeTab !== "recommended" }] : []), { value: "affinity", label: "Compatibility Affinity", disabled: !targetCharaId }, { value: "rank_score", label: "Evaluation Score" }, { value: "blue_stars", label: "Lineage Blue Stars" }, { value: "skill_effect", label: "Unique Skill Effect", disabled: !course }, { value: "unique_tier", label: "Unique Rating (S/A/B/C)", disabled: !course }]}
+            />
           </div>
         </div>
 
@@ -814,6 +933,15 @@ export default function VeteranPickerModal({
           ) : activeTab === "recommended" && recommendationsError ? (
             <div className="py-16 text-center text-xs text-rose-600 dark:text-rose-400" role="alert">
               {recommendationsError}
+            </div>
+          ) : tabContentError ? (
+            <div className="py-16 text-center text-xs text-rose-600 dark:text-rose-400" role="alert">
+              {tabContentError}
+            </div>
+          ) : tabContentLoading ? (
+            <div className="flex items-center justify-center gap-3 py-16 text-xs text-zinc-500" role="status">
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+              Preparing candidates…
             </div>
           ) : activeTab === "owned" ? (
             <OwnedTabContent
