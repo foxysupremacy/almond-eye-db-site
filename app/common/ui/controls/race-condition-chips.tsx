@@ -1,7 +1,8 @@
 "use client";
 
 import { RACE_CONDITION_OPTIONS, type CustomRaceConditions } from "@/lib/deck/race-conditions";
-import { FlagIcon, SparklesIcon, TimerIcon, WeatherIcon } from "../primitives/icons";
+import { turnLabel } from "@/lib/api/course-format";
+import { FlagIcon, SparklesIcon, TimerIcon, TurnIcon, WeatherIcon } from "../primitives/icons";
 
 import { AppSelect } from "./app-select";
 
@@ -13,6 +14,23 @@ const tones = {
   groundCondition: "border-emerald-200 bg-emerald-50/80 text-emerald-800 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300",
   time: "border-amber-200 bg-amber-50/80 text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300",
 };
+const turnTone = "border-violet-200 bg-violet-50/80 text-violet-800 dark:border-violet-900/60 dark:bg-violet-950/40 dark:text-violet-300";
+const chipClass = "inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-medium";
+
+/** Turn direction of a course, as fixed by the game's course data. */
+export interface TurnCondition {
+  value: number | null;
+  /** Directions the user may switch to; omit for a read-only badge. */
+  options?: readonly number[];
+  onChange?: (turn: number) => void;
+}
+
+const turnText = (turn: number) => `Turn: ${turnLabel(turn)}`;
+
+/** Read-only turn badge, styled to sit beside the other race-condition badges. */
+export function TurnBadge({ turn }: { turn: number }) {
+  return <span className={`${chipClass} ${turnTone}`}><TurnIcon turn={turn} className="h-3.5 w-3.5 shrink-0" /><span>{turnText(turn)}</span></span>;
+}
 
 function ConditionIcon({ field, value }: { field: keyof CustomRaceConditions; value: number | null }) {
   const iconClass = "h-3.5 w-3.5 shrink-0 object-contain";
@@ -25,17 +43,19 @@ function ConditionIcon({ field, value }: { field: keyof CustomRaceConditions; va
   return <Icon className={iconClass} />;
 }
 
-export function RaceConditionChips({ conditions, onChange }: {
+export function RaceConditionChips({ conditions, onChange, turn }: {
   conditions: CustomRaceConditions;
   onChange?: (conditions: Partial<CustomRaceConditions>) => void;
+  turn?: TurnCondition;
 }) {
+  const turnOptions = turn?.options;
+  const turnChange = turn?.onChange;
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-[11px]" aria-label="Race conditions">
       {fields.map((field) => {
         const value = conditions[field];
         const text = value ? RACE_CONDITION_OPTIONS[field][value - 1] : `${labels[field]}: Any / Random`;
         const content = <><ConditionIcon field={field} value={value} /><span>{field === "groundCondition" && value ? `Ground: ${text}` : text}</span></>;
-        const className = `inline-flex items-center gap-1 rounded-md border px-1.5 py-0.5 font-medium ${tones[field]}`;
         return onChange ? (
           <AppSelect key={field} label={`Custom ${field}`} variant="chip" className={tones[field]}
             value={String(value ?? "")} onValueChange={(next) => onChange({ [field]: next ? Number(next) : null })}
@@ -43,8 +63,14 @@ export function RaceConditionChips({ conditions, onChange }: {
               ...RACE_CONDITION_OPTIONS[field].map((label, index) => ({ value: String(index + 1),
                 label: field === "groundCondition" ? `Ground: ${label}` : label,
                 icon: <ConditionIcon field={field} value={index + 1} /> }))]} />
-        ) : <span key={field} className={className}>{content}</span>;
+        ) : <span key={field} className={`${chipClass} ${tones[field]}`}>{content}</span>;
       })}
+      {turn?.value != null && (turnOptions && turnChange ? (
+        <AppSelect label="Custom turn" variant="chip" className={turnTone}
+          value={String(turn.value)} onValueChange={(next) => turnChange(Number(next))}
+          options={turnOptions.map((option) => ({ value: String(option), label: turnText(option),
+            icon: <TurnIcon turn={option} className="h-3.5 w-3.5 shrink-0" /> }))} />
+      ) : <TurnBadge turn={turn.value} />)}
     </div>
   );
 }

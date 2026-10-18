@@ -489,6 +489,13 @@ export function WeatherIcon(props: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props}><path d="M6 19a4 4 0 0 1-.6-8 6 6 0 0 1 11.4-1A4.5 4.5 0 1 1 18 19H6Z" /></svg>;
 }
 
+/** Course direction: 1 = right-handed, 2 = left-handed (mirrored), 4 = straight. */
+export function TurnIcon({ turn, className = "h-4 w-4", ...props }: IconProps & { turn: number }) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}>
+    {turn === 4 ? <path d="M12 20V4m-5 5 5-5 5 5" /> : <g transform={turn === 2 ? "matrix(-1 0 0 1 24 0)" : undefined}><path d="M7 20v-6a5 5 0 0 1 5-5h7" /><path d="m15 5 4 4-4 4" /></g>}
+  </svg>;
+}
+
 /** Viewfinder with a text line — "scan text from an image". */
 export function ScanTextIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return (

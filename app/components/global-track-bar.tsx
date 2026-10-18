@@ -7,7 +7,7 @@ import { AppSelect } from "@/app/common/ui/controls/app-select";
 // Main Deck analysis, and Visualizer racecourse simulation.
 
 import { normalizeRaceConditions } from "@/lib/deck/race-conditions";
-import { RaceConditionChips } from "@/app/common/ui/controls/race-condition-chips";
+import { RaceConditionChips, TurnBadge } from "@/app/common/ui/controls/race-condition-chips";
 import { useState } from "react";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { useDeck } from "@/features/deck/state";
@@ -54,6 +54,23 @@ export default function GlobalTrackBar() {
     const course = track?.courses.find((entry) => entry.id === courseId);
     if (!track || !course) return `Course ${courseId}`;
     return `${track.nameEn} ${course.length}m`;
+  }
+
+  // Turn direction is fixed by the game's course data; it always mirrors the active course.
+  // In Custom mode, picking a direction moves to a course that runs that way.
+  const courseTurn = activeCourseRow?.turn ?? null;
+  const coursesFor = (id: number) => racetrackDetails.find((entry) => entry.id === id)?.courses ?? [];
+  const turnOptions = [1, 2, 4].filter((turn) => racetrackDetails.some((track) => track.courses.some((course) => course.turn === turn)));
+  function selectTurn(nextTurn: number) {
+    if (courseTurn === nextTurn) return;
+    const sameVenue = coursesFor(trackId).filter((course) => course.turn === nextTurn);
+    const nextTrackId = sameVenue.length ? trackId : (tracks ?? []).find((t) => coursesFor(t.id).some((course) => course.turn === nextTurn))?.id;
+    if (nextTrackId == null) return;
+    const candidates = sameVenue.length ? sameVenue : coursesFor(nextTrackId).filter((course) => course.turn === nextTurn);
+    const nextCourse = candidates.find((course) => course.terrain === activeCourseRow?.terrain && course.length === activeCourseRow?.length)
+      ?? candidates.find((course) => course.terrain === activeCourseRow?.terrain) ?? candidates[0];
+    if (nextTrackId !== trackId) setTrackId(nextTrackId);
+    setCourseId(nextCourse.id);
   }
 
   const availableGrounds = new Set((trackDetail?.courses ?? []).map((course) => course.terrain));
@@ -130,6 +147,7 @@ export default function GlobalTrackBar() {
                 time: activeMasterChallengeRace.timezone,
               }) : customConditions}
               onChange={isCustomTrack ? setCustomRaceConditions : undefined}
+              turn={{ value: courseTurn, ...(isCustomTrack ? { options: turnOptions, onChange: selectTurn } : {}) }}
             />
           )}
 
@@ -169,6 +187,9 @@ export default function GlobalTrackBar() {
                 <img src={activePvpEvent.timeIcon} alt={activePvpEvent.time} className="h-3.5 w-3.5 object-contain" />
                 <span>{activePvpEvent.time}</span>
               </span>
+
+              {/* Turn direction (from course data) */}
+              {courseTurn != null && <TurnBadge turn={courseTurn} />}
 
               {/* Special Rule: No Debuff */}
               {activePvpEvent.noDebuffs && (
