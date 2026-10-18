@@ -18,9 +18,9 @@
  * Config (mdb path, icon API key) lives in .env at the repo root — see .env.
  *
  * Usage:
- *   bun run data:refresh                 # full refresh incl. images
- *   bun run data:refresh -- --no-images  # text data only
- *   bun run data:refresh -- --full --upload-cdn # fresh sources, all crawls, CDN assets
+ *   bun run data:refresh                                  # full refresh + CDN upload
+ *   bun run data:refresh -- --incremental                # incremental refresh + CDN upload
+ *   bun run data:refresh -- --no-images --no-upload-cdn   # text-only refresh
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -33,8 +33,9 @@ const SITE_ROOT = path.resolve(__dirname, "..");
 loadEnv();
 
 const noImages = process.argv.includes("--no-images");
-const full = process.argv.includes("--full");
-const uploadCdn = process.argv.includes("--upload-cdn");
+const incremental = process.argv.includes("--incremental");
+const full = process.argv.includes("--full") || !incremental;
+const uploadCdn = !process.argv.includes("--no-upload-cdn");
 const pvpRecommendationsSource = process.env.PVP_RECOMMENDATIONS_SOURCE
   ? path.resolve(SITE_ROOT, process.env.PVP_RECOMMENDATIONS_SOURCE)
   : path.join(SITE_ROOT, "lib/data/source/game/pvp-recommendations.json");

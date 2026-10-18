@@ -47,11 +47,9 @@ Launch the game client once so `master.mdb` picks up the latest game update,
 then:
 
 ```bash
-bun run data:refresh                  # everything: mdb extraction, GameTora
-                                      # crawls, inherit skills, name cleanup,
-                                      # image assets
-bun run data:refresh -- --no-images   # text data only
-bun run data:refresh -- --full --upload-cdn # latest GameTora sources, all cards/Uma, CDN upload
+bun run data:refresh                                      # full refresh + CDN upload
+bun run data:refresh -- --incremental                    # incremental refresh + CDN upload
+bun run data:refresh -- --no-images --no-upload-cdn       # text-only refresh
 ```
 
 Then commit the `lib/data/generated` diff and push — the Cloudflare build picks it up.
@@ -81,23 +79,24 @@ headers such as viewer/session metadata.
 
 - **Slug resolution**: GameTora's listing pages are client-rendered; slugs for
   new cards/characters are resolved from GameTora's **sitemap** instead.
-- **Incremental by default**: the card and character crawlers only fetch
-  entries never crawled or still using Japanese fallback names;
-  `data:refresh -- --full` fetches the latest skill/character/track/factor
-  datasets using GameTora's manifest and forces all card/character crawls.
-  Individual `--crawl-all` / `--all` flags also force a full crawl,
-  `--card-id N` tests a single entry.
+- **Full refresh by default**: `bun run data:refresh` fetches the latest
+  skill/character/track/factor datasets using GameTora's manifest and forces
+  all card/character crawls, then uploads images to the CDN. Pass
+  `--incremental` to skip fetching fresh datasets and only crawl uncrawled
+  entries; pass `--no-upload-cdn` to skip the upload step. The old `--full`
+  and `--upload-cdn` flags remain accepted. Individual `--crawl-all` / `--all`
+  flags also force a full crawl, and `--card-id N` targets a single entry.
 - **English for brand-new skills**: a new unique skill is backfilled into
   `skills.json` with JP name/description and full condition groups from mdb.
   EN names/descriptions for those arrive only when the legacy raw dumps
   (`../skills.json`, hachimi) are refreshed via `bun run build:data` in the old
   workspace layout — until then the site falls back to JP.
-- **Image uploads**: after crawling new character/card images, run
-  `python scripts/upload_card_images.py --source all` (requires `ICON_API_KEY`
-  and `ICON_API_BASE` in `.env`). Only images missing from
+- **Image uploads**: the refresh orchestrator uploads by default (requires
+  `ICON_API_KEY` and `ICON_API_BASE` in `.env`). To upload separately, run
+  `python scripts/upload_card_images.py --source all`. Only images missing from
   `data/images/manifest.json` are uploaded. Character stands upload at
-  512×512. The orchestrator's `--upload-cdn` uses character variant `01`
-  to match the site's URLs, and uploads both support art (`01`) and portraits (`02`).
+  512×512. The orchestrator uses character variant `01` to match the site's
+  URLs, and uploads both support art (`01`) and portraits (`02`).
 
 ### master.mdb
 

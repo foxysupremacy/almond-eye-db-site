@@ -19,3 +19,5 @@ scripts/__pycache__/
 implementation_plan.md
 output/pdf/phan-tich-u-tools-race-impact.pdf
 docs/race-visualizer-three-board-plan.md
+# Local Codex config contains machine-specific MCP paths
+.codex/config.toml
