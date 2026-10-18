@@ -387,17 +387,16 @@ function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResu
     ? "Physics pending"
     : `${impact.expectedBashin.toFixed(2)} bashin expected`;
   const factorRows = [
-    ["Activation", `${probability}%`],
+    // R32: matches the modal's "Assumed to activate"; a percentage only when geometry or a user override lowers it.
+    ["Activation", impact.activation.activationRate >= 1 ? "Assumed" : `${probability}%`],
     ["Effect", `${impact.tactical.effect} pts`],
     ["Timing", `${impact.tactical.timing} pts`],
     ["Duration", `${impact.tactical.duration} pts`],
     ["Coverage", `${impact.tactical.coverage} pts`],
   ];
   const activationFormula = [
-    `geometry ${Math.round(impact.activation.geometryRate * 100)}%`,
-    `wisdom ${Math.round(impact.activation.wisdomRate * 100)}%`,
-    impact.activation.rankRate < 1 ? `style/rank ${Math.round(impact.activation.rankRate * 100)}%` : null,
-    impact.activation.dynamicRate < 1 ? `dynamic ${Math.round(impact.activation.dynamicRate * 100)}%` : null,
+    impact.activation.geometryRate < 1 ? `geometry ${Math.round(impact.activation.geometryRate * 100)}%` : null,
+    impact.activation.dynamicRate < 1 ? `situational override ${Math.round(impact.activation.dynamicRate * 100)}%` : null,
   ].filter((part): part is string => part !== null).join(" × ");
   return (
     <div className={`mt-3 border-t border-zinc-200/80 pt-2.5 dark:border-zinc-700/80 ${compact ? "text-[10px]" : "text-[11px]"}`}>
@@ -413,7 +412,7 @@ function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResu
         ))}
       </div>
       <p className="mt-1.5 leading-relaxed text-zinc-500 dark:text-zinc-400">
-        Activation: {activationFormula || "no probability gates"}{impact.activation.dependsOnPreviousTrigger ? "; conditional on the prior trigger firing" : ""}. {impact.activation.priorSource === "manual" ? "Dynamic assumptions use the neutral fallback or your override." : `${impact.activation.priorSource === "track" ? "Track" : "Global"} telemetry: ${impact.activation.priorSamples} samples (${impact.activation.confidence} confidence).`}
+        Activation: {activationFormula || "assumed to activate (situational conditions met, no wisdom or lottery roll)"}{impact.activation.dependsOnPreviousTrigger ? "; conditional on the prior trigger firing" : ""}.
         {impact.physicsNote ? ` ${impact.physicsNote}` : " Baseline-vs-skill estimate; not a win-probability forecast."}
       </p>
     </div>

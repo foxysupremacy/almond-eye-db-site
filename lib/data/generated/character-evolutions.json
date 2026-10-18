@@ -1012,7 +1012,7 @@
       "descJp": "レース中盤のどこかで前方だと\\n速度がすごく上がる＜長距離＞",
       "iconId": 20016,
       "branchTag": "Long",
-      "condition1": "distance_type==4&phase_random==1&order_rate<=50"
+      "condition1": "distance_type==4&phase_random==1"
     },
     {
       "rank": 5,
@@ -1024,7 +1024,19 @@
       "descJp": "レース中盤が迫ったどこかで前方だと\\n持久力を回復し速度がわずかに上がる\\n＜作戦・先行＞",
       "iconId": 20026,
       "branchTag": "Leader",
-      "condition1": "running_style==2&phase_laterhalf_random==0&order_rate<=50"
+      "condition1": "running_style==2&phase_laterhalf_random==0"
+    },
+    {
+      "rank": 7,
+      "baseSkillId": 202481,
+      "skillId": 101301311,
+      "nameEn": "名優、昇るは天の果て",
+      "nameJp": "名優、昇るは天の果て",
+      "descEn": "京都レース場なら終盤に加速力が上がる＜先行・長距離＞",
+      "descJp": "京都レース場なら終盤に加速力が上がる＜先行・長距離＞",
+      "iconId": 20046,
+      "branchTag": "Long",
+      "condition1": "distance_type==4&running_style==2&phase==2&track_id==10008"
     }
   ],
   "101302": [
@@ -1329,6 +1341,32 @@
       "condition1": "season==3"
     }
   ],
+  "101703": [
+    {
+      "rank": 3,
+      "baseSkillId": 202091,
+      "skillId": 101703111,
+      "nameEn": "大望は煌めきとなりて",
+      "nameJp": "大望は煌めきとなりて",
+      "descEn": "中盤に競り合うと持久力を少し回復し速度が上がる、中央の芝レースならその後全開スパート中どこかで中団以前だと伸びを見せる＜中距離/長距離＞",
+      "descJp": "中盤に競り合うと持久力を少し回復し速度が上がる、中央の芝レースならその後全開スパート中どこかで中団以前だと伸びを見せる＜中距離/長距離＞",
+      "iconId": 20016,
+      "branchTag": "Medium",
+      "condition1": "phase==1&blocked_side_continuetime>=2"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 203301,
+      "skillId": 101703211,
+      "nameEn": "熱烈峻厳",
+      "nameJp": "熱烈峻厳",
+      "descEn": "2000m以上のレースなら中盤のどこかで速度が上がる、中央の芝レースで能力を引き出すスキルを7回以上発動していると効果時間3倍＜先行/差し＞",
+      "descJp": "2000m以上のレースなら中盤のどこかで速度が上がる、中央の芝レースで能力を引き出すスキルを7回以上発動していると効果時間3倍＜先行/差し＞",
+      "iconId": 20016,
+      "branchTag": "Turf",
+      "condition1": "course_distance>=2000&phase_random==1&ground_type==1&activate_count_param_skill>=7&track_id>=10001&track_id<=10010"
+    }
+  ],
   "101801": [
     {
       "rank": 3,
@@ -1389,6 +1427,32 @@
       "iconId": 20046,
       "branchTag": "Mile",
       "condition1": "ground_type==1&distance_type==2&is_finalcorner_random==1"
+    }
+  ],
+  "101803": [
+    {
+      "rank": 3,
+      "baseSkillId": 204031,
+      "skillId": 101803111,
+      "nameEn": "“標”に足るために",
+      "nameJp": "“標”に足るために",
+      "descEn": "レース中盤のコーナーのどこかでしばらくの間前に出る＜先行・中距離＞",
+      "descJp": "レース中盤のコーナーのどこかでしばらくの間前に出る＜先行・中距離＞",
+      "iconId": 20016,
+      "branchTag": "Medium",
+      "condition1": "running_style==2&distance_type==3&phase_corner_random==1"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 204041,
+      "skillId": 101803211,
+      "nameEn": "崇高のアマラントス",
+      "nameJp": "崇高のアマラントス",
+      "descEn": "追い抜くと前に出るさらにスキル発動時前方だと速度が少し上がる＜先行・中距離＞",
+      "descJp": "追い抜くと前に出るさらにスキル発動時前方だと速度が少し上がる＜先行・中距離＞",
+      "iconId": 20016,
+      "branchTag": "Medium",
+      "condition1": "running_style==2&distance_type==3&change_order_onetime<0&accumulatetime>=5&order_rate<=50"
     }
   ],
   "101901": [
@@ -6808,6 +6872,17 @@
       "descJp": "すぐ前にウマ娘が長くいると\\n速度がすごく上がる",
       "iconId": 20016,
       "condition1": "infront_near_lane_time>=3&accumulatetime>=10"
+    },
+    {
+      "rank": 3,
+      "baseSkillId": 201652,
+      "skillId": 110602121,
+      "nameEn": "ミラクル、起きるかも？",
+      "nameJp": "ミラクル、起きるかも？",
+      "descEn": "2200mのレースなら序盤以降のどこかで速度がものすごく上がる",
+      "descJp": "2200mのレースなら序盤以降のどこかで速度がものすごく上がる",
+      "iconId": 20016,
+      "condition1": "course_distance==2200&distance_rate_after_random==0"
     },
     {
       "rank": 5,

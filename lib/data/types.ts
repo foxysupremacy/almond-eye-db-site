@@ -208,6 +208,8 @@ export interface SkillConditionGroup {
   precondition?: string | null;
   base_time?: number | null;
   effects: RawSkillEffect[];
+  /** ability_time_usage (duration scaling type); absent = 1 (direct). */
+  time_scale?: number;
 }
 
 /** Minimal typed effect contract shared by the dataset and domain layers. */
@@ -216,6 +218,10 @@ export interface RawSkillEffect {
   value?: number;
   target?: number;
   target_details?: number;
+  /** ability_value_usage (value scaling type); absent = 1 (direct). */
+  value_scale?: number;
+  /** additional_activate_type; absent = 0 (none). */
+  additional_activation?: number;
 }
 
 export interface SkillDetail extends SkillSummary {
@@ -266,35 +272,6 @@ export interface SuccessionFactorsPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Race-impact telemetry aggregate (lib/data/generated/race-impact-priors.json)
-// ---------------------------------------------------------------------------
-
-export type RaceImpactDynamicKey =
-  | "blocked"
-  | "overtake"
-  | "nearby"
-  | "surrounded"
-  | "activate_count"
-  | "other_skill"
-  | "visibility";
-
-export interface RaceImpactPrior {
-  key: RaceImpactDynamicKey;
-  courseId?: number;
-  groundCondition?: number;
-  runningStyle?: number;
-  racerCount?: number;
-  opportunities: number;
-  activations: number;
-}
-
-export interface RaceImpactPriorsPayload {
-  version: 1;
-  generatedAt: string;
-  priors: RaceImpactPrior[];
-}
-
-// ---------------------------------------------------------------------------
 // Racetracks (lib/data/generated/racetracks.json)
 // ---------------------------------------------------------------------------
 
@@ -333,6 +310,10 @@ export interface CourseRow {
   phases?: { id: number; start: number; end: number }[];
   spurtStart?: { meters?: number; lap?: number; location?: string[] };
   positionKeepEnd?: number;
+  /** mdb race_course_set.tight_track (scripts/extract-course-flags.ts). */
+  tightTrack?: 0 | 1;
+  /** mdb race_course_set.run_up in metres; only written when > 0. */
+  runUp?: number;
   data: CourseDataBlob;
 }
 

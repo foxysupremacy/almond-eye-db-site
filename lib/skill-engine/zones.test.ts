@@ -93,6 +93,14 @@ describe("computeZones - course gating (track_id & is_basis_distance)", () => {
     const nonCoreMatch = computeZones(dummyCourse, "is_basis_distance==0");
     expect(nonCoreMatch.regions.length).toBe(0);
   });
+
+  test("distance_type falls back to the length rule: a 1400 m course with no stored bucket is Sprint", () => {
+    const sprint: Course = { ...dummyCourse, length: 1400, distance: 0, phases: [
+      { id: 0, start: 0, end: 233 }, { id: 1, start: 233, end: 933 }, { id: 2, start: 933, end: 1167 }, { id: 3, start: 1167, end: 1400 },
+    ], corners: [], slopes: [], straights: [] };
+    expect(computeZones(sprint, "distance_type==1").regions.length).toBeGreaterThan(0);
+    expect(computeZones(sprint, "distance_type==2").regions.length).toBe(0);
+  });
 });
 
 describe("computeZones - spatial and phase straight randoms", () => {
@@ -157,6 +165,13 @@ describe("computeZones - intrinsic track & environmental conditions", () => {
     const tightCourse = { ...dummyCourse, trackId: 10001 };
     const tightRes = computeZones(tightCourse, "is_tight_track==1");
     expect(tightRes.regions.length).toBeGreaterThan(0);
+  });
+
+  test("is_tight_track reads the per-course mdb flag when the course carries it (step 4b)", () => {
+    // Nakayama inner courses are tight in the mdb although the track is wide; Ooi (a dirt track) is not.
+    expect(computeZones({ ...dummyCourse, trackId: 10005, tightTrack: 1 }, "is_tight_track==1").regions.length).toBeGreaterThan(0);
+    expect(computeZones({ ...dummyCourse, trackId: 10101, tightTrack: 0 }, "is_tight_track==1").regions.length).toBe(0);
+    expect(computeZones({ ...dummyCourse, trackId: 10101, tightTrack: 0 }, "is_tight_track==0").regions.length).toBeGreaterThan(0);
   });
 
   test("is_abroad gates domestic vs overseas racecourses", () => {
@@ -254,4 +269,92 @@ describe("custom race condition filtering", () => {
       expect(computeZones(dummyCourse, `${condition}==2`, null, undefined, { [key]: null }).regions.length).toBeGreaterThan(0);
     });
   }
+});
+
+// Four corners, numbered 1-4 in race order (corner==N picks corners[len + N - 5]).
+const fourCorners: Course = {
+  ...dummyCourse,
+  corners: [
+    { start: 200, end: 400, number: 1 },
+    { start: 600, end: 800, number: 2 },
+    { start: 1400, end: 1600, number: 3 },
+    { start: 1800, end: 2000, number: 4 },
+  ],
+};
+const spans = (regions: { start: number; end: number }[]) => regions.map((r) => [r.start, r.end]);
+
+describe("computeZones - corner!=N", () => {
+  test("corner!=3 is every region except corner 3", () => {
+    expect(spans(computeZones(fourCorners, "corner!=3").regions)).toEqual([[0, 1400], [1600, 2400]]);
+  });
+  test("corner!=4 on a one-corner course excludes that corner", () => {
+    expect(spans(computeZones(dummyCourse, "corner!=4").regions)).toEqual([[0, 1400], [1875, 2400]]);
+  });
+  test("corner!=N for a corner the course does not have is the whole course", () => {
+    expect(spans(computeZones(dummyCourse, "corner!=1").regions)).toEqual([[0, 2400]]);
+  });
+  test("corner!=0 still means \"in any corner\"", () => {
+    expect(spans(computeZones(fourCorners, "corner!=0").regions)).toEqual([[200, 400], [600, 800], [1400, 1600], [1800, 2000]]);
+  });
+  test("combines with other conditions", () => {
+    expect(spans(computeZones(fourCorners, "distance_rate>=50&distance_rate<=70&corner!=3").regions)).toEqual([[1200, 1400], [1600, 1680]]);
+  });
+});
+
+describe("computeZones - simulation-only pass-throughs", () => {
+  test("activate_count_param_skill>=N never zeroes a zone", () => {
+    expect(spans(computeZones(dummyCourse, "activate_count_param_skill>=7").regions)).toEqual([[0, 2400]]);
+    expect(spans(computeZones(dummyCourse, "phase==1&activate_count_param_skill>=7").regions)).toEqual([[400, 1600]]);
+  });
+  test("activate_count_param_skill is random-sampled like the other own-activation counts (R31)", () => {
+    expect(computeZones(dummyCourse, "phase==1&activate_count_param_skill>=7").isRandom).toBe(true);
+    expect(computeZones(dummyCourse, "phase==1&activate_count_heal>=1").isRandom).toBe(true);
+  });
+  test("random_lot_shared==N never zeroes a zone", () => {
+    expect(spans(computeZones(dummyCourse, "random_lot_shared==30").regions)).toEqual([[0, 2400]]);
+  });
+});
+
+describe("computeZones - popularity", () => {
+  test("popularity is a pass-through in every band (R32: met for any Uma)", () => {
+    for (const cond of ["popularity>=4", "popularity==1", "popularity<=3", "popularity>3", "popularity!=1"]) {
+      expect({ cond, n: computeZones(dummyCourse, cond).regions.length }).toEqual({ cond, n: 1 });
+    }
+  });
+});
+
+describe("computeZones - phase boundary frame (step 5b, Mejiro Dober 100591)", () => {
+  // Hanshin 2400 (10907) shape: corner 3 ends and the final corner starts exactly where phase 1 ends.
+  const hanshin: Course = {
+    ...dummyCourse,
+    corners: [{ start: 370, end: 560, number: 1 }, { start: 560, end: 750, number: 2 }, { start: 1250, end: 1600, number: 3 }, { start: 1600, end: 1927, number: 4 }],
+    straights: [{ start: 0, end: 370, frontType: 1 }, { start: 750, end: 1250, frontType: 2 }, { start: 1927, end: 2400, frontType: 1 }],
+  };
+  test("phase==1 & is_finalcorner==1 holds in the boundary frame when the final corner starts where phase 1 ends", () => {
+    // The game (mechanics doc §phase) checks skills
+    // before it updates the phase, so the frame that enters the final corner still counts as phase 1.
+    const res = computeZones(hanshin, "phase==1&corner!=0&is_finalcorner==1");
+    expect(res.regions).toHaveLength(1);
+    expect(res.regions[0].start).toBe(1600);
+    expect(res.regions[0].end).toBeGreaterThan(1600);
+    expect(res.regions[0].end).toBeLessThanOrEqual(1601);
+    expect(res.isRandom).toBe(false);
+  });
+  test("the same holds through phase<=1 / phase<2 / phase!=2", () => {
+    for (const cond of ["phase<=1&is_finalcorner==1", "phase<2&is_finalcorner==1", "phase!=2&phase!=3&is_finalcorner==1"]) {
+      const res = computeZones(hanshin, cond);
+      expect({ cond, start: res.regions[0]?.start }).toEqual({ cond, start: 1600 });
+    }
+  });
+  test("phase spans are unchanged when the boundary frame is not the only point left", () => {
+    expect(spans(computeZones(hanshin, "phase==1").regions)).toEqual([[400, 1600]]);
+    expect(spans(computeZones(hanshin, "phase<=1").regions)).toEqual([[0, 1600]]);
+    expect(spans(computeZones(hanshin, "phase<2").regions)).toEqual([[0, 1600]]);
+    expect(spans(computeZones(hanshin, "phase!=1").regions)).toEqual([[0, 400], [1600, 2400]]);
+    expect(spans(computeZones(hanshin, "phase==1&corner!=0").regions)).toEqual([[400, 560], [560, 750], [1250, 1600]]);
+    expect(spans(computeZones(hanshin, "phase==3").regions)).toEqual([[2000, 2400]]);
+  });
+  test("a later phase still never reaches back into an earlier one", () => {
+    expect(computeZones(hanshin, "phase==2&is_finalcorner==0").regions).toHaveLength(0);
+  });
 });

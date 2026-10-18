@@ -18,6 +18,12 @@ export interface Course {
   spurtStart?: { meters?: number };
   positionKeepEnd?: number;
   trackId?: number;
+  /** Course stat thresholds (1 speed … 5 wisdom) for the race course modifier; empty when the course has none. */
+  statThresholds?: number[];
+  /** Metres run before the start line (mdb race_course_set.run_up); the clock starts at 0 m. 0 / absent: none. */
+  runUp?: number;
+  /** Per-course tight-track flag (mdb race_course_set.tight_track), read by the `is_tight_track` condition. */
+  tightTrack?: 0 | 1;
 }
 
 export interface HorseParameters {
@@ -39,6 +45,8 @@ export interface RaceParameters {
   time?: number | null;
   grade?: number | null;
   noDebuffs?: boolean;
+  /** Internal (computeZones, step 5b): upper phase bounds include the boundary frame. See PHASE_BOUNDARY_FRAME_M. */
+  phaseBoundaryFrame?: boolean;
 }
 
 export type DynamicCondition = (s: unknown) => boolean;

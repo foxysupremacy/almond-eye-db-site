@@ -14,6 +14,7 @@
 import { Region, RegionList } from "./region";
 export { EqOperator, NeqOperator, LtOperator, LteOperator, GtOperator, GteOperator, AndOperator, OrOperator } from "./condition-operators";
 import { CourseHelpers } from "./course";
+import { courseDistanceCategory } from "./distance-category";
 import {
   ImmediatePolicy,
   RandomPolicy,
@@ -45,6 +46,28 @@ function lastSpurtBounds(course: Course): Region[] {
   const corners = CourseHelpers.sortedCorners(course);
   if (corners.length === 0) return [];
   return [new Region(Math.max(lastSpurtStart(course), corners[0].start), course.length)];
+}
+
+/** Regions of corner number N (1-4, counted back from the final corner in laps of four), as `corner==N`. */
+function numberedCorner(course: Course, cornerNum: number): Region[] {
+  const corners = CourseHelpers.sortedCorners(course);
+  const out: Region[] = [];
+  if (corners.length + cornerNum >= 5) {
+    for (let idx = corners.length + cornerNum - 5; idx >= 0; idx -= 4) out.push(new Region(corners[idx].start, corners[idx].end));
+  }
+  return out.reverse();
+}
+
+/** The parts of [0, length) outside sorted, non-overlapping `spans`. */
+function complement(spans: ReadonlyArray<{ start: number; end: number }>, length: number): Region[] {
+  const out: Region[] = [];
+  let lastEnd = 0;
+  for (const s of spans) {
+    if (s.start > lastEnd) out.push(new Region(lastEnd, s.start));
+    lastEnd = Math.max(lastEnd, s.end);
+  }
+  if (lastEnd < length) out.push(new Region(lastEnd, length));
+  return out;
 }
 
 function notSupported(): never {
@@ -197,6 +220,11 @@ function optionalValueFilter(
   });
 }
 
+/** An upper phase bound, plus the boundary frame when computeZones asks for it (step 5b, PHASE_BOUNDARY_FRAME_M). */
+function upper(course: Course, bound: number, extra: RaceParameters | undefined): number {
+  return extra?.phaseBoundaryFrame ? CourseHelpers.phaseUpper(course, bound) : bound;
+}
+
 /** A phase-bound skill activation count condition (e.g. activate_count_middle>=3).
  *  Narrows >= and > to the specified phase/section bounds while preserving pass-through
  *  behavior for == (historical checks like Neo Universe's unique). */
@@ -222,29 +250,30 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
 
   // -- geometric phase / section positioning --------------------------------
   phase: immediate({
-    filterEq(regions, phase, course) {
+    // With extra.phaseBoundaryFrame, upper phase bounds include the boundary frame: see PHASE_BOUNDARY_FRAME_M in course.ts.
+    filterEq(regions, phase, course, _horse, extra) {
       CourseHelpers.assertIsPhase(phase);
       const bounds = new Region(
         CourseHelpers.phaseStart(course, phase),
-        CourseHelpers.phaseEnd(course, phase),
+        upper(course, CourseHelpers.phaseEnd(course, phase), extra),
       );
       return regions.rmap((r) => r.intersect(bounds));
     },
-    filterNeq(regions, phase, course) {
+    filterNeq(regions, phase, course, _horse, extra) {
       CourseHelpers.assertIsPhase(phase);
-      const b = new Region(0, CourseHelpers.phaseStart(course, phase));
+      const b = new Region(0, upper(course, CourseHelpers.phaseStart(course, phase), extra));
       const after = new Region(CourseHelpers.phaseEnd(course, phase), course.length);
       return regions.rmap((r) => [r.intersect(b), r.intersect(after)]);
     },
-    filterLt(regions, phase, course) {
+    filterLt(regions, phase, course, _horse, extra) {
       CourseHelpers.assertIsPhase(phase);
       if (phase === 0) return new RegionList();
-      const bounds = new Region(0, CourseHelpers.phaseStart(course, phase));
+      const bounds = new Region(0, upper(course, CourseHelpers.phaseStart(course, phase), extra));
       return regions.rmap((r) => r.intersect(bounds));
     },
-    filterLte(regions, phase, course) {
+    filterLte(regions, phase, course, _horse, extra) {
       CourseHelpers.assertIsPhase(phase);
-      const bounds = new Region(0, CourseHelpers.phaseEnd(course, phase));
+      const bounds = new Region(0, upper(course, CourseHelpers.phaseEnd(course, phase), extra));
       return regions.rmap((r) => r.intersect(bounds));
     },
     filterGt(regions, phase, course) {
@@ -262,32 +291,22 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
 
   corner: immediate({
     filterEq(regions, cornerNum, course) {
-      const corners = CourseHelpers.sortedCorners(course);
       if (cornerNum === 0) {
-        // non-corners = gaps between corners (plus any leading/trailing track)
-        let lastEnd = 0;
-        const nonCorners = corners.map((c) => {
-          const r = new Region(lastEnd, c.start);
-          lastEnd = c.end;
-          return r;
-        });
-        if (lastEnd !== course.length) nonCorners.push(new Region(lastEnd, course.length));
+        const nonCorners = complement(CourseHelpers.sortedCorners(course), course.length);
         return regions.rmap((r) => nonCorners.map((s) => r.intersect(s)));
-      } else if (corners.length + cornerNum >= 5) {
-        const out: Region[] = [];
-        for (let idx = corners.length + cornerNum - 5; idx >= 0; idx -= 4) {
-          const c = corners[idx];
-          out.push(new Region(c.start, c.end));
-        }
-        out.reverse();
-        return regions.rmap((r) => out.map((c) => r.intersect(c)));
       }
-      return new RegionList();
+      const corners = numberedCorner(course, cornerNum);
+      return corners.length ? regions.rmap((r) => corners.map((c) => r.intersect(c))) : new RegionList();
     },
     filterNeq(regions, cornerNum, course) {
-      if (cornerNum !== 0) throw new Error("only supports corner!=0");
-      const corners = CourseHelpers.sortedCorners(course).map((c) => new Region(c.start, c.end));
-      return regions.rmap((r) => corners.map((c) => r.intersect(c)));
+      if (cornerNum === 0) {
+        // "in some corner"
+        const corners = CourseHelpers.sortedCorners(course).map((c) => new Region(c.start, c.end));
+        return regions.rmap((r) => corners.map((c) => r.intersect(c)));
+      }
+      // Everywhere except corner N (the whole course when it has no corner N).
+      const outside = complement(numberedCorner(course, cornerNum), course.length);
+      return regions.rmap((r) => outside.map((s) => r.intersect(s)));
     },
   }),
 
@@ -554,20 +573,19 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   }),
 
   // -- course scalar filters -----------------------------------------------------
-  distance_type: valueFilter((course) => {
-    if (course.distance && course.distance >= 1 && course.distance <= 4) {
-      return course.distance;
-    }
-    const len = course.length || course.distance || 0;
-    return len <= 1400 ? 1 : len <= 1800 ? 2 : len <= 2400 ? 3 : 4;
-  }),
+  // Stored bucket (length-derived in racetracks.json), else the length rule; see distance-category.ts.
+  distance_type: valueFilter((course) => courseDistanceCategory(course)),
   ground_type: valueFilter((course) => course.terrain),
   rotation: valueFilter((course) => course.turn),
   course_distance: valueFilter((course) => course.length),
   is_basis_distance: valueFilter((course) => (course.length % 400 === 0 ? 1 : 0)),
   track_id: valueFilter((course) => course.trackId ?? -1),
+  // Per-course mdb flag (race_course_set.tight_track, shipped in racetracks.json); the track list is only a fallback
+  // for courses built without it (tests, hand-made courses).
   is_tight_track: valueFilter((course) =>
-    [10001, 10002, 10004, 10010, 10101, 10103, 10104, 10105].includes(course.trackId ?? -1) ? 1 : 0,
+    course.tightTrack != null
+      ? course.tightTrack
+      : [10001, 10002, 10004, 10010, 10101, 10103, 10104, 10105].includes(course.trackId ?? -1) ? 1 : 0,
   ),
   is_abroad: valueFilter((course) => ((course.trackId ?? 0) >= 10200 ? 1 : 0)),
   is_dirtgrade: valueFilter((course) =>
@@ -627,6 +645,9 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
     (course) => new Region(CourseHelpers.phaseStart(course, 2), CourseHelpers.phaseEnd(course, 3)),
   ),
   activate_count_heal: noopRandom,
+  // "Activated N skills so far": simulation-only; race-impact treats it as the activate_count dynamic key. Random-
+  // sampled across its zone like the other own-activation counts (R31).
+  activate_count_param_skill: noopRandom,
   activate_count_later_half: phaseCountRandom(
     (course) => new Region(course.length / 2, course.length),
   ),
@@ -715,9 +736,12 @@ export const Conditions: { [cond: string]: Condition } = Object.freeze({
   order_rate_out70_continue: noopImmediate,
   overtake_target_no_order_up_time: noopRandom,
   overtake_target_time: noopRandom,
+  // Popularity is unknown to the static view; R32: race-impact treats any band as met, so it is a pass-through.
   popularity: noopImmediate,
   post_number: noopImmediate,
   random_lot: noopImmediate,
+  // A lottery shared by the skill's groups; R32: race-impact scoring counts it as won (no N/100 factor).
+  random_lot_shared: noopImmediate,
   remain_distance_viewer_id: noopImmediate,
   run_at_full_speed_random: random({
     filterEq(regions, flag, course) {

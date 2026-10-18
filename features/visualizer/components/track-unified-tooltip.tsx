@@ -1,11 +1,5 @@
 "use client";
 
-import { hasOpenAppSelect } from "@/app/common/ui/controls/app-select-model";
-
-
-import React, { useEffect, useRef } from "react";
-import { AppButton } from "@/app/common/ui/controls/app-button";
-import { XIcon } from "@/app/common/ui/primitives/icons";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { RaceImpactResult } from "@/lib/race-impact/types";
@@ -17,9 +11,6 @@ interface TrackUnifiedTooltipProps {
   impact?: RaceImpactResult | null;
   hoverMeter: number | null;
   coords: { x: number; y: number } | null;
-  isPinned: boolean;
-  onUnpin: () => void;
-  unit: "meters" | "bashin";
 }
 
 const PHASE_NAMES = ["Opening leg", "Middle leg", "Final leg", "Last spurt"];
@@ -30,22 +21,7 @@ export function TrackUnifiedTooltip({
   impact,
   hoverMeter,
   coords,
-  isPinned,
-  onUnpin,
-  unit,
 }: TrackUnifiedTooltipProps) {
-  const cardRef = useRef<HTMLDivElement>(null);
-
-  // Close on Escape key
-  useEffect(() => {
-    if (!isPinned) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !e.defaultPrevented && !hasOpenAppSelect()) onUnpin();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPinned, onUnpin]);
-
   if (hoverMeter == null || !course || !coords) return null;
 
   const courseLength = course.length;
@@ -110,13 +86,10 @@ export function TrackUnifiedTooltip({
 
   return (
     <div
-      ref={cardRef}
-      role={isPinned ? "region" : "tooltip"}
+      role="tooltip"
       aria-label="Course position details"
       style={{ left: `${left}px`, top: `${top}px` }}
-      className={`fixed z-[300] w-[280px] sm:w-[295px] select-none rounded-xl border border-zinc-200/90 dark:border-zinc-700/80 bg-white/95 dark:bg-zinc-900/95 p-3.5 shadow-xl backdrop-blur-md transition-all duration-75 text-zinc-900 dark:text-zinc-100 ${
-        isPinned ? "ring-2 ring-emerald-500/80 dark:ring-emerald-400/80" : ""
-      }`}
+      className="fixed z-[300] w-[280px] sm:w-[295px] select-none rounded-xl border border-zinc-200/90 dark:border-zinc-700/80 bg-white/95 dark:bg-zinc-900/95 p-3.5 shadow-xl backdrop-blur-md transition-all duration-75 text-zinc-900 dark:text-zinc-100"
     >
       {/* Header Row */}
       <div className="flex items-start justify-between gap-2 border-b border-zinc-100 dark:border-zinc-800 pb-2">
@@ -132,23 +105,6 @@ export function TrackUnifiedTooltip({
           <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
             Section {section}/24 {baselineTime != null && `· t = ${baselineTime.toFixed(1)}s`}
           </div>
-        </div>
-
-        {/* Pin Badge & Dismiss Button */}
-        <div className="flex items-center gap-1">
-          {isPinned ? (
-            <AppButton variant="quiet"
-              onPress={onUnpin}
-              aria-label="Unpin course position"
-              className="inline-flex items-center gap-1 rounded bg-emerald-50 dark:bg-emerald-950/60 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/80 cursor-pointer"
-              aria-description="Press Escape to unpin"
-            >
-              <span>Pinned</span>
-              <XIcon className="h-3 w-3 text-zinc-400" />
-            </AppButton>
-          ) : (
-            <span className="text-[10px] text-zinc-400 dark:text-zinc-500">Tap to pin</span>
-          )}
         </div>
       </div>
 
@@ -175,10 +131,10 @@ export function TrackUnifiedTooltip({
             Distance Gain
           </span>
           <div className="mt-0.5 font-mono text-xs font-bold text-emerald-700 dark:text-emerald-400">
-            {unit === "bashin" ? `${bashin.toFixed(2)} bashin` : `+${gainMeters.toFixed(2)} m`}
+            {`+${gainMeters.toFixed(2)} m`}
           </div>
           <div className="text-[10px] text-zinc-400 dark:text-zinc-500">
-            {unit === "bashin" ? `+${gainMeters.toFixed(2)} m` : `${bashin.toFixed(2)} bashin`}
+            {`${bashin.toFixed(2)} bashin`}
           </div>
         </div>
       </div>

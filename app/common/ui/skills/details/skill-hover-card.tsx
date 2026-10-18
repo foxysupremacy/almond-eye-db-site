@@ -7,6 +7,7 @@ import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { api, type SkillDetail } from "@/lib/api";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
+import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { isSkillBanned } from "@/lib/pvp/events";
 import { horseForStrategy, type SkillZoneResult } from "@/lib/skill-engine/zones";
 import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
@@ -172,6 +173,8 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     return () => { alive = false; };
   }, [active?.skillId]);
 
+  // The shared profile, so the inspector's race impact matches the Visualizer and the effect modal.
+  const [raceImpactProfile] = useRaceImpactProfile();
   const effectiveRunningStyle = active?.runningStyle ?? deckRunningStyle;
   const effectiveRaceParams = active?.raceParams ?? deckRaceParams;
   const styleHorse = useMemo(() => effectiveRunningStyle ? horseForStrategy(effectiveRunningStyle) : undefined, [effectiveRunningStyle]);
@@ -184,8 +187,8 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
   }, [detail, course, styleHorse, effectiveRaceParams, active?.skillId]);
   const evaluation = useMemo(() => {
     if (!detail) return null;
-    return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), zones ?? [], effectiveRaceParams);
-  }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, zones, effectiveRaceParams]);
+    return evaluateSkillForTrack(detail, course, effectiveRunningStyle, racerCount, Boolean(active?.isParentMode), zones ?? [], effectiveRaceParams, { raceImpactProfile });
+  }, [detail, course, effectiveRunningStyle, racerCount, active?.isParentMode, zones, effectiveRaceParams, raceImpactProfile]);
 
   const value = useMemo<SkillInspectorContextValue>(() => ({ activeKey: active?.key ?? null, preview, togglePinned, closePreview, cancelPreviewClose, close }), [active?.key, preview, togglePinned, closePreview, cancelPreviewClose, close]);
   const inspector = (cardName?: string, cardId?: number | null) => (

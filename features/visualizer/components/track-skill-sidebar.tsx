@@ -9,6 +9,7 @@ import { type RarityFilterKey } from "@/lib/skills/rarity";
 import { getSkillRarityStyle } from "@/app/common/ui/skills/skill-rarity";
 import type { VisualizerSkill } from "@/lib/visualizer/skills";
 import { SkillSourceBadges } from "@/app/common/ui/skills/provenance/skill-source-badges";
+import { ChartIcon } from "@/app/common/ui/primitives/icons";
 
 interface TrackSkillSidebarProps {
   visualizerDeck: "main" | "parent";
@@ -22,6 +23,7 @@ interface TrackSkillSidebarProps {
   firesOnCourse: (id: number) => boolean | null;
   conditionViewerRef?: RefObject<HTMLDivElement | null>;
   isSkillBanned?: (id: number) => boolean;
+  onOpenEffectGraph?: (id: number) => void;
 }
 
 export function TrackSkillSidebar({
@@ -36,6 +38,7 @@ export function TrackSkillSidebar({
   firesOnCourse,
   conditionViewerRef,
   isSkillBanned,
+  onOpenEffectGraph,
 }: TrackSkillSidebarProps) {
   return (
     <div className="order-2 flex max-h-[420px] min-w-0 flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xs dark:border-zinc-800 dark:bg-zinc-900 md:order-1 md:sticky md:top-20 md:max-h-[calc(100vh-6rem)] md:self-start">
@@ -161,9 +164,21 @@ export function TrackSkillSidebar({
             const isBanned = isSkillBanned ? isSkillBanned(s.id) : false;
             const fires = !isBanned && firesOnCourse(s.id);
             const rStyle = getSkillRarityStyle(s.rarity);
+            const graphName = s.nameEn || s.nameJp;
+            // The row and the graph icon are sibling buttons inside one card
+            // surface: nesting a button inside the row button is invalid HTML.
             return (
-              <Button
+              <div
                 key={s.id}
+                className={`flex w-full min-w-0 items-center rounded-xl border transition-all ${
+                  active
+                    ? "ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-xs"
+                    : rStyle.borderClass
+                } ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/40" : fires ? "border-emerald-500/80 dark:border-emerald-600/80" : ""} ${
+                  rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
+                }`}
+              >
+              <Button
                 aria-pressed={active}
                 onPress={() => {
                   onSelectSkill(s.id);
@@ -171,13 +186,7 @@ export function TrackSkillSidebar({
                     conditionViewerRef?.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
                   }
                 }}
-                className={`w-full min-w-0 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-xl border px-3 py-2.5 text-left transition-all cursor-pointer ${
-                  active
-                    ? "ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-xs"
-                    : rStyle.borderClass
-                } ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/40" : fires ? "border-emerald-500/80 dark:border-emerald-600/80" : ""} ${
-                  rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
-                }`}
+                className="min-w-0 flex-1 cursor-pointer rounded-xl px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
               >
                 <SkillItem
                   skill={{
@@ -221,6 +230,18 @@ export function TrackSkillSidebar({
                   )}
                 </SkillItem>
               </Button>
+              {onOpenEffectGraph && (
+              <button
+                type="button"
+                aria-label={`Open effect graph for ${graphName}`}
+                title="Open effect graph"
+                className="mr-1.5 inline-flex min-h-11 min-w-11 flex-none cursor-pointer items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 md:min-h-8 md:min-w-8"
+                onClick={() => onOpenEffectGraph(s.id)}
+              >
+                <ChartIcon className="h-4 w-4 flex-none" />
+              </button>
+              )}
+              </div>
             );
           })
         )}

@@ -1,0 +1,111 @@
+{
+  "source": "umasim race module",
+  "umasimCommit": "ca692ed78ccae54304b5c87054d8aa60c99edf56",
+  "captured": "2026-10-11",
+  "courseId": 11203,
+  "style": 2,
+  "stats": {
+    "speed": 2200,
+    "stamina": 1800,
+    "power": 1700,
+    "guts": 1500,
+    "wisdom": 1200
+  },
+  "baselineFinishSeconds": 116.525512,
+  "skills": [
+    {
+      "label": "target speed 0.35 for 3s base @1200m",
+      "effects": [
+        {
+          "type": 27,
+          "value": 3500
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1200,
+      "timeGainSeconds": 0.125746,
+      "classicTimeGainSeconds": 0.125638
+    },
+    {
+      "label": "current speed 0.15 for 3s base @1200m",
+      "effects": [
+        {
+          "type": 22,
+          "value": 1500
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1200,
+      "timeGainSeconds": 0.055877,
+      "classicTimeGainSeconds": 0.055881
+    },
+    {
+      "label": "accel 0.4 for 3s base @1200m",
+      "effects": [
+        {
+          "type": 31,
+          "value": 4000
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1200,
+      "timeGainSeconds": 0,
+      "classicTimeGainSeconds": 0
+    },
+    {
+      "label": "target speed 0.35 for 3s base @1600m",
+      "effects": [
+        {
+          "type": 27,
+          "value": 3500
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1600,
+      "timeGainSeconds": 0,
+      "classicTimeGainSeconds": 0
+    },
+    {
+      "label": "current speed 0.15 for 3s base @1600m",
+      "effects": [
+        {
+          "type": 22,
+          "value": 1500
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1600,
+      "timeGainSeconds": 0.057826,
+      "classicTimeGainSeconds": 0.06158
+    },
+    {
+      "label": "accel 0.4 for 3s base @1600m",
+      "effects": [
+        {
+          "type": 31,
+          "value": 4000
+        }
+      ],
+      "baseTime": 30000,
+      "activationMeter": 1600,
+      "timeGainSeconds": 0.440768,
+      "classicTimeGainSeconds": 0.481564
+    }
+  ],
+  "umasimSettings": {
+    "variant": "stock (umasim JP mechanics incl. full spurt, stamina limit break, conserve power)",
+    "classicBaselineFinishSeconds": 117.039547,
+    "classicNote": "classic = same run with full spurt, stamina limit break and conserve power disabled",
+    "mood": "normal",
+    "ground": "good",
+    "aptitudes": "A",
+    "gate": 1,
+    "uniqueLevel": 1,
+    "positionKeep": "none",
+    "randomness": "SkillActivateAdjustment.ALL (fixed randoms), random zones MIDDLE, skill lane change / compete fight / position competition / secure lead rates 0, seeded RNG, mean of 40 seeds with common random numbers",
+    "baselineSdSeconds": 0.079724,
+    "courseName": "芝2400m",
+    "surface": 1,
+    "activation": "remain_distance <= length - activationMeter (fires on the first frame past the meter)"
+  }
+}

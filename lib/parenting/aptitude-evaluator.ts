@@ -1,4 +1,5 @@
 import type { Course } from "../skill-engine/types";
+import { distanceCategoryForLength } from "../skill-engine/distance-category";
 import type { CharacterIndexEntry } from "../api";
 import { characters, successionFactors } from "../data/registry";
 import { getCharaIdFromCardId } from "../lineage/affinity-engine";
@@ -47,14 +48,10 @@ export function evaluateAptitudePatch(
   const surfName = course.terrain === 2 ? "Dirt" : "Turf";
   const surfRank = aptList[surfIdx] || "A";
 
-  // Distance: index 2 (Short <=1200), index 3 (Mile 1300-1800), index 4 (Medium 1900-2400), index 5 (Long >=2500)
+  // Distance: index 2 (Sprint <=1400), index 3 (Mile 1401-1800), index 4 (Medium 1900-2400), index 5 (Long >=2500)
   let distIdx = 4;
   let distName = "Medium";
-  const distBucket = course.distance ?? (
-    course.length <= 1200 ? 1 :
-    course.length <= 1800 ? 2 :
-    course.length <= 2400 ? 3 : 4
-  );
+  const distBucket = course.distance ?? distanceCategoryForLength(course.length);
   if (distBucket === 1) {
     distIdx = 2;
     distName = "Short";

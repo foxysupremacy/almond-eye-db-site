@@ -4,7 +4,7 @@ import { NumberField, Input, Label } from "react-aria-components/NumberField";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDisclosure } from "@/app/common/ui/controls/app-disclosure";
 import {
-  DEFAULT_RACE_IMPACT_STATS,
+  defaultRaceImpactProfile,
   type DynamicConditionKey,
   type RaceImpactProfile,
   type RaceImpactStat,
@@ -32,10 +32,13 @@ export function RaceImpactProfilePanel({
   profile,
   dynamicKeys,
   onChange,
+  embedded = false,
 }: {
   profile: RaceImpactProfile;
   dynamicKeys: DynamicConditionKey[];
   onChange: (next: RaceImpactProfile) => void;
+  /** Render the controls without their own disclosure (the host already wraps them in one). */
+  embedded?: boolean;
 }) {
   const updateStat = (key: RaceImpactStat, parsed: number) => {
     onChange({ ...profile, stats: { ...profile.stats, [key]: Number.isFinite(parsed) ? parsed : profile.stats[key] } });
@@ -47,13 +50,7 @@ export function RaceImpactProfilePanel({
     else dynamicOverrides[key] = probability;
     onChange({ ...profile, dynamicOverrides });
   };
-  return (
-    <AppDisclosure className="border-y border-zinc-200/80 py-2.5 dark:border-zinc-800" title={
-      <span>
-        <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Race-impact profile</span>
-        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">Stats and dynamic-condition assumptions are saved locally.</span>
-      </span>
-    }>
+  const controls = (
         <div className="mt-3 divide-y divide-zinc-200/80 border-t border-zinc-200/80 pt-3 dark:divide-zinc-800 dark:border-zinc-800">
           <div className="grid grid-cols-2 gap-x-4 gap-y-2 pb-3 sm:grid-cols-5">
             {(Object.keys(STAT_LABELS) as RaceImpactStat[]).map((key) => (
@@ -82,12 +79,30 @@ export function RaceImpactProfilePanel({
           )}
           <AppButton
             variant="quiet"
-            onPress={() => onChange({ version: 1, stats: { ...DEFAULT_RACE_IMPACT_STATS }, dynamicOverrides: {} })}
+            onPress={() => onChange(defaultRaceImpactProfile())}
             className="pt-3 text-[11px] font-semibold text-emerald-700 hover:text-emerald-600 dark:text-emerald-400"
           >
             Reset to standard profile
           </AppButton>
         </div>
+  );
+  if (embedded) {
+    return (
+      <section aria-label="Race-impact profile">
+        <h4 className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Race-impact profile</h4>
+        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Stats and dynamic-condition assumptions are saved locally.</p>
+        {controls}
+      </section>
+    );
+  }
+  return (
+    <AppDisclosure className="border-y border-zinc-200/80 py-2.5 dark:border-zinc-800" title={
+      <span>
+        <span className="block text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Race-impact profile</span>
+        <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">Stats and dynamic-condition assumptions are saved locally.</span>
+      </span>
+    }>
+      {controls}
     </AppDisclosure>
   );
 }

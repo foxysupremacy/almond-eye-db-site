@@ -13,34 +13,17 @@ import { CollectionFeature } from "../features/collection";
 import { ParentingFeature } from "../features/parenting";
 import { VisualizerFeature } from "../features/visualizer";
 import { VeteransFeature } from "../features/veterans";
+import { RankingsFeature } from "@/features/rankings";
+import { MOBILE_TABS, TABS, type Tab } from "@/app/tabs";
 import { ImportModal } from "@/features/importer";
 import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { Badge } from "@/app/common/ui/primitives/badge";
-import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, FilterIcon, DownloadIcon } from "@/app/common/ui/primitives/icons";
+import { FilterIcon, DownloadIcon } from "@/app/common/ui/primitives/icons";
 import { HEADER_ACTION_CLASS } from "@/app/common/ui/primitives/header-action";
 import { BrandMark } from "@/app/common/ui/primitives/brand-mark";
 import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
-
-type Tab = "main" | "parent-deck" | "parenting" | "visualizer" | "collection" | "veterans";
-
-const TABS: { id: Tab; label: string; badge?: string }[] = [
-  { id: "main", label: "Main Deck" },
-  { id: "parent-deck", label: "Parent Deck", badge: "Deck & Skills" },
-  { id: "parenting", label: "Parenting", badge: "Inheritance" },
-  { id: "visualizer", label: "Visualizer" },
-  { id: "collection", label: "Collection" },
-  { id: "veterans", label: "Trained Umas", badge: "Beta" },
-];
-
-const MOBILE_TABS = [
-  { id: "main", label: "Deck", icon: DeckIcon },
-  { id: "parent-deck", label: "Parents", icon: TargetIcon },
-  { id: "parenting", label: "Lineage", icon: LineageIcon },
-  { id: "visualizer", label: "Race", icon: FlagIcon },
-  { id: "collection", label: "Collection", icon: LibraryIcon },
-] as const;
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("main");
@@ -49,7 +32,7 @@ export default function Home() {
   const [toolsOpen, setToolsOpen] = useState(false);
 
   // Tabs are addressable via URL hash (#main, #parent-deck, #parenting,
-  // #visualizer, #collection, #veterans) so any view can be linked directly.
+  // #rankings, #visualizer, #collection, #veterans) so any view can be linked directly.
   // Unknown hashes (e.g. #share=...) are ignored so share links still work.
   useEffect(() => {
     try {
@@ -208,6 +191,8 @@ export default function Home() {
             <ParentDeckFeature onNavigateToParenting={() => handleTabChange("parenting")} />
           ) : tab === "parenting" ? (
             <ParentingFeature onNavigateToParentDeck={() => handleTabChange("parent-deck")} />
+          ) : tab === "rankings" ? (
+            <RankingsFeature />
           ) : tab === "visualizer" ? (
             <VisualizerFeature />
           ) : tab === "collection" ? (
@@ -220,7 +205,7 @@ export default function Home() {
         {/* Page Footer */}
         <Footer />
 
-        <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-zinc-200 bg-white/95 px-2 pt-1 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden">
+        <nav aria-label="Mobile navigation" className="mobile-bottom-nav fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-zinc-200 bg-white/95 px-2 pt-1 backdrop-blur-md dark:border-zinc-800 dark:bg-zinc-950/95 lg:hidden">
           {MOBILE_TABS.map(({ id, label, icon: Icon }) => {
             const active = tab === id || (id === "collection" && tab === "veterans");
             return <AriaLink key={id} href={`#${id}`} aria-current={active ? "page" : undefined} onClick={(event) => { event.preventDefault(); handleTabChange(id === "collection" && tab === "veterans" ? "veterans" : id); }} className={`flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-medium transition-colors ${active ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`}><span className={`grid h-7 w-11 place-items-center rounded-lg ${active ? "bg-emerald-100 dark:bg-emerald-950" : ""}`}><Icon className="h-5 w-5" /></span>{label}</AriaLink>;

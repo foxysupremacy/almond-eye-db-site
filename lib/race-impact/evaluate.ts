@@ -1,32 +1,22 @@
 import type { Course } from "../skill-engine/types";
 import type { RunningStyle } from "../deck/types";
-import { calculateStyleRankOverlap } from "../evaluator/rank-parser";
 import { classifyEffect, type RawEffect } from "../evaluator/effects";
 import type { EvaluatorZoneInput, SkillDetailInput } from "../evaluator/types";
-import type { RaceImpactPriorsPayload } from "./types";
-import type {
-  ActivationEstimate,
-  RaceImpactProfile,
-  RaceImpactResult,
-  RaceImpactSample,
-  TacticalScoreBreakdown,
+import {
+  BASHIN_METERS,
+  type ActivationEstimate,
+  type RaceImpactProfile,
+  type RaceImpactResult,
+  type RaceImpactSample,
+  type TacticalScoreBreakdown,
 } from "./types";
-import { dynamicConditionKeys, lookupDynamicPrior } from "./prior";
-import { generateRaceTrace, computeGainDistribution } from "./trace";
+import { dynamicConditionKeys } from "./prior";
+import { generateRaceTrace, computeGainDistribution, scaledDuration, type ChainedTriggerZone } from "./trace";
+import { placedTriggerIndices, resolveConditionGroup } from "./condition-group";
+import { activationFactors, scoreSkill } from "./score";
 
 function clamp(value: number, min = 0, max = 1): number {
   return Math.max(min, Math.min(max, value));
-}
-
-function median(values: number[]): number | null {
-  if (!values.length) return null;
-  const sorted = [...values].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
-  return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
-}
-
-function scaledDuration(baseTime: number | null | undefined, courseLength: number): number {
-  return baseTime && baseTime > 0 ? (baseTime / 10_000) * (courseLength / 1_000) : 0;
 }
 
 function phaseVelocity(meter: number, spurt: number): number {
@@ -45,6 +35,11 @@ function effectMagnitude(effects: RawEffect[]): number {
   }, 0);
 }
 
+function isModelableEffect(effect: RawEffect): boolean {
+  const category = classifyEffect(effect);
+  return category === "current_speed" || category === "target_speed" || category === "acceleration";
+}
+
 function dependsOnPreviousTrigger(condition: string | null | undefined, precondition: string | null | undefined): boolean {
   return `${condition ?? ""}&${precondition ?? ""}`.includes("is_activate_other_skill_detail==1");
 }
@@ -55,13 +50,15 @@ export interface RaceImpactContext {
   racerCount: number;
   raceParams?: { groundCondition?: number | string | null };
   profile: RaceImpactProfile;
-  priors?: RaceImpactPriorsPayload;
+  /** Unique-skill level used for the effect multiplier; default Lv1, same as the Rankings/modal callers. */
+  uniqueLevel?: number;
 }
 
 /**
- * A small, intentionally transparent baseline-vs-skill model. It only models
- * direct velocity/acceleration effects; the result is a comparison metric, not
- * a full race or win-probability simulation.
+ * Visualizer race impact. R14: every headline number (expected/mean/min/max/median Bashin, activation rate,
+ * usefulRate, expected distance/time gain) comes from `scoreSkill`, the engine the Rankings and the effect modal
+ * use, so all three agree. The per-meter distribution (gain-by-meter tooltip, optimalMeter) and the speed trace
+ * are illustrations built on the same placed triggers and activation rate.
  */
 export function evaluateTriggerRaceImpact(
   skill: SkillDetailInput,
@@ -69,51 +66,61 @@ export function evaluateTriggerRaceImpact(
   context: RaceImpactContext,
 ): RaceImpactResult {
   const course = context.course;
-  const group = skill.conditionGroups?.[0];
+  const groundCondition = typeof context.raceParams?.groundCondition === "number" ? context.raceParams.groundCondition : undefined;
+  const uniqueLevel = context.uniqueLevel ?? 1;
+  const groupCount = skill.conditionGroups?.length ?? 0;
+  const aligned = groupCount > 0 && zones.length === groupCount;
+  // Caller zones aligned per group: the first placeable group with a non-empty zone is the one that fires
+  // (placedTriggerIndices, the rule scoreSkill uses). Otherwise resolve the group from the course geometry.
+  const alignedPlaced = aligned ? placedTriggerIndices(skill.conditionGroups ?? [], zones, skill.id) : [];
+  const alignedIndex = alignedPlaced.length ? alignedPlaced[0] : -1;
+  const resolved = !aligned && course
+    ? resolveConditionGroup(skill, course, { groundCondition }, context.runningStyle ?? null)
+    : null;
+  const groupIndex = aligned ? Math.max(0, alignedIndex) : resolved?.index ?? 0;
+  // R7.3: chained later groups (is_activate_other_skill_detail) run in the same simulated race.
+  const chained: ChainedTriggerZone[] = aligned
+    ? alignedPlaced.slice(1).map((i) => ({ groupIndex: i, regions: zones[i].regions, isRandom: zones[i].isRandom }))
+    : (resolved?.triggers ?? []).slice(1).map((t) => ({ groupIndex: t.index, regions: [...t.zones.regions], isRandom: t.zones.isRandom }));
+  const traceOptions = { groupIndex, chained, uniqueLevel };
+  const group = skill.conditionGroups?.[groupIndex];
+  // Only the resolved group's zone may value meters; none firing means geometry 0.
+  const activeZones: EvaluatorZoneInput[] = aligned ? (alignedIndex >= 0 ? [zones[alignedIndex]] : []) : zones;
   const effects = (group?.effects ?? []) as RawEffect[];
-  const regions = zones.flatMap((zone) => zone.regions);
+  const placedEffects = [...effects, ...chained.flatMap((c) => (skill.conditionGroups?.[c.groupIndex]?.effects ?? []) as RawEffect[])];
+  const regions = activeZones.flatMap((zone) => zone.regions);
   const courseLength = course?.length ?? 2_000;
   const spurt = course?.spurtStart?.meters ?? Math.round(courseLength * 2 / 3);
   const durationSeconds = scaledDuration(group?.base_time, courseLength);
   const start = regions.length ? Math.min(...regions.map((region) => region.start)) : null;
-  const end = regions.length ? Math.max(...regions.map((region) => region.end)) : null;
   const estimatedCoverage = start === null ? 0 : durationSeconds * phaseVelocity(start, spurt);
+
+  // The single engine (R14). Caller zones are handed over when aligned so the headline, distribution and trace
+  // are all built on the same zones; otherwise scoreSkill resolves them from the course geometry.
+  const score = course && context.runningStyle
+    ? scoreSkill({
+      skill, course, raceParams: { groundCondition }, style: context.runningStyle, racerCount: context.racerCount,
+      profile: context.profile, uniqueLevel, withSamples: true, zones: aligned ? zones : undefined,
+    })
+    : null;
 
   const allDynamicKeys = dynamicConditionKeys(group?.condition, group?.precondition);
   const isChainedDetail = dependsOnPreviousTrigger(group?.condition, group?.precondition);
-  // A chained detail is evaluated conditional on the preceding detail firing.
-  // Its dependency is applied once by aggregateRaceImpact("chain"), never as a
-  // made-up independent 50% telemetry roll inside this trigger.
-  const dynamicKeys = allDynamicKeys.filter((key) => key !== "other_skill");
-  const priorLookups = dynamicKeys.map((key) => {
-    const override = context.profile.dynamicOverrides[key];
-    if (override !== undefined) return { probability: override, source: "manual" as const, samples: 0 };
-    return lookupDynamicPrior(context.priors, key, {
-      courseId: course?.id,
-      groundCondition: typeof context.raceParams?.groundCondition === "number" ? context.raceParams.groundCondition : undefined,
-      runningStyle: context.runningStyle,
-      racerCount: context.racerCount,
-    });
-  });
-  const dynamicRate = priorLookups.reduce((rate, prior) => rate * prior.probability, 1);
-  const primaryPrior = priorLookups.sort((a, b) => b.samples - a.samples)[0];
-  const rank = context.runningStyle && group
-    ? calculateStyleRankOverlap(`${group.condition ?? ""}&${group.precondition ?? ""}`, context.runningStyle, context.racerCount)
-    : null;
-  const rankRate = rank?.hasOrderCondition ? rank.positionOverlap : 1;
-  const wisdomRate = clamp(Math.max(100 - 9_000 / Math.max(1, context.profile.stats.wisdom), 20) / 100);
+  // A chained detail is evaluated as part of the full skill: scoreSkill places it in the same simulated race as the
+  // trigger it depends on (R7.3), so it is never given an extra independent telemetry roll. R7.4/R14: dynamic
+  // conditions count as satisfied unless the profile overrides them; telemetry priors are not multiplied in.
+  const { dynamicRate } = activationFactors(group, context.profile);
   const geometryRate = regions.length ? 1 : 0;
   const activation: ActivationEstimate = {
     geometryRate,
-    wisdomRate,
-    rankRate,
     dynamicRate,
     dependsOnPreviousTrigger: isChainedDetail,
-    activationRate: geometryRate * wisdomRate * rankRate * dynamicRate,
+    activationRate: score ? score.activationRate : geometryRate * dynamicRate,
     dynamicKeys: allDynamicKeys,
-    priorSource: primaryPrior?.source ?? "manual",
-    priorSamples: priorLookups.reduce((total, prior) => total + prior.samples, 0),
-    confidence: primaryPrior?.samples >= 100 ? "high" : primaryPrior?.samples >= 30 ? "medium" : "low",
+    // Priors are no longer used (R14): these fields are filled consistently as "manual / 0 samples".
+    priorSource: "manual",
+    priorSamples: 0,
+    confidence: "low",
   };
 
   const magnitude = effectMagnitude(effects);
@@ -132,51 +139,41 @@ export function evaluateTriggerRaceImpact(
   };
   tactical.total = tactical.activation + tactical.effect + tactical.timing + tactical.duration + tactical.coverage;
 
-  const hasZenkai = effects.some((effect) => classifyEffect(effect) === "zenkai_acceleration");
-  const distribution = computeGainDistribution(skill, zones, {
-    course: context.course,
-    profile: context.profile,
-    runningStyle: context.runningStyle,
-    racerCount: context.racerCount,
-  }, activation);
-  const modelable = effects.some((effect) => {
-    const category = classifyEffect(effect);
-    return category === "current_speed" || category === "target_speed" || category === "acceleration";
-  });
-  const baseSpeed = Math.max(1, 20 - ((course?.length ?? 2_000) - 2_000) / 1_000);
-  const samples: RaceImpactSample[] = distribution.samples.filter((sample) => sample.eligible && modelable).map((sample) => ({
+  const hasZenkai = placedEffects.some((effect) => classifyEffect(effect) === "zenkai_acceleration");
+  const traceContext = { course: context.course, profile: context.profile, runningStyle: context.runningStyle, racerCount: context.racerCount, groundCondition };
+  // Per-meter "what if it fired here" curve for the tooltip; its per-sample rates use the headline activation rate.
+  const distribution = computeGainDistribution(skill, activeZones, traceContext, activation, traceOptions);
+  // Task 3: a passive stat group (duration -1) is modeled by re-running the race with the boosted stats (scoreSkill).
+  const modelable = placedEffects.some(isModelableEffect) || score?.physicsStatus === "modeled";
+  const scored = modelable && score ? score.samples : [];
+  const samples: RaceImpactSample[] = scored.map((sample) => ({
     activationMeter: sample.meter,
-    distanceGainMeters: sample.gainMeters,
-    timeGainSeconds: sample.gainMeters / baseSpeed,
+    distanceGainMeters: sample.bashin * BASHIN_METERS,
+    timeGainSeconds: sample.timeGainSeconds ?? 0,
     bashin: sample.bashin,
   }));
-  const bashin = samples.map((sample) => sample.bashin);
-  const meanBashin = bashin.length ? bashin.reduce((total, value) => total + value, 0) / bashin.length : null;
-  const meanDistance = samples.length ? samples.reduce((total, sample) => total + sample.distanceGainMeters, 0) / samples.length : null;
-  const meanTime = samples.length ? samples.reduce((total, sample) => total + sample.timeGainSeconds, 0) / samples.length : null;
-  const eligibleSamples = distribution.samples.filter((sample) => sample.eligible);
-  const usefulSampleRate = eligibleSamples.length
-    ? eligibleSamples.filter((sample) => sample.gainMeters > 0.05).length / eligibleSamples.length
-    : 0;
+  const hasHeadline = score !== null && samples.length > 0;
+  const weightSum = scored.reduce((total, sample) => total + sample.weight, 0) || 1;
+  const meanTime = scored.reduce((total, sample) => total + (sample.timeGainSeconds ?? 0) * sample.weight, 0) / weightSum;
   const physicsStatus = hasZenkai ? "provisional" : modelable && samples.length ? "modeled" : effects.length ? "partial" : "not-modeled";
-  const trace = generateRaceTrace(skill, {
-    course: context.course,
-    profile: context.profile,
-    runningStyle: context.runningStyle,
-    racerCount: context.racerCount,
-  }, distribution.optimalGainMeters != null && distribution.optimalGainMeters > 0 ? distribution.optimalMeter : null, zones);
+  // R7.5: a deterministic trigger is drawn at its region start, matching the headline; a random one at its best meter.
+  const randomFirst = activeZones.some((zone) => zone.isRandom);
+  const traceMeter = !randomFirst
+    ? undefined
+    : distribution.optimalGainMeters != null && distribution.optimalGainMeters > 0 ? distribution.optimalMeter : null;
+  const trace = generateRaceTrace(skill, traceContext, traceMeter, activeZones, traceOptions);
 
   return {
     activation,
     tactical,
-    usefulRate: usefulSampleRate * activation.activationRate,
-    expectedTimeGainSeconds: meanTime === null ? null : meanTime * activation.activationRate,
-    expectedDistanceGainMeters: meanDistance === null ? null : meanDistance * activation.activationRate,
-    expectedBashin: meanBashin === null ? null : meanBashin * activation.activationRate,
-    minBashin: bashin.length ? Math.min(...bashin) : null,
-    meanBashin,
-    medianBashin: median(bashin),
-    maxBashin: bashin.length ? Math.max(...bashin) : null,
+    usefulRate: score ? score.usefulRate : 0,
+    expectedTimeGainSeconds: hasHeadline ? meanTime * score!.activationRate : null,
+    expectedDistanceGainMeters: hasHeadline ? score!.expectedBashin * BASHIN_METERS : null,
+    expectedBashin: hasHeadline ? score!.expectedBashin : null,
+    minBashin: hasHeadline ? score!.minBashin : null,
+    meanBashin: hasHeadline ? score!.meanBashin : null,
+    medianBashin: hasHeadline ? score!.medianBashin : null,
+    maxBashin: hasHeadline ? score!.maxBashin : null,
     samples,
     physicsStatus,
     physicsNote: hasZenkai
@@ -184,68 +181,5 @@ export function evaluateTriggerRaceImpact(
       : samples.length ? undefined : "This effect has tactical value but is outside the direct velocity/acceleration physics model.",
     trace,
     distribution,
-  };
-}
-
-/** Combine trigger impacts without turning alternative condition groups into additive effects. */
-export function aggregateRaceImpact(
-  impacts: RaceImpactResult[],
-  mode: "chain" | "alternative",
-): RaceImpactResult | undefined {
-  if (!impacts.length) return undefined;
-  if (impacts.length === 1) return impacts[0];
-  const activationRate = mode === "chain"
-    ? impacts.reduce((rate, impact) => rate * impact.activation.activationRate, 1)
-    : Math.min(1, impacts.reduce((rate, impact) => rate + impact.activation.activationRate, 0));
-  const conditional = (field: "expectedTimeGainSeconds" | "expectedDistanceGainMeters" | "expectedBashin") =>
-    impacts.reduce((total, impact) => {
-      const value = impact[field];
-      const ownRate = impact.activation.activationRate;
-      return total + (value === null || ownRate <= 0 ? 0 : value / ownRate);
-    }, 0);
-  const alternativeWeight = impacts.reduce((total, impact) => total + impact.activation.activationRate, 0);
-  const scaled = (field: "expectedTimeGainSeconds" | "expectedDistanceGainMeters" | "expectedBashin") => {
-    if (mode === "chain") return conditional(field) * activationRate;
-    if (!alternativeWeight) return null;
-    const weightedConditional = impacts.reduce((total, impact) => {
-      const ownRate = impact.activation.activationRate;
-      const value = impact[field];
-      return total + (value === null ? 0 : (value / Math.max(ownRate, 1e-9)) * (ownRate / alternativeWeight));
-    }, 0);
-    return weightedConditional * activationRate;
-  };
-  const allBashin = impacts.flatMap((impact) => impact.samples.map((sample) => sample.bashin));
-  const tactical = impacts.reduce<TacticalScoreBreakdown>((total, impact) => ({
-    activation: mode === "chain" ? total.activation + impact.tactical.activation : Math.max(total.activation, impact.tactical.activation),
-    effect: mode === "chain" ? total.effect + impact.tactical.effect : Math.max(total.effect, impact.tactical.effect),
-    timing: mode === "chain" ? total.timing + impact.tactical.timing : Math.max(total.timing, impact.tactical.timing),
-    duration: mode === "chain" ? total.duration + impact.tactical.duration : Math.max(total.duration, impact.tactical.duration),
-    coverage: mode === "chain" ? total.coverage + impact.tactical.coverage : Math.max(total.coverage, impact.tactical.coverage),
-    total: 0,
-  }), { activation: 0, effect: 0, timing: 0, duration: 0, coverage: 0, total: 0 });
-  tactical.total = tactical.activation + tactical.effect + tactical.timing + tactical.duration + tactical.coverage;
-  const primary = impacts.reduce((best, impact) => impact.activation.priorSamples > best.activation.priorSamples ? impact : best);
-  return {
-    ...primary,
-    activation: {
-      ...primary.activation,
-      activationRate,
-      dynamicRate: mode === "chain" ? impacts.reduce((rate, impact) => rate * impact.activation.dynamicRate, 1) : primary.activation.dynamicRate,
-      dependsOnPreviousTrigger: mode === "chain" && impacts.some((impact) => impact.activation.dependsOnPreviousTrigger),
-    },
-    tactical,
-    usefulRate: activationRate,
-    expectedTimeGainSeconds: scaled("expectedTimeGainSeconds"),
-    expectedDistanceGainMeters: scaled("expectedDistanceGainMeters"),
-    expectedBashin: scaled("expectedBashin"),
-    minBashin: allBashin.length ? Math.min(...allBashin) : null,
-    meanBashin: allBashin.length ? allBashin.reduce((sum, value) => sum + value, 0) / allBashin.length : null,
-    medianBashin: median(allBashin),
-    maxBashin: allBashin.length ? Math.max(...allBashin) : null,
-    samples: impacts.flatMap((impact) => impact.samples),
-    physicsStatus: impacts.some((impact) => impact.physicsStatus === "provisional") ? "provisional" : impacts.some((impact) => impact.physicsStatus === "partial") ? "partial" : "modeled",
-    physicsNote: mode === "chain" ? "Aggregate impact requires every chained trigger to activate." : "Aggregate impact is a probability-weighted mixture of alternative trigger paths.",
-    trace: primary.trace ?? impacts.find((i) => i.trace)?.trace,
-    distribution: primary.distribution ?? impacts.find((i) => i.distribution)?.distribution,
   };
 }

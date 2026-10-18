@@ -16,6 +16,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { distanceCategoryForLength } from "../lib/skill-engine/distance-category.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -145,6 +146,8 @@ const skills = rawSkills.map((s: any) => {
         precondition: g.precondition || null,
         base_time: g.base_time ?? null,
         effects: g.effects || [],
+        // ability_time_usage (duration scaling type); absent = 1 (direct). Read by the race-impact model.
+        ...(typeof g.time_scale === "number" && g.time_scale !== 1 ? { time_scale: g.time_scale } : {}),
       }))
     : [];
 
@@ -155,6 +158,8 @@ const skills = rawSkills.map((s: any) => {
     descEn,
     descJp,
     rarity: Number(s.rarity || 1),
+    // 0 = guaranteed (uniques), 1 = wisdom activation check. GameTora field.
+    activation: typeof s.activation === "number" ? s.activation : null,
     iconId: resolveSkillIconId(s, conditionGroups),
     // Raw effect tags ("run"/"ldr"/"sho"/"mil"/"tur"…) — consumed by the
     // GameTora card crawler to build skill-meta.json tactical tags.
@@ -218,7 +223,8 @@ const racetracks = rawTracks.map((t: any) => {
     ? t.courses.map((c: any) => ({
         id: Number(c.id),
         trackId: id,
-        distance: c.distance,
+        // GameTora labels <=1400 m courses as Mile; the game's rule is length-based.
+        distance: distanceCategoryForLength(c.length),
         inout: c.inout,
         length: c.length,
         terrain: c.terrain,

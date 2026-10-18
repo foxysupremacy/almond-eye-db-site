@@ -103,6 +103,8 @@ export interface SkillTriggerEvaluation {
 export interface SkillDetailInput {
   id: number;
   rarity?: number;
+  /** Game data flag (0 = guaranteed, 1 = wisdom check). Metadata only: R32 scores assume activation and never read it. */
+  activation?: number | null;
   nameEn?: string;
   nameJp?: string;
   descEn?: string;
@@ -111,6 +113,7 @@ export interface SkillDetailInput {
     precondition?: string | null;
     effects?: import("../data/types").RawSkillEffect[];
     base_time?: number | null;
+    time_scale?: number;
   }>;
 }
 

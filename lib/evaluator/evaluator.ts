@@ -22,19 +22,18 @@ import { classifyEffect } from "./effects";
 import { summarizeSkillEffects } from "./effect-summary";
 import { parseRankRequirements, calculateStyleRankOverlap } from "./rank-parser";
 import { getCategoryBadge, buildCalculationBreakdown } from "./calculation-steps";
-import { raceImpactPriors } from "../data/registry";
 import {
-  aggregateRaceImpact,
   defaultRaceImpactProfile,
+  hasChainedTriggers,
   evaluateTriggerRaceImpact,
   type RaceImpactProfile,
-  type RaceImpactPriorsPayload,
 } from "../race-impact";
 
 export interface EvaluationOptions {
   skipTriggerEvaluations?: boolean;
   raceImpactProfile?: RaceImpactProfile;
-  raceImpactPriors?: RaceImpactPriorsPayload;
+  /** Unique-skill level for race impact; default Lv1 (same as Rankings/modal). */
+  uniqueLevel?: number;
 }
 
 /**
@@ -621,16 +620,16 @@ export function evaluateSkillForTrack(
   score -= trapScorePenalty;
   let primaryBadge = getCategoryBadge(category);
 
-  // Run the transparent per-trigger model before composing multi-trigger skills.
-  // This does not replace category semantics; it contributes an uncapped score
-  // whose factors are exposed in the inspector.
-  let raceImpact = evaluateTriggerRaceImpact(skill, zones, {
+  // Race impact of the full skill. R14: its headline numbers come from scoreSkill (the Rankings/modal engine),
+  // which already picks the first firable group and places chained groups in the same run, so per-trigger
+  // results below are never re-aggregated into it.
+  const raceImpact = evaluateTriggerRaceImpact(skill, zones, {
     course,
     runningStyle,
     racerCount,
     raceParams,
     profile: options?.raceImpactProfile ?? defaultRaceImpactProfile(),
-    priors: options?.raceImpactPriors ?? raceImpactPriors,
+    uniqueLevel: options?.uniqueLevel ?? 1,
   });
 
   // Evaluate each firing trigger independently before aggregating the final
@@ -663,9 +662,8 @@ export function evaluateSkillForTrack(
   const activeTriggerResults = (triggerEvaluations ?? [])
     .map((entry) => entry.evaluation)
     .filter((entry): entry is SkillEvaluationResult => entry !== null);
-  const hasChainedTrigger = (skill.conditionGroups ?? []).some((group) =>
-    `${group.condition ?? ""}&${group.precondition ?? ""}`.includes("is_activate_other_skill_detail==1"),
-  );
+  // Same rule as rankings: later groups chained to a firable first group run in one race.
+  const hasChainedTrigger = hasChainedTriggers(skill.conditionGroups ?? [], zones, skill.id);
 
   if (activeTriggerResults.length > 1) {
     if (hasChainedTrigger) {
@@ -690,10 +688,6 @@ export function evaluateSkillForTrack(
 
       const normalizedBonus = Math.min(15, Math.round(compositeBonus * 0.4));
       score = activeTriggerResults.reduce((total, trigger) => total + trigger.score, 0) + normalizedBonus;
-      raceImpact = aggregateRaceImpact(
-        activeTriggerResults.flatMap((trigger) => trigger.raceImpact ? [trigger.raceImpact] : []),
-        "chain",
-      ) ?? raceImpact;
 
       if (normalizedBonus > 0) {
         specialEffects.push({
@@ -717,10 +711,7 @@ export function evaluateSkillForTrack(
       tier = bestTrigger.tier;
       primaryBadge = bestTrigger.primaryBadge;
       verdictSummary = `${bestTrigger.verdictSummary} Best of ${activeTriggerResults.length} alternative activation paths on this course.`;
-      raceImpact = aggregateRaceImpact(
-        activeTriggerResults.flatMap((trigger) => trigger.raceImpact ? [trigger.raceImpact] : []),
-        "alternative",
-      ) ?? raceImpact;
+      // raceImpact is not mixed across alternatives (R14): the game uses the first firable group, as scoreSkill does.
     }
 
     // Keep the visible rating consistent with an unbounded tactical score.

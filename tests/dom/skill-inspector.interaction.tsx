@@ -7,8 +7,10 @@ import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { SkillHoverCard, SkillInspectorProvider } from "@/app/common/ui/skills/details/skill-hover-card";
 import DuplicateSkillBadge from "@/app/common/ui/skills/provenance/duplicate-skill-badge";
 import { TrackSkillSidebar } from "@/features/visualizer/components/track-skill-sidebar";
-import { RaceImpactProfilePanel } from "@/features/visualizer/components/race-impact-profile-panel";
-import { defaultRaceImpactProfile, type RaceImpactProfile } from "@/lib/race-impact";
+import { RaceImpactProfilePanel } from "@/app/common/ui/skills/effect-details/race-impact-profile-panel";
+import { defaultRaceImpactProfile, saveRaceImpactProfile, type RaceImpactProfile } from "@/lib/race-impact";
+import { loadRacetracks } from "@/lib/data/registry";
+import { flattenCourse } from "@/lib/api/course-format";
 
 const originalMatchMedia = window.matchMedia;
 const originalWidth = window.innerWidth;
@@ -221,6 +223,51 @@ describe("skill inspection overlays", () => {
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Duplicate sources for Shared skill" }) === null).toBe(true));
     expect(screen.getByRole("dialog", { name: "Card inspection" })).toBeTruthy();
     expect(document.activeElement === trigger).toBe(true);
+  });
+});
+
+async function kyotoCourse() {
+  for (const t of await loadRacetracks()) { const r = t.courses.find((c) => c.id === 10808); if (r) return { ...flattenCourse(r), trackId: t.id }; }
+  throw new Error("Kyoto 10808 missing");
+}
+const OVERTAKE_ID = 980010;
+function overtakeSkill(): SkillDetail {
+  return { id: OVERTAKE_ID, nameEn: "Overtake skill", nameJp: "テスト", descEn: "x", rarity: 1, conditionGroups: [{ condition: "is_overtake==1&phase>=2", precondition: null, base_time: 30000, effects: [{ type: 27, value: 3500 }] }] } as SkillDetail;
+}
+
+describe("skill inspector race impact", () => {
+  afterEach(() => { saveRaceImpactProfile(defaultRaceImpactProfile()); });
+
+  test("M2: with no override the Activation factor reads 'Assumed', matching the modal (R32)", async () => {
+    finePointer();
+    saveRaceImpactProfile(defaultRaceImpactProfile());
+    const request = replaceSkillRequest(async () => overtakeSkill());
+    try {
+      const user = userEvent.setup();
+      const course = await kyotoCourse();
+      render(<SkillInspectorProvider course={course} racerCount={9} runningStyle={2} activePvpEvent={null} raceParams={{ groundCondition: 1 }}><SkillHoverCard skillId={OVERTAKE_ID} fallbackSkill={{ nameEn: "Overtake skill" }}>Overtake skill</SkillHoverCard></SkillInspectorProvider>);
+      await user.click(screen.getByRole("button", { name: "Inspect Overtake skill" }));
+      await screen.findByText("Race impact");
+      const row = screen.getByText("Activation", { selector: "span" }).parentElement!;
+      expect(row.textContent).toContain("Assumed");
+      expect(row.textContent).not.toContain("100%");
+    } finally { request.mockRestore(); }
+  });
+
+  test("M3: the inspector scores with the user's race-impact profile (same as Visualizer and modal)", async () => {
+    finePointer();
+    saveRaceImpactProfile({ ...defaultRaceImpactProfile(), dynamicOverrides: { overtake: 0.3 } });
+    const request = replaceSkillRequest(async () => overtakeSkill());
+    try {
+      const user = userEvent.setup();
+      const course = await kyotoCourse();
+      render(<SkillInspectorProvider course={course} racerCount={9} runningStyle={2} activePvpEvent={null} raceParams={{ groundCondition: 1 }}><SkillHoverCard skillId={OVERTAKE_ID} fallbackSkill={{ nameEn: "Overtake skill" }}>Overtake skill</SkillHoverCard></SkillInspectorProvider>);
+      await user.click(screen.getByRole("button", { name: "Inspect Overtake skill" }));
+      await screen.findByText("Race impact");
+      const row = screen.getByText("Activation", { selector: "span" }).parentElement!;
+      expect(row.textContent).toContain("30%");
+      expect(screen.getByText(/situational override 30%/)).toBeTruthy();
+    } finally { request.mockRestore(); }
   });
 });
 

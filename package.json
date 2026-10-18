@@ -39,7 +39,6 @@
 		"bump": "node --experimental-strip-types scripts/bump-version.ts",
 		"build:data": "node --experimental-strip-types scripts/generate-data.ts && node --experimental-strip-types scripts/extract-mdb.ts",
 		"data:build:pvp-recommendations": "node --experimental-strip-types scripts/build-pvp-recommendations.ts",
-		"build:race-impact-priors": "node --experimental-strip-types scripts/build-race-impact-priors.ts",
 		"data:refresh": "node --experimental-strip-types scripts/refresh-data.ts",
 		"fetch:gametora": "node --experimental-strip-types scripts/fetch-gametora.ts",
 		"dev": "vinext dev",

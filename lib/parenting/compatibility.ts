@@ -21,6 +21,7 @@ import {
 import { getCharacterImageUrl } from "../api";
 import type { KyumaruVeteranItem } from "../veterans/types";
 import type { Course } from "../skill-engine/types";
+import { distanceCategoryForLength } from "../skill-engine/distance-category";
 import type { RunningStyle } from "../deck/types";
 import {
   calculateAffinity,
@@ -141,7 +142,7 @@ function isUniqueFiltered(uniqueEval: LegacyUniqueEval | undefined): boolean {
 const STYLE_APTITUDE_INDEX: Record<number, number> = { 1: 6, 2: 7, 3: 8, 4: 9 };
 
 function distanceAptitudeIndex(course: Course): number {
-  const bucket = course.distance || (course.length <= 1200 ? 1 : course.length <= 1800 ? 2 : course.length <= 2400 ? 3 : 4);
+  const bucket = course.distance || distanceCategoryForLength(course.length);
   return bucket === 1 ? 2 : bucket === 2 ? 3 : bucket === 3 ? 4 : 5;
 }
 

@@ -19,6 +19,8 @@ const __dirname = path.dirname(__filename);
 
 import { loadEnv } from "./env.ts";
 import { extractG1Calendar } from "./extract-g1-calendar.ts";
+import { extractSkillLevelCoef, patchCharacterEvolutions } from "./extract-skill-tables.ts";
+import { patchRacetrackCourseFlags } from "./extract-course-flags.ts";
 
 loadEnv();
 
@@ -454,6 +456,9 @@ export function extractAffinityData() {
   if (coverage) console.log(coverage);
   if (careerCoverage) console.log(careerCoverage);
   extractG1Calendar(db);
+  extractSkillLevelCoef(db);
+  patchCharacterEvolutions(db);
+  patchRacetrackCourseFlags(db);
 }
 
 extractAffinityData();

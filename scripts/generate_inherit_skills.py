@@ -55,30 +55,43 @@ def load_json(path):
 
 
 def build_condition_groups(row):
-    """Mirror the GameTora condition_groups schema: one group per skill detail."""
+    """Mirror the skills.json condition_groups schema: one group per skill detail.
+
+    Keep in sync with scripts/inherit-skill-triggers.ts (authoritative; refresh-data
+    runs it after this script and lib/data/skills-inherit.test.ts checks the result).
+    Zero-duration details (instant heals) are kept: base_time is the raw value.
+    """
     groups = []
     for d in (1, 2):
-        cond = row[f"condition_{d}"]
-        base_time = row[f"float_ability_time_{d}"]
-        if not cond or not base_time:
-            continue
+        cond = (row[f"condition_{d}"] or "").strip()
         effects = []
         for a in range(1, N_ABILITIES + 1):
             atype = row[f"ability_type_{d}_{a}"]
             if not atype:
                 continue
-            effect = {"type": atype, "value": row[f"float_ability_value_{d}_{a}"]}
+            effect = {}
+            additional = row[f"additional_activate_type_{d}_{a}"]
+            if additional:
+                effect["additional_activation"] = additional
             target = row[f"target_type_{d}_{a}"]
             if target not in (0, 1):
                 effect["target"] = target
+                effect["target_details"] = row[f"target_value_{d}_{a}"] or 0
+            elif row[f"target_value_{d}_{a}"]:
+                effect["target_details"] = row[f"target_value_{d}_{a}"]
+            effect["type"] = atype
+            effect["value"] = row[f"float_ability_value_{d}_{a}"]
+            usage = row[f"ability_value_usage_{d}_{a}"]
+            if usage and usage != 1:
+                effect["value_scale"] = usage
             effects.append(effect)
-        if not effects:
+        if not cond and not (d == 1 and effects):
             continue
         groups.append(
             {
                 "condition": cond,
-                "precondition": row[f"precondition_{d}"] or None,
-                "base_time": base_time,
+                "precondition": (row[f"precondition_{d}"] or "").strip() or None,
+                "base_time": row[f"float_ability_time_{d}"] or 0,
                 "effects": effects,
             }
         )
@@ -183,6 +196,7 @@ def main():
                 "descEn": desc_en,
                 "descJp": desc_jp,
                 "rarity": row["rarity"],
+                "activation": row["activate_lot"],
                 "iconId": icon_id,
                 "conditionGroups": build_condition_groups(row),
             }
