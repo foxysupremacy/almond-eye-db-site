@@ -12,6 +12,7 @@ const row = tracks.find(track => track.id === 10008)!.courses.find(course => cou
 const course = flattenCourse(row);
 const context: RatingContext = { course, style: 3, racerCount: 9, raceParameters: { groundCondition: 1 }, profile: defaultRaceImpactProfile() };
 const skill = skillsById.get(203561)!; // With All My Might / 一所懸命
+const nonStopGirl = skillsById.get(200491)!;
 const withCondition = (condition: string) => ({ ...skill, conditionGroups: skill.conditionGroups!.map(group => ({ ...group, condition })) });
 
 describe('Kyoto 3000m Betweener rating regression', () => {
@@ -52,6 +53,16 @@ describe('Kyoto 3000m Betweener rating regression', () => {
     expect(assumed.score).toBeGreaterThan(0);
     expect(assumed.score).toBe(plain.score);
     expect(assumed.assumptions.map(a => a.clause)).toEqual(['order<=6', 'blocked_front==1', 'is_overtake==1']);
+  });
+
+  test('Non-stop Girl scores its lane movement instead of reporting type 28 as unsupported', () => {
+    const result = createApplicationRatingSession(context).evaluate({ skill: nonStopGirl });
+    const lane = result.contributions.find(contribution => contribution.family === 'lane_movement');
+    expect(lane?.attributedBenefit ?? 0).toBeGreaterThan(0);
+    expect(lane?.points ?? 0).toBeGreaterThan(0);
+    expect(result.status).toBe('provisional');
+    expect(result.partialReasons).not.toContain('No handler for effect types 28.');
+    expect(result.assumptions.some(assumption => assumption.clause === 'type 28 lane movement')).toBe(true);
   });
 
   test('low HP permits a slower spurt; unsatisfied intrinsic conditions remain a genuine no-activation zero', () => {

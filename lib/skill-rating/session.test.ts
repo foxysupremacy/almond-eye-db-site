@@ -3,13 +3,13 @@ import { defaultRaceImpactProfile } from '../race-impact/profile';
 import type { RatingBenchmarks, RatingContext, RatingEnvironment, RatingRequest } from './types';
 import { createSkillRatingSession } from './session';
 import { tierForScore, shapley } from './policy';
-import { runTimeline, simulateTimeline } from './simulator';
+import { advanceLaneDodge, createInwardLaneDodge, laneMoveTargetSpeedBonus, runTimeline, simulateTimeline } from './simulator';
 import type { TriggerPath } from './types';
 import { RATING_MODEL_VERSION, RECOVERY_POLICY_VERSION } from './types';
 
 const course = { id:1,length:2400,terrain:1,turn:1,distance:3,inout:1,trackId:10001,corners:[{start:400,end:800},{start:1500,end:1800}],straights:[{start:0,end:400,frontType:1},{start:800,end:1500,frontType:1},{start:1800,end:2400,frontType:1}],slopes:[],spurtStart:{meters:1600},phases:[{id:0,start:0,end:400},{id:1,start:400,end:1600},{id:2,start:1600,end:2000},{id:3,start:2000,end:2400}] };
 const context:RatingContext={course,style:2,racerCount:9,raceParameters:{groundCondition:1},profile:defaultRaceImpactProfile()};
-const families=['target_speed','current_speed_21','current_speed_22','acceleration','zenkai','recovery','passive_speed','passive_stamina','passive_power','passive_guts','passive_wisdom','start_delay'] as const;
+const families=['target_speed','current_speed_21','current_speed_22','acceleration','lane_movement','zenkai','recovery','passive_speed','passive_stamina','passive_power','passive_guts','passive_wisdom','start_delay'] as const;
 const benchmarks:RatingBenchmarks={modelVersion:RATING_MODEL_VERSION,convention:'test product convention',families:Object.fromEntries(families.map(f=>[f,{benefit:1,payloads:1,fixtures:1}])) as RatingBenchmarks['families'],provenance:['fixture'],recoveryPolicy:{version:RECOVERY_POLICY_VERSION,nominalHP:{benefit:60,payloads:1,fixtures:1}}};
 const environment:RatingEnvironment={benchmarks};
 const request=(condition:string,effects:any[],base_time=30000):RatingRequest=>({skill:{id:101,rarity:1,conditionGroups:[{condition,base_time,effects}]}});
@@ -37,6 +37,26 @@ describe('canonical skill rating session',()=>{
    expect(full.score).toBe(summary.score); expect(full.eligibility).toEqual(summary.eligibility);
    expect(full.trace).toBeDefined(); expect(session.metrics().simulations).toBeGreaterThan(afterSummary.simulations);
    expect(session.evaluate(req,{detail:'summary'}).score).toBe(summary.score);
+ });
+ test('special scaling values drive the rating and preserve source skill data',()=>{
+   const effects=[{type:22,value:4500,value_scale:36}];
+   const req=request('phase==1&corner!=0&order_rate<=50&ground_type==1',effects);
+   const result=createSkillRatingSession(context,environment).evaluate(req);
+   expect(result.selectedPaths[0].effects[0].value).toBe(6500);
+   expect(result.selectedPaths[0].partialReasons).toEqual([]);
+   expect(effects[0].value).toBe(4500);
+   const love=createSkillRatingSession(context,environment).evaluate(request('phase==1',[{type:27,value:1500,value_scale:30}]));
+   expect(love.selectedPaths[0].effects[0].value).toBe(4500);
+   expect(love.status).toBe('partial');
+   expect(love.partialReasons.some(reason=>reason.includes('assumed')&&reason.includes('Fan Love'))).toBe(true);
+ });
+ test('scaling metadata comes from the evaluated variant only',()=>{
+   const source={id:101,rarity:2,conditionGroups:[{condition:'phase==2',base_time:30000,effects:[{type:27,value:1500,value_scale:30}]}]};
+   const variantEnv:RatingEnvironment={...environment,resolveVariant:(_skill,variant)=>variant==='parent-factor'?{id:202,rarity:1,conditionGroups:[{condition:'phase==2',base_time:30000,effects:[{type:27,value:1500}]}]}:null};
+   const result=createSkillRatingSession(context,variantEnv).evaluate({skill:source,variant:'parent-factor'});
+   expect(result.evaluatedSkillId).toBe(202);
+   expect(result.selectedPaths[0].effects[0].value).toBe(1500);
+   expect(result.partialReasons.some(reason=>reason.includes('Fan Love'))).toBe(false);
  });
  test('dynamic rank and blocked clauses are assumptions and do not reduce score',()=>{
    const req=request('phase==2&order_rate<=50&blocked_front==1',[{type:27,value:3500,target:1}]);
@@ -111,6 +131,18 @@ describe('canonical skill rating session',()=>{
    expect(run(p21)).toBeGreaterThan(0); expect(run(p22)).toBeGreaterThan(0); expect(Math.abs(run(p21)-run(p22))).toBeGreaterThan(0.001);
    const finish=simulateTimeline(context,[{path:{...p21,regions:[{start:2390,end:2400}]},meter:2390}]).benefit;
    expect(finish).toBeLessThan(run(p21));
+ });
+ test('lane movement uses raw CW/s, makes one inward dodge, and only grants its target-speed bonus after moving',()=>{
+   const initial=createInwardLaneDodge(5);
+   expect(laneMoveTargetSpeedBonus(initial,1700,true)).toBe(0);
+   const ordinary=advanceLaneDodge(initial,1700,0);
+   const boosted=advanceLaneDodge(initial,1700,.025);
+   expect(boosted.remaining).toBeLessThan(ordinary.remaining);
+   expect(laneMoveTargetSpeedBonus(boosted,1700,true)).toBeGreaterThan(0);
+   expect(laneMoveTargetSpeedBonus(boosted,1700,false)).toBe(0);
+   const lane=path({type:28,value:250},4);
+   const result=simulateTimeline(context,[{path:lane,meter:1200}],true);
+   expect(result.benefit).toBeGreaterThan(0);
  });
  test('zenkai uses raw profile speed boundary and remains provisional',()=>{
    const zenkai=path({type:48,value:4000},8);

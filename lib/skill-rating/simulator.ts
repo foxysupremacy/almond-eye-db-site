@@ -16,6 +16,7 @@ export const SIMULATOR_PROVENANCE = [
   `${RATING_MODEL_VERSION}: deterministic one-Uma model, A aptitudes, neutral motivation; conditional best feasible spurt, no Wisdom acceptance roll`,
   'Spurt planning starts at phase 2 following the reference solver and the detailed mechanics paragraph; the document introduction also mentions mid-race. Budget excludes final 60m; integration includes the goal.',
   'Conditional competition: one nearby same-style representative; sections 11–15, checks 2s, duration 2s, cooldown 1s; NearFactor 0.5, HP cost once per activation (provisional frequency).',
+  'Lane movement: type 28 assumes one unblocked inward dodge of one horse lane when it activates. Its documented lateral-speed formula and MoveLaneModifier are modeled; full lobby positioning, collisions and path geometry are not.',
   'Stamina Keep: immediate detection at each check, reserve factor 1.0375; Limit Break random factor 0.9865 (weighted midpoint convention). These inferred mechanics are provisional.',
   'Planner omits future Zenkai ramp and optional competition costs. Downhill mode, Secure Lead, Dueling, Rushed and full positioning are not modeled.',
   'Slope units: stored slope / 10000 = percent; uphill target penalty = percent × 200 / adjusted Power (reference RaceSolver.ts)',
@@ -26,6 +27,50 @@ export interface Run { finish: number; points?: Point[]; firstFire: number | nul
 const DT = 1 / 15;
 const STAT_NAMES = ['speed','stamina','power','guts','wisdom'] as const;
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+const HORSE_LANE = 1 / 18;
+const LANE_ACCELERATION = .02 * 1.5;
+
+/** One bounded, successful inward lane dodge used for type-28 conditional value. */
+export interface LaneDodgeState {
+  remaining: number;
+  laneDistance: number;
+  currentSpeed: number;
+  order: number;
+  movedPreviousFrame: boolean;
+}
+
+export function laneMoveTargetSpeed(power: number, order: number): number {
+  return .02 * (.3 + .001 * power) * (1 + order * .01);
+}
+
+export function laneMoveTargetSpeedModifier(power: number): number {
+  return Math.sqrt(.0002 * Math.max(0, power));
+}
+
+export function laneMoveTargetSpeedBonus(state: LaneDodgeState | null, power: number, laneEffectActive: boolean): number {
+  return state?.movedPreviousFrame && laneEffectActive ? laneMoveTargetSpeedModifier(power) : 0;
+}
+
+export function createInwardLaneDodge(order: number): LaneDodgeState {
+  return { remaining: HORSE_LANE, laneDistance: HORSE_LANE, currentSpeed: 0, order, movedPreviousFrame: false };
+}
+
+/** Advance an inward dodge in course-width units using the documented lateral formulas. */
+export function advanceLaneDodge(state: LaneDodgeState, power: number, skillModifier: number, dt = DT): LaneDodgeState {
+  if (state.remaining <= 0) return { ...state, remaining: 0, currentSpeed: 0, movedPreviousFrame: false };
+  const currentSpeed = Math.min(laneMoveTargetSpeed(power, state.order), state.currentSpeed + LANE_ACCELERATION * dt);
+  const actualSpeed = clamp(currentSpeed + skillModifier, 0, .6) * (1 + state.laneDistance);
+  const moved = Math.min(state.remaining, actualSpeed * dt);
+  const remaining = Math.max(0, state.remaining - moved);
+  return {
+    remaining,
+    laneDistance: Math.max(0, state.laneDistance - moved),
+    currentSpeed: remaining === 0 ? 0 : currentSpeed,
+    order: state.order,
+    movedPreviousFrame: moved > 1e-9,
+  };
+}
+
 export function effectFamily(effect: RawSkillEffect): EffectFamily | null { return describeEffect(effect).family; }
 export function effectTarget(effect: RawSkillEffect): 'self' | 'opponent' | 'unknown' {
   const target = describeEffect(effect).target;
@@ -58,6 +103,7 @@ export function runTimeline(context: RatingContext, events: TimelineEvent[], tar
   const competitionEnabled = (context.hpEnvironment?.competition ?? 'conditional') === 'conditional';
   let maxHP = computeMaxHP(length,stats.stamina,style), hp = maxHP;
   let time = 0, meter = 0, velocity = 3, delay = .1, spurt = false, zenkai = false, zenkaiVelocity = 0;
+  let laneDodge: LaneDodgeState | null = null;
   let plan: SpurtPlan | undefined, spurtStart: number | null = null, depletedAt: number | null = null, spurtDistance = 0;
   let limitBreakActive = false;
   let firstFire: number | null = null, firstFireMeter: number | null = null, lastEnd: number | null = null, lastEndMeter: number | null = null;
@@ -119,6 +165,18 @@ export function runTimeline(context: RatingContext, events: TimelineEvent[], tar
           if(seconds>0) active.push({effect:e,end:time+seconds});
         } else if(e.type===10) {if(meter===0)delay*=value;}
         else if(e.type===14) {if(meter===0)delay+=value;}
+        else if(e.type===28) {
+          // A type-28 trigger is conditionally valued as a successful, inward
+          // one-horse-lane dodge. Rank is not a simulated lobby position, so
+          // use the middle of the path's eligible rank window as the neutral
+          // OrderModifier input for the documented lateral-speed formula.
+          if (!laneDodge || laneDodge.remaining <= 0) {
+            const ranks = event.path.rankSet;
+            const order = ranks.length ? ranks[Math.floor((ranks.length - 1) / 2)] : Math.max(1, Math.ceil(context.racerCount / 2));
+            laneDodge = createInwardLaneDodge(order);
+          }
+          if(seconds>0) active.push({effect:e,end:time+seconds});
+        }
         else if(seconds>0)active.push({effect:e,end:time+seconds});
         else if(event.path.duration.kind==='instant'&&(e.type===21||e.type===22))velocity+=value;
       }
@@ -149,16 +207,19 @@ export function runTimeline(context: RatingContext, events: TimelineEvent[], tar
     }
     let targetSpeed=spurt&&plan ? plan.speed-(plan.maximum&&!limitBreakActive?limitBuff:0) : baseTargetSpeed(phase,length,stats,style)+(limitBreakActive?limitBuff:0);
     let targetBonus=competitionBonus,currentBonus=0,accelBonus=0,zenkaiBonus=0;
+    let laneSkillModifier=0;
     for(const {effect:e} of active) {
       const value=(e.value??0)/10000;
       if(e.type===27)targetBonus+=value;
       if(e.type===21||e.type===22)currentBonus+=value;
       if(e.type===31)accelBonus+=value;
+      if(e.type===28)laneSkillModifier+=value;
       if(e.type===48)zenkaiBonus+=value*.1;
     }
     const slope=course.slopes.find(s=>meter>=s.start&&meter<s.end)?.slope??0;
     if(slope>0)targetSpeed-=(slope/10000)*200/Math.max(1,stats.power);
     targetSpeed+=targetBonus;
+    targetSpeed += laneMoveTargetSpeedBonus(laneDodge,stats.power,laneSkillModifier !== 0);
     const powerAccel=.0006*Math.sqrt(500*Math.max(1,stats.power));
     if(spurt&&plan?.maximum&&raw.speed+modifiers.speed>2000&&hp>0&&velocity>=maximum-.02)zenkai=true;
     if(zenkai&&hp>0) {zenkaiVelocity+=(.068*powerAccel/Math.pow(length/1000,1.5)+zenkaiBonus)*DT;targetSpeed+=zenkaiVelocity;}
@@ -177,6 +238,7 @@ export function runTimeline(context: RatingContext, events: TimelineEvent[], tar
     meter=Math.min(length,meter+step);time+=DT*fraction;velocity=Math.max(.1,nextV);
     const hpBefore=hp;hp=Math.max(0,hp-consumption(velocity,phase)*availableDT*fraction);
     if(hp===0&&hpBefore>0) {depletedAt??=meter;record('depletion','HP exhausted');}
+    if(laneDodge) laneDodge=advanceLaneDodge(laneDodge,stats.power,laneSkillModifier,availableDT*fraction);
     if(points)points.push({t:time,x:meter,v:velocity+currentBonus,target:targetSpeed+currentBonus,phase,hp,spurt});
   }
   return {finish:time,points,firstFire,firstFireMeter,lastEnd,lastEndMeter,finalSpeed:velocity,recovery,

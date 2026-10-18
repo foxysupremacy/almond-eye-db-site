@@ -8,6 +8,7 @@ import { getInheritableSkillForGold } from "../skills/rarity";
 import { describeEffect } from "./effects";
 import { getCategoryBadge } from "./calculation-steps";
 import { STYLE_EXPECTED_RANKS } from "./constants";
+import type { SkillScalingContext } from "../skill-scaling";
 import type { SkillDetailInput, EvaluatorZoneInput, SkillEvaluationResult, SkillTacticalCategory } from "./types";
 
 export interface EvaluationOptions {
@@ -17,6 +18,7 @@ export interface EvaluationOptions {
   raceImpactPriors?: RaceImpactPriorsPayload;
   session?: SkillRatingSession;
   detail?: "summary" | "full";
+  skillScaling?: SkillScalingContext;
 }
 
 type CompatibleRaceParameters = Omit<Partial<RaceParameters>, "groundCondition"> & { groundCondition?: number | string | null };
@@ -141,6 +143,7 @@ export function evaluateSkillForTrack(skill: SkillDetailInput, course: Course | 
     course: course ?? null, style: runningStyle ?? null, racerCount,
     raceParameters: { ...raceParams, groundCondition: typeof ground === "string" ? (Number.isFinite(Number(ground)) ? Number(ground) : null) : ground },
     profile: options?.raceImpactProfile ?? defaultRaceImpactProfile(),
+    skillScaling: options?.skillScaling,
   });
   const variant = !isParentMode ? "original" : skill.rarity === 2 ? "parent-factor" : skill.rarity === 3 || skill.rarity === 5 ? "inherited-unique" : "original";
   const rating = session.evaluate({ skill, variant }, { detail: options?.detail ?? "full" });

@@ -2,13 +2,14 @@ import type { Course, RaceParameters } from '../skill-engine/types';
 import type { SkillDetailInput } from '../evaluator/types';
 import type { RawSkillEffect } from '../data/types';
 import type { RaceImpactProfile, RaceEffectTrace, RaceEffectDistribution } from '../race-impact/types';
+import type { SkillEffectScalingResolution, SkillScalingContext } from '../skill-scaling';
 
 export const RATING_MODEL_VERSION = 'conditional-v2';
 export const RECOVERY_POLICY_VERSION = 'recovery-policy-v1';
-export type EffectFamily = 'target_speed' | 'current_speed_21' | 'current_speed_22' | 'acceleration' | 'zenkai' | 'recovery' | 'passive_speed' | 'passive_stamina' | 'passive_power' | 'passive_guts' | 'passive_wisdom' | 'start_delay';
+export type EffectFamily = 'target_speed' | 'current_speed_21' | 'current_speed_22' | 'acceleration' | 'lane_movement' | 'zenkai' | 'recovery' | 'passive_speed' | 'passive_stamina' | 'passive_power' | 'passive_guts' | 'passive_wisdom' | 'start_delay';
 export type RatingStatus = 'complete' | 'provisional' | 'partial' | 'unavailable';
 export type SkillVariant = 'original' | 'parent-factor' | 'inherited-unique';
-export interface RatingContext { course: Course | null; style: number | null; racerCount: number; raceParameters?: Partial<RaceParameters>; profile: RaceImpactProfile; modelVersion?: string; hpEnvironment?: { competition: 'conditional' | 'none' } }
+export interface RatingContext { course: Course | null; style: number | null; racerCount: number; raceParameters?: Partial<RaceParameters>; profile: RaceImpactProfile; modelVersion?: string; hpEnvironment?: { competition: 'conditional' | 'none' }; skillScaling?: SkillScalingContext }
 export interface RatingRequest { skill: SkillDetailInput; variant?: SkillVariant }
 export interface FamilyBenchmark { benefit: number; payloads: number; fixtures: number }
 export interface RatingBenchmarks { modelVersion: string; convention: string; families: Partial<Record<EffectFamily, FamilyBenchmark>>; provenance: string[]; recoveryPolicy?: { version: string; nominalHP: FamilyBenchmark } }
@@ -33,6 +34,7 @@ export interface TriggerPath {
   additionalActivations: number;
   duration: { kind: 'instant' | 'timed' | 'persistent' | 'unknown'; seconds: number | null };
   effects: RawSkillEffect[];
+  effectScalings?: SkillEffectScalingResolution[];
   rarity?: number;
   intrinsicClauses?: Array<{ key: string; comparator: string; value: number }>;
   partialReasons: string[];

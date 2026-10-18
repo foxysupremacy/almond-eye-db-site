@@ -82,6 +82,14 @@ export function createSkillRatingSession(context: RatingContext, environment: Ra
         return index<0?0:recoveryBenchmark!=null&&recoveryBenchmark>0?100*attributed[index]/recoveryBenchmark:null;
       };
       const recovery=families.includes('recovery')?recoveryPolicy(ctx.course!.length,fullCoalition.recovery,groupPoints('recovery:self-heal'),groupPoints('recovery:signed-other'),environment.benchmarks):undefined;
+      const laneAssumptions=families.includes('lane_movement')
+        ? scenario.paths
+          .filter(path=>path.effects.some(effect=>effectFamily(effect)==='lane_movement'))
+          .map(path=>({
+            clause:'type 28 lane movement', source:'condition' as const, triggerIndex:path.triggerIndex, kind:'dynamic' as const,
+            description:'Assumed one unblocked inward dodge of one horse lane using the median eligible rank for lane order; the model does not simulate full lobby positioning, collisions, or path geometry.',
+          }))
+        : [];
       const contributions=families.map(family=>{
         const benchmark=environment.benchmarks.families[family]?.benefit??null;
         const attributedBenefit=groups.reduce((sum,group,i)=>sum+(group.split(':')[0]===family?attributed[i]:0),0);
@@ -98,10 +106,11 @@ export function createSkillRatingSession(context: RatingContext, environment: Ra
       const status=partialReasons.length?'partial':families.length?'provisional':'unavailable';
       const activationOutcome = !families.length ? 'unmodeled' : fullCoalition.activated ? 'activated' : 'not-activated';
       const tier=status==='partial'||status==='unavailable'?{tier:null,stars:null}:tierForScore(score);
-      const result:SkillRating={...empty,...tier,score,status,activationOutcome,contributions,selectedScenarioId:scenario.id,selectedPaths:scenario.paths,assumptions:scenario.paths.flatMap(p=>p.assumptions),partialReasons:[...new Set(partialReasons)],simulatedBenefit:total,timeGainSeconds:fullCoalition.time,recovery,hp:fullCoalition.hp,breakdown:[
+      const result:SkillRating={...empty,...tier,score,status,activationOutcome,contributions,selectedScenarioId:scenario.id,selectedPaths:scenario.paths,assumptions:[...scenario.paths.flatMap(p=>p.assumptions),...laneAssumptions],partialReasons:[...new Set(partialReasons)],simulatedBenefit:total,timeGainSeconds:fullCoalition.time,recovery,hp:fullCoalition.hp,breakdown:[
         'Rating assumes highlighted dynamic conditions are satisfied; intrinsic conditions are checked on the timeline. Wisdom/rank/dynamic probabilities do not multiply the score.',
         `Scenario ${scenario.id} (${scenario.relation}); ${samples.length} weighted activation samples; one common timeline.`,
         'Physical family benefit uses Shapley on the common timeline; signed Recovery costs/opponent effects are attributed separately. Negative costs are retained.',
+        ...(families.includes('lane_movement') ? ['Type 28 Lane Movement assumes one unblocked inward dodge of one horse lane and uses the median eligible rank for lane order. It uses the documented lateral-speed and MoveLaneModifier formulas, not a full lobby-positioning model.'] : []),
         ...(recovery ? [
           `Recovery policy ${RECOVERY_POLICY_VERSION}: self-heal distance gate ${recovery.distanceGate}; early phase 0 weight 50%, phase 1+ weight 100%.`,
           `Nominal HP ${recovery.nominalHP.toFixed(3)}, received HP ${recovery.receivedHP.toFixed(3)}, wasted HP ${recovery.wastedHP.toFixed(3)}; weighted nominal HP ${recovery.weightedNominalHP.toFixed(3)}.`,

@@ -19,6 +19,8 @@ import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
 import { dynamicConditionKeys } from "@/lib/race-impact";
 import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
 import { useParentingSetup } from "@/features/parenting/hooks";
+import { charactersById, charactersByCharId } from "@/lib/data/registry";
+import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import {
   buildVisualizerSkillPools,
   getVisualizerOriginOrder,
@@ -49,6 +51,7 @@ export default function TrackView() {
   const [rarityFilter, setRarityFilter] = useState<RarityFilterKey>("all");
 
   const { setup } = useParentingSetup();
+  const selectedUma = resolveTargetCharacter(setup, charactersById, charactersByCharId)?.nameEn;
   const pools = useMemo(
     () => buildVisualizerSkillPools({ mainSkills, parentSkills, setup }),
     [mainSkills, parentSkills, setup],
@@ -270,6 +273,7 @@ export default function TrackView() {
               course={course}
               racerCount={racerCount}
               evaluation={evaluation}
+              selectedUma={selectedUma}
               isBanned={isSelectedSkillBanned}
             />
           </div>

@@ -10,6 +10,7 @@ export type EffectCategory =
   | "target_speed"
   | "current_speed"
   | "acceleration"
+  | "lane_movement"
   | "zenkai_acceleration"
   | "heal"
   | "debuff"
@@ -37,14 +38,14 @@ export function describeEffect(effect: RawEffect): EffectDescriptor {
   const families: Partial<Record<number, import("../skill-rating/types").EffectFamily>> = {
     1: "passive_speed", 2: "passive_stamina", 3: "passive_power", 4: "passive_guts", 5: "passive_wisdom",
     9: "recovery", 10: "start_delay", 14: "start_delay", 21: "current_speed_21", 22: "current_speed_22",
-    27: "target_speed", 31: "acceleration", 48: "zenkai",
+    27: "target_speed", 28: "lane_movement", 31: "acceleration", 48: "zenkai",
   };
   const family = families[type] ?? null;
   const sign = type === 14 ? "conditional" : type === 10 ? (value < 10_000 ? "benefit" : "cost") : value < 0 ? "cost" : "benefit";
   const category: EffectCategory | null = target === "opponents" && family !== "start_delay" ? "debuff"
     : family === "target_speed" ? "target_speed"
     : family === "current_speed_21" || family === "current_speed_22" ? "current_speed"
-    : family === "acceleration" ? "acceleration" : family === "zenkai" ? "zenkai_acceleration"
+    : family === "acceleration" ? "acceleration" : family === "lane_movement" ? "lane_movement" : family === "zenkai" ? "zenkai_acceleration"
     : family === "recovery" ? "heal" : family?.startsWith("passive_") ? "passive" : null;
   return { family, category, target, sign };
 }

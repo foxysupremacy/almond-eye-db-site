@@ -47,6 +47,11 @@
       "payloads": 1,
       "fixtures": 75
     },
+    "lane_movement": {
+      "benefit": 0.44513775726812527,
+      "payloads": 2,
+      "fixtures": 144
+    },
     "current_speed_22": {
       "benefit": 0.6656581319720033,
       "payloads": 3,
@@ -64,6 +69,7 @@
     "conditional-v2: deterministic one-Uma model, A aptitudes, neutral motivation; conditional best feasible spurt, no Wisdom acceptance roll",
     "Spurt planning starts at phase 2 following the reference solver and the detailed mechanics paragraph; the document introduction also mentions mid-race. Budget excludes final 60m; integration includes the goal.",
     "Conditional competition: one nearby same-style representative; sections 11–15, checks 2s, duration 2s, cooldown 1s; NearFactor 0.5, HP cost once per activation (provisional frequency).",
+    "Lane movement: type 28 assumes one unblocked inward dodge of one horse lane when it activates. Its documented lateral-speed formula and MoveLaneModifier are modeled; full lobby positioning, collisions and path geometry are not.",
     "Stamina Keep: immediate detection at each check, reserve factor 1.0375; Limit Break random factor 0.9865 (weighted midpoint convention). These inferred mechanics are provisional.",
     "Planner omits future Zenkai ramp and optional competition costs. Downhill mode, Secure Lead, Dueling, Rushed and full positioning are not modeled.",
     "Slope units: stored slope / 10000 = percent; uphill target penalty = percent × 200 / adjusted Power (reference RaceSolver.ts)",

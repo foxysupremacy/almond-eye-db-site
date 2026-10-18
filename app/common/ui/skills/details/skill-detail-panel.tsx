@@ -23,6 +23,7 @@ import { AlertTriangleIcon, StarRating } from "@/app/common/ui/primitives/icons"
 import { SkillSourceBadges } from "@/app/common/ui/skills/provenance/skill-source-badges";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { StatusRankIcon } from "@/app/common/ui/primitives/status-icons";
+import { resolveSkillEffects } from "@/lib/skill-scaling";
 
 interface SkillDetailInspectorProps {
   conditionViewerRef?: RefObject<HTMLDivElement | null>;
@@ -34,6 +35,7 @@ interface SkillDetailInspectorProps {
   course: Course | null;
   racerCount: number;
   evaluation: SkillEvaluationResult | null;
+  selectedUma?: string;
   /** Optional card-level provenance for list and picker skill triggers. */
   cardName?: string;
   cardId?: number | null;
@@ -54,6 +56,7 @@ export function SkillDetailPanel({
   course,
   racerCount,
   evaluation,
+  selectedUma,
   cardName,
   cardId,
   isBanned = false,
@@ -174,9 +177,15 @@ export function SkillDetailPanel({
               <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800">
                 {(skillDetail.conditionGroups ?? []).map((originalGroup, gi) => {
                   const ratedPath = evaluation?.canonicalRating?.scenarios.flatMap((scenario) => scenario.paths).find((path) => path.triggerIndex === gi);
+                  const variantMismatch = evaluation?.canonicalRating?.evaluatedSkillId != null
+                    && evaluation.canonicalRating.evaluatedSkillId !== skillDetail.id;
+                  const fallbackScaling = variantMismatch
+                    ? { effects: originalGroup.effects ?? [], resolutions: [] }
+                    : resolveSkillEffects(originalGroup.effects, { course });
                   const g = ratedPath ? { ...originalGroup, effects: ratedPath.effects, condition: ratedPath.condition, precondition: ratedPath.precondition,
                     base_time: ratedPath.duration.seconds == null ? null : ratedPath.duration.seconds * 10_000 / ((course?.length ?? 1_000) / 1_000),
-                  } : originalGroup;
+                  } : { ...originalGroup, effects: fallbackScaling.effects };
+                  const effectScalings = ratedPath?.effectScalings ?? fallbackScaling.resolutions;
                   const z = zones[gi];
                   if (!z || !z.regions.length) return null;
                   const triggerEvaluation = evaluation?.triggerEvaluations?.find(
@@ -220,6 +229,8 @@ export function SkillDetailPanel({
                           condition={g.condition}
                           precondition={g.precondition}
                           assumptions={evaluation?.canonicalRating?.assumptions.filter((entry) => entry.triggerIndex === gi)}
+                          scalingNeeds={effectScalings}
+                          selectedUma={selectedUma}
                         />
                       </div>
 
@@ -227,6 +238,7 @@ export function SkillDetailPanel({
                       <div className="mt-2">
                         <FormattedEffectBadges
                           effects={(g.effects as Array<{ type: number; value: number }>) ?? []}
+                          effectScalings={effectScalings}
                           baseTime={g.base_time}
                           courseLength={course?.length ?? 0}
                         />

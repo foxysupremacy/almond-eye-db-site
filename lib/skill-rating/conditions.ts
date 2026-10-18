@@ -5,6 +5,7 @@ import type { HorseParameters, RaceParameters } from '../skill-engine/types';
 import { STYLE_EXPECTED_RANKS } from '../evaluator/constants';
 import { supportsIntrinsicClause } from './intrinsic-conditions';
 import { RATING_MODEL_VERSION, type AssumedClause, type RatingContext, type RatingEnvironment, type RatingRequest, type RatingScenario, type SkillAnalysis, type TriggerPath } from './types';
+import { resolveSkillEffects } from '../skill-scaling';
 
 type Comparator = '==' | '!=' | '<' | '<=' | '>' | '>=';
 type Clause = { name: string; comparator: Comparator; value: number };
@@ -247,7 +248,11 @@ export function analyzeSkill(request: RatingRequest, context: RatingContext, env
       if (effectDuration.kind === 'unknown') partialReasons.push('Effect duration or duration-scaling metadata is unsupported');
       const additionalActivations = Math.max(0, ...((group.effects ?? []).map(effect => effect.additional_activation ?? 0)));
       if (additionalActivations > 0) partialReasons.push('Additional activation behavior requires explicit activation-state modeling');
-      if ((group.effects ?? []).some(effect => effect.value_scale != null && effect.value_scale !== 0)) partialReasons.push('Effect value-scaling metadata is unsupported');
+      const scaled = resolveSkillEffects(group.effects, { ...context.skillScaling, course: context.course });
+      for (const resolution of scaled.resolutions) {
+        if (resolution.status === 'assumed') partialReasons.push(`Effect scaling code ${resolution.code} assumed: ${resolution.reason}`);
+        if (resolution.status === 'unsupported') partialReasons.push(`Effect scaling code ${resolution.code} unsupported: ${resolution.reason}`);
+      }
       const path: TriggerPath = {
         triggerIndex, regions: regions.map(region => ({ start: region.start, end: region.end })),
         rarity: skill.rarity,
@@ -256,7 +261,7 @@ export function analyzeSkill(request: RatingRequest, context: RatingContext, env
         condition: condClauses.map(text).join('&'), precondition: preClauses.map(text).join('&'),
         dependsOn: dependency ? previous : [], cooldownSeconds: group.cd != null && group.cd >= 0 ? group.cd / 10_000 : null,
         intrinsicClauses: condClauses.filter(modeledIntrinsic).map(clause => ({ key: clause.name, comparator: clause.comparator, value: clause.value })),
-        additionalActivations, duration: effectDuration, effects: (group.effects ?? []).map(effect => ({ ...effect })), partialReasons, warnings: [...pre.warnings, ...cond.warnings],
+        additionalActivations, duration: effectDuration, effects: scaled.effects, effectScalings: scaled.resolutions, partialReasons, warnings: [...pre.warnings, ...cond.warnings],
       };
       entries.push({ path, clauses: [...preClauses.map(clause => ({ ...clause, name: `precondition/${clause.name}` })), ...condClauses.map(clause => ({ ...clause, name: `condition/${clause.name}` }))] });
     }

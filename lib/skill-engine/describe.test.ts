@@ -202,6 +202,10 @@ describe("conditionBranches", () => {
 });
 
 describe("formatEffect", () => {
+  test("formats lane movement speed in course-widths per second", () => {
+    expect(formatEffect([{ type: 28, value: 250 }], 30000, 2200)).toBe("+0.025 CW/s Lane Movement Speed for 6.6 s");
+  });
+
   test("target speed type 27", () => {
     // 3500 / 10000 = 0.35 m/s, base_time=24000, courseLength=1000 → 2.4 s
     const line = formatEffect([{ type: 27, value: 3500 }], 24000, 1000);

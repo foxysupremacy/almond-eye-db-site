@@ -12,6 +12,7 @@ describe("classifyEffect — single effect table", () => {
     expect(classifyEffect({ type: 21, value: 500 })).toBe("current_speed");
     expect(classifyEffect({ type: 22, value: 500 })).toBe("current_speed");
     expect(classifyEffect({ type: 31, value: 2000 })).toBe("acceleration");
+    expect(classifyEffect({ type: 28, value: 250 })).toBe("lane_movement");
     expect(classifyEffect({ type: 48, value: 4000 })).toBe("zenkai_acceleration");
   });
 
@@ -53,6 +54,14 @@ describe("classifySkillEffects — agrees with the shared table", () => {
         conditionGroups: [{ condition: null, effects: [{ type: 48, value: 4000 }] }],
       } as never),
     ).toEqual(["zenkai_acceleration"]);
+  });
+
+  test("lane movement remains a distinct category", () => {
+    expect(
+      classifySkillEffects({
+        conditionGroups: [{ condition: null, effects: [{ type: 28, value: 250 }] }],
+      } as never),
+    ).toEqual(["lane_movement"]);
   });
 
   test("unknown effects bucket as other; empty groups yield other", () => {

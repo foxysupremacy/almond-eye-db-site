@@ -363,9 +363,15 @@ the present model; they do not certify game accuracy.
   `seconds:null`; groups consisting entirely of types 9/10/14 are instant.
 - Other missing/nonpositive durations or unsupported nonzero `time_scale` are
   unknown/partial. Mixed groups follow the group duration classification.
-- `value_scale` is preserved but unsupported; nonzero values produce partial.
-  These paths can still return the modeled base-value portion, not a complete
-  scaled effect value. Unknown duration does not establish a timed benefit.
+- `value_scale` is resolved by [`lib/skill-scaling`](../lib/skill-scaling/index.ts)
+  before simulation. Values with formulas in the local Race Mechanics reference
+  (2–8, 10, 13–14, 19–20, 22–25) and verified GameTora tooltip data (30, 36)
+  use the course or explicit `skillScaling` inputs when available; otherwise the
+  documented maximum is used with a partial status and an `ASSUMED` explanation.
+  Codes 11–12, 21, 26–28, 31–32, 34–35, 37 and 40 are cataloged but remain
+  unsupported because this repository has no verified formula for them. The
+  connected masterdb stores the code and base value, not the scaling formula.
+  Unknown duration does not establish a timed benefit.
 
 Geometry retains `{start,end}`. Raw slopes retain their stored values for zones
 and rendering: **20000 means 2%**. Only the physics formula divides by 10000.
@@ -388,9 +394,10 @@ not simulated as a self/opponent substitute; ratings disclose partial scope.
 | 21 | Current Speed 21 | Add displacement speed while active; the timed bonus disappears on expiry. | Provisional. |
 | 22 | Current Speed 22 | Add displacement speed while active; add its signed value to physical velocity at expiry, then normal integration applies. | Provisional; different lifecycle from 21. |
 | 27 | Target Speed | Add to target velocity; physical acceleration/deceleration reaches the changed target. | Provisional. |
+| 28 | Lane Movement | Model one successful inward dodge of one horse lane. Raw `value / 10000` is lane speed in course widths per second (for example `250` is `+0.025 CW/s`). During an active dodge, apply the documented `MoveLaneModifier = sqrt(0.0002 × effective Power)` to target speed only after a lane movement frame. | Provisional lane micro-model; no full lobby, collision, lane-width, or path-geometry simulation. |
 | 31 | Acceleration | Add to acceleration while velocity is below target; not a categorical timing bonus. | Provisional; zero benefit can be valid. |
 | 48 | Zenkai | Modify the provisional acceleration ramp by `(value/10000)*0.1` while Zenkai is active. | Provisional. |
-| 6/8/13/28/29/32/35/37/38/41/42/49/50/501/502/503 | No canonical family | No handler in the reviewed dataset coverage. | Explicitly unsupported/partial when part of the selected scenario. |
+| 6/8/13/29/32/35/37/38/41/42/49/50/501/502/503 | No canonical family | No handler in the reviewed dataset coverage. | Explicitly unsupported/partial when part of the selected scenario. |
 
 The coverage list comes from effect types in `skillsById`, including inherited
 payloads, at the review snapshot. New dataset types require a fresh audit.
@@ -409,6 +416,28 @@ when appropriate, updates competition/Limit Break/Zenkai, computes target and
 acceleration, then integrates movement and HP. A supported intrinsic predicate
 may delay a sampled request until a later valid frame within the path's region.
 A later chain trigger failing does not erase effects already earned by its root.
+
+### Type-28 lane-movement scenario
+
+The rating model has no runtime lane coordinate, opponent locations, collision
+state, or course-width geometry. To retain a quantified type-28 contribution
+without presenting those missing systems as simulated, each activated
+`lane_movement` effect uses one explicit conditional scenario: an unblocked
+inward dodge from exactly one horse lane to the inside candidate. The Last Spurt
+reference candidate score prefers the inside candidate (`1.0`) over an otherwise
+equivalent outside candidate (`1.15`), so this is the conditional best-feasible
+choice rather than a measured direction distribution.
+
+The lateral state starts at `1/18` course width, uses the documented target
+speed, `0.02 × 1.5` lateral acceleration, inward direction multiplier, and
+type-28 raw value as a `CW/s` modifier. The target-speed formula uses the
+median rank in the trigger's eligible rank set (or a mid-field rank when the
+trigger does not constrain order); this is a neutral parameter choice, not a
+simulated lobby position. The longitudinal timeline receives
+`sqrt(0.0002 × effective Power)` only while the type-28 effect remains active
+and the prior frame actually moved laterally. The rating records this as a
+dynamic assumption. It does not credit route-shortening, an open-lane
+probability, collisions, or a multi-Uma overtake outcome.
 
 For self effects, compare against a shared no-skill baseline. For opponent effects,
 run one representative target with the same selected profile/style/environment:

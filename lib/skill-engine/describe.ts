@@ -665,8 +665,9 @@ function renderCondition(str: string, racerCount?: number): string {
 // ---------------------------------------------------------------------------
 
 // Effect type display (from uma-tools SkillType enum, RaceSolver.ts)
-export const EFFECT_LABELS: Record<number, { label: string; unit: string; scale: number }> = {
+export const EFFECT_LABELS: Record<number, { label: string; unit: string; scale: number; precision?: number }> = {
   27: { label: "Target Speed", unit: "m/s", scale: 10000 },
+  28: { label: "Lane Movement Speed", unit: "CW/s", scale: 10000, precision: 3 },
   31: { label: "Acceleration", unit: "m/s²", scale: 10000 },
   48: { label: "Zenkai Spurt Acceleration", unit: "m/s²", scale: 10000 },
   22: { label: "Current Speed", unit: "m/s", scale: 10000 },
@@ -680,7 +681,6 @@ export const EFFECT_LABELS: Record<number, { label: string; unit: string; scale:
   8:  { label: "Clairvoyance", unit: "", scale: 1 },
   10: { label: "Start delay", unit: "×", scale: 1 }, // multiplier
   14: { label: "Start delay", unit: "×", scale: 1 },
-  28: { label: "Lane", unit: "", scale: 1 },
   37: { label: "Internal", unit: "", scale: 1 },     // hide
   42: { label: "Internal", unit: "", scale: 1 },     // hide
 };
@@ -744,7 +744,7 @@ export function formatEffect(
       num = Number(abs.toFixed(2)).toString();
       unit = "%";
     } else if (meta.unit) {
-      num = abs.toFixed(2);
+      num = abs.toFixed(meta.precision ?? 2);
       unit = ` ${meta.unit}`;
     } else {
       num = Math.round(abs).toString();

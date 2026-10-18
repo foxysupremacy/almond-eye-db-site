@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { SkillEvaluationResult } from "@/lib/evaluator";
 import { EFFECT_LABELS } from "@/lib/skill-engine/describe";
+import type { SkillEffectScalingResolution } from "@/lib/skill-scaling";
 import { TimerIcon, FlagIcon, ChevronDownIcon, ChevronUpIcon } from "@/app/common/ui/primitives/icons";
 
 /**
@@ -108,9 +109,11 @@ export function FormattedEffectBadges({
   effects,
   baseTime,
   courseLength,
+  effectScalings = [],
   className = "",
 }: {
   effects: Array<{ type: number; value: number; target?: number; target_details?: number }>;
+  effectScalings?: SkillEffectScalingResolution[];
   baseTime: number | null | undefined;
   courseLength: number;
   className?: string;
@@ -119,8 +122,8 @@ export function FormattedEffectBadges({
   const durationS = hasDuration ? (baseTime! * courseLength) / 10_000_000 : 0;
   const distanceM = durationS > 0 ? durationS * 20.0 : 0;
 
-  const visible = effects.filter((e) => {
-    const meta = EFFECT_LABELS[e.type];
+  const visible = effects.map((effect, effectIndex) => ({ effect, effectIndex })).filter(({ effect }) => {
+    const meta = EFFECT_LABELS[effect.type];
     return !meta || meta.label !== "Internal";
   });
 
@@ -128,10 +131,12 @@ export function FormattedEffectBadges({
 
   return (
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
-      {visible.map((e, idx) => {
+      {visible.map(({ effect: e, effectIndex }, idx) => {
         const meta = EFFECT_LABELS[e.type];
         if (!meta) return null;
 
+        const scaling = effectScalings.find((item) => item.effectIndex === effectIndex);
+        const precision = scaling && scaling.status !== "unchanged" ? 3 : 2;
         const scaled = e.value / meta.scale;
         const sign = scaled >= 0 ? "+" : "−";
         const abs = Math.abs(scaled);
@@ -139,10 +144,10 @@ export function FormattedEffectBadges({
         let unitStr: string;
 
         if (meta.unit === "%") {
-          numStr = Number(abs.toFixed(2)).toString();
+          numStr = Number(abs.toFixed(precision)).toString();
           unitStr = "%";
         } else if (meta.unit) {
-          numStr = abs.toFixed(2);
+          numStr = Number(abs.toFixed(precision)).toString();
           unitStr = ` ${meta.unit}`;
         } else {
           numStr = Math.round(abs).toString();
@@ -191,6 +196,11 @@ export function FormattedEffectBadges({
                 opponents
               </span>
             )}
+            {(() => {
+              if (!scaling || scaling.status === "unchanged" || scaling.status === "resolved") return null;
+              const label = scaling.status === "assumed" ? "ASSUMED" : "UNSUPPORTED";
+              return <span title={scaling.reason} className="rounded bg-amber-200/80 px-1 text-[9px] font-bold tracking-wide text-amber-900 dark:bg-amber-900/60 dark:text-amber-200">{label}</span>;
+            })()}
           </div>
         );
       })}
