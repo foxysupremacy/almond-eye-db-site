@@ -67,7 +67,14 @@ export function AppSelect({ value, onValueChange, options, label, placeholder = 
       >
         <ListBox
           aria-label={label}
-          className="max-h-[min(20rem,var(--popover-available-height))] min-w-0 overflow-auto overscroll-contain p-1 outline-none"
+          className="min-w-0 overflow-y-auto overscroll-contain p-1 outline-none"
+          style={{
+            maxHeight: "min(50vh, var(--popover-available-height, 50vh))",
+            overflowY: "auto",
+            overscrollBehavior: "contain",
+            touchAction: "pan-y",
+            WebkitOverflowScrolling: "touch",
+          }}
         >
           {groups(options).map((group) => {
             const entries = options.filter((option) => option.group === group);

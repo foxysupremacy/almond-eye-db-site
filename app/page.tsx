@@ -5,10 +5,9 @@
 
 import { useEffect, useState } from "react";
 import { DeckFeature, DeckProvider, ParentDeckFeature, SharedImportDialog, PvpExpiredModal } from "../features/deck";
-import { PresetManager } from "../features/deck";
-import ThemeToggle from "@/app/components/theme-toggle";
 import Footer from "@/app/components/footer";
 import GlobalControlsBar from "@/app/components/global-controls-bar";
+import { MobileBuildToolsSheet } from "@/app/components/mobile-build-tools-sheet";
 import { ParentingFeature } from "../features/parenting";
 import { VisualizerFeature } from "../features/visualizer";
 import { VeteransFeature } from "../features/veterans";
@@ -17,11 +16,8 @@ import { isRootAppRoute, type Tab } from "@/app/tabs";
 import { ImportModal } from "@/features/importer";
 import { SkillScannerDialog } from "@/features/skill-scan";
 import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
-import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import { AppShellHeader } from "@/app/common/ui/controls/app-shell-header";
 import { AppMobileNavigation } from "@/app/common/ui/controls/app-mobile-navigation";
-import { ScanTextIcon } from "@/app/common/ui/primitives/icons";
-import { AppButton } from "@/app/common/ui/controls/app-button";
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("main");
@@ -95,18 +91,12 @@ export default function Home() {
 
         <AppMobileNavigation activeRoute={tab} onRootRouteChange={handleTabChange} />
 
-        <MobileSheet open={toolsOpen} onClose={() => setToolsOpen(false)} title="Your build" description="Switch builds, share your deck, or import your collection.">
-          <div className="mobile-build-tools space-y-5">
-            <PresetManager />
-            <div className="flex items-center justify-between gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800">
-              <div className="flex flex-wrap gap-2">
-                <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsImportModalOpen(true); }}>Import game data</AppButton>
-                <AppButton type="button" variant="secondary" size="md" onPress={() => { setToolsOpen(false); setIsSkillScannerOpen(true); }}><ScanTextIcon className="h-4 w-4" />Scan skill</AppButton>
-              </div>
-              <ThemeToggle />
-            </div>
-          </div>
-        </MobileSheet>
+        <MobileBuildToolsSheet
+          open={toolsOpen}
+          onClose={() => setToolsOpen(false)}
+          onOpenImport={() => { setToolsOpen(false); setIsImportModalOpen(true); }}
+          onOpenSkillScanner={() => { setToolsOpen(false); setIsSkillScannerOpen(true); }}
+        />
 
         {/* URL Share Import Dialog */}
         <SharedImportDialog />
