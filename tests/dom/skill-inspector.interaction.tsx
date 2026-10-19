@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { api, type SkillDetail } from "@/lib/api";
@@ -11,6 +11,9 @@ import { RaceImpactProfilePanel } from "@/app/common/ui/skills/effect-details/ra
 import { defaultRaceImpactProfile, saveRaceImpactProfile, type RaceImpactProfile } from "@/lib/race-impact";
 import { loadRacetracks } from "@/lib/data/registry";
 import { flattenCourse } from "@/lib/api/course-format";
+import { SkillDetailPanel } from "@/app/common/ui/skills/details/skill-detail-panel";
+import { evaluateSkillForTrack } from "@/lib/evaluator";
+import { Region, RegionList } from "@/lib/skill-engine/region";
 
 const originalMatchMedia = window.matchMedia;
 const originalWidth = window.innerWidth;
@@ -303,4 +306,38 @@ describe("visualizer controls", () => {
     await user.click(screen.getByRole("button", { name: "Reset to standard profile" }));
     await waitFor(() => expect(screen.getByText(`${defaultRaceImpactProfile().stats.speed}:assumed`)).toBeTruthy());
   });
+});
+
+
+test("activation windows keep the pre-merge main layout with one overall verdict", async () => {
+  const course = await kyotoCourse();
+  const skill: SkillDetail = {
+    ...overtakeSkill(),
+    conditionGroups: [
+      { condition: "phase==1", base_time: 30000, effects: [{ type: 27, value: 3500 }] },
+      { condition: "is_activate_other_skill_detail==1&phase==2", base_time: 20000, effects: [{ type: 27, value: 2500 }] },
+    ],
+  };
+  const zones = [
+    { regions: new RegionList(new Region(500, 2000)), isRandom: false, earliestFire: 500 },
+    { regions: new RegionList(new Region(2000, 3000)), isRandom: true, earliestFire: 2000 },
+  ];
+  const evaluation = evaluateSkillForTrack(skill, course, 2, 9, false, zones);
+  expect(evaluation.triggerEvaluations?.filter(entry => entry.evaluation)).toHaveLength(2);
+  render(<SkillDetailPanel skillDetail={skill} skillLoading={false} selectedSkill={null}
+    selectedSkillId={skill.id} zones={zones} course={course} racerCount={9} evaluation={evaluation} />);
+  const windows = within(screen.getByText("Course Activation Windows").parentElement!);
+  expect(windows.getByText("Trigger 1")).toBeTruthy();
+  expect(windows.getByText("Trigger 2")).toBeTruthy();
+  expect(windows.getByText("500-2000m")).toBeTruthy();
+  expect(windows.getByText("2000-3000m")).toBeTruthy();
+  expect(windows.getByText("Deterministic")).toBeTruthy();
+  expect(windows.getByText("Random Zone")).toBeTruthy();
+  expect(windows.getAllByText("Activation timing:")).toHaveLength(2);
+  expect(windows.getByText(/0\.35/)).toBeTruthy();
+  expect(windows.getByText(/0\.25/)).toBeTruthy();
+  expect(windows.queryByText("Trigger Verdict")).toBeNull();
+  expect(windows.queryByText("Race impact")).toBeNull();
+  expect(screen.getAllByText("Tactical Verdict & Mechanics")).toHaveLength(1);
+  expect(screen.getAllByText("Race impact")).toHaveLength(1);
 });

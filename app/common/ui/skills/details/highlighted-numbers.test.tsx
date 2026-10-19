@@ -22,3 +22,14 @@ test('special scaling values retain the precision shown in the source table', ()
   />);
   expect(html).toContain('+0.438 m/s');
 });
+
+
+test('scaled decimal half-steps round consistently after engine floating-point operations', () => {
+  const value = 1500 * 1.13 * 3;
+  const html = renderToStaticMarkup(<FormattedEffectBadges
+    effects={[{ type: 27, value }]}
+    effectScalings={[{ effectIndex: 0, code: 30, baseValue: 1500, value, status: 'assumed' }]}
+    baseTime={30000} courseLength={2200}
+  />);
+  expect(html).toContain('+0.509 m/s');
+});

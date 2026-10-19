@@ -226,7 +226,7 @@ export function SkillEffectDetailsModal(props: SkillEffectDetailsModalProps) {
   const { skill, score, lv1Score, trace, resolvedIndex, allZones } = effect;
   const isUnique = skill ? isUniqueSkill(skill) : false;
 
-  const bands = useMemo(() => phaseBandsForCourse(course.length, simulationInputFor(course, profile, style).spurt), [course, profile, style]);
+  const bands = useMemo(() => phaseBandsForCourse(course.length, simulationInputFor(course, profile, style, raceParams.groundCondition).spurt), [course, profile, style, raceParams.groundCondition]);
   const dynamicKeys = useMemo(() => Array.from(new Set(
     (skill?.conditionGroups ?? [])
       .flatMap((group) => dynamicConditionKeys(group.condition, group.precondition))
@@ -320,7 +320,8 @@ export function SkillEffectDetailsModal(props: SkillEffectDetailsModalProps) {
 
         <section aria-label="Effects">
           <SectionTitle>Effects</SectionTitle>
-          <EffectBlocks groups={skill.conditionGroups} activeIndex={resolvedIndex} courseLength={course.length} level={isUnique ? level : 1} isUnique={isUnique} />
+          <EffectBlocks groups={skill.conditionGroups} activeIndex={resolvedIndex} courseLength={course.length} level={isUnique ? level : 1} isUnique={isUnique}
+            course={course} profile={profile} style={style} groundCondition={raceParams.groundCondition} selectedUma={rail?.characterName} />
         </section>
 
         {isUnique ? (

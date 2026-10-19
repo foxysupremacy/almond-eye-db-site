@@ -33,3 +33,23 @@ its generator are removed; the feature does not consume them.
 
 CLI gates: `bunx tsc --noEmit`, `bun test`, `bun run test:ui`, `bun run build`.
 DOM tests run locally without opening a browser. Browser acceptance remains user-owned.
+
+## Special effect values
+
+`lib/race-impact/scaling-details.ts` adapts the physical engine's `scaledEffectValue`
+and `additionalActivationFactor` into effect values and presentation metadata. The
+Visualizer, shared inspector and effect modal use this adapter, including the same
+profile, ground condition and unique-level order as the physical engine. Source
+skill records are never mutated; inherited variants use their own metadata.
+
+Course and stat facts resolve directly. Situational maxima show explicit assumptions
+and concrete thresholds, including Fan Love 3,000,000+, four Final Leg corner
+overtakes, and the 20 m behind-first bonus. Mile bonuses are resolved from the
+course; Arima's fan threshold is assumed only on the matching course. Reference
+skill/green counts and expected random outcomes follow the engine rather than the
+older resolver's maximum defaults. Unmodeled codes remain labeled unsupported.
+
+`SpecialValueDetails` is shared presentation for these explanations. The older
+`lib/skill-scaling/` numeric resolver remains part of the historical rating engine;
+active application UI does not call it. Tactical category scores remain separate
+from physical estimates.

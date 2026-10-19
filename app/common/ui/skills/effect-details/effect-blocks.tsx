@@ -1,6 +1,10 @@
 import { Fragment } from "react";
 import type { SkillDetail } from "@/lib/data/types";
-import { uniqueLevelMultiplier } from "@/lib/race-impact/unique-level";
+import { resolveRaceSkillEffects } from "@/lib/race-impact/scaling-details";
+import type { RaceImpactProfile } from "@/lib/race-impact";
+import type { Course } from "@/lib/skill-engine/types";
+import type { RunningStyle } from "@/lib/deck/types";
+import { SpecialValueDetails } from "../details/special-value-details";
 import { OrDivider } from "./condition-blocks";
 
 const CHIP = "rounded-full bg-zinc-100 px-2 text-[11px] dark:bg-zinc-800";
@@ -29,17 +33,28 @@ export function EffectBlocks({
   courseLength,
   level,
   isUnique,
+  course,
+  profile,
+  style,
+  groundCondition,
+  selectedUma,
 }: {
   groups: SkillDetail["conditionGroups"];
   activeIndex: number | null;
   courseLength: number;
   level: number;
   isUnique: boolean;
+  course?: Course | null;
+  profile?: RaceImpactProfile;
+  style?: RunningStyle;
+  groundCondition?: number | null;
+  selectedUma?: string;
 }) {
   return (
     <div className="flex flex-col gap-3">
       {groups.map((group, index) => {
         const active = index === activeIndex;
+        const scaling = resolveRaceSkillEffects(group.effects, { course, profile, style, groundCondition, isUnique, level });
         const baseSeconds = group.base_time && group.base_time > 0 ? group.base_time / 10000 : 0;
         const cooldown = (group as { cooldown_time?: number | null }).cooldown_time;
         return (
@@ -51,14 +66,17 @@ export function EffectBlocks({
               className={`border-l-2 pl-3 ${active ? "border-emerald-500" : "border-zinc-200 opacity-70 dark:border-zinc-800"}`}
             >
               <dl className="flex flex-col gap-1.5 text-xs">
-                {group.effects.map((eff, i) => {
+                {scaling.effects.map((eff, i) => {
                   const type = eff.type ?? 0;
                   const meta = EFFECTS[type];
                   const raw = eff.value ?? 0;
                   let value: string;
                   if (meta) {
-                    const v = (raw / meta.scale) * (isUnique ? uniqueLevelMultiplier(level, type) : 1);
-                    value = `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(meta.decimals)} ${meta.unit}`;
+                    const v = raw / meta.scale;
+                    // Keep decimal half-steps stable after floating-point scaling (e.g. 0.5085).
+                    const magnitude = Math.abs(v);
+                    const rounded = (magnitude + Number.EPSILON * Math.max(1, magnitude)).toFixed(meta.decimals);
+                    value = `${v >= 0 ? "+" : "−"}${rounded} ${meta.unit}`;
                   } else {
                     value = String(raw);
                   }
@@ -92,6 +110,7 @@ export function EffectBlocks({
                   </div>
                 ) : null}
               </dl>
+              <SpecialValueDetails resolutions={scaling.resolutions} selectedUma={selectedUma} />
             </section>
           </Fragment>
         );

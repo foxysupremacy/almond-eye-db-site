@@ -284,6 +284,9 @@ export default function TrackView() {
               course={course}
               racerCount={racerCount}
               evaluation={evaluation}
+              raceImpactProfile={raceImpactProfile}
+              runningStyle={graphStyle}
+              groundCondition={raceParams.groundCondition}
               selectedUma={selectedUma}
               isBanned={isSelectedSkillBanned}
             />

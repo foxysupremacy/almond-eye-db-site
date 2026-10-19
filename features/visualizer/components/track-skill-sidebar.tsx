@@ -6,7 +6,7 @@ import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleBut
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { SkillIndicator } from "@/app/common/ui/skills/skill-badges";
 import { type RarityFilterKey } from "@/lib/skills/rarity";
-import { getSkillRarityStyle } from "@/app/common/ui/skills/skill-rarity";
+import { AppButton } from "@/app/common/ui/controls/app-button";
 import type { VisualizerSkill } from "@/lib/visualizer/skills";
 import { SkillSourceBadges } from "@/app/common/ui/skills/provenance/skill-source-badges";
 import { ChartIcon } from "@/app/common/ui/primitives/icons";
@@ -140,7 +140,7 @@ export function TrackSkillSidebar({
         </ToggleButtonGroup>
       </div>
 
-      <div className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-2">
+      <div className="flex flex-1 flex-col divide-y divide-zinc-100 overflow-y-auto dark:divide-zinc-800/80">
         {displayedSkills.length === 0 ? (
           rarityFilter === "unique" || rarityFilter === "evolved" ? (
             <div className="p-4 text-center">
@@ -163,19 +163,17 @@ export function TrackSkillSidebar({
             const active = s.id === selectedSkillId;
             const isBanned = isSkillBanned ? isSkillBanned(s.id) : false;
             const fires = !isBanned && firesOnCourse(s.id);
-            const rStyle = getSkillRarityStyle(s.rarity);
             const graphName = s.nameEn || s.nameJp;
-            // The row and the graph icon are sibling buttons inside one card
-            // surface: nesting a button inside the row button is invalid HTML.
+            // Selection and graph actions stay siblings within a flat list row.
             return (
               <div
                 key={s.id}
-                className={`flex w-full min-w-0 items-center rounded-xl border transition-all ${
-                  active
-                    ? "ring-2 ring-emerald-600 dark:ring-emerald-400 shadow-xs"
-                    : rStyle.borderClass
-                } ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/40" : fires ? "border-emerald-500/80 dark:border-emerald-600/80" : ""} ${
-                  rStyle.bgClass ?? "bg-white dark:bg-zinc-900"
+                className={`flex w-full min-w-0 items-center transition-colors duration-150 ${
+                  isBanned
+                    ? "bg-rose-50/40 opacity-60 dark:bg-rose-950/20"
+                    : active
+                    ? "bg-emerald-50 dark:bg-emerald-950/40"
+                    : "hover:bg-zinc-50 dark:hover:bg-zinc-800/50"
                 }`}
               >
               <Button
@@ -186,7 +184,7 @@ export function TrackSkillSidebar({
                     conditionViewerRef?.current?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "start" });
                   }
                 }}
-                className="min-w-0 flex-1 cursor-pointer rounded-xl px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70"
+                className="min-h-11 min-w-0 flex-1 cursor-pointer px-3 py-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-500/70"
               >
                 <SkillItem
                   skill={{
@@ -231,15 +229,17 @@ export function TrackSkillSidebar({
                 </SkillItem>
               </Button>
               {onOpenEffectGraph && (
-              <button
+              <AppButton
                 type="button"
+                variant="quiet"
+                iconOnly
                 aria-label={`Open effect graph for ${graphName}`}
                 title="Open effect graph"
-                className="mr-1.5 inline-flex min-h-11 min-w-11 flex-none cursor-pointer items-center justify-center rounded-lg text-zinc-500 outline-none transition-colors hover:bg-zinc-100 hover:text-zinc-900 focus-visible:ring-2 focus-visible:ring-emerald-500/70 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-100 md:min-h-8 md:min-w-8"
-                onClick={() => onOpenEffectGraph(s.id)}
+                className="mr-1.5 cursor-pointer"
+                onPress={() => onOpenEffectGraph(s.id)}
               >
                 <ChartIcon className="h-4 w-4 flex-none" />
-              </button>
+              </AppButton>
               )}
               </div>
             );

@@ -49,7 +49,7 @@ function Pill({ pill, onOpen }: { pill: PillModel; onOpen(skillId: number): void
   if (pill.skillId == null) {
     return (
       <span
-        className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-dashed border-zinc-200 px-3 text-[11px] text-zinc-400 md:min-h-8 dark:border-zinc-700 dark:text-zinc-500"
+        className="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-dashed border-zinc-200 px-3 text-[11px] text-zinc-400 md:min-h-8 dark:border-zinc-700 dark:text-zinc-500"
       >
         <span className="text-[10px] text-zinc-400 dark:text-zinc-500">{pill.slot}</span>
         <span aria-hidden="true">—</span>
@@ -63,7 +63,7 @@ function Pill({ pill, onOpen }: { pill: PillModel; onOpen(skillId: number): void
       type="button"
       aria-label={`${pill.slot}: ${pill.name}, ${fmt(pill.bashin)} Bashin`}
       onClick={() => onOpen(skillId)}
-      className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-full border border-zinc-200 px-2.5 text-[11px] font-semibold text-zinc-700 outline-none transition-colors duration-150 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-emerald-500/70 md:min-h-8 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+      className="inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-[11px] font-semibold text-zinc-700 outline-none transition-colors duration-150 hover:bg-zinc-50 focus-visible:ring-2 focus-visible:ring-emerald-500/70 md:min-h-8 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
     >
       <SkillIcon iconId={pill.iconId} name={pill.name} className="h-5 w-5 flex-none shrink-0 object-contain" />
       <span className="min-w-0 truncate">{pill.name}</span>

@@ -59,7 +59,7 @@ export function TrackCanvas({
 
   // Layout mode: "all" (Map + timeline), "1d" (Board 2), "map" (Board 1).
   // The per-skill effect graph now lives in SkillEffectDetailsModal.
-  const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("1d");
   const [hoverMeter, setHoverMeter] = useState<number | null>(null);
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
 

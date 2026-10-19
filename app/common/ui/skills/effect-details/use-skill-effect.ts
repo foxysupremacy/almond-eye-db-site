@@ -106,7 +106,7 @@ export function useSkillEffect(input: UseSkillEffectInput): SkillEffectState {
     });
   }, [skill, course, raceParams, style]);
 
-  const baseline = useMemo(() => (course ? simulateBaseline(course, style, profile) : null), [course, style, profile]);
+  const baseline = useMemo(() => (course ? simulateBaseline(course, style, profile, raceParams.groundCondition) : null), [course, style, profile, raceParams.groundCondition]);
 
   const lv1Score = useMemo(() => {
     if (!skill || !course || !baseline || !zones?.ok) return null;
@@ -131,7 +131,7 @@ export function useSkillEffect(input: UseSkillEffectInput): SkillEffectState {
         const chained = resolved.triggers.slice(1).map((t) => ({ groupIndex: t.index, regions: [...t.zones.regions], isRandom: t.zones.isRandom }));
         trace = generateRaceTrace(
           skill,
-          { course, profile, runningStyle: style, racerCount },
+          { course, profile, runningStyle: style, racerCount, groundCondition: raceParams.groundCondition },
           score.samples.length ? meanMeter : null,
           [resolved.zones],
           { groupIndex: resolved.index, uniqueLevel: level, chained },

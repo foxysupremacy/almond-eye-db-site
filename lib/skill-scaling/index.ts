@@ -30,6 +30,9 @@ export interface SkillEffectScalingResolution {
   status: 'unchanged' | 'resolved' | 'assumed' | 'unsupported';
   reason?: string;
   needs?: string[];
+  /** Engine-provided presentation metadata; no scaling formula lives in the UI. */
+  label?: string;
+  assumedInputs?: string[];
 }
 
 export interface ResolvedSkillEffects {

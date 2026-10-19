@@ -60,7 +60,6 @@ export function AppShellHeader({
                   : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 {item.label}
-                {item.id === "rankings" && <span className="text-[9px] uppercase tracking-wider opacity-70">{item.badge}</span>}
               </AriaLink>
             );
           })}

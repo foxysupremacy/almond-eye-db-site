@@ -6,7 +6,7 @@ import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { SkillEvaluationResult, SpecialEffectItem } from "@/lib/evaluator/types";
 import type { VisualizerSkill } from "@/lib/visualizer/skills";
-import type { RaceImpactResult } from "@/lib/race-impact";
+import { isUniqueSkill, type RaceImpactProfile, type RaceImpactResult } from "@/lib/race-impact";
 import { conditionBranches, formatEffect } from "@/lib/skill-engine/describe";
 import { ZONE_COLORS } from "@/lib/visualizer/colors";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
@@ -22,7 +22,8 @@ import { AlertTriangleIcon, StarRating } from "@/app/common/ui/primitives/icons"
 import { SkillSourceBadges } from "@/app/common/ui/skills/provenance/skill-source-badges";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { StatusRankIcon } from "@/app/common/ui/primitives/status-icons";
-import { resolveSkillEffects } from "@/lib/skill-scaling";
+import { resolveRaceSkillEffects } from "@/lib/race-impact/scaling-details";
+import type { RunningStyle } from "@/lib/deck/types";
 
 interface SkillDetailInspectorProps {
   conditionViewerRef?: RefObject<HTMLDivElement | null>;
@@ -35,6 +36,9 @@ interface SkillDetailInspectorProps {
   racerCount: number;
   evaluation: SkillEvaluationResult | null;
   selectedUma?: string;
+  raceImpactProfile?: RaceImpactProfile;
+  runningStyle?: RunningStyle | null;
+  groundCondition?: number | null;
   /** Optional card-level provenance for list and picker skill triggers. */
   cardName?: string;
   cardId?: number | null;
@@ -56,6 +60,9 @@ export function SkillDetailPanel({
   racerCount,
   evaluation,
   selectedUma,
+  raceImpactProfile,
+  runningStyle,
+  groundCondition,
   cardName,
   cardId,
   isBanned = false,
@@ -175,14 +182,14 @@ export function SkillDetailPanel({
               </div>
               <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800">
                 {(skillDetail.conditionGroups ?? []).map((originalGroup, gi) => {
-                  const scaling = resolveSkillEffects(originalGroup.effects, { course });
+                  const scaling = resolveRaceSkillEffects(originalGroup.effects, {
+                    course, profile: raceImpactProfile, style: runningStyle, groundCondition,
+                    isUnique: isUniqueSkill(skillDetail), level: 1,
+                  });
                   const g = { ...originalGroup, effects: scaling.effects };
                   const effectScalings = scaling.resolutions;
                   const z = zones[gi];
                   if (!z || !z.regions.length) return null;
-                  const triggerEvaluation = evaluation?.triggerEvaluations?.find(
-                    (entry) => entry.triggerIndex === gi,
-                  )?.evaluation;
                   const wins = z.regions
                     .map((r) => `${Math.round(r.start)}-${Math.round(r.end)}m`)
                     .join(", ");
@@ -239,35 +246,6 @@ export function SkillDetailPanel({
                           </span>
                         )}
                       </div>
-
-                      {triggerEvaluation && (
-                        <div className="mt-3 border-t border-zinc-200/70 pt-2.5 dark:border-zinc-700/70">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
-                                Trigger Verdict
-                              </span>
-                              {triggerEvaluation.stars != null && <StarRating stars={triggerEvaluation.stars} starClassName="h-3 w-3" />}
-                              {triggerEvaluation.tier ? <StatusRankIcon grade={triggerEvaluation.tier} className="h-5 w-5" /> : <span className="text-[10px] font-medium text-amber-700 dark:text-amber-300">Partial</span>}
-                              <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
-                                {triggerEvaluation.score} pts
-                              </span>
-                            </div>
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] ${triggerEvaluation.primaryBadge.badgeClass}`}
-                            >
-                              <span className={`h-1.5 w-1.5 rounded-full ${triggerEvaluation.primaryBadge.dotColor}`} />
-                              {triggerEvaluation.primaryBadge.label}
-                            </span>
-                          </div>
-                          <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-700 dark:text-zinc-200">
-                            <HighlightText text={triggerEvaluation.verdictSummary} />
-                          </p>
-                          {triggerEvaluation.raceImpact && (
-                            <RaceImpactSummary impact={triggerEvaluation.raceImpact} compact />
-                          )}
-                        </div>
-                      )}
                     </div>
                   );
                 })}

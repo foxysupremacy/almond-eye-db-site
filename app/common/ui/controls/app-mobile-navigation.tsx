@@ -28,7 +28,7 @@ export function AppMobileNavigation({ activeRoute, onRootRouteChange }: {
           );
         })}
       </nav>
-      <MobileSheet open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Library" description="Browse your support cards, characters, and trained Umas.">
+      <MobileSheet open={libraryOpen} onClose={() => setLibraryOpen(false)} title="Library" description="Browse your support cards and characters.">
         <nav aria-label="Library navigation" className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
           {LIBRARY_ITEMS.map(({ id, label }) => (
             <AriaLink key={id} href={appRouteHref(id)} aria-current={activeRoute === id ? "page" : undefined} onClick={(event) => {

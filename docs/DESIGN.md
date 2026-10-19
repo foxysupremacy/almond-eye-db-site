@@ -261,6 +261,8 @@ Before approving any UI change involving cards, skills, or deck pickers:
 - [ ] **Icon Centering**: Is the skill icon vertically centered (`items-center`) against the combined 2-line title block?
 - [ ] **Aspect Ratio**: Does the icon have `flex-none` / `shrink-0` to avoid aspect ratio distortion on narrow viewports?
 - [ ] **Parenting Portrait Layers**: Does the pop-out use a circle-sized wrapper with the top 90° sector and hidden left/right tangent bounds, above the clipped image and circular frame (Section 20)?
+- [ ] **Skill Action Geometry**: Do Rankings skill actions and their loading/empty states use `rounded-md` (6px), with no capsule silhouette (Section 21)?
+- [ ] **Visualizer List Surface**: Are skill rows flat with dividers, neutral rarity surfaces, and a restrained emerald selected state (Section 21)?
 - [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat and divider-based rather than nested cards?
 - [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `app/common/ui/primitives/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
 - [ ] **Multi-Skill Matching Integrity**: In Parent Deck mode, does skill filtering support ANY/ALL toggling and bi-directional Gold <-> White mapping?
@@ -529,3 +531,39 @@ wrapper clipping. User-owned browser checks should include Satono Crown's wide
 hat, portraits with tall ears, all ancestor sizes, both themes, and hover:
 only the top sector may cross the frame, no image may cross the side tangents,
 and the hat must not acquire a horizontal cutoff through its middle.
+
+
+---
+
+## 21. Rankings Skill Actions & Visualizer Skill Rows
+
+### Rankings skill actions
+
+- Compact actions containing a skill icon, name and Bashin score use `rounded-md`
+  (6px) corners. Keep the same radius for unavailable-slot placeholders and
+  loading skeletons. Do not use `rounded-full` capsules for these actions.
+- Keep neutral zinc borders and flat surfaces, centered icons with `shrink-0`,
+  truncated names and a readable score. Preserve `min-h-11` on touch layouts and
+  `md:min-h-8` on desktop, along with a visible keyboard focus ring.
+- Circular character portraits and small status dots remain circular; they are
+  not skill action buttons.
+
+### Visualizer sidebar
+
+- The sidebar owns one outer surface. Skill entries are flat, full-width rows
+  separated by `divide-y divide-zinc-100 dark:divide-zinc-800/80`, with no gaps
+  between separately bordered or rounded cards.
+- Use neutral row surfaces. Rarity is communicated by the skill icon and existing
+  rarity controls, not a gradient fill, rarity-colored outline or shadow per row.
+- Selection uses a restrained emerald tint (`bg-emerald-50
+  dark:bg-emerald-950/40`) and `aria-pressed`. Reserve focus rings for keyboard
+  focus; do not surround the entire selected row with a persistent thick ring.
+- Triggerability stays visible in the green status dot. A non-triggering skill
+  has a muted dot. Banned skills retain muted/struck-through titles, a subtle
+  rose tint and their explicit banned indicator.
+- Keep English above Japanese, center the icon against both lines, and place
+  source provenance below. Follow the shared `SkillItem` sizing and typography.
+- The row selection button and graph action must be sibling buttons. Use the
+  shared `AppButton` quiet/icon-only variant for the graph action; opening the
+  graph must not also select the row. Preserve mobile scrolling to the inspector
+  and the reduced-motion guard.

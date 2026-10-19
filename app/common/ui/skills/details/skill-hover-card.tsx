@@ -200,6 +200,9 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
       course={course}
       racerCount={racerCount}
       evaluation={evaluation}
+      raceImpactProfile={raceImpactProfile}
+      runningStyle={effectiveRunningStyle}
+      groundCondition={effectiveRaceParams.groundCondition}
       cardName={cardName}
       cardId={cardId}
       isBanned={Boolean(active && isSkillBanned(active.skillId, activePvpEvent))}

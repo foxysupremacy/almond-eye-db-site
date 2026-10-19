@@ -12,9 +12,9 @@ export function CharacterCardSkeleton() {
         <span className="h-4 w-20 flex-none animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
       </div>
       <div className="mt-1 flex gap-1.5 pl-11 pr-2 sm:pl-[5.25rem]">
-        <span className="h-11 w-28 animate-pulse rounded-full bg-zinc-100 md:h-8 dark:bg-zinc-800" />
-        <span className="h-11 w-28 animate-pulse rounded-full bg-zinc-100 md:h-8 dark:bg-zinc-800" />
-        <span className="h-11 w-28 animate-pulse rounded-full bg-zinc-100 md:h-8 dark:bg-zinc-800" />
+        <span className="h-11 w-28 animate-pulse rounded-md bg-zinc-100 md:h-8 dark:bg-zinc-800" />
+        <span className="h-11 w-28 animate-pulse rounded-md bg-zinc-100 md:h-8 dark:bg-zinc-800" />
+        <span className="h-11 w-28 animate-pulse rounded-md bg-zinc-100 md:h-8 dark:bg-zinc-800" />
       </div>
     </li>
   );

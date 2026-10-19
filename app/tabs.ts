@@ -4,15 +4,15 @@ export type RootAppRoute = "main" | "parent-deck" | "parenting" | "rankings" | "
 export type AppShellRoute = RootAppRoute | "supports" | "characters";
 export type Tab = RootAppRoute;
 
+// Visible navigation only; the veterans route remains valid for direct hash URLs.
 export const TABS: { id: AppShellRoute; label: string; badge?: string }[] = [
   { id: "main", label: "Main Deck" },
   { id: "parent-deck", label: "Parent Deck", badge: "Deck & Skills" },
   { id: "parenting", label: "Parenting", badge: "Inheritance" },
-  { id: "rankings", label: "Rankings", badge: "By track" },
+  { id: "rankings", label: "Rankings" },
   { id: "visualizer", label: "Visualizer" },
   { id: "supports", label: "Supports" },
   { id: "characters", label: "Characters" },
-  { id: "veterans", label: "Trained Umas", badge: "Beta" },
 ];
 
 export const MOBILE_TABS = [
@@ -24,7 +24,7 @@ export const MOBILE_TABS = [
   { id: "library", label: "Library", icon: LibraryIcon },
 ] as const;
 
-export const LIBRARY_ITEMS = TABS.filter(({ id }) => id === "supports" || id === "characters" || id === "veterans");
+export const LIBRARY_ITEMS = TABS.filter(({ id }) => id === "supports" || id === "characters");
 
 export function isRootAppRoute(route: string): route is RootAppRoute {
   return route === "main" || route === "parent-deck" || route === "parenting" || route === "rankings" || route === "visualizer" || route === "veterans";

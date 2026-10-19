@@ -139,7 +139,8 @@ export function FormattedEffectBadges({
         const precision = scaling && scaling.status !== "unchanged" ? 3 : 2;
         const scaled = e.value / meta.scale;
         const sign = scaled >= 0 ? "+" : "−";
-        const abs = Math.abs(scaled);
+        const magnitude = Math.abs(scaled);
+        const abs = magnitude + Number.EPSILON * Math.max(1, magnitude);
         let numStr: string;
         let unitStr: string;
 
