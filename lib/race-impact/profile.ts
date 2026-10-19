@@ -11,8 +11,14 @@ const EVENT_KEY = "race-impact-profile-update";
 const STAT_MIN = 1;
 const STAT_MAX = 3000;
 
+const LEGACY_DEFAULT_WISDOM = 1800;
+
 export function defaultRaceImpactProfile(): RaceImpactProfile {
-  return { version: 1, stats: { ...DEFAULT_RACE_IMPACT_STATS }, dynamicOverrides: {} };
+  return { version: 2, stats: { ...DEFAULT_RACE_IMPACT_STATS }, dynamicOverrides: {}, bashinReferenceSpeed: null };
+}
+
+function validSpeed(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 && value <= 30;
 }
 
 function validStat(value: unknown): value is number {
@@ -26,16 +32,19 @@ function validProbability(value: unknown): value is number {
 export function normalizeRaceImpactProfile(value: unknown): RaceImpactProfile {
   const fallback = defaultRaceImpactProfile();
   if (!value || typeof value !== "object") return fallback;
-  const raw = value as Partial<RaceImpactProfile>;
+  const raw = value as Partial<Omit<RaceImpactProfile, "version">> & { version?: number };
   const stats = { ...fallback.stats };
   for (const key of Object.keys(stats) as RaceImpactStat[]) {
     if (validStat(raw.stats?.[key])) stats[key] = raw.stats![key];
   }
+  // v1 stored the old default wisdom; only that exact value is migrated.
+  if (raw.version !== 2 && raw.stats?.wisdom === LEGACY_DEFAULT_WISDOM) stats.wisdom = DEFAULT_RACE_IMPACT_STATS.wisdom;
   const dynamicOverrides: RaceImpactProfile["dynamicOverrides"] = {};
   for (const [key, probability] of Object.entries(raw.dynamicOverrides ?? {})) {
     if (validProbability(probability)) dynamicOverrides[key as DynamicConditionKey] = probability;
   }
-  return { version: 1, stats, dynamicOverrides };
+  const bashinReferenceSpeed = validSpeed(raw.bashinReferenceSpeed) ? raw.bashinReferenceSpeed : null;
+  return { version: 2, stats, dynamicOverrides, bashinReferenceSpeed };
 }
 
 export function loadRaceImpactProfile(): RaceImpactProfile {

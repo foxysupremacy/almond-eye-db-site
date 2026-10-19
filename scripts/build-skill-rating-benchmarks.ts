@@ -32,7 +32,7 @@ for(const [family,map] of candidates){
   const all=[...map.values()],priority=Math.min(...all.map(p=>p.priority)),payloads=all.filter(p=>p.priority===priority);
   const benefits:number[]=[], nominalHP:number[]=[];
   for(const payload of payloads)for(const length of distances)for(const style of [1,2,3,4,5])for(const stamina of staminas){
-    const context:RatingContext={course:{id:length,length,terrain:1,turn:1,distance:length<=1400?1:length<=1800?2:length<=2400?3:4,inout:1,corners:[],straights:[{start:0,end:length,frontType:1}],slopes:[]},style,racerCount:9,raceParameters:{groundCondition:1},profile:{version:1,stats:{...DEFAULT_RACE_IMPACT_STATS,stamina},dynamicOverrides:{}},modelVersion:RATING_MODEL_VERSION};
+    const context:RatingContext={course:{id:length,length,terrain:1,turn:1,distance:length<=1400?1:length<=1800?2:length<=2400?3:4,inout:1,corners:[],straights:[{start:0,end:length,frontType:1}],slopes:[]},style,racerCount:9,raceParameters:{groundCondition:1},profile:{version:2,bashinReferenceSpeed:null,stats:{...DEFAULT_RACE_IMPACT_STATS,stamina},dynamicOverrides:{}},modelVersion:RATING_MODEL_VERSION};
     const meter=family.startsWith('passive_')||family==='start_delay'?0:family==='acceleration'?length*2/3:family==='zenkai'?length*.8:length*.5;
     const kind=family.startsWith('passive_')?'persistent':family==='recovery'||family==='start_delay'?'instant':'timed';
     const path:TriggerPath={triggerIndex:0,regions:[{start:meter,end:length}],sampling:'immediate',assumptions:[],rankSet:[1],condition:'',precondition:'',dependsOn:[],cooldownSeconds:null,additionalActivations:0,duration:{kind,seconds:kind==='timed'?payload.baseTime!/10000*length/1000:kind==='instant'?0:null},effects:[payload.effect],partialReasons:[],warnings:[]};

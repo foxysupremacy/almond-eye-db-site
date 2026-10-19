@@ -7,8 +7,10 @@ import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { SkillHoverCard, SkillInspectorProvider } from "@/app/common/ui/skills/details/skill-hover-card";
 import DuplicateSkillBadge from "@/app/common/ui/skills/provenance/duplicate-skill-badge";
 import { TrackSkillSidebar } from "@/features/visualizer/components/track-skill-sidebar";
-import { RaceImpactProfilePanel } from "@/features/visualizer/components/race-impact-profile-panel";
-import { defaultRaceImpactProfile, type RaceImpactProfile } from "@/lib/race-impact";
+import { RaceImpactProfilePanel } from "@/app/common/ui/skills/effect-details/race-impact-profile-panel";
+import { defaultRaceImpactProfile, saveRaceImpactProfile, type RaceImpactProfile } from "@/lib/race-impact";
+import { loadRacetracks } from "@/lib/data/registry";
+import { flattenCourse } from "@/lib/api/course-format";
 
 const originalMatchMedia = window.matchMedia;
 const originalWidth = window.innerWidth;
@@ -224,6 +226,51 @@ describe("skill inspection overlays", () => {
   });
 });
 
+async function kyotoCourse() {
+  for (const t of await loadRacetracks()) { const r = t.courses.find((c) => c.id === 10808); if (r) return { ...flattenCourse(r), trackId: t.id }; }
+  throw new Error("Kyoto 10808 missing");
+}
+const OVERTAKE_ID = 980010;
+function overtakeSkill(): SkillDetail {
+  return { id: OVERTAKE_ID, nameEn: "Overtake skill", nameJp: "テスト", descEn: "x", rarity: 1, conditionGroups: [{ condition: "is_overtake==1&phase>=2", precondition: null, base_time: 30000, effects: [{ type: 27, value: 3500 }] }] } as SkillDetail;
+}
+
+describe("skill inspector race impact", () => {
+  afterEach(() => { saveRaceImpactProfile(defaultRaceImpactProfile()); });
+
+  test("M2: with no override the Activation factor reads 'Assumed', matching the modal (R32)", async () => {
+    finePointer();
+    saveRaceImpactProfile(defaultRaceImpactProfile());
+    const request = replaceSkillRequest(async () => overtakeSkill());
+    try {
+      const user = userEvent.setup();
+      const course = await kyotoCourse();
+      render(<SkillInspectorProvider course={course} racerCount={9} runningStyle={2} activePvpEvent={null} raceParams={{ groundCondition: 1 }}><SkillHoverCard skillId={OVERTAKE_ID} fallbackSkill={{ nameEn: "Overtake skill" }}>Overtake skill</SkillHoverCard></SkillInspectorProvider>);
+      await user.click(screen.getByRole("button", { name: "Inspect Overtake skill" }));
+      await screen.findByText("Race impact");
+      const row = screen.getByText("Activation", { selector: "span" }).parentElement!;
+      expect(row.textContent).toContain("Assumed");
+      expect(row.textContent).not.toContain("100%");
+    } finally { request.mockRestore(); }
+  });
+
+  test("M3: the inspector scores with the user's race-impact profile (same as Visualizer and modal)", async () => {
+    finePointer();
+    saveRaceImpactProfile({ ...defaultRaceImpactProfile(), dynamicOverrides: { overtake: 0.3 } });
+    const request = replaceSkillRequest(async () => overtakeSkill());
+    try {
+      const user = userEvent.setup();
+      const course = await kyotoCourse();
+      render(<SkillInspectorProvider course={course} racerCount={9} runningStyle={2} activePvpEvent={null} raceParams={{ groundCondition: 1 }}><SkillHoverCard skillId={OVERTAKE_ID} fallbackSkill={{ nameEn: "Overtake skill" }}>Overtake skill</SkillHoverCard></SkillInspectorProvider>);
+      await user.click(screen.getByRole("button", { name: "Inspect Overtake skill" }));
+      await screen.findByText("Race impact");
+      const row = screen.getByText("Activation", { selector: "span" }).parentElement!;
+      expect(row.textContent).toContain("30%");
+      expect(screen.getByText(/situational override 30%/)).toBeTruthy();
+    } finally { request.mockRestore(); }
+  });
+});
+
 describe("visualizer controls", () => {
   test("rarity selection exposes its selected state and cannot deselect", async () => {
     const user = userEvent.setup();
@@ -237,11 +284,11 @@ describe("visualizer controls", () => {
     expect(selections).toEqual(["gold"]);
   });
 
-  test("profile disclosure supports number-field keyboard changes and cleared overrides", async () => {
+  test("profile disclosure edits stats, explains assumptions, and resets saved overrides", async () => {
     const user = userEvent.setup();
     function Probe() {
       const [profile, setProfile] = useState<RaceImpactProfile>(() => ({ ...defaultRaceImpactProfile(), dynamicOverrides: { blocked: 0.3 } }));
-      return <><RaceImpactProfilePanel profile={profile} dynamicKeys={["blocked"]} onChange={setProfile} /><output>{profile.stats.speed}:{profile.dynamicOverrides.blocked ?? "telemetry"}</output></>;
+      return <><RaceImpactProfilePanel profile={profile} dynamicKeys={["blocked"]} onChange={setProfile} /><output>{profile.stats.speed}:{profile.dynamicOverrides.blocked ?? "assumed"}</output></>;
     }
     render(<Probe />);
     await user.click(screen.getByRole("button", { name: /Race-impact profile/ }));
@@ -250,9 +297,10 @@ describe("visualizer controls", () => {
     act(() => speed.focus());
     await user.keyboard("{ArrowUp}");
     expect((speed as HTMLInputElement).value.replaceAll(",", "")).toBe(String(previous + 1));
-    const blocked = screen.getByRole("textbox", { name: "Blocked" });
-    await user.clear(blocked);
-    await user.tab();
-    await waitFor(() => expect(screen.getByText(/:telemetry$/)).toBeTruthy());
+    expect(screen.queryByRole("textbox", { name: "Blocked" })).toBeNull();
+    expect(screen.getByText(/Dynamic race conditions are assumed to be met/)).toBeTruthy();
+    expect(screen.getByText(/:0\.3$/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Reset to standard profile" }));
+    await waitFor(() => expect(screen.getByText(`${defaultRaceImpactProfile().stats.speed}:assumed`)).toBeTruthy());
   });
 });

@@ -55,11 +55,9 @@ export interface CalculationBreakdown {
 }
 
 export interface SkillEvaluationResult {
-  /** Canonical result. Legacy display fields are projections of this value. */
-  canonicalRating?: import("../skill-rating/types").SkillRating;
   score: number;
-  stars: 1 | 2 | 3 | 4 | 5 | null;
-  tier: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  stars: 1 | 2 | 3 | 4 | 5;
+  tier: "S" | "A" | "B" | "C" | "D" | "F";
   category: SkillTacticalCategory;
   primaryBadge: {
     label: string;
@@ -93,7 +91,7 @@ export interface SkillEvaluationResult {
     inheritedWhiteNameEn?: string;
     inheritedWhiteNameJp?: string;
     isGoldTransformed: boolean;
-    factorTier: "S" | "A" | "B" | "C" | "D" | "F" | null;
+    factorTier: "S" | "A" | "B" | "C";
   };
 }
 
@@ -105,6 +103,8 @@ export interface SkillTriggerEvaluation {
 export interface SkillDetailInput {
   id: number;
   rarity?: number;
+  /** Game data flag (0 = guaranteed, 1 = wisdom check). Metadata only: R32 scores assume activation and never read it. */
+  activation?: number | null;
   nameEn?: string;
   nameJp?: string;
   descEn?: string;

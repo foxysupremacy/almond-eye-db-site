@@ -11,7 +11,8 @@
  *   4. crawl_gametora_cards.py     GameTora -> English names, hints, events for
  *                                  new/uncrawled cards; recompiles skill-meta.json
  *   5. generate_inherit_skills.py  master.mdb -> skills-inherit.json,
- *                                  unique-inherit-map.json
+ *                                  unique-inherit-map.json; then
+ *      inherit-skill-triggers.ts   refreshes their triggers from skill_data
  *   6. clean_card_names.py         strip bracketed title prefixes (idempotent)
  *   7. crawl_card_images.py        GameTora PNG assets (skips existing files)
  *
@@ -120,6 +121,8 @@ steps.push({
 
 // 5. Inherited-unique skills from master.mdb.
 steps.push({ name: "generate inherit skills", cmd: python, args: py("generate_inherit_skills.py") });
+// Triggers (conditionGroups + activation) come 1:1 from skill_data; names/icons stay as generated above.
+steps.push({ name: "inherit skill triggers", cmd: process.execPath, args: tsScript("inherit-skill-triggers.ts") });
 
 // 6. Optional game-captured event recommendation response. Keep the raw
 // response local; only the normalized, header-free JSON is committed.

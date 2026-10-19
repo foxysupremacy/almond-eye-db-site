@@ -3,11 +3,13 @@
 Reviewed: **2026-10-09**. Model: **`conditional-v2`**. Recovery policy:
 **`recovery-policy-v1`**. Tier policy: **`conditional-tier-v1`**.
 
-This is the current technical reference for AlmondEyeDB skill ratings. It describes
-the working-tree implementation, including the rating refactor that is not yet
-fully represented by the repository's committed history. Read the
-[known issues / next pickup](#known-issues--next-pickup) before changing trigger
-selection, condition labels, mechanics or benchmarks.
+Status after the race-rankings merge (2026-10-19): **historical reference**.
+The application now follows the feature pipeline described in
+[Active skill evaluation](skill_pipeline.md). `lib/skill-rating/` and its benchmark
+dataset remain available for offline research and regression tests; the application
+evaluator, Parenting and recommendation callers no longer use its sessions.
+The integration descriptions and known issues below describe the earlier
+`conditional-v2` engine and must not be treated as the active application contract.
 
 The following evidence labels apply throughout:
 
@@ -16,8 +18,9 @@ The following evidence labels apply throughout:
 - **Provisional mechanics:** an approximation or inference; not validated by real races.
 - **Open finding:** a confirmed implementation issue or a stated verification gap.
 
-Earlier category scores, rank penalties, consistency bonuses and tier overrides
-in [skill_eval.md](skill_eval.md) and [skills-spurt.md](skills-spurt.md) are historical.
+The older design notes in [skill_eval.md](skill_eval.md) and
+[skills-spurt.md](skills-spurt.md) are historical; consult the active pipeline
+for the selected tactical policies.
 The [replay analysis](race_skill_rules_analysis.md) is research context, not the
 current rating specification. Its observations do not establish activation
 probabilities for this conditional engine.

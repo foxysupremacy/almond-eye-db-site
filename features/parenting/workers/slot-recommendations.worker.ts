@@ -11,8 +11,6 @@ interface SlotRecommendationsRequest {
   excludedCharIds: number[];
   course: Course | null;
   runningStyle: RunningStyle | number | null;
-  raceParams?: SlotRecommendationOptions["raceParams"];
-  raceImpactProfile?: SlotRecommendationOptions["raceImpactProfile"];
   veterans: KyumaruVeteranItem[];
   supportCardIds: (number | null)[];
 }

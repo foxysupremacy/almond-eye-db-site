@@ -6,9 +6,7 @@ import type { Course } from "@/lib/skill-engine/types";
 import { renderCourse, type TrackSvgElement } from "@/features/visualizer/rendering/track-render";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { SkillEvaluationResult } from "@/lib/evaluator/types";
-import type { SkillDetail } from "@/lib/api";
 import { CourseMapCanvas } from "./course-map-canvas";
-import { RaceEffectGraph } from "./race-effect-graph";
 import { TrackUnifiedTooltip } from "./track-unified-tooltip";
 
 function LayoutDashboardIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
@@ -18,16 +16,6 @@ function LayoutDashboardIcon({ className = "h-3.5 w-3.5" }: { className?: string
       <rect width="7" height="5" x="14" y="3" rx="1" />
       <rect width="7" height="9" x="14" y="12" rx="1" />
       <rect width="7" height="5" x="3" y="16" rx="1" />
-    </svg>
-  );
-}
-
-function LayersIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="12 2 2 7 12 12 22 7 12 2" />
-      <polyline points="2 17 12 22 22 17" />
-      <polyline points="2 12 12 17 22 12" />
     </svg>
   );
 }
@@ -51,21 +39,13 @@ function SplitVerticalIcon({ className = "h-3.5 w-3.5" }: { className?: string }
   );
 }
 
-function TrendingUpIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
-      <polyline points="16 7 22 7 22 13" />
-    </svg>
-  );
-}
+type ViewMode = "all" | "1d" | "map";
 
 interface TrackCanvasProps {
   course: Course | null;
   zones: SkillZoneResult[] | null;
   selectedSkillId?: string | null;
   evaluation?: SkillEvaluationResult | null;
-  skillDetail?: SkillDetail | null;
 }
 
 export function TrackCanvas({
@@ -73,43 +53,25 @@ export function TrackCanvas({
   zones,
   selectedSkillId,
   evaluation,
-  skillDetail,
 }: TrackCanvasProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<TrackSvgElement | null>(null);
 
-  // Layout mode: "all" (Full 3 Boards), "timeline-graph" (Board 2 + 3), "1d" (Board 2), "graphs" (Board 3), "map" (Board 1)
-  const [viewMode, setViewMode] = useState<"all" | "timeline-graph" | "1d" | "graphs" | "map">("all");
+  // Layout mode: "all" (Map + timeline), "1d" (Board 2), "map" (Board 1).
+  // The per-skill effect graph now lives in SkillEffectDetailsModal.
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [hoverMeter, setHoverMeter] = useState<number | null>(null);
   const [hoverCoords, setHoverCoords] = useState<{ x: number; y: number } | null>(null);
-  const [isPinned, setIsPinned] = useState(false);
-  const [unit, setUnit] = useState<"meters" | "bashin">("meters");
 
   const impact = evaluation?.raceImpact;
 
   const handleHover = useCallback(
     (m: number | null, clientPos?: { clientX: number; clientY: number }) => {
-      if (isPinned) return;
       setHoverMeter(m);
       if (clientPos) setHoverCoords({ x: clientPos.clientX, y: clientPos.clientY });
     },
-    [isPinned],
+    [],
   );
-
-  const handleTogglePin = useCallback(() => {
-    setIsPinned((prev) => !prev);
-  }, []);
-
-  const handleUnpin = useCallback(() => {
-    setIsPinned(false);
-    setHoverMeter(null);
-    setHoverCoords(null);
-  }, []);
-
-  // Unpin on skill selection change
-  useEffect(() => {
-    setIsPinned(false);
-  }, [selectedSkillId]);
 
   // 1. Render the 1D flat SVG track with its speed lane and synchronized hover
   useEffect(() => {
@@ -123,7 +85,7 @@ export function TrackCanvas({
     svgRef.current = svg;
   }, [course, zones, impact?.trace, handleHover]);
 
-  // 2. Update 1D SVG hover line when hoverMeter changes from Course Map or Effect Graphs
+  // 2. Update 1D SVG hover line when hoverMeter changes from the Course Map
   useEffect(() => {
     svgRef.current?.setHoverMeter(hoverMeter);
   }, [hoverMeter]);
@@ -137,40 +99,25 @@ export function TrackCanvas({
             <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
               Course Map & Track Visualizer
             </span>
-            <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.2 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
-              3-Board Mode
-            </span>
           </div>
           <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-            Course Map 2.5D · 1D Linear Timeline with Speed Estimate · Race / Skill Effect Graph
+            Course Map 2.5D · 1D Linear Timeline with Speed Estimate
           </span>
         </div>
 
         {/* View Mode Switcher */}
         <div className="flex min-w-0 items-center gap-1 text-xs">
-          <ToggleButtonGroup aria-label="Visualizer layout" selectionMode="single" disallowEmptySelection selectedKeys={[viewMode]} onSelectionChange={(keys) => { const key = [...keys][0]; if (key) setViewMode(key as typeof viewMode); }} className="grid w-full grid-cols-2 gap-1 sm:grid-cols-5 sm:flex sm:w-auto">
+          <ToggleButtonGroup aria-label="Visualizer layout" selectionMode="single" disallowEmptySelection selectedKeys={[viewMode]} onSelectionChange={(keys) => { const key = [...keys][0]; setViewMode(key === "1d" || key === "map" ? key : "all"); }} className="grid w-full grid-cols-3 gap-1 sm:flex sm:w-auto">
             <ToggleButton id="all"
               className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
                 viewMode === "all"
                   ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
-              aria-description="Full View: All 3 Boards (Map + 1D Timeline + Effect Graphs)"
+              aria-description="Course Map 2.5D and 1D Linear Timeline"
             >
               <LayoutDashboardIcon className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-              <span>Full View</span>
-            </ToggleButton>
-
-            <ToggleButton id="timeline-graph"
-              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
-                viewMode === "timeline-graph"
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-              aria-description="Timeline & Graphs: 1D Timeline on top, Effect Graphs on bottom"
-            >
-              <LayersIcon className="h-3.5 w-3.5" />
-              <span>Timeline & Graphs</span>
+              <span>Map + timeline</span>
             </ToggleButton>
 
             <ToggleButton id="1d"
@@ -183,18 +130,6 @@ export function TrackCanvas({
             >
               <SplitVerticalIcon className="h-3.5 w-3.5" />
               <span>1D Only</span>
-            </ToggleButton>
-
-            <ToggleButton id="graphs"
-              className={`flex min-h-11 md:min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 items-center justify-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-semibold transition-colors cursor-pointer sm:px-2.5 ${
-                viewMode === "graphs"
-                  ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-              aria-description="Effect Graphs Only"
-            >
-              <TrendingUpIcon className="h-3.5 w-3.5" />
-              <span>Graphs Only</span>
             </ToggleButton>
 
             <ToggleButton id="map"
@@ -212,7 +147,7 @@ export function TrackCanvas({
         </div>
       </div>
 
-      {/* Main Track Display: Three-Board Sequence */}
+      {/* Main Track Display: Course Map + 1D Timeline */}
       {course ? (
         <div className="flex flex-col gap-4">
           {/* Board 1: 2D/2.5D Course Map */}
@@ -237,7 +172,7 @@ export function TrackCanvas({
           )}
 
           {/* Board 2: 1D Linear Timeline with Speed Estimate */}
-          {(viewMode === "all" || viewMode === "timeline-graph" || viewMode === "1d") && (
+          {(viewMode === "all" || viewMode === "1d") && (
             <div className="overflow-hidden rounded-xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-2 sm:p-3 transition-all">
               <div className="flex items-center justify-between mb-2 text-[11px]">
                 <div className="flex items-center gap-2">
@@ -256,33 +191,13 @@ export function TrackCanvas({
             </div>
           )}
 
-          {/* Board 3: Race / Skill Effect Graph */}
-          {(viewMode === "all" || viewMode === "timeline-graph" || viewMode === "graphs") && (
-            <RaceEffectGraph
-              course={course}
-              zones={zones}
-              impact={impact}
-              conditional={Boolean(evaluation?.canonicalRating)}
-              hoverMeter={hoverMeter}
-              onHover={handleHover}
-              isPinned={isPinned}
-              onTogglePin={handleTogglePin}
-              unit={unit}
-              onUnitChange={setUnit}
-            />
-          )}
-
           {/* Floating Unified Telemetry Tooltip */}
           <TrackUnifiedTooltip
             course={course}
             zones={zones}
             impact={impact}
-            conditional={Boolean(evaluation?.canonicalRating)}
             hoverMeter={hoverMeter}
             coords={hoverCoords}
-            isPinned={isPinned}
-            onUnpin={handleUnpin}
-            unit={unit}
           />
         </div>
       ) : (

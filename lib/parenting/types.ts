@@ -27,10 +27,9 @@ export interface DeckAnalysis {
 }
 
 export interface LegacyUniqueEval {
-  canonicalRating?: import("../skill-rating/types").SkillRating;
   skillName?: string;
   category: string;
-  tier?: "S" | "A" | "B" | "C" | "D" | "F" | null;
+  tier: "S+" | "S" | "A" | "B" | "C" | "D" | "F";
   badge: string;
   badgeClass: string;
   explanation: string;

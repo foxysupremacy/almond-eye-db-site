@@ -16,8 +16,6 @@ import SkillItem from "@/app/common/ui/skills/skill-item";
 import { api, getCharacterImageUrl, type CardIndexEntry, type CharacterIndexEntry, type SkillDetail } from "@/lib/api";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { evaluateSkillActivation, type SkillActivationResult } from "@/lib/parenting/skill-evaluator";
 import { deriveSkillsForDeck } from "@/lib/deck/skill-resolver";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
@@ -167,8 +165,6 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
   );
 
   const raceParams = activeRaceParameters;
-  const { raceImpactProfile } = useRaceImpactProfile();
-  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
 
   const hardToGetSkills = useMemo(() => {
     if (!hardToGetData || !course) return [];
@@ -176,9 +172,9 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       hardToGetData.skills,
       hardToGetData.cards,
       hardToGetData.characters,
-      (skillId) => evaluateSkillActivation(skillId, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession }).activates,
+      (skillId) => evaluateSkillActivation(skillId, course, runningStyle, raceParams).activates,
     );
-  }, [hardToGetData, course, runningStyle, raceParams, raceImpactProfile, ratingSession]);
+  }, [hardToGetData, course, runningStyle, raceParams]);
   const hardToGetSkillDetails = useMemo(
     () => new Map((hardToGetData?.skills ?? []).map((skill) => [skill.id, skill])),
     [hardToGetData],
@@ -189,13 +185,13 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     const map = new Map<number, SkillActivationResult>();
     const checkSkill = (id: number) => {
       if (!map.has(id)) {
-        map.set(id, evaluateSkillActivation(id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession }));
+        map.set(id, evaluateSkillActivation(id, course, runningStyle, raceParams));
       }
     };
     unifiedSkillList.forEach((s) => checkSkill(s.id));
     parentCardSkillsMap.forEach((skills) => skills.forEach((s) => checkSkill(s.id)));
     return map;
-  }, [unifiedSkillList, parentCardSkillsMap, course, runningStyle, raceParams, raceImpactProfile, ratingSession]);
+  }, [unifiedSkillList, parentCardSkillsMap, course, runningStyle, raceParams]);
 
   const isSkillUniqueTarget = (s: { id: number; isUniqueToParent?: boolean; isDuplicateInMain?: boolean }) => {
     if (s.isDuplicateInMain) return false;
@@ -562,7 +558,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                   if (!card) return null;
                   const allCardSkills = parentCardSkillsMap.get(card.id) || [];
                   const cFiltered = allCardSkills.filter((s) => {
-                    const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+                    const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                     const canAct = act.activates;
                     const isDupe = mainSkillIdSet.has(s.id);
                     if (filter === "unique" && (isDupe || !canAct)) return false;
@@ -639,7 +635,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                             const isBanned = isSkillBanned(s.id, activePvpEvent);
                             const isDupeInMain = mainSkillIdSet.has(s.id);
                             const isDupeInParent = parentCardDuplicateSkillIdSet.has(s.id);
-                            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+                            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                             const canActivate = activation.activates;
                             const isUniqueTarget = !isDupeInMain && canActivate;
 
@@ -765,7 +761,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                       const parentSkillsList = pedigreeSkills
                         .filter((s) => s.grants?.some((g) => g.slotLabel === slot.slotLabel))
                         .filter((s) => {
-                          const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+                          const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                           const canAct = act.activates;
                           const isDupe = mainSkillIdSet.has(s.id);
                           if (filter === "unique" && (isDupe || !canAct)) return false;
@@ -855,7 +851,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                               {parentSkillsList.map((s, idx) => {
                                 const isBanned = isSkillBanned(s.id, activePvpEvent);
                                 const isDupeInMain = mainSkillIdSet.has(s.id);
-                                const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+                                const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                                 const canActivate = activation.activates;
                                 const isUniqueTarget = !isDupeInMain && canActivate;
                                 const slotGrant = s.grants?.find((g) => g.slotLabel === slot.slotLabel);
@@ -981,7 +977,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
           {filtered.map((s, idx) => {
             const rStyle = getSkillRarityStyle(s.rarity);
             const isBanned = isSkillBanned(s.id, activePvpEvent);
-            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+            const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
             const canActivate = activation.activates;
             const isUniqueTarget = s.isUniqueToParent && !s.isDuplicateInMain && canActivate;
 

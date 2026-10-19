@@ -11,7 +11,6 @@ import { conditionBranches, formatEffect } from "@/lib/skill-engine/describe";
 import { ZONE_COLORS } from "@/lib/visualizer/colors";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { CardSourceIcon, splitStylePrefix } from "@/app/common/ui/skills/skill-badges";
-import { SkillRatingSummary } from "@/app/common/ui/skills/details/skill-rating-summary";
 import { ConditionChips } from "@/app/common/ui/skills/details/condition-chips";
 import { hexToRgba } from "@/app/common/ui/primitives/color-utils";
 import {
@@ -176,16 +175,9 @@ export function SkillDetailPanel({
               </div>
               <div className="divide-y divide-zinc-200/80 dark:divide-zinc-800">
                 {(skillDetail.conditionGroups ?? []).map((originalGroup, gi) => {
-                  const ratedPath = evaluation?.canonicalRating?.scenarios.flatMap((scenario) => scenario.paths).find((path) => path.triggerIndex === gi);
-                  const variantMismatch = evaluation?.canonicalRating?.evaluatedSkillId != null
-                    && evaluation.canonicalRating.evaluatedSkillId !== skillDetail.id;
-                  const fallbackScaling = variantMismatch
-                    ? { effects: originalGroup.effects ?? [], resolutions: [] }
-                    : resolveSkillEffects(originalGroup.effects, { course });
-                  const g = ratedPath ? { ...originalGroup, effects: ratedPath.effects, condition: ratedPath.condition, precondition: ratedPath.precondition,
-                    base_time: ratedPath.duration.seconds == null ? null : ratedPath.duration.seconds * 10_000 / ((course?.length ?? 1_000) / 1_000),
-                  } : { ...originalGroup, effects: fallbackScaling.effects };
-                  const effectScalings = ratedPath?.effectScalings ?? fallbackScaling.resolutions;
+                  const scaling = resolveSkillEffects(originalGroup.effects, { course });
+                  const g = { ...originalGroup, effects: scaling.effects };
+                  const effectScalings = scaling.resolutions;
                   const z = zones[gi];
                   if (!z || !z.regions.length) return null;
                   const triggerEvaluation = evaluation?.triggerEvaluations?.find(
@@ -228,7 +220,6 @@ export function SkillDetailPanel({
                           racerCount={racerCount}
                           condition={g.condition}
                           precondition={g.precondition}
-                          assumptions={evaluation?.canonicalRating?.assumptions.filter((entry) => entry.triggerIndex === gi)}
                           scalingNeeds={effectScalings}
                           selectedUma={selectedUma}
                         />
@@ -249,7 +240,7 @@ export function SkillDetailPanel({
                         )}
                       </div>
 
-                      {triggerEvaluation && !evaluation?.canonicalRating && (
+                      {triggerEvaluation && (
                         <div className="mt-3 border-t border-zinc-200/70 pt-2.5 dark:border-zinc-700/70">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div className="flex items-center gap-1.5">
@@ -298,7 +289,6 @@ export function SkillDetailPanel({
           {/* Block 3: Tactical Verdict & Calculation Breakdown (Unboxed) */}
           {evaluation && (
             <div className="p-4 sm:p-5">
-              {evaluation.canonicalRating ? <SkillRatingSummary rating={evaluation.canonicalRating} compact={compact} /> : <>
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
                   <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
@@ -330,7 +320,6 @@ export function SkillDetailPanel({
 
               {/* Highlighted Calculation Breakdown Panel & Math Steps */}
               <CalculationBreakdownPanel evaluation={evaluation} compact={compact} />
-              </>}
             </div>
           )}
 
@@ -385,7 +374,7 @@ export function SkillDetailPanel({
               <span className="font-semibold underline underline-offset-2">
                 {evaluation.parentMeta.inheritedWhiteNameEn}
               </span>{" "}
-              {evaluation.canonicalRating ? ". The rating uses the inherited skill’s effects." : <> (Factor Priority: Tier {evaluation.parentMeta.factorTier}).</>}
+              (Factor Priority: Tier {evaluation.parentMeta.factorTier}).
             </div>
           )}
         </>
@@ -402,28 +391,21 @@ export function SkillDetailPanel({
 export const SkillDetailInspector = SkillDetailPanel;
 
 function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResult; compact?: boolean }) {
-  const conditional = impact.physicsNote?.includes("Conditional single-Uma");
-  if (conditional) return <div className={`mt-3 border-t border-zinc-200/80 pt-2.5 text-zinc-600 dark:border-zinc-700/80 dark:text-zinc-300 ${compact ? "text-[10px]" : "text-[11px]"}`}>
-    <p className="font-semibold text-sky-700 dark:text-sky-400">Conditional simulated impact</p>
-    <p className="mt-1">{impact.expectedDistanceGainMeters == null ? "Effect value unavailable for this model." : `${impact.expectedDistanceGainMeters.toFixed(2)}m estimated when the selected path activates and its assumptions hold.`} Rank and dynamic activation probabilities are not applied.</p>
-    {impact.physicsNote && <p className="mt-1 text-zinc-500 dark:text-zinc-400">{impact.physicsNote}</p>}
-  </div>;
   const probability = Math.round(impact.activation.activationRate * 100);
   const impactText = impact.expectedBashin === null
     ? "Physics pending"
     : `${impact.expectedBashin.toFixed(2)} bashin expected`;
   const factorRows = [
-    ["Activation", `${probability}%`],
+    // R32: matches the modal's "Assumed to activate"; a percentage only when geometry or a user override lowers it.
+    ["Activation", impact.activation.activationRate >= 1 ? "Assumed" : `${probability}%`],
     ["Effect", `${impact.tactical.effect} pts`],
     ["Timing", `${impact.tactical.timing} pts`],
     ["Duration", `${impact.tactical.duration} pts`],
     ["Coverage", `${impact.tactical.coverage} pts`],
   ];
   const activationFormula = [
-    `geometry ${Math.round(impact.activation.geometryRate * 100)}%`,
-    `wisdom ${Math.round(impact.activation.wisdomRate * 100)}%`,
-    impact.activation.rankRate < 1 ? `style/rank ${Math.round(impact.activation.rankRate * 100)}%` : null,
-    impact.activation.dynamicRate < 1 ? `dynamic ${Math.round(impact.activation.dynamicRate * 100)}%` : null,
+    impact.activation.geometryRate < 1 ? `geometry ${Math.round(impact.activation.geometryRate * 100)}%` : null,
+    impact.activation.dynamicRate < 1 ? `situational override ${Math.round(impact.activation.dynamicRate * 100)}%` : null,
   ].filter((part): part is string => part !== null).join(" × ");
   return (
     <div className={`mt-3 border-t border-zinc-200/80 pt-2.5 dark:border-zinc-700/80 ${compact ? "text-[10px]" : "text-[11px]"}`}>
@@ -439,7 +421,7 @@ function RaceImpactSummary({ impact, compact = false }: { impact: RaceImpactResu
         ))}
       </div>
       <p className="mt-1.5 leading-relaxed text-zinc-500 dark:text-zinc-400">
-        Activation: {activationFormula || "no probability gates"}{impact.activation.dependsOnPreviousTrigger ? "; conditional on the prior trigger firing" : ""}. {impact.activation.priorSource === "manual" ? "Dynamic assumptions use the neutral fallback or your override." : `${impact.activation.priorSource === "track" ? "Track" : "Global"} telemetry: ${impact.activation.priorSamples} samples (${impact.activation.confidence} confidence).`}
+        Activation: {activationFormula || "assumed to activate (situational conditions met, no wisdom or lottery roll)"}{impact.activation.dependsOnPreviousTrigger ? "; conditional on the prior trigger firing" : ""}.
         {impact.physicsNote ? ` ${impact.physicsNote}` : " Baseline-vs-skill estimate; not a win-probability forecast."}
       </p>
     </div>

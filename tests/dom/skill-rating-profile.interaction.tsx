@@ -6,7 +6,7 @@ import { defaultRaceImpactProfile, RACE_IMPACT_PROFILE_KEY, saveRaceImpactProfil
 afterEach(() => { cleanup(); localStorage.removeItem(RACE_IMPACT_PROFILE_KEY); });
 
 function ProfileProbe({ label }: { label: string }) {
-  const { raceImpactProfile, updateRaceImpactProfile } = useRaceImpactProfile();
+  const [raceImpactProfile, updateRaceImpactProfile] = useRaceImpactProfile();
   return <button onClick={() => updateRaceImpactProfile({ ...raceImpactProfile, stats: { ...raceImpactProfile.stats, power: 1234 } })}>{label}: {raceImpactProfile.stats.power}</button>;
 }
 

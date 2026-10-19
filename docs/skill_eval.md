@@ -1,10 +1,9 @@
 # Hệ Thống Đánh Giá Kỹ Năng (Skill Evaluation Engine Architecture)
 
-> **Historical specification — superseded (2026-10-09).** The category scores,
-> rank penalties, bonuses and tier overrides below describe an earlier evaluator.
-> For the current conditional engine, APIs, Recovery policy and known issues, read
-> [Canonical skill rating](skill_grading.md). Preserve this document as history;
-> do not restore its scoring rules into current consumers.
+> **Historical design notes.** The race-rankings merge uses feature tactical
+> evaluation alongside the feature physical scorer. See
+> [Active skill evaluation](skill_pipeline.md) for current entry points and contracts.
+> The formulas and diagrams below are background, not an exact current specification.
 
 Tài liệu này mô tả chi tiết toàn bộ cơ chế, công thức toán học, mô hình vật lý và thuật toán phân loại được sử dụng trong module đánh giá kỹ năng của **AlmondEyeDB** (`almond-eye-db-site/lib/evaluator/`).
 

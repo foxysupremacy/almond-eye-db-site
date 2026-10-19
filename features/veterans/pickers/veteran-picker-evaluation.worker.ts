@@ -1,19 +1,14 @@
 import { charactersByCharId, charactersById } from "@/lib/data/registry";
 import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
-import { createApplicationRatingSession } from "@/lib/skill-rating/application";
-import type { RaceImpactProfile } from "@/lib/race-impact/types";
-import type { Course, RaceParameters } from "@/lib/skill-engine/types";
+import type { Course } from "@/lib/skill-engine/types";
 import { getParentInheritedUnique, hasMinimumParentSkillEffect } from "@/lib/parenting/unique-effect-filter";
-import { evaluateUniqueSkill, runningStyleToNum } from "@/lib/parenting/skill-evaluator";
+import { evaluateUniqueSkill } from "@/lib/parenting/skill-evaluator";
 import type { LegacyUniqueEval } from "@/lib/parenting/types";
 
 interface EvaluationRequest {
   cardIds: number[];
   course: Course | null;
   runningStyle: number | string | null;
-  raceParams: Partial<RaceParameters>;
-  racerCount: number;
-  raceImpactProfile: RaceImpactProfile;
 }
 
 interface EvaluationResponse {
@@ -31,16 +26,6 @@ workerScope.onmessage = ({ data }) => {
   try {
     const eligibleCardIds: number[] = [];
     const uniqueEvals: Array<[number, LegacyUniqueEval]> = [];
-    const style = runningStyleToNum(data.runningStyle);
-    const session = data.course
-      ? createApplicationRatingSession({
-        course: data.course,
-        style: style ?? null,
-        racerCount: data.racerCount,
-        raceParameters: data.raceParams,
-        profile: data.raceImpactProfile,
-      })
-      : undefined;
     const eligibilityBySkill = new Map<number, boolean>();
     const evaluationBySkill = new Map<number, LegacyUniqueEval>();
 
@@ -51,11 +36,7 @@ workerScope.onmessage = ({ data }) => {
 
       let eligible = eligibilityBySkill.get(skill.id);
       if (eligible === undefined) {
-        eligible = hasMinimumParentSkillEffect(skill, data.course, data.runningStyle, {
-          raceParams: { ...data.raceParams, numUmas: data.racerCount },
-          raceImpactProfile: data.raceImpactProfile,
-          session,
-        });
+        eligible = hasMinimumParentSkillEffect(skill, data.course, data.runningStyle);
         eligibilityBySkill.set(skill.id, eligible);
       }
       if (eligible) eligibleCardIds.push(cardId);
@@ -63,12 +44,7 @@ workerScope.onmessage = ({ data }) => {
       if (!data.course) continue;
       let evaluation = evaluationBySkill.get(skill.id);
       if (!evaluation) {
-        evaluation = evaluateUniqueSkill(skill.id, data.course, data.runningStyle, {
-          raceImpactProfile: data.raceImpactProfile,
-          raceParams: data.raceParams,
-          racerCount: data.racerCount,
-          session,
-        });
+        evaluation = evaluateUniqueSkill(skill.id, data.course, data.runningStyle);
         evaluationBySkill.set(skill.id, evaluation);
       }
       uniqueEvals.push([cardId, evaluation]);

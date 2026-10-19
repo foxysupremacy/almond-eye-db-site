@@ -2,7 +2,6 @@ import { describe, expect, test } from "bun:test";
 import type { CharacterIndexEntry } from "@/lib/api";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import type { LegacyUniqueEval } from "@/lib/parenting/types";
-import type { SkillRating } from "@/lib/skill-rating/types";
 import {
   projectCharacterTemplates,
   projectOwnedUmaEntries,
@@ -25,11 +24,6 @@ function character(id: number, charId: number, nameEn: string): CharacterIndexEn
     imgUrl: "",
   };
 }
-
-const eligibleRating = { originalSkillId: 1, evaluatedSkillId: 1, variant: "original", contextFingerprint: "test", modelVersion: "conditional-v1", selectedStyle: 1,
-  eligibility: { state: "eligible", reasons: [] }, scenarios: [], assumptions: [], warnings: [], partialReasons: [], score: 0, tier: "F", stars: 1,
-  status: "provisional", contributions: [], selectedScenarioId: null, selectedPaths: [], simulatedBenefit: 0, timeGainSeconds: 0,
-  benchmarkVersion: "conditional-v1", breakdown: [], provenance: [] } satisfies SkillRating;
 
 function veteran(cardId: number, rankScore: number, wins: number[] = []): KyumaruVeteranItem {
   return {
@@ -128,7 +122,7 @@ describe("veteran picker projections", () => {
   test("template projection excludes duplicate parents and orders fireable uniques before affinity", () => {
     const evals = new Map<number, LegacyUniqueEval>([
       [100101, { tier: "F", score: 10 } as LegacyUniqueEval],
-      [100201, { tier: "A", score: 1, category: "acceleration", badge: "Accel", badgeClass: "", explanation: "eligible", canonicalRating: eligibleRating }],
+      [100201, { tier: "A", score: 1 } as LegacyUniqueEval],
     ]);
     const templates = projectCharacterTemplates({
       characters,

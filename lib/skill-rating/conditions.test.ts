@@ -9,7 +9,7 @@ const context: RatingContext = {
     straights: [{ start: 0, end: 400, frontType: 1 }, { start: 800, end: 1600, frontType: 2 }, { start: 1800, end: 2400, frontType: 1 }],
     slopes: [], spurtStart: { meters: 1600 } },
   style: 2, racerCount: 9,
-  profile: { version: 1, stats: { speed: 2200, stamina: 1800, power: 1700, guts: 1500, wisdom: 1800 }, dynamicOverrides: {} },
+  profile: { version: 2, bashinReferenceSpeed: null, stats: { speed: 2200, stamina: 1800, power: 1700, guts: 1500, wisdom: 1800 }, dynamicOverrides: {} },
 };
 const environment: RatingEnvironment = { benchmarks: { modelVersion: RATING_MODEL_VERSION, convention: 'test', families: {}, provenance: [] } };
 function request(condition: string, precondition?: string): RatingRequest {

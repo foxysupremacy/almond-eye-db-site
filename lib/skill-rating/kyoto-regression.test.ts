@@ -2,7 +2,6 @@ import { describe, expect, test } from 'bun:test';
 import { loadRacetracks, skillsById } from '../data/registry';
 import { flattenCourse } from '../api/course-format';
 import { defaultRaceImpactProfile } from '../race-impact/profile';
-import { evaluateSkillForTrack } from '../evaluator/evaluator';
 import { createApplicationRatingSession } from './application';
 import { runTimeline, simulateTimeline } from './simulator';
 import { RATING_MODEL_VERSION, type RatingContext, type TriggerPath } from './types';
@@ -38,10 +37,6 @@ describe('Kyoto 3000m Betweener rating regression', () => {
     expect(full.activationOutcome).toBe(summary.activationOutcome);
     expect(full.modelVersion).toBe(RATING_MODEL_VERSION);
     expect(full.benchmarkVersion).toBe(RATING_MODEL_VERSION);
-    const facade = evaluateSkillForTrack(skill, course, 3, 9, false, [], context.raceParameters, { raceImpactProfile: context.profile, session });
-    expect(facade.score).toBe(summary.score);
-    expect(facade.tier).toBe(summary.tier);
-    expect(facade.canonicalRating!.eligibility).toEqual(summary.eligibility);
     expect(course.slopes).toEqual(row.slopes ?? row.data!.slopes!);
   });
 
@@ -78,8 +73,6 @@ describe('Kyoto 3000m Betweener rating regression', () => {
     expect(result.trace!.activationMeter).toBeNull();
     expect(result.distribution!.samples.every(sample => sample.activationRate === 0)).toBe(true);
     expect(result.breakdown).toContain('No selected trigger activated in the modeled timeline samples.');
-    const facade = evaluateSkillForTrack(impossible, course, 3, 9, false, [], tired.raceParameters, { session });
-    expect(facade.raceImpact!.activation.activationRate).toBe(0);
     const unsupported = session.evaluate({ skill: withCondition('phase_firsthalf_random==3&lastspurt==2') });
     expect(unsupported.status).toBe('partial');
     expect(unsupported.tier).toBeNull();

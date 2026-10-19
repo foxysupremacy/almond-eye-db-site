@@ -21,7 +21,6 @@ import rawCharacterEvolutionsJson from "./generated/character-evolutions.json";
 import rawCardEffectsJson from "./generated/card-effects.json";
 import rawGoldToWhiteJson from "./generated/gold-to-white.json";
 import rawSkillMetaJson from "./generated/skill-meta.json";
-import rawRaceImpactPriorsJson from "./generated/race-impact-priors.json";
 import rawSkillRatingBenchmarksJson from "./generated/skill-rating-benchmarks.json";
 import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
 import rawFactorsCompactJson from "./generated/factors-compact.json";
@@ -42,7 +41,6 @@ import type {
   SkillDetail,
   SkillMeta,
   SupportCardEffectsBlob,
-  RaceImpactPriorsPayload,
   PvpRecommendationsPayload,
   CompactFactorEntry,
   SuccessionFactorsPayload,
@@ -58,7 +56,6 @@ export type {
   MappedGoldSkill,
   SkillMeta,
   SupportCardEffectsBlob,
-  RaceImpactPriorsPayload,
   PvpRecommendationsPayload,
   CompactFactorEntry,
 };
@@ -105,6 +102,7 @@ interface RawSkillRecord {
   descEn?: string;
   descJp?: string;
   rarity?: number;
+  activation?: number | null;
   iconId?: number | null;
   tags?: string[];
   conditionGroups?: SkillDetail["conditionGroups"];
@@ -188,6 +186,7 @@ export const skillsBase: SkillDetail[] = (rawSkillsJson as unknown as RawSkillRe
   descEn: s.descEn || "",
   descJp: s.descJp,
   rarity: s.rarity || 1,
+  activation: s.activation ?? undefined,
   iconId: s.iconId,
   tags: s.tags || [],
   conditionGroups: s.conditionGroups || [],
@@ -200,6 +199,7 @@ export const skillsInherit: SkillDetail[] = (rawSkillsInheritJson as unknown as 
   descEn: s.descEn || "",
   descJp: s.descJp,
   rarity: s.rarity || 1,
+  activation: s.activation ?? undefined,
   iconId: s.iconId,
   tags: s.tags || [],
   conditionGroups: s.conditionGroups || [],
@@ -264,8 +264,7 @@ export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Recor
   SkillMeta
 >;
 
-/** Aggregate race telemetry for the optional Visualizer race-impact model. */
-export const raceImpactPriors = rawRaceImpactPriorsJson as RaceImpactPriorsPayload;
+/** Frozen normalization benchmarks used by the canonical skill-rating engine. */
 export const skillRatingBenchmarks = rawSkillRatingBenchmarksJson as import("../skill-rating/types").RatingBenchmarks;
 
 /** Game-provided race fit recommendations, normalized from the captured response. */
@@ -365,6 +364,16 @@ export const cardEffects: Record<string, SupportCardEffectsBlob> = rawCardEffect
 
 export function getCharacterEvolutions(cardId: number): CharacterEvolutionDetail[] {
   return characterEvolutions[String(cardId)] || [];
+}
+
+/**
+ * Evolution skill ids per slot (master.mdb skill_upgrade_description rank 3 / 5 / 7). All three
+ * slots are scored by the rankings.
+ */
+export function getEvolutionSlots(cardId: number): { slot1: number[]; slot2: number[]; slot3: number[] } {
+  const evos = getCharacterEvolutions(cardId);
+  const ids = (rank: number) => evos.filter((e) => e.rank === rank).map((e) => e.skillId);
+  return { slot1: ids(3), slot2: ids(5), slot3: ids(7) };
 }
 
 export function getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined {

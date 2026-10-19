@@ -10,7 +10,6 @@ import { planLastSpurt } from './last-spurt';
 import { competitionCost, createCompetitionState, updateCompetition } from './competition';
 import { recoveryPolicy } from './recovery-policy';
 import { RATING_MODEL_VERSION, RECOVERY_POLICY_VERSION, type RatingContext, type TriggerPath, type RecoveryActivation } from './types';
-import { evaluateSkillForTrack } from '../evaluator/evaluator';
 
 const profile=defaultRaceImpactProfile();
 const course={id:3200,length:3200,terrain:1,turn:1,distance:4,inout:1,corners:[],straights:[{start:0,end:3200,frontType:1}],slopes:[]};
@@ -186,7 +185,7 @@ describe('Recovery product policy v1',()=>{
    expect(a.contextFingerprint).not.toBe(b.contextFingerprint);
    expect(a.modelVersion).toBe(RATING_MODEL_VERSION);
  });
- test('real Kyoto white recovery is rated consistently in summary/full/facade',async()=>{
+ test('real Kyoto white recovery is rated consistently in summary/full',async()=>{
    const kyoto=flattenCourse((await loadRacetracks()).find(t=>t.id===10008)!.courses.find(c=>c.id===10810)!);
    const session=createApplicationRatingSession({...context,course:kyoto});
    const heal=skillsById.get(204293)!;
@@ -194,8 +193,6 @@ describe('Recovery product policy v1',()=>{
    expect(summary.score).toBeGreaterThan(0);expect(summary.activationOutcome).toBe('activated');
    expect(summary.selectedPaths[0].regions).toEqual([{start:1200,end:1230}]);
    expect(full.score).toBe(summary.score);expect(full.recovery).toEqual(summary.recovery);expect(full.hp).toEqual(summary.hp);
-   const facade=evaluateSkillForTrack(heal,kyoto,3,9,false,[],context.raceParameters,{session});
-   expect(facade.score).toBe(summary.score);expect(facade.canonicalRating!.recovery).toEqual(summary.recovery);
-   expect(facade.raceImpact!.expectedTimeGainSeconds).toBe(summary.timeGainSeconds);
+
  });
 });

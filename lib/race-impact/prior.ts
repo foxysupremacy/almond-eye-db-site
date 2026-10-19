@@ -1,5 +1,4 @@
-import type { RunningStyle } from "../deck/types";
-import type { RaceImpactPriorsPayload, RaceImpactPrior, DynamicConditionKey, PriorSource } from "./types";
+import type { DynamicConditionKey } from "./types";
 
 /** Dynamic state needs race telemetry; geometry is evaluated by the zone engine. */
 const CONDITION_PATTERNS: Array<[DynamicConditionKey, RegExp]> = [
@@ -9,7 +8,10 @@ const CONDITION_PATTERNS: Array<[DynamicConditionKey, RegExp]> = [
   ["surrounded", /surrounded|surround/i],
   // `is_activate_other_skill_detail` is a dependency between details of the
   // same skill. It is intentionally *not* an activation-count roll.
-  ["activate_count", /(?:^|[&_])activate_count(?:[<>=]|$)|is_activate_count/i],
+  // activate_count_param_skill ("activated N skills so far") is the same roll (R7.4). R31: so are the own-activation
+  // counts (activate_count_heal / _all / _start / _middle / _end_after / _later_half), assumed met like other dynamic
+  // conditions; the team count (activate_count_all_team) stays a pass-through.
+  ["activate_count", /(?:^|[&_])activate_count(?:_(?:param_skill|heal|all|start|middle|end_after|later_half))?(?:[<>=]|$)|is_activate_count/i],
   ["other_skill", /is_activate_other_skill_detail/i],
   ["visibility", /visible|vision/i],
 ];
@@ -19,32 +21,24 @@ export function dynamicConditionKeys(condition: string | null | undefined, preco
   return CONDITION_PATTERNS.filter(([, pattern]) => pattern.test(text)).map(([key]) => key);
 }
 
-export interface PriorLookup {
-  probability: number;
-  source: PriorSource;
-  samples: number;
-}
-
-function probability(prior: RaceImpactPrior): number {
-  return prior.opportunities > 0 ? prior.activations / prior.opportunities : 0.5;
-}
-
-/** Prefer a sufficiently sampled exact course cell, then a style-level global cell. */
-export function lookupDynamicPrior(
-  payload: RaceImpactPriorsPayload | undefined,
-  key: DynamicConditionKey,
-  context: { courseId?: number; groundCondition?: number; runningStyle?: RunningStyle | null; racerCount?: number },
-): PriorLookup {
-  const priors = payload?.priors ?? [];
-  const track = priors.find((p) =>
-    p.key === key && p.courseId === context.courseId && p.runningStyle === context.runningStyle &&
-    p.opportunities >= 30,
-  );
-  if (track) return { probability: probability(track), source: "track", samples: track.opportunities };
-  const global = priors.find((p) =>
-    p.key === key && p.courseId === undefined && p.runningStyle === context.runningStyle &&
-    p.opportunities >= 30,
-  ) ?? priors.find((p) => p.key === key && p.courseId === undefined && p.opportunities >= 30);
-  if (global) return { probability: probability(global), source: "global", samples: global.opportunities };
-  return { probability: 0.5, source: "manual", samples: 0 };
+/**
+ * Probability that a condition's dynamic (telemetry-only) parts hold, evaluated per `@` (OR) branch
+ * (controller ruling R7.4): a branch's rate is the product of `rateOf(key)` over its dynamic keys (1 when it has
+ * none) and the condition's rate is 1 - prod(1 - branchRate). The precondition is evaluated the same way and
+ * multiplied in. `other_skill` (is_activate_other_skill_detail) is a chain marker, never a rate.
+ */
+export function dynamicActivationRate(
+  condition: string | null | undefined, precondition: string | null | undefined, rateOf: (key: DynamicConditionKey) => number,
+): number {
+  const part = (text: string | null | undefined): number => {
+    if (!text) return 1;
+    const branchRates: number[] = [];
+    for (const branch of text.split("@")) {
+      const keys = dynamicConditionKeys(branch).filter((k) => k !== "other_skill");
+      if (!keys.length) return 1;
+      branchRates.push(keys.reduce((rate, key) => rate * rateOf(key), 1));
+    }
+    return branchRates.length === 1 ? branchRates[0] : 1 - branchRates.reduce((miss, rate) => miss * (1 - rate), 1);
+  };
+  return part(condition) * part(precondition);
 }

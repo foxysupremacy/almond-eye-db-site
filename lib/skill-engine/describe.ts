@@ -453,7 +453,7 @@ function renderFragment(raw: string): string {
 }
 
 /** Clamp racerCount to [9, 18]; non-finite → 12. */
-function normalizeRacerCount(racerCount: number | undefined): number {
+export function normalizeRacerCount(racerCount: number | undefined): number {
   if (racerCount === undefined) return 12;
   if (!Number.isFinite(racerCount)) return 12;
   return Math.min(18, Math.max(9, Math.round(racerCount)));
@@ -480,6 +480,68 @@ function parseFragment(raw: string): ParsedFrag {
     op: m[2],
     value: Number(m[3]),
   };
+}
+
+/**
+ * Intersect position terms (`order` and `order_rate`, all ops) into one
+ * inclusive [min, max] place range. `order_rate` thresholds use
+ * t = round(racerCount x N / 100). An `==` order term wins outright.
+ * Shared by describeCondition's wording and positionRange (UI dots).
+ */
+function consolidatePositions(terms: ParsedFrag[], racerCount: number): [number, number] {
+  let minPos = 1;
+  let maxPos = racerCount;
+  let exactPos: number | null = null;
+  for (const p of terms) {
+    if (p.kw === "order") {
+      if (p.op === "==") exactPos = p.value!;
+      else if (p.op === "<=") maxPos = Math.min(maxPos, p.value!);
+      else if (p.op === "<") maxPos = Math.min(maxPos, p.value! - 1);
+      else if (p.op === ">=") minPos = Math.max(minPos, p.value!);
+      else if (p.op === ">") minPos = Math.max(minPos, p.value! + 1);
+    } else if (p.kw === "order_rate") {
+      const t = Math.round((racerCount * p.value!) / 100);
+      if (p.op === "<=") maxPos = Math.min(maxPos, t);
+      else if (p.op === "<") maxPos = Math.min(maxPos, t - 1);
+      else if (p.op === ">=") minPos = Math.max(minPos, t);
+      else if (p.op === ">") minPos = Math.max(minPos, t + 1);
+    }
+  }
+  if (exactPos !== null) {
+    minPos = exactPos;
+    maxPos = exactPos;
+  }
+  minPos = Math.max(1, Math.min(racerCount, minPos));
+  maxPos = Math.max(1, Math.min(racerCount, maxPos));
+  if (minPos > maxPos) maxPos = minPos;
+  return [minPos, maxPos];
+}
+
+function isPositionTerm(p: ParsedFrag): boolean {
+  return p.value !== undefined && (p.kw === "order" || (p.kw === "order_rate" && p.value > 0));
+}
+
+/**
+ * Allowed finishing places implied by a condition string, using exactly the
+ * consolidation describeCondition renders: per `@` branch, all `order` /
+ * `order_rate` terms of the `&` clause are intersected; the result is the span
+ * (min of mins, max of maxes) across branches. Returns null when there is no
+ * position term, or when any branch is unconstrained (all places allowed).
+ */
+export function positionRange(condition: string, racerCount?: number): [number, number] | null {
+  const count = normalizeRacerCount(racerCount);
+  const branches = (condition ?? "").split("@").map((b) => b.trim()).filter(Boolean);
+  if (branches.length === 0) return null;
+  let lo = Infinity;
+  let hi = -Infinity;
+  for (const branch of branches) {
+    const terms = branch.split("&").map(parseFragment).filter(isPositionTerm);
+    if (terms.length === 0) return null;
+    const [a, b] = consolidatePositions(terms, count);
+    lo = Math.min(lo, a);
+    hi = Math.max(hi, b);
+  }
+  return [lo, hi];
 }
 
 /**
@@ -516,34 +578,7 @@ function renderAndGroup(andClause: string, racerCount: number): string[] {
 
   // Consolidate positions (when >= 2 conditions)
   if (posIndices.length > 1) {
-    let minPos = 1;
-    let maxPos = racerCount;
-    let exactPos: number | null = null;
-
-    for (const idx of posIndices) {
-      const p = parsed[idx];
-      if (p.kw === "order") {
-        if (p.op === "==") exactPos = p.value!;
-        else if (p.op === "<=") maxPos = Math.min(maxPos, p.value!);
-        else if (p.op === "<") maxPos = Math.min(maxPos, p.value! - 1);
-        else if (p.op === ">=") minPos = Math.max(minPos, p.value!);
-        else if (p.op === ">") minPos = Math.max(minPos, p.value! + 1);
-      } else if (p.kw === "order_rate") {
-        const t = Math.round((racerCount * p.value!) / 100);
-        if (p.op === "<=") maxPos = Math.min(maxPos, t);
-        else if (p.op === "<") maxPos = Math.min(maxPos, t - 1);
-        else if (p.op === ">=") minPos = Math.max(minPos, t);
-        else if (p.op === ">") minPos = Math.max(minPos, t + 1);
-      }
-    }
-
-    if (exactPos !== null) {
-      minPos = exactPos;
-      maxPos = exactPos;
-    }
-    minPos = Math.max(1, Math.min(racerCount, minPos));
-    maxPos = Math.max(1, Math.min(racerCount, maxPos));
-    if (minPos > maxPos) maxPos = minPos;
+    const [minPos, maxPos] = consolidatePositions(posIndices.map((i) => parsed[i]), racerCount);
 
     replacements[posIndices[0]] = minPos === maxPos ? `position ${minPos}` : `position ${minPos}–${maxPos}`;
     for (let k = 1; k < posIndices.length; k++) {

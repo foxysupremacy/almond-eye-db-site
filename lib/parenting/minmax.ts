@@ -1,5 +1,6 @@
 import type { CharacterIndexEntry } from "../data/types";
 import type { Course } from "../skill-engine/types";
+import { distanceCategoryForLength } from "../skill-engine/distance-category";
 import { successionFactors } from "../data/registry";
 import {
   APTITUDE_KEYS, LOOP_UMA_SLOTS, PARENT_WHITE_TARGET_SLOTS, WHITE_FACTOR_APTITUDE,
@@ -60,7 +61,7 @@ export function aceGeneticTarget(course?: Course | null, style?: number | null):
   const distances: Record<number, AptitudeKey> = { 1: "Sprint", 2: "Mile", 3: "Medium", 4: "Long" };
   const styles: Record<number, AptitudeKey> = { 1: "Runner", 2: "Leader", 3: "Betweener", 4: "Chaser" };
   const bucket = course && (distances[course.distance] ? course.distance : course.length > 0
-    ? course.length <= 1400 ? 1 : course.length <= 1800 ? 2 : course.length <= 2400 ? 3 : 4 : null);
+    ? distanceCategoryForLength(course.length) : null);
   return {
     surface: course?.terrain === 1 ? "Turf" : course?.terrain === 2 ? "Dirt" : null,
     distance: bucket == null ? null : distances[bucket] ?? null,

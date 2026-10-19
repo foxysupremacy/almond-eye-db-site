@@ -16,8 +16,6 @@ import { CardTargetSkillSearch } from "./card-target-skill-search";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, type CardIndexEntry, type SkillDetail } from "@/lib/api";
 import { useDeck } from "@/features/deck/state";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { recommendCardsForParent, type CardRecommendation } from "@/lib/recommendation/engine";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
@@ -181,8 +179,6 @@ export default function CardPickerPopover({
 
   // Recommendations map for both parent and main deck modes
   const raceParams = activeRaceParameters;
-  const { raceImpactProfile } = useRaceImpactProfile();
-  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
 
   const [recommendationsMap, setRecommendationsMap] = useState<Map<number, CardRecommendation> | null>(null);
   useEffect(() => {
@@ -204,8 +200,8 @@ export default function CardPickerPopover({
           surface,
           limit: 600, // wider pool for search & sort
           raceParams,
-          raceImpactProfile,
-          ratingSession,
+
+
           chainChoicesMap: isParent ? activePreset.parentChainChoices : activePreset.mainChainChoices,
         });
         setRecommendationsMap(new Map(recs.map((r) => [r.cardId, r])));
@@ -215,7 +211,7 @@ export default function CardPickerPopover({
       window.cancelAnimationFrame(frame);
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [sort, mode, mainSkillIdSet, parentSlots, mainSlots, course, runningStyle, distance, surface, raceParams, raceImpactProfile, ratingSession, activePreset.parentChainChoices, activePreset.mainChainChoices]);
+  }, [sort, mode, mainSkillIdSet, parentSlots, mainSlots, course, runningStyle, distance, surface, raceParams, activePreset.parentChainChoices, activePreset.mainChainChoices]);
 
   // Precompute evaluated target skills for parent deck mode:
   // - Gathers hint skills and selected event chain choice skills
@@ -230,7 +226,7 @@ export default function CardPickerPopover({
     const checkActivation = (sid: number) => {
       let cached = activationCache.get(sid);
       if (cached !== undefined) return cached;
-      const res = evaluateSkillActivation(sid, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession });
+      const res = evaluateSkillActivation(sid, course, runningStyle, raceParams);
       activationCache.set(sid, res.activates);
       return res.activates;
     };
@@ -347,7 +343,7 @@ export default function CardPickerPopover({
     }
 
     return map;
-  }, [cards, mode, course, runningStyle, raceParams, raceImpactProfile, ratingSession, activePreset.parentChainChoices, mainSkillIdSet]);
+  }, [cards, mode, course, runningStyle, raceParams, activePreset.parentChainChoices, mainSkillIdSet]);
 
   // Precompute skill effect categories and names per card
   const { cardEffectMap, cardSkillNamesMap } = useMemo(() => {

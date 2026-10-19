@@ -18,6 +18,9 @@ export function flattenCourse(row: CourseRow): Course {
     spurtStart: row.spurtStart ?? data.spurtStart,
     positionKeepEnd: row.positionKeepEnd ?? data.positionKeepEnd,
     trackId: row.trackId,
+    statThresholds: (data.statThresholds ?? []).filter((v): v is number => typeof v === "number"),
+    ...(row.tightTrack != null ? { tightTrack: row.tightTrack } : {}),
+    ...(row.runUp ? { runUp: row.runUp } : {}),
   };
 }
 

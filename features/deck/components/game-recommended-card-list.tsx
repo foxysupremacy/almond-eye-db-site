@@ -4,8 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { CardIndexEntry, SkillDetail } from "@/lib/api";
 import type { Course, RaceParameters } from "@/lib/skill-engine/types";
 import type { RunningStyle } from "@/lib/deck/types";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
 import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
 import { findDuplicateRecommendedCardSkillIds, hideDuplicateRecommendedCardSkills, includeCardsWithAdditionalSkills, projectAdditionalCardSkills, type GameRecommendedCardRow } from "@/features/deck/model/game-recommendation-projections";
@@ -48,8 +46,6 @@ export function GameRecommendedCardList({
   onSearchChange,
   onAddCard,
 }: GameRecommendedCardListProps) {
-  const { raceImpactProfile } = useRaceImpactProfile();
-  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
   const [typeFilter, setTypeFilter] = useState<string | null>(null);
   const [hideDuplicates, setHideDuplicates] = useState(false);
   const [visibleCardCount, setVisibleCardCount] = useState(INITIAL_CARD_COUNT);
@@ -126,7 +122,7 @@ export function GameRecommendedCardList({
 
     function evaluate(skillId: number): boolean {
       if (!activationBySkill.has(skillId)) {
-        activationBySkill.set(skillId, evaluateSkillActivation(skillId, course!, runningStyle, raceParams, { raceImpactProfile, session: ratingSession }).activates);
+        activationBySkill.set(skillId, evaluateSkillActivation(skillId, course!, runningStyle, raceParams).activates);
       }
       return activationBySkill.get(skillId) === true;
     }
@@ -167,7 +163,7 @@ export function GameRecommendedCardList({
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [filteredRows, course, runningStyle, raceParams, raceImpactProfile, ratingSession, additionalCandidatesByCard, hideDuplicates, duplicateSkillIds]);
+  }, [filteredRows, course, runningStyle, raceParams, additionalCandidatesByCard, hideDuplicates, duplicateSkillIds]);
 
   const displayRows = useMemo(() => filteredRows.filter((row) => {
     if (row.skills.length > 0) return true;

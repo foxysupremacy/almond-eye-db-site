@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { defaultRaceImpactProfile } from "./profile";
-import { adjustedStat } from "../skill-rating/simulator";
 import {
   computeGainDistribution,
   generateRaceTrace,
@@ -29,9 +28,10 @@ describe("race trace physics simulation", () => {
     const stats = defaultRaceImpactProfile().stats;
     const base = 20 - (2400 - 2000) / 1000;
     expect(getCruisingTargetSpeed(1, 2400, stats, 2)).toBeCloseTo(base * 0.991);
-    expect(getCruisingTargetSpeed(2, 2400, stats, 2)).toBeCloseTo(base * 0.975 + Math.sqrt(500 * adjustedStat(stats.speed)) * 0.002);
+    expect(getCruisingTargetSpeed(2, 2400, stats, 2)).toBeCloseTo(base * 0.975 + Math.sqrt(500 * stats.speed) * 0.002);
     expect(getCruisingTargetSpeed(3, 2400, stats, 2)).toBeCloseTo(
-      (base * 0.975 + Math.sqrt(500 * adjustedStat(stats.speed)) * 0.002 + 0.01 * base) * 1.05 + Math.sqrt(500 * adjustedStat(stats.speed)) * 0.002 + Math.pow(450 * adjustedStat(stats.guts), 0.597) * 0.0001,
+      // Mechanics §Last Spurt: (BaseTargetSpeedPhase2 + 0.01*base)*1.05 + speed term + guts term, phase-2 target = late coef + speed term.
+      (base * 0.975 + Math.sqrt(500 * stats.speed) * 0.002 + 0.01 * base) * 1.05 + Math.sqrt(500 * stats.speed) * 0.002 + Math.pow(450 * stats.guts, 0.597) * 0.0001,
     );
   });
 
@@ -77,8 +77,8 @@ describe("race trace physics simulation", () => {
       runningStyle: 2,
     }, 800, [{ regions: [{ start: 600, end: 1200 }], isRandom: false }]);
 
-    expect(trace.physicsStatus).toBe("provisional");
-    expect(trace.activationMeter).toBeCloseTo(800, 0);
+    expect(trace.physicsStatus).toBe("modeled");
+    expect(trace.activationMeter).toBe(800);
     expect(trace.distanceGainMeters).toBeGreaterThan(1.0);
     expect(trace.timeGainSeconds).toBeGreaterThan(0.04);
     expect(trace.bashinGain).toBeGreaterThan(0.4);
@@ -102,8 +102,6 @@ describe("race trace physics simulation", () => {
       profile: defaultRaceImpactProfile(),
     }, {
       geometryRate: 1,
-      wisdomRate: 0.95,
-      rankRate: 1,
       dynamicRate: 1,
       dependsOnPreviousTrigger: false,
       activationRate: 0.95,
@@ -134,14 +132,18 @@ describe("race trace physics simulation", () => {
     expect(crossing!.skillSpeed).toBeGreaterThanOrEqual(crossing!.baselineSpeed);
   });
 
-  test("exposes spatial baseline and skill curves and models current-speed as an activation jump", () => {
+  test("exposes spatial baseline and skill curves and models current-speed as an actual-speed modifier for the window", () => {
     const skill = { id: 112, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 21, value: 4_500 }] }] };
     const trace = generateRaceTrace(skill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1000);
     expect(trace.spatialPoints.length).toBeGreaterThan(100);
     const before = trace.spatialPoints.find((point) => point.meter === 960)!;
-    const after = trace.spatialPoints.find((point) => point.meter === 1008)!;
+    const during = trace.spatialPoints.find((point) => point.meter === 1008)!;
     expect(before.skillSpeed).toBeCloseTo(before.baselineSpeed, 1);
-    expect(after.skillSpeed - after.baselineSpeed).toBeGreaterThan(0.3);
+    // Window modifier: skill speed - baseline speed ~= value (0.45 m/s).
+    expect(during.skillSpeed - during.baselineSpeed).toBeCloseTo(0.45, 1);
+    // Type 21 leaves current speed untouched after the window.
+    const afterPoint = trace.spatialPoints.find((point) => point.meter >= 1300)!;
+    expect(afterPoint.skillSpeed - afterPoint.baselineSpeed).toBeCloseTo(0, 1);
   });
 
   test("raises target speed during the skill window and applies acceleration without a target jump", () => {
@@ -151,11 +153,31 @@ describe("race trace physics simulation", () => {
     expect(targetPoint.skillTargetSpeed - targetPoint.baselineTargetSpeed).toBeCloseTo(0.35, 1);
 
     const accelSkill = { id: 114, conditionGroups: [{ condition: "phase==1", base_time: 10_000, effects: [{ type: 31, value: 4_000 }] }] };
-    // Fire before section 11: conditional competition creates real acceleration gaps later.
-    const accelTrace = generateRaceTrace(accelSkill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 600);
-    const accelPoint = accelTrace.spatialPoints.find((point) => point.meter >= 624)!;
+    // Acceleration only matters while below target: activate at spurt start (1600 m), where the horse is still ramping.
+    const accelTrace = generateRaceTrace(accelSkill, { course, profile: defaultRaceImpactProfile(), runningStyle: 2 }, 1600);
+    const accelPoint = accelTrace.spatialPoints.find((point) => point.meter >= 1624)!;
     expect(accelPoint.skillTargetSpeed).toBeCloseTo(accelPoint.baselineTargetSpeed, 1);
-    expect(accelTrace.timeGainSeconds).toBe(0); // Mid-phase acceleration has no target-speed gap in this fixture.
+    expect(accelPoint.skillSpeed).toBeGreaterThan(accelPoint.baselineSpeed);
+  });
+
+  test("a later resolved condition group reports a smaller gain than an earlier stronger one", async () => {
+    const { loadRacetracks, skillsById } = await import("../data/registry");
+    const { flattenCourse } = await import("../api/course-format");
+    const { resolveConditionGroup } = await import("./condition-group");
+    let lc: ReturnType<typeof flattenCourse> | null = null;
+    let trackId = 0;
+    for (const track of await loadRacetracks()) {
+      const row = track.courses.find((c) => c.id === 11203);
+      if (row) { lc = flattenCourse(row); trackId = track.id; break; }
+    }
+    const lcCourse = { ...lc!, trackId };
+    const skill = skillsById.get(120171)!;
+    const resolved = resolveConditionGroup(skill, lcCourse, { groundCondition: 3 }, 2)!;
+    const ctx = { course: lcCourse, profile: defaultRaceImpactProfile(), runningStyle: 2 as const };
+    const zones = [resolved.zones];
+    const strong = generateRaceTrace(skill, ctx, undefined, zones, { groupIndex: 0 });
+    const weak = generateRaceTrace(skill, ctx, undefined, zones, { groupIndex: 1 });
+    expect(weak.bashinGain).toBeLessThan(strong.bashinGain);
   });
 
   test("null activation leaves an unmodified trace and no sweet-spot marker", () => {

@@ -19,8 +19,6 @@ import { getInheritableSkillForGold } from "@/lib/skills/rarity";
 import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
 import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { buildDuplicateSkillIndex, type DuplicateSkillIndex } from "@/lib/skills/duplicates";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
 import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
 import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain-attribution";
@@ -48,8 +46,6 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
   const [loading, setLoading] = useState(false);
   const isParent = mode === "parent";
   const raceParams = activeRaceParameters;
-  const { raceImpactProfile } = useRaceImpactProfile();
-  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
 
 
   // Fetch skills dynamically if not already in deck store
@@ -126,7 +122,7 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
       evalSkillId = mapped ? mapped.whiteId : s.id;
     }
     const activation = course
-      ? evaluateSkillActivation(evalSkillId, course, runningStyle, raceParams, { raceImpactProfile, session: ratingSession })
+      ? evaluateSkillActivation(evalSkillId, course, runningStyle, raceParams)
       : { activates: false, reason: "Select a track to evaluate skill activation" };
     const canActivate = activation.activates;
 

@@ -4,21 +4,9 @@ import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { BrandMark } from "@/app/common/ui/primitives/brand-mark";
 import { ChevronDownIcon, FilterIcon, MenuIcon } from "@/app/common/ui/primitives/icons";
+import { appRouteHref, isRootAppRoute, TABS, type AppShellRoute, type RootAppRoute } from "@/app/tabs";
 
-export type RootAppRoute = "main" | "parent-deck" | "parenting" | "visualizer" | "veterans";
-export type AppShellRoute = RootAppRoute | "supports" | "characters";
-
-const NAVIGATION_ITEMS: ReadonlyArray<{ id: AppShellRoute; label: string }> = [
-  { id: "main", label: "Main Deck" },
-  { id: "parent-deck", label: "Parent Deck" },
-  { id: "parenting", label: "Parenting" },
-  { id: "visualizer", label: "Visualizer" },
-  { id: "supports", label: "Supports" },
-  { id: "characters", label: "Characters" },
-  { id: "veterans", label: "Trained Umas" },
-];
-
-const ROOT_ROUTES = new Set<RootAppRoute>(["main", "parent-deck", "parenting", "visualizer", "veterans"]);
+export type { AppShellRoute, RootAppRoute } from "@/app/tabs";
 
 interface AppShellHeaderProps {
   activeRoute: AppShellRoute;
@@ -54,9 +42,8 @@ export function AppShellHeader({
       <div className="mx-auto hidden h-14 max-w-5xl items-center gap-3 px-3 sm:px-6 lg:flex">
         <BrandMark />
         <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Primary navigation">
-          {NAVIGATION_ITEMS.map((item) => {
-            const isRootRoute = ROOT_ROUTES.has(item.id as RootAppRoute);
-            const href = isRootRoute ? `/#${item.id}` : `/${item.id}`;
+          {TABS.map((item) => {
+            const href = appRouteHref(item.id);
             const active = activeRoute === item.id;
             return (
               <AriaLink
@@ -64,15 +51,16 @@ export function AppShellHeader({
                 href={href}
                 aria-current={active ? "page" : undefined}
                 onClick={(event) => {
-                  if (!isRootRoute || !onRootRouteChange) return;
+                  if (!isRootAppRoute(item.id) || !onRootRouteChange) return;
                   event.preventDefault();
-                  onRootRouteChange(item.id as RootAppRoute);
+                  onRootRouteChange(item.id);
                 }}
                 className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${active
                   ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
                   : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 {item.label}
+                {item.id === "rankings" && <span className="text-[9px] uppercase tracking-wider opacity-70">{item.badge}</span>}
               </AriaLink>
             );
           })}

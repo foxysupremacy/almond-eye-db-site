@@ -54,6 +54,25 @@ function wholeCourse(course: Course): RegionList {
   return rl;
 }
 
+const PHASE_UPPER_TERM = /(?:^|[&@])phase(?:==|!=|<=|<)\d/;
+
+/**
+ * Step 5b, the phase boundary frame (PHASE_BOUNDARY_FRAME_M): a condition with an upper phase bound is evaluated again
+ * with that bound extended by the boundary frame, and the extra regions that are not attached to the plain result are
+ * added (sorted by start). A frame that only extends an existing region is dropped, so ordinary zones are unchanged and
+ * only points the plain rule could never reach are added (the final corner starting exactly where phase 1 ends).
+ */
+function withBoundaryFrame(text: string, apply: (extra: RaceParameters) => RegionList, extra: RaceParameters): RegionList {
+  const plain = apply(extra);
+  if (!PHASE_UPPER_TERM.test(text)) return plain;
+  const framed = apply({ ...extra, phaseBoundaryFrame: true });
+  const extras = framed.filter((f) => !plain.some((p) => f.start <= p.end + 1e-9 && p.start <= f.end + 1e-9));
+  if (!extras.length) return plain;
+  const out = new RegionList();
+  out.push(...[...plain, ...extras].sort((a, b) => a.start - b.start));
+  return out;
+}
+
 /** Compute candidate zones for ONE condition group ({condition, precondition}).
  *  `horse` overrides the fixed max-stat horse (used to gate `running_style`
  *  conditions by the selected running style). */
@@ -72,7 +91,7 @@ export function computeZones(
   // satisfied", then the main condition is intersected within that.
   if (precondition) {
     const pre = parser.parse(parser.tokenize(precondition));
-    const [preRegions] = pre.apply(full, course, horse, fullExtra);
+    const preRegions = withBoundaryFrame(precondition, (extraFor) => pre.apply(full, course, horse, extraFor)[0], fullExtra);
     if (preRegions.length === 0) {
       return { regions: new RegionList(), isRandom: false, earliestFire: null };
     }
@@ -88,7 +107,7 @@ export function computeZones(
     return { regions: new RegionList(), isRandom: false, earliestFire };
   }
 
-  const [regions] = op.apply(full, course, horse, fullExtra);
+  const regions = withBoundaryFrame(condition, (extraFor) => op.apply(full, course, horse, extraFor)[0], fullExtra);
   const random = isRandom(op.samplePolicy);
 
   // An empty condition (e.g. "always" or a bare noop chain) still yields the

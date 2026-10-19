@@ -24,8 +24,6 @@ import {
   charactersById,
   charactersByCharId,
 } from "@/lib/api";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import type { SkillRating } from "@/lib/skill-rating/types";
 import { useDeck } from "@/features/deck/state";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
@@ -140,9 +138,6 @@ function activeTabEvaluationKey({
   contextParent,
   courseId,
   runningStyle,
-  racerCount,
-  activeRaceParameters,
-  raceImpactProfile,
   veterans,
   characters,
   ownedUmas,
@@ -153,9 +148,6 @@ function activeTabEvaluationKey({
   contextParent?: KyumaruVeteranItem | null;
   courseId?: number;
   runningStyle: unknown;
-  racerCount: number;
-  activeRaceParameters: unknown;
-  raceImpactProfile: unknown;
   veterans: KyumaruVeteranItem[];
   characters: CharacterIndexEntry[];
   ownedUmas: Record<string, [number, number]>;
@@ -171,9 +163,6 @@ function activeTabEvaluationKey({
     } : null,
     courseId: courseId ?? null,
     runningStyle,
-    racerCount,
-    activeRaceParameters,
-    raceImpactProfile,
     veterans: veterans.map((veteran) => ({
       cardId: veteran.card_id,
       trainedCharaId: veteran.trained_chara_id ?? null,
@@ -212,9 +201,7 @@ function resolveWhiteUnique(cardId: number): WhiteUniqueInfo | null {
   };
 }
 
-function TierChip({ tier, title, rating }: { tier: string; title?: string; rating?: SkillRating }) {
-  if (!rating) return <Badge size="compact" tone="neutral" title={title}>Unrated</Badge>;
-  if (rating.status === "partial" || rating.status === "unavailable") return <Badge size="compact" tone="amber" title={title}>{rating.status === "partial" ? `${rating.score.toFixed(1)} pts · partial` : "Unrated"}</Badge>;
+function TierChip({ tier, title }: { tier: string; title?: string }) {
   return <Badge size="compact" className={`font-black ${TIER_CHIP_CLASSES[tier] ?? TIER_CHIP_CLASSES.C}`} title={title}>
       {tier}
     </Badge>;
@@ -286,7 +273,7 @@ function RecommendedRow({
 
       <div className="flex items-center gap-1.5 shrink-0">
         {candidate.uniqueEval && (
-          <TierChip tier={candidate.uniqueEval.tier ?? "Unrated"} rating={candidate.uniqueEval.canonicalRating} title={candidate.uniqueEval.explanation} />
+          <TierChip tier={candidate.uniqueEval.tier ?? "Unrated"} title={candidate.uniqueEval.explanation} />
         )}
         {isBorrow ? (
           <Badge size="compact" emphasis="solid" tone={borrowUsed ? "neutral" : "amber"} className="font-bold">
@@ -476,7 +463,7 @@ function OwnedUmaRow({
 
       <div className="flex items-center gap-1.5 shrink-0">
         {entry.uniqueEval && (
-          <TierChip tier={entry.uniqueEval.tier ?? "Unrated"} rating={entry.uniqueEval.canonicalRating} title={entry.uniqueEval.explanation} />
+          <TierChip tier={entry.uniqueEval.tier ?? "Unrated"} title={entry.uniqueEval.explanation} />
         )}
         {entry.hasHofRuns ? (
           <Badge size="compact" emphasis="solid" tone="emerald" className="font-bold" title="This Uma also has imported Hall of Fame runs">
@@ -618,8 +605,7 @@ export default function VeteranPickerModal({
     } catch {}
   }, [pickerState.activeTab]);
 
-  const { course, runningStyle, activeRaceParameters, racerCount } = useDeck();
-  const { raceImpactProfile } = useRaceImpactProfile();
+  const { course, runningStyle } = useDeck();
   const { ownedUmas } = useOwnedUmas();
 
   const [expandedCharId, setExpandedCharId] = useState<number | null>(null);
@@ -659,14 +645,11 @@ export default function VeteranPickerModal({
       contextParent,
       courseId: course?.id,
       runningStyle,
-      racerCount,
-      activeRaceParameters,
-      raceImpactProfile,
       veterans,
       characters,
       ownedUmas,
     });
-  }, [isOpen, activeTab, targetCharaId, excludedCharId, contextParent, course?.id, runningStyle, racerCount, activeRaceParameters, raceImpactProfile, veterans, characters, ownedUmas]);
+  }, [isOpen, activeTab, targetCharaId, excludedCharId, contextParent, course?.id, runningStyle, veterans, characters, ownedUmas]);
   const projectionKey = evaluationKey === null ? null : `${evaluationKey}|${sortBy}|${normalizedSearch}`;
   const activeCardIds = useMemo(() => activeTab === "veterans" ? veterans.map((vet) => vet.card_id)
     : activeTab === "owned" ? Object.keys(ownedUmas).map(Number)
@@ -716,12 +699,9 @@ export default function VeteranPickerModal({
       cardIds: activeCardIds,
       course: course ?? null,
       runningStyle,
-      raceParams: activeRaceParameters,
-      racerCount,
-      raceImpactProfile,
     });
     return () => worker.terminate();
-  }, [evaluationKey, activeCardIds, course, runningStyle, activeRaceParameters, racerCount, raceImpactProfile]);
+  }, [evaluationKey, activeCardIds, course, runningStyle]);
 
   const activeTabProjection = useMemo(() => {
     if (!projectionKey || !isProjectionReady) return EMPTY_ACTIVE_TAB_PROJECTION;
@@ -1069,7 +1049,7 @@ export default function VeteranPickerModal({
                                   <>
                                     {group.uniqueEval && (
                                       <TierChip
-                                        tier={group.uniqueEval.tier ?? "Unrated"} rating={group.uniqueEval.canonicalRating}
+                                        tier={group.uniqueEval.tier ?? "Unrated"}
                                         title={group.uniqueEval.explanation}
                                       />
                                     )}
@@ -1267,7 +1247,7 @@ export default function VeteranPickerModal({
                       {whiteUnique && (
                         <div className="col-span-2 flex min-w-0 flex-wrap items-center gap-1.5">
                           {uniqueEval && (
-                            <TierChip tier={uniqueEval.tier ?? "Unrated"} rating={uniqueEval.canonicalRating} title={uniqueEval.explanation} />
+                            <TierChip tier={uniqueEval.tier ?? "Unrated"} title={uniqueEval.explanation} />
                           )}
                           <Badge size="compact" emphasis="solid" tone="indigo" className="font-bold" title="Owned but not yet trained">
                             Untrained

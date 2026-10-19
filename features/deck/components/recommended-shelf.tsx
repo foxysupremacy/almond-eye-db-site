@@ -7,8 +7,6 @@
 import { useState, useMemo } from "react";
 import { useDeck } from "@/features/deck/state";
 import { RUNNING_STYLE_LABELS, DISTANCE_LABELS, SURFACE_LABELS } from "@/lib/deck/constants";
-import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile";
-import { useSkillRatingSession } from "@/app/common/hooks/use-skill-rating-session";
 import { recommendCardsForParent, type CardRecommendation } from "@/lib/recommendation/engine";
 import { getPvpRaceParameters } from "@/lib/pvp/events";
 import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
@@ -44,8 +42,6 @@ export default function RecommendedShelf({
   const [isExpanded, setIsExpanded] = useState(false);
 
   const raceParams = activeRaceParameters;
-  const { raceImpactProfile } = useRaceImpactProfile();
-  const ratingSession = useSkillRatingSession(course, runningStyle, raceParams?.numUmas ?? 9, raceParams, raceImpactProfile);
 
   // Recommendations calculated via pure engine with course geometry simulation and skill-evaluator
   const recommendations = useMemo<CardRecommendation[]>(() => {
@@ -58,10 +54,10 @@ export default function RecommendedShelf({
       surface,
       limit: 16,
       raceParams,
-      raceImpactProfile,
-      ratingSession,
+
+
     });
-  }, [mainSkillIdSet, parentSlots, course, runningStyle, distance, surface, raceParams, raceImpactProfile, ratingSession]);
+  }, [mainSkillIdSet, parentSlots, course, runningStyle, distance, surface, raceParams]);
 
   const visibleRecommendations = useMemo(() => {
     return isExpanded ? recommendations : recommendations.slice(0, INITIAL_DISPLAY_LIMIT);

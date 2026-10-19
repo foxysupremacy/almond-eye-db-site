@@ -20,7 +20,8 @@ export interface AppDialogProps {
   titleClassName?: string;
   isDismissable?: boolean;
   ariaLabel?: string;
-  size?: "sheet" | "side" | "sm" | "md" | "lg" | "full";
+  /** `phone-full` covers the whole viewport edge to edge (phone-only surfaces). */
+  size?: "sheet" | "side" | "sm" | "md" | "lg" | "full" | "phone-full";
   dialogRef?: Ref<HTMLDivElement>;
 }
 
@@ -31,6 +32,7 @@ const sizes = {
   md: "max-h-[90dvh] w-full max-w-xl rounded-2xl",
   lg: "max-h-[92dvh] w-full max-w-3xl rounded-2xl",
   full: "h-[88dvh] max-h-[92dvh] w-full sm:h-[90vh] sm:max-h-[860px] sm:max-w-2xl rounded-t-2xl sm:rounded-2xl",
+  "phone-full": "h-dvh max-h-dvh w-full rounded-none",
 } as const;
 const modalWidths = {
   sheet: "max-w-full md:max-w-xl",
@@ -39,6 +41,7 @@ const modalWidths = {
   md: "max-w-xl",
   lg: "max-w-3xl",
   full: "max-w-full sm:max-w-2xl",
+  "phone-full": "h-dvh max-w-full",
 } as const;
 
 /** Controlled modal shell with focus containment, dismissal and restoration. */
@@ -50,13 +53,13 @@ export function AppDialog({ isOpen, onOpenChange, title, description, children, 
       isOpen={isOpen}
       onOpenChange={onOpenChange}
       isDismissable={isDismissable}
-      className={`fixed inset-0 ${overlayLayers[overlayLayer]} flex items-end justify-center bg-black/50 p-0 backdrop-blur-xs outline-none data-[entering]:animate-in data-[entering]:fade-in data-[entering]:duration-200 data-[exiting]:animate-out data-[exiting]:fade-out sm:items-center sm:p-4 ${overlayClassName}`}
+      className={`fixed inset-0 ${overlayLayers[overlayLayer]} flex items-end justify-center bg-black/50 p-0 backdrop-blur-xs outline-none data-[entering]:animate-in data-[entering]:fade-in data-[entering]:duration-200 data-[exiting]:animate-out data-[exiting]:fade-out ${size === "phone-full" ? "" : "sm:items-center sm:p-4"} ${overlayClassName}`}
     >
       <Modal className={`mx-auto w-full ${modalWidths[size]} outline-none`}>
         <Dialog
           ref={dialogRef}
           aria-label={ariaLabel}
-          className={`flex min-w-0 flex-col overflow-hidden border border-zinc-200 bg-white text-zinc-900 shadow-2xl outline-none dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-100 ${sizes[size]} ${className}`}
+          className={`flex min-w-0 flex-col overflow-hidden ${size === "phone-full" ? "" : "border border-zinc-200 dark:border-zinc-800"} bg-white text-zinc-900 shadow-2xl outline-none dark:bg-zinc-950 dark:text-zinc-100 ${sizes[size]} ${className}`}
         >
           {header ?? <header className="flex shrink-0 items-center justify-between gap-3 border-b border-zinc-100 px-5 py-3 dark:border-zinc-800">
               <div className="min-w-0 flex-1">
