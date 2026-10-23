@@ -610,3 +610,47 @@ In `features/deck/screens/skill-list.tsx`, deck skills are displayed in a minima
 
 ### 22.4 Support Card 6-Slot Grid Preservation
 - In `DeckPicker` (`features/deck/screens/deck-picker.tsx`), the 6 support card slots preserve their edge-to-edge poster card layout to showcase character artwork, rarity banners, card types, and event chain branch selectors. They are not compressed into a text-only strip.
+
+---
+
+## 23. Parenting Canvas Flat Architecture (Lineage Planner)
+
+In `features/parenting/`, the Parenting Hub and its lineage canvas follow the same minimal-box benchmark as Rankings (§3) and the track canvas (§21.2). The generation-row pedigree reads like a wiring diagram, not a stack of cards.
+
+### 23.1 Canvas De-Boxing
+1. **Transparent Canvas**:
+   - The lineage canvas section renders directly on the page surface — no `rounded-2xl border bg-white p-4` enclosure, no backdrop-blur stage panel, no decorative blur orbs.
+   - The target trainee stage (affinity header + portrait spotlight + stat bar) sits flat at the top of the canvas; its only separators are hairlines and the SVG lineage connectors.
+2. **Flat Trainee Stats**:
+   - The 5-stat bar is delimited by `border-y border-zinc-200/80 dark:border-zinc-800/80` hairlines only (no rounded box, no shadow, no surface fill).
+   - The trainee aptitude rows render as flat rows; individual aptitude cells keep the same bordered cell treatment as ancestor `AptitudeCell`s.
+3. **Flat Ancestor Tiles**:
+   - Parent/grandparent ancestor tiles have NO card box — no `rounded-2xl border bg-white shadow` — only the top padding that reserves portrait pop-out space (`p-1 pt-2 sm:p-1.5 sm:pt-3`, see §20).
+   - All inline controls stay on the tile: aptitude cells, unique-skill row (§10 two-line block, `h-8` slot), pink factor button (`h-8`), white genetics picker (`compact` variant, `h-8`). Details remain in their hover popovers.
+   - GGP (great-grandparent) minis are flat pink inputs (portrait + pink factor popover) — no mini card box.
+
+### 23.2 Generation-Row Separators
+1. The two lineage halves (P1 / P2) are separated by a full-height vertical hairline (`sm:border-l sm:border-zinc-200/70 dark:sm:border-zinc-800` on the P2 half, with `sm:px-3` on both halves and `sm:gap-0` on the grid) — the §21.3 sidebar pattern.
+2. Grandparent columns within each half use the same symmetric hairline (`sm:px-2` on both + `sm:border-l` on the second column), so the hairline descends from the fan connector's split point.
+3. SVG fan connectors (`data-pedigree-connector`) remain the only lineage linkage; keep them hairline (`text-emerald-700/50 dark:text-emerald-300/50`, `vectorEffect="non-scaling-stroke"`).
+4. Phone/tablet tiles (`AncestorTile`) are flat: transparent background, no border/shadow, hover feedback via `hover:bg-zinc-100/80 dark:hover:bg-zinc-800/60`.
+
+### 23.3 Pedigree Skills Section
+1. The unified list is a flat `divide-y` list (§22.1) — no `rounded-2xl border bg-white/70` enclosure.
+2. Group-by-parent sections are flat (`pt-2`) with `border-b border-zinc-200/80 dark:border-zinc-800/80 py-2.5` slot headers (§22.2); branch identity (P1 emerald / P2 blue) is carried by the tag chip and badge tones, not by tinted card boxes.
+3. Filter/search toggles use flat segmented pills (§22.3); empty states are muted centered rows, never dashed boxes.
+
+### 23.4 Parent Deck CTA Banner
+- The "Ready to build your support cards" banner is a flat CTA row separated by `border-b border-zinc-200/70 dark:border-zinc-800 pb-3`, with a `DeckIcon` SVG (never the 🃏 emoji — §14) and a single emerald action button. No gradient enclosure.
+
+### 23.5 Unified P/GP Card & White-Genetic Readouts (u-ma proportions)
+1. **One Card Layout, One Size (P and GP)**:
+   - P and GP render the SAME card: an identity row (portrait `h-9/sm:h-11` left + truncated name right, opening the picker), then a full-width badge block — Surface `grid-cols-2` (centered, cells capped `max-w-[4rem]`), Distance/Style `grid-cols-2 @min-[152px]:grid-cols-4` via the card-level `@container` so narrow cards (phone GP, 4-up) wrap badges to 2 columns instead of shrinking them unreadable.
+   - Control stack, in order: pink factor pill (`h-8`) → unique inherit skill row (`h-8` SkillHoverCard) → `WhiteGeneticPicker compact` (`h-8`, lists selections) → genetic indicator strip LAST (thin `border-t` row). `AptitudeCell compactCell` renders dense (`min-h-8`, body `h-5 sm:h-6`, rank icon `h-3.5/h-4`); card wrapper `@container p-1 pt-2 sm:p-1.5 sm:pt-3`.
+   - The GGP mini keeps its vertical identity + pink chip.
+2. **Same Card at Every Width**:
+   - The unified card is used on EVERY tier — desktop branch halves AND phone/tablet rows (`renderUmaCard`). P/GP editing happens through inline popovers everywhere; the `AncestorSheet` now serves GGP only.
+   - GGP/GGGP are unchanged: 8 GGP tiles (no grade strip) each carrying 2 GGGP spark chips at every tier (16 total; phone uses the `compact` stars-only chip). Navigating from a genetic popover focuses the P/GP card or GGGP chip directly; only GGP opens the sheet.
+3. **White-Genetic Readouts** (`WhiteGeneticPicker`):
+   - The trigger LISTS every selected genetic by short name (`Target: Turf · Ldr · Med`) instead of a count; parent cards show it via the compact trigger.
+   - Eligible checkboxes carry their roll odds (`N★ · ≈40%` for 6–11★, `N★ · 100%` at 12★) and the footer states `White genetic roll odds: 6–11★ ≈40% · 12★ = 100%.`

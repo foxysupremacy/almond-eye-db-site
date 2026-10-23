@@ -24,7 +24,6 @@ import {
   charactersById,
   charactersByCharId,
 } from "@/lib/api";
-import { useDeck } from "@/features/deck/state";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import { TIER_CHIP_CLASSES } from "@/app/common/ui/skills/skill-badges";
@@ -45,6 +44,7 @@ import {
 import { createCharacterVeteranTemplate } from "@/features/veterans/model/character-template";
 import { usePickerController } from "@/app/common/hooks/use-picker-controller";
 import { veteranPickerAdapter, type VeteranPickerTab } from "@/features/veterans/model/picker-state";
+import { useVeteranPickerViewModel } from "../view-models/use-veteran-picker-view-model";
 
 export interface PickerRecommendations {
   owned: LegacyCandidate[];
@@ -564,202 +564,48 @@ export default function VeteranPickerModal({
   initialTab,
   minmaxEnabled = false,
 }: VeteranPickerModalProps) {
-  const [initialPickerPreferences] = useState(() => ({ initialTab: loadTab(), initialSort: loadSort(minmaxEnabled) }));
+  const { state: vmState, commands: vmCommands } = useVeteranPickerViewModel({
+    isOpen,
+    targetCharaId,
+    excludedCharId,
+    contextParent,
+    veterans,
+    characters,
+    minmaxEnabled,
+    initialTab,
+  });
+
+  const {
+    activeTab,
+    sortBy: savedSortBy,
+    search,
+    normalizedSearch,
+    activeTabProjection,
+    isProjectionReady,
+    evaluationError,
+    charaMap,
+    course,
+    runningStyle,
+    expandedCharId,
+  } = vmState;
+
+  const {
+    setActiveTab,
+    setSortBy,
+    setSearch,
+    setExpandedCharId,
+  } = vmCommands;
+
   const hasRecommendations = Boolean(recommendations || recommendationsLoading || recommendationsError);
-  const pickerInput = {
-    ...initialPickerPreferences,
-    recommendationsAvailable: hasRecommendations,
-  };
-  const { state: pickerState, view: pickerView, dispatch } = usePickerController(veteranPickerAdapter, pickerInput);
-  const { search, sortBy: savedSortBy } = pickerState;
-  const activeTab = pickerView.activeTab;
   const sortBy = savedSortBy === "minmax" && activeTab !== "recommended" ? "affinity" : savedSortBy;
-  const normalizedSearch = pickerView.normalizedSearch;
   const [visibleLimit, setVisibleLimit] = useState(36);
 
   useEffect(() => {
     setVisibleLimit(36);
   }, [activeTab, normalizedSearch]);
 
-  // Remember the last-used tab across visits; fall back when the saved tab is
-  // unavailable in this context (e.g. "recommended" with no recommendations).
-  useEffect(() => {
-    if (isOpen) {
-      if (initialTab) {
-        dispatch({ type: "tabSelected", tab: initialTab });
-        return;
-      }
-      const saved = loadTab();
-      dispatch({
-        type: "tabSelected",
-        tab: saved === "recommended" && !recommendations && !recommendationsLoading && !recommendationsError
-          ? "veterans"
-          : saved,
-      });
-    }
-  }, [isOpen, initialTab, dispatch]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(TAB_STORAGE_KEY, pickerState.activeTab);
-    } catch {}
-  }, [pickerState.activeTab]);
-
-  const { course, runningStyle } = useDeck();
-  const { ownedUmas } = useOwnedUmas();
-
-  const [expandedCharId, setExpandedCharId] = useState<number | null>(null);
-
-  // Remember the sort mode across visits
-  useEffect(() => {
-    try {
-      localStorage.setItem(SORT_STORAGE_KEY, pickerState.sortBy);
-    } catch {}
-  }, [pickerState.sortBy]);
-
-  const charaMap = useMemo(() => {
-    return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
-  }, [characters]);
-
-  // Owned Umas tab: collection-owned characters scored as potential parents via
-  // their career G1 schedule (same math as the recommender's untrained picks).
-  const projectionDependencies = {
-    getCharaIdFromCardId,
-    getCareerG1Saddles,
-    calculateAffinity: (veteran: { card_id: number; win_saddle_id_array?: number[] }, targetId: number) =>
-      calculateAffinity(veteran, targetId),
-    countSharedG1Wins,
-    calculateBlueStars: (veteran: KyumaruVeteranItem) => calculateLineageBlueStars(veteran).total,
-    getCharacterImageUrl,
-    resolveWhiteUnique,
-  };
-
-  const evaluationCacheRef = useRef(new Map<string, Pick<ActiveTabProjection, "eligibleCardIds" | "uniqueEvalByCardId">>());
-  const projectionCacheRef = useRef(new Map<string, ActiveTabProjection>());
-  const evaluationKey = useMemo(() => {
-    if (!isOpen || activeTab === "recommended") return null;
-    return activeTabEvaluationKey({
-      activeTab,
-      targetCharaId,
-      excludedCharId,
-      contextParent,
-      courseId: course?.id,
-      runningStyle,
-      veterans,
-      characters,
-      ownedUmas,
-    });
-  }, [isOpen, activeTab, targetCharaId, excludedCharId, contextParent, course?.id, runningStyle, veterans, characters, ownedUmas]);
-  const projectionKey = evaluationKey === null ? null : `${evaluationKey}|${sortBy}|${normalizedSearch}`;
-  const activeCardIds = useMemo(() => activeTab === "veterans" ? veterans.map((vet) => vet.card_id)
-    : activeTab === "owned" ? Object.keys(ownedUmas).map(Number)
-    : activeTab === "templates" ? characters.map((character) => character.id)
-    : [], [activeTab, veterans, ownedUmas, characters]);
-  const [readyEvaluationKey, setReadyEvaluationKey] = useState<string | null>(null);
-  const [evaluationError, setEvaluationError] = useState<{ key: string; message: string } | null>(null);
-  const isProjectionReady = evaluationKey !== null && readyEvaluationKey === evaluationKey;
-
-  // The course-aware evaluator can simulate every unique in the active source
-  // tab. Keep it off the UI thread so the dialog paints and stays dismissable.
-  useEffect(() => {
-    if (!evaluationKey) {
-      setReadyEvaluationKey(null);
-      setEvaluationError(null);
-      return;
-    }
-    setEvaluationError(null);
-    const cached = evaluationCacheRef.current.get(evaluationKey);
-    if (cached) {
-      const frame = window.requestAnimationFrame(() => setReadyEvaluationKey(evaluationKey));
-      return () => window.cancelAnimationFrame(frame);
-    }
-
-    const worker = new Worker(
-      new URL("./veteran-picker-evaluation.worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    worker.onmessage = (event: MessageEvent<{
-      eligibleCardIds: number[];
-      uniqueEvals: Array<[number, LegacyUniqueEval]>;
-      error?: string;
-    }>) => {
-      const { eligibleCardIds, uniqueEvals, error } = event.data;
-      if (error) {
-        setEvaluationError({ key: evaluationKey, message: error });
-        return;
-      }
-      cacheProjection(evaluationCacheRef.current, evaluationKey, {
-        eligibleCardIds: new Set(eligibleCardIds),
-        uniqueEvalByCardId: new Map(uniqueEvals),
-      });
-      setReadyEvaluationKey(evaluationKey);
-    };
-    worker.onerror = () => setEvaluationError({ key: evaluationKey, message: "Could not evaluate picker candidates. Close and reopen the picker to try again." });
-    worker.postMessage({
-      cardIds: activeCardIds,
-      course: course ?? null,
-      runningStyle,
-    });
-    return () => worker.terminate();
-  }, [evaluationKey, activeCardIds, course, runningStyle]);
-
-  const activeTabProjection = useMemo(() => {
-    if (!projectionKey || !isProjectionReady) return EMPTY_ACTIVE_TAB_PROJECTION;
-    const cached = projectionCacheRef.current.get(projectionKey);
-    if (cached) return cached;
-
-    const evaluation = evaluationCacheRef.current.get(evaluationKey!);
-    if (!evaluation) return EMPTY_ACTIVE_TAB_PROJECTION;
-
-    const base: ActiveTabProjection = {
-      ...evaluation,
-      ownedUmaEntries: [],
-      unifiedVeterans: [],
-      processedTemplates: [],
-    };
-    if (activeTab === "owned") {
-      base.ownedUmaEntries = projectOwnedUmaEntries({
-        ownedUmas,
-        charactersByCardId: charaMap,
-        veterans,
-        targetCharaId,
-        excludedCharId,
-        contextParent,
-        search: normalizedSearch,
-        sortBy,
-        uniqueEvalByCardId: base.uniqueEvalByCardId,
-        eligibleCardIds: base.eligibleCardIds,
-        dependencies: projectionDependencies,
-      });
-    } else if (activeTab === "veterans") {
-      base.unifiedVeterans = projectVeteranGroups({
-        veterans,
-        charactersByCardId: charaMap,
-        targetCharaId,
-        excludedCharId,
-        search: normalizedSearch,
-        sortBy,
-        uniqueEvalByCardId: base.uniqueEvalByCardId,
-        eligibleCardIds: base.eligibleCardIds,
-        dependencies: projectionDependencies,
-      });
-    } else if (activeTab === "templates") {
-      base.processedTemplates = projectCharacterTemplates({
-        characters,
-        targetCharaId,
-        excludedCharId,
-        search: normalizedSearch,
-        sortBy,
-        uniqueEvalByCardId: base.uniqueEvalByCardId,
-        eligibleCardIds: base.eligibleCardIds,
-        calculateAffinity: (cardId, targetId) => calculateAffinity({ card_id: cardId }, targetId).total,
-      });
-    }
-    return cacheProjection(projectionCacheRef.current, projectionKey, base);
-  }, [projectionKey, isProjectionReady, evaluationKey, activeTab, ownedUmas, charaMap, veterans, targetCharaId, excludedCharId, contextParent, normalizedSearch, sortBy, characters]);
-
   const { ownedUmaEntries, unifiedVeterans, processedTemplates, uniqueEvalByCardId } = activeTabProjection;
-  const tabContentError = activeTab !== "recommended" && evaluationError?.key === evaluationKey ? evaluationError.message : null;
+  const tabContentError = activeTab !== "recommended" ? evaluationError : null;
   const tabContentLoading = activeTab !== "recommended" && !isProjectionReady && !tabContentError;
 
   const handleSelectOwnedUma = (entry: OwnedUmaEntry) => {
@@ -830,7 +676,7 @@ export default function VeteranPickerModal({
         </div>
       }
     >
-      <Tabs selectedKey={activeTab} onSelectionChange={(key) => dispatch({ type: "tabSelected", tab: key as PickerTab })} className="flex min-h-0 flex-1 flex-col">
+      <Tabs selectedKey={activeTab} onSelectionChange={(key) => setActiveTab(key as PickerTab)} className="flex min-h-0 flex-1 flex-col">
         {/* Source Tabs & Controls */}
         <div className="flex flex-col gap-2 border-b border-zinc-100 bg-zinc-50/50 p-3 dark:border-zinc-800/80 dark:bg-zinc-950/40">
           <TabList aria-label="Candidate sources" className={`grid w-full grid-cols-2 gap-1 rounded-lg bg-zinc-200/60 p-0.5 dark:bg-zinc-800/60 ${hasRecommendations ? "sm:grid-cols-4" : "sm:grid-cols-3"}`}>
@@ -877,13 +723,13 @@ export default function VeteranPickerModal({
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_13.5rem]">
             <PickerSearchBar
               value={search}
-              onChange={(value) => dispatch({ type: "searchChanged", value })}
+              onChange={setSearch}
               placeholder="Search by name..."
               inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-3 py-1 text-xs text-zinc-900 outline-none placeholder-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
             />
             <AppSelect
               value={sortBy}
-              onValueChange={(value) => dispatch({ type: "sortChanged", value: value as SortBy })}
+              onValueChange={(value) => setSortBy(value as SortBy)}
               className="w-full"
               label="Sort candidates"
               triggerLabel="Sort"

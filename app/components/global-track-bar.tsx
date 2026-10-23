@@ -8,7 +8,7 @@ import { AppSelect } from "@/app/common/ui/controls/app-select";
 
 import { normalizeRaceConditions } from "@/lib/deck/race-conditions";
 import { RaceConditionChips, TurnBadge } from "@/app/common/ui/controls/race-condition-chips";
-import { useDeck } from "@/features/deck/state";
+import { useDeckTrack, useDeckPresets } from "@/features/deck/state";
 import { RUNNING_STYLE_OPTIONS } from "@/lib/deck/constants";
 import type { RunningStyle } from "@/lib/deck/types";
 import { terrainLabel } from "@/lib/api";
@@ -16,6 +16,7 @@ import { getActivePvpEvents } from "@/lib/pvp/events";
 
 /** Race selectors shared by the desktop global bar and the mobile Build sheet. */
 export function GlobalRaceControls() {
+  const { activePreset } = useDeckPresets();
   const {
     tracks,
     trackId,
@@ -30,7 +31,6 @@ export function GlobalRaceControls() {
     setRacerCount,
     activePvpEventId,
     activePvpEvent,
-    activePreset,
     masterChallengeEvents,
     activeMasterChallengeRace,
     selectMasterChallengeRace,
@@ -38,7 +38,7 @@ export function GlobalRaceControls() {
     setCustomRaceConditions,
     racetrackDetails,
     applyPvpPreset,
-  } = useDeck();
+  } = useDeckTrack();
 
   const masterChallengeSelection = activePreset.trackInfo.masterChallengeSelection ?? null;
   function courseLabel(courseId: number): string {

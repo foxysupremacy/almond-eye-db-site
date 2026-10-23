@@ -5,233 +5,46 @@ import { AppButton } from "@/app/common/ui/controls/app-button";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import { FileTrigger } from "react-aria-components/FileTrigger";
 import { DownloadIcon, LineageIcon, TrophyIcon } from "@/app/common/ui/primitives/icons";
-
-import { useState, useEffect, useMemo, useTransition } from "react";
-import { api, type CharacterIndexEntry } from "@/lib/api";
-import { getAllVeterans, saveVeterans, clearVeterans } from "@/lib/IndexDB/veterans-db";
-import { type KyumaruVeteranItem } from "@/lib/veterans/types";
-import { calculateLineageBlueStars } from "@/lib/lineage/factor-decoder";
-import { calculateAffinity } from "@/lib/lineage/affinity-engine";
-import { useParentingSetup } from "@/features/parenting/hooks";
-import { useDeck } from "@/features/deck/state";
-import { getPvpRaceParameters } from "@/lib/pvp/events";
-import {
-  isRankInParentRange,
-  loadParentManualOverrides,
-  saveParentManualOverrides,
-  getVeteranKey,
-  extractActiveParentTargetSkills,
-  evaluateVeteranTargetFactors,
-  type VeteranTargetFactorMatch,
-} from "@/lib/lineage/parent-factor-matcher";
+import { getVeteranKey } from "@/lib/lineage/parent-factor-matcher";
 import { ImportModal } from "@/features/importer";
 import TrainedUmaModal from "@/features/veterans/components/trained-uma-modal";
 import { TrainedUmaCard } from "@/features/veterans/components/trained-uma-card";
 import { Badge } from "@/app/common/ui/primitives/badge";
-
-type SortOption =
-  | "newest"
-  | "rank_score"
-  | "affinity"
-  | "speed"
-  | "stamina"
-  | "power"
-  | "blue_stars"
-  | "target_factors";
+import { useVeteransViewModel, type VeteranSortOption } from "./view-models/use-veterans-view-model";
 
 export default function VeteransView() {
-  const [veterans, setVeterans] = useState<KyumaruVeteranItem[]>([]);
-  const [characters, setCharacters] = useState<CharacterIndexEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<SortOption>("newest");
-  const [minBlueStars, setMinBlueStars] = useState<number>(0);
-  const [onlyParents, setOnlyParents] = useState(false);
-  const [parentOverrides, setParentOverrides] = useState<Record<string, boolean>>({});
-  const [, startTransition] = useTransition();
-  const { setup } = useParentingSetup();
-  const { parentSkills, course, runningStyle, activeRaceParameters } = useDeck();
-
-  const [selectedVeteran, setSelectedVeteran] = useState<KyumaruVeteranItem | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
-  const loadData = async () => {
-    try {
-      const [vets, charas] = await Promise.all([getAllVeterans(), api.listCharacters()]);
-      setVeterans(vets);
-      setCharacters(charas);
-    } catch (err) {
-      console.error("Failed to load veterans:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-    setParentOverrides(loadParentManualOverrides());
-
-    const handleUpdate = () => {
-      startTransition(() => {
-        loadData();
-      });
-    };
-
-    window.addEventListener("almondeye_veterans_updated", handleUpdate);
-    return () => {
-      window.removeEventListener("almondeye_veterans_updated", handleUpdate);
-    };
-  }, []);
-
-  const isParent = (vet: KyumaruVeteranItem): boolean => {
-    const key = getVeteranKey(vet);
-    if (parentOverrides[key] !== undefined) {
-      return parentOverrides[key];
-    }
-    return isRankInParentRange(vet.rank, vet.rank_score);
-  };
-
-  const handleToggleParent = (vet: KyumaruVeteranItem, e: React.MouseEvent) => {
-    e.stopPropagation();
-    const key = getVeteranKey(vet);
-    const currentlyParent = isParent(vet);
-    setParentOverrides((prev) => {
-      const next = { ...prev, [key]: !currentlyParent };
-      saveParentManualOverrides(next);
-      return next;
-    });
-  };
-
-  const raceParams = activeRaceParameters;
-
-  const activeTargetSkillsMap = useMemo(() => {
-    return extractActiveParentTargetSkills(parentSkills, course, runningStyle, raceParams);
-  }, [parentSkills, course, runningStyle, raceParams]);
-
-  const hasTargetSkills = activeTargetSkillsMap.size > 0;
-
-  const targetFactorMatchMap = useMemo(() => {
-    const map = new Map<string, VeteranTargetFactorMatch>();
-    if (activeTargetSkillsMap.size === 0) return map;
-    for (const vet of veterans) {
-      const key = getVeteranKey(vet);
-      map.set(key, evaluateVeteranTargetFactors(vet, activeTargetSkillsMap));
-    }
-    return map;
-  }, [veterans, activeTargetSkillsMap]);
-
-  const parentCount = useMemo(() => {
-    return veterans.filter(isParent).length;
-  }, [veterans, parentOverrides]);
-
-  // Character Map for O(1) lookup
-  const charaMap = useMemo(() => {
-    return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
-  }, [characters]);
-
-  // Filter and sort individual veteran runs (default: newest trained first)
-  const filteredVeterans = useMemo(() => {
-    const q = query.trim().toLowerCase();
-
-    const filtered = veterans.filter((vet) => {
-      if (onlyParents && !isParent(vet)) {
-        return false;
-      }
-
-      const chara = charaMap.get(vet.card_id);
-      const nameEn = (chara?.nameEn || vet.name || "").toLowerCase();
-      const nameJp = (chara?.nameJp || "").toLowerCase();
-      const titleEn = (chara?.titleEn || chara?.titleJp || "").toLowerCase();
-
-      if (q && !nameEn.includes(q) && !nameJp.includes(q) && !titleEn.includes(q)) {
-        return false;
-      }
-
-      if (minBlueStars > 0) {
-        const lineage = calculateLineageBlueStars(vet);
-        if (lineage.total < minBlueStars) return false;
-      }
-
-      return true;
-    });
-
-    filtered.sort((a, b) => {
-      if (sortBy === "target_factors") {
-        const keyA = getVeteranKey(a);
-        const keyB = getVeteranKey(b);
-        const matchA = targetFactorMatchMap.get(keyA)?.count || 0;
-        const matchB = targetFactorMatchMap.get(keyB)?.count || 0;
-        return matchB - matchA || (b.rank_score || 0) - (a.rank_score || 0);
-      }
-
-      if (sortBy === "newest") {
-        const timeA = a.create_time ? new Date(a.create_time.replace(" ", "T")).getTime() : 0;
-        const timeB = b.create_time ? new Date(b.create_time.replace(" ", "T")).getTime() : 0;
-        if (timeB !== timeA) return timeB - timeA;
-        return (b.trained_chara_id || 0) - (a.trained_chara_id || 0);
-      }
-
-      if (sortBy === "affinity" && setup.targetCharaId) {
-        const aAff = calculateAffinity(a, setup.targetCharaId).total;
-        const bAff = calculateAffinity(b, setup.targetCharaId).total;
-        return bAff - aAff || (b.rank_score || 0) - (a.rank_score || 0);
-      }
-
-      if (sortBy === "blue_stars") {
-        const aStars = calculateLineageBlueStars(a).total;
-        const bStars = calculateLineageBlueStars(b).total;
-        return bStars - aStars || (b.rank_score || 0) - (a.rank_score || 0);
-      }
-
-      if (sortBy === "speed") return b.speed - a.speed;
-      if (sortBy === "stamina") return b.stamina - a.stamina;
-      if (sortBy === "power") return b.power - a.power;
-
-      return (b.rank_score || 0) - (a.rank_score || 0);
-    });
-
-    return filtered;
-  }, [
+  const { state, commands } = useVeteransViewModel();
+  const {
+    loading,
     veterans,
     charaMap,
+    filteredVeterans,
     query,
     sortBy,
     minBlueStars,
-    setup.targetCharaId,
     onlyParents,
-    parentOverrides,
+    parentCount,
+    hasTargetSkills,
     targetFactorMatchMap,
-  ]);
+    selectedVeteran,
+    isDetailModalOpen,
+    isImportModalOpen,
+    isParent,
+  } = state;
 
-  const handleInspectVeteran = (vet: KyumaruVeteranItem) => {
-    setSelectedVeteran(vet);
-    setIsDetailModalOpen(true);
-  };
-
-  // Handle direct file drag & drop into empty view
-  const handleFileDrop = async (file: File) => {
-    try {
-      const text = await file.text();
-      const parsed = JSON.parse(text);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        await saveVeterans(parsed as KyumaruVeteranItem[]);
-        loadData();
-      } else {
-        alert("Expected a valid veterans.json file.");
-      }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      alert("Failed to read JSON: " + message);
-    }
-  };
-
-  const handleClear = async () => {
-    if (confirm("Are you sure you want to clear all uploaded veteran horses?")) {
-      await clearVeterans();
-      loadData();
-    }
-  };
+  const {
+    setQuery,
+    setSortBy,
+    setMinBlueStars,
+    setOnlyParents,
+    toggleParent,
+    inspectVeteran,
+    closeDetailModal,
+    openImportModal,
+    closeImportModal,
+    handleFileDrop,
+    handleClear,
+  } = commands;
 
   if (loading) {
     return (
@@ -284,7 +97,7 @@ export default function VeteransView() {
 
             <AppButton
               variant="secondary"
-              onPress={() => setIsImportModalOpen(true)}
+              onPress={openImportModal}
               className="inline-flex items-center px-4 py-2 border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 text-xs font-medium rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors cursor-pointer"
             >
               Open Sync Modal
@@ -304,7 +117,7 @@ export default function VeteransView() {
           </ul>
         </div>
 
-        <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
+        <ImportModal isOpen={isImportModalOpen} onClose={closeImportModal} />
       </div>
     );
   }
@@ -333,7 +146,7 @@ export default function VeteransView() {
         <div className="flex items-center gap-2">
           <AppButton
             variant="secondary"
-            onPress={() => setIsImportModalOpen(true)}
+            onPress={openImportModal}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-emerald-500/40 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-100 dark:hover:bg-emerald-950/70 shadow-2xs cursor-pointer transition-colors"
           >
             <DownloadIcon className="h-4 w-4" /> Sync / Upload
@@ -362,9 +175,21 @@ export default function VeteransView() {
             <span className="text-xs text-zinc-400 shrink-0">Sort:</span>
             <AppSelect
               value={sortBy}
-              onValueChange={(value) => setSortBy(value as SortOption)}
+              onValueChange={(value) => setSortBy(value as VeteranSortOption)}
               className="w-full sm:w-auto"
-             label="Sort trained Umas" options={[{ value: "newest", label: "Newest Trained First" }, ...(hasTargetSkills ? [{ value: "target_factors", label: "Target Factors (High to Low)" }] : []), { value: "rank_score", label: "Score (High to Low)" }, ...(setup.targetCharaId ? [{ value: "affinity", label: "Compatibility Affinity (High to Low)" }] : []), { value: "blue_stars", label: "Lineage Blue Stars (High to Low)" }, ...["speed", "stamina", "power"].map(value => ({ value, label: `${value[0].toUpperCase()}${value.slice(1)} (High to Low)` }))]} />
+              label="Sort trained Umas"
+              options={[
+                { value: "newest", label: "Newest Trained First" },
+                ...(hasTargetSkills ? [{ value: "target_factors", label: "Target Factors (High to Low)" }] : []),
+                { value: "rank_score", label: "Score (High to Low)" },
+                { value: "affinity", label: "Compatibility Affinity (High to Low)" },
+                { value: "blue_stars", label: "Lineage Blue Stars (High to Low)" },
+                ...["speed", "stamina", "power"].map((value) => ({
+                  value,
+                  label: `${value[0].toUpperCase()}${value.slice(1)} (High to Low)`,
+                })),
+              ]}
+            />
           </div>
 
           {/* Parent Filter Toggle */}
@@ -380,9 +205,7 @@ export default function VeteransView() {
             title="Filter roster to show only Parent candidates (Default rank UF–UC9)"
           >
             <LineageIcon className="h-4 w-4" /> Only Parents
-            <span
-              className="contents"
-            >
+            <span className="contents">
               <Badge size="compact" tone={onlyParents ? "emerald" : "neutral"} emphasis={onlyParents ? "solid" : "soft"} className="font-bold">
                 {parentCount}
               </Badge>
@@ -418,7 +241,7 @@ export default function VeteransView() {
             </span>
             {hasTargetSkills && (
               <Badge size="compact" tone="emerald" className="font-semibold">
-                {activeTargetSkillsMap.size} Target Skills in Parent Deck
+                Target Skills active in Parent Deck
               </Badge>
             )}
           </div>
@@ -445,9 +268,9 @@ export default function VeteransView() {
                 key={key}
                 veteran={vet}
                 character={charaMap.get(vet.card_id)}
-                onClick={() => handleInspectVeteran(vet)}
+                onClick={() => inspectVeteran(vet)}
                 isParent={isParent(vet)}
-                onToggleParent={(e) => handleToggleParent(vet, e)}
+                onToggleParent={(e) => toggleParent(vet, e)}
                 targetFactorMatch={targetFactorMatchMap.get(key)}
                 hasTargetSkills={hasTargetSkills}
               />
@@ -457,15 +280,12 @@ export default function VeteransView() {
       )}
 
       {/* Import Modal */}
-      <ImportModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
+      <ImportModal isOpen={isImportModalOpen} onClose={closeImportModal} />
 
       {/* Trained Uma Detail Inspection Modal */}
       <TrainedUmaModal
         isOpen={isDetailModalOpen}
-        onClose={() => {
-          setIsDetailModalOpen(false);
-          setSelectedVeteran(null);
-        }}
+        onClose={closeDetailModal}
         veteran={selectedVeteran}
         character={selectedVeteran ? charaMap.get(selectedVeteran.card_id) : null}
       />

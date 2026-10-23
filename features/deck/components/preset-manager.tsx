@@ -11,7 +11,7 @@ import { AppSelect } from "@/app/common/ui/controls/app-select";
 // and drag up & down to reorder preset combos (Main Deck + Parent Deck + Track Info).
 
 import { useState, useRef } from "react";
-import { useDeck } from "@/features/deck/state";
+import { useDeckPresets } from "@/features/deck/state";
 import type { DeckPreset } from "@/lib/deck/types";
 import ShareModal from "./share-modal";
 import { LinkIcon, XIcon, EditIcon, PlusIcon, ListIcon, ChevronUpIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
@@ -27,7 +27,7 @@ export default function PresetManager() {
     updatePresetName,
     deletePreset,
     reorderPresets,
-  } = useDeck();
+  } = useDeckPresets();
 
   const [isOpen, setIsOpen] = useState(false);
   const [sharingPreset, setSharingPreset] = useState<DeckPreset | null>(null);

@@ -62,6 +62,9 @@ import {
 } from "@/lib/deck/preset-reducer";
 
 import { DeckContext } from "./deck-context";
+import { DeckPresetsContext, type DeckPresetsContextValue } from "./deck-presets-context";
+import { DeckTrackContext, type DeckTrackContextValue } from "./deck-track-context";
+import { DeckSlotsContext, type DeckSlotsContextValue } from "./deck-slots-context";
 import { DEFAULT_PARENTING_SETUP, type ParentingSetup } from "@/lib/parenting/state";
 import { usePresetHydration } from "./use-preset-hydration";
 import { useDeckData } from "./use-deck-data";
@@ -488,7 +491,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
   const loading = !dataStore || !index;
 
-  const value = useMemo<DeckContextValue>(
+  const presetsValue = useMemo<DeckPresetsContextValue>(
     () => ({
       presets: presetState.presets,
       activePresetId: presetState.activeId,
@@ -500,23 +503,23 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       deletePreset,
       reorderPresets,
       importPreset,
+    }),
+    [
+      presetState.presets,
+      presetState.activeId,
+      activePreset,
+      setActivePresetId,
+      addPreset,
+      duplicatePreset,
+      updatePresetName,
+      deletePreset,
+      reorderPresets,
+      importPreset,
+    ],
+  );
 
-      setChainChoice,
-      getChainChoice,
-      resetCardChainChoices,
-
-      mainSlots,
-      setMainCard,
-      clearMain,
-      mainSkills,
-      mainSkillIdSet,
-
-      parentSlots,
-      setParentCard,
-      clearParent,
-      copyMainToParent,
-      parentSkills,
-
+  const trackValue = useMemo<DeckTrackContextValue>(
+    () => ({
       tracks,
       trackId: activeTrackId,
       setTrackId,
@@ -547,6 +550,58 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       selectMasterChallengeRace,
       clearMasterChallenge,
       racetrackDetails: dataStore?.racetracks ?? [],
+      loading,
+    }),
+    [
+      tracks,
+      activeTrackId,
+      setTrackId,
+      activeTrackDetail,
+      activeCourseId,
+      setCourseId,
+      activeCourseRow,
+      course,
+      distance,
+      surface,
+      activePreset.trackInfo.runningStyle,
+      setRunningStyle,
+      activePreset.trackInfo.racerCount,
+      setRacerCount,
+      activePvpEventId,
+      activePvpEvent,
+      activeRaceParameters,
+      selectCustomTrack,
+      setCustomRaceConditions,
+      applyPvpPreset,
+      clearPvpPreset,
+      masterChallengeEvents,
+      pvpRecommendationEvents,
+      activeMasterChallengeEvent,
+      activeMasterChallengeRace,
+      selectMasterChallengeRace,
+      clearMasterChallenge,
+      dataStore?.racetracks,
+      loading,
+    ],
+  );
+
+  const slotsValue = useMemo<DeckSlotsContextValue>(
+    () => ({
+      setChainChoice,
+      getChainChoice,
+      resetCardChainChoices,
+
+      mainSlots,
+      setMainCard,
+      clearMain,
+      mainSkills,
+      mainSkillIdSet,
+
+      parentSlots,
+      setParentCard,
+      clearParent,
+      copyMainToParent,
+      parentSkills,
 
       parentingSetup,
       setParentingSetup,
@@ -556,16 +611,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       loading,
     }),
     [
-      presetState.presets,
-      presetState.activeId,
-      activePreset,
-      setActivePresetId,
-      addPreset,
-      duplicatePreset,
-      updatePresetName,
-      deletePreset,
-      reorderPresets,
-      importPreset,
       setChainChoice,
       getChainChoice,
       resetCardChainChoices,
@@ -579,31 +624,6 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       clearParent,
       copyMainToParent,
       parentSkills,
-      tracks,
-      activeTrackId,
-      setTrackId,
-      activeTrackDetail,
-      activeCourseId,
-      setCourseId,
-      activeCourseRow,
-      course,
-      distance,
-      surface,
-      setRunningStyle,
-      setRacerCount,
-      activePvpEventId,
-      activePvpEvent,
-      activeRaceParameters,
-      selectCustomTrack,
-      setCustomRaceConditions,
-      applyPvpPreset,
-      clearPvpPreset,
-      masterChallengeEvents,
-      activeMasterChallengeEvent,
-      activeMasterChallengeRace,
-      selectMasterChallengeRace,
-      clearMasterChallenge,
-      dataStore,
       parentingSetup,
       setParentingSetup,
       index,
@@ -612,7 +632,29 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     ],
   );
 
-  return <DeckContext.Provider value={value}>{children}</DeckContext.Provider>;
+  const value = useMemo<DeckContextValue>(
+    () => ({
+      ...presetsValue,
+      ...trackValue,
+      ...slotsValue,
+    }),
+    [presetsValue, trackValue, slotsValue],
+  );
+
+  return (
+    <DeckPresetsContext.Provider value={presetsValue}>
+      <DeckTrackContext.Provider value={trackValue}>
+        <DeckSlotsContext.Provider value={slotsValue}>
+          <DeckContext.Provider value={value}>
+            {children}
+          </DeckContext.Provider>
+        </DeckSlotsContext.Provider>
+      </DeckTrackContext.Provider>
+    </DeckPresetsContext.Provider>
+  );
 }
 
 export { useDeck } from "./deck-context";
+export { useDeckPresets } from "./deck-presets-context";
+export { useDeckTrack } from "./deck-track-context";
+export { useDeckSlots } from "./deck-slots-context";

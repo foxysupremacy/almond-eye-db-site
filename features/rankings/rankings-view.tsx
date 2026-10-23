@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { useDeck } from "@/features/deck/state";
+import { useDeckTrack } from "@/features/deck/state";
 import { terrainLabel, turnLabel } from "@/lib/api";
 import { skillsById } from "@/lib/data/registry";
 import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
@@ -87,7 +87,7 @@ function buildRail(row: RankingRow, candidate: RankingCandidate | undefined, met
   };
 }
 
-function zonesForRow(row: RankingRow, course: NonNullable<ReturnType<typeof useDeck>["course"]>, raceParams: object, metric: RankingMetric): SkillZoneResult[] {
+function zonesForRow(row: RankingRow, course: NonNullable<ReturnType<typeof useDeckTrack>["course"]>, raceParams: object, metric: RankingMetric): SkillZoneResult[] {
   const horse = horseForStrategy(row.style);
   const out: SkillZoneResult[] = [];
   for (const score of [row.unique, chosenFor(row.slot1, metric), chosenFor(row.slot2, metric), chosenFor(row.slot3, metric)]) {
@@ -107,7 +107,7 @@ function zonesForRow(row: RankingRow, course: NonNullable<ReturnType<typeof useD
 }
 
 export function RankingsFeature({ runner }: { runner?: RankingsRunner } = {}) {
-  const { course, trackDetail, runningStyle, racerCount, activePvpEvent, activeRaceParameters, loading } = useDeck();
+  const { course, trackDetail, runningStyle, racerCount, activePvpEvent, activeRaceParameters, loading } = useDeckTrack();
   const tier = useTier();
 
   const [profile] = useRaceImpactProfile();

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api, terrainLabel, turnLabel, type SkillDetail } from "@/lib/api";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
-import { useDeck } from "@/features/deck/state";
+import { useDeckTrack, useDeckSlots } from "@/features/deck/state";
 import { type RarityFilterKey } from "@/lib/skills/rarity";
 import { evaluateSkillForTrack } from "@/lib/evaluator";
 import { TrackCanvas } from "./components/track-canvas";
@@ -38,11 +38,13 @@ export default function TrackView() {
     trackDetail,
     runningStyle,
     racerCount,
-    mainSkills,
-    parentSkills,
     activePvpEvent,
     activeRaceParameters,
-  } = useDeck();
+  } = useDeckTrack();
+  const {
+    mainSkills,
+    parentSkills,
+  } = useDeckSlots();
 
   const raceParams = activeRaceParameters;
 
