@@ -5,7 +5,7 @@
 // Only the selected skill is computed + drawn.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { api, type SkillDetail } from "@/lib/api";
+import { api, terrainLabel, turnLabel, type SkillDetail } from "@/lib/api";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import { computePvpSkillZones } from "@/lib/pvp/skill-zones";
 import { useDeck } from "@/features/deck/state";
@@ -94,6 +94,10 @@ export default function TrackView() {
   // One style for the inspector's race impact and the effect modal (the modal needs a concrete style).
   const graphStyle: RunningStyle = visualizerRunningStyle(runningStyle);
   const venueLabel = trackDetail?.nameEn || "this course";
+  const venueCaption = course
+    ? [`${trackDetail?.nameEn ?? ""} ${course.length.toLocaleString("en-US")}m`.trim(), terrainLabel(course.terrain), turnLabel(course.turn), activePvpEvent?.shortName]
+      .filter(Boolean).join(" · ")
+    : "";
 
   // Horse used to gate running_style conditions for zones and tints; undefined = default (Nige).
   // Deliberately not graphStyle (R17). Memoized: a fresh object each render would re-fire the zone effects forever.
@@ -257,9 +261,10 @@ export default function TrackView() {
             zones={zones}
             selectedSkillId={selectedSkillId?.toString() ?? null}
             evaluation={evaluation}
+            venueCaption={venueCaption}
           />
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_2fr]">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-[1fr_2fr] pt-2">
             <TrackSkillSidebar
               visualizerDeck={visualizerDeck}
               onVisualizerDeckChange={setVisualizerDeck}
@@ -289,6 +294,7 @@ export default function TrackView() {
               groundCondition={raceParams.groundCondition}
               selectedUma={selectedUma}
               isBanned={isSelectedSkillBanned}
+              embedded
             />
           </div>
         </>

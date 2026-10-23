@@ -1,6 +1,6 @@
 "use client";
 
-import type { RefObject } from "react";
+import { useEffect, type RefObject } from "react";
 import type { SkillDetail } from "@/lib/api";
 import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
@@ -46,6 +46,8 @@ interface SkillDetailInspectorProps {
   compact?: boolean;
   /** The parent overlay already provides the visible surface. */
   embedded?: boolean;
+  /** Optional callback to close/dismiss the panel or popover. */
+  onClose?: () => void;
 }
 
 /** Shared detail renderer for the fixed Visualizer pane and floating inspector. */
@@ -68,11 +70,31 @@ export function SkillDetailPanel({
   isBanned = false,
   compact = false,
   embedded = false,
+  onClose,
 }: SkillDetailInspectorProps) {
+  useEffect(() => {
+    if (!onClose) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
   return (
     <div
       ref={conditionViewerRef}
-      className={`order-1 min-w-0 ${embedded ? "" : "rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs"} ${compact ? "text-xs" : "text-sm"} text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
+      tabIndex={onClose ? -1 : undefined}
+      onKeyDown={onClose ? (e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          onClose();
+        }
+      } : undefined}
+      className={`order-1 min-w-0 ${embedded ? "" : "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl"} ${compact ? "text-xs" : "text-sm"} text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
     >
       {skillLoading ? (
         <div className="p-4 sm:p-5 text-zinc-400 dark:text-zinc-500">Loading skill…</div>
@@ -205,7 +227,7 @@ export function SkillDetailPanel({
                   return (
                     <div
                       key={gi}
-                      className="rounded-lg px-2.5 py-3 text-xs first:pt-2.5 last:pb-2.5"
+                      className="rounded-lg border border-zinc-200/80 dark:border-zinc-800/80 px-2.5 py-3 text-xs first:pt-2.5 last:pb-2.5"
                       style={{ backgroundColor: hexToRgba(ZONE_COLORS[gi % ZONE_COLORS.length], 0.1) }}
                     >
                       <div className="flex items-center gap-2 mb-1.5">

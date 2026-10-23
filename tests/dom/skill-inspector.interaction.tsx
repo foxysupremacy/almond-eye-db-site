@@ -81,6 +81,41 @@ describe("skill inspection overlays", () => {
     } finally { request.mockRestore(); }
   });
 
+  test("Escape dismisses passive hover preview popover", async () => {
+    finePointer();
+    const request = replaceSkillRequest(async () => detail(980008));
+    try {
+      const user = userEvent.setup();
+      render(<Inspector><SkillHoverCard skillId={980008} fallbackSkill={{ nameEn: "Escape preview skill" }}>Escape preview</SkillHoverCard></Inspector>);
+      const trigger = screen.getByRole("button", { name: "Inspect Escape preview skill" });
+      fireEvent.pointerEnter(trigger, { pointerType: "mouse" });
+      await waitFor(() => expect(document.querySelector('[aria-label="Skill details"]')).toBeTruthy());
+      await user.keyboard("{Escape}");
+      await waitFor(() => expect(document.querySelector('[aria-label="Skill details"]')).toBeNull());
+    } finally { request.mockRestore(); }
+  });
+
+  test("SkillDetailPanel closes on Escape when onClose is provided", async () => {
+    const user = userEvent.setup();
+    let closed = false;
+    render(
+      <SkillDetailPanel
+        skillDetail={detail(980009)}
+        skillLoading={false}
+        selectedSkill={null}
+        selectedSkillId={980009}
+        zones={null}
+        course={null}
+        racerCount={12}
+        evaluation={null}
+        onClose={() => { closed = true; }}
+      />
+    );
+    expect(screen.getByText("Loaded skill 980009")).toBeTruthy();
+    await user.keyboard("{Escape}");
+    expect(closed).toBe(true);
+  });
+
   test("rapidly hovering different skills reuses the same preview popover", async () => {
     finePointer();
     const request = replaceSkillRequest(async (id) => detail(id));

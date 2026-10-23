@@ -63,7 +63,6 @@ export function SupportCardDetailSheet({
   const raceParams = activeRaceParameters;
 
 
-  const [activeTab, setActiveTab] = useState<"skills" | "effects">("skills");
   const [loadedSkills, setLoadedSkills] = useState<CardSkills | null>(null);
   const [cardEffectsBlob, setCardEffectsBlob] = useState<SupportCardEffectsBlob | null>(null);
   const [loading, setLoading] = useState(false);
@@ -311,58 +310,79 @@ export function SupportCardDetailSheet({
       title={card.charName || card.nameEn}
       ariaLabel={card.charName || card.nameEn}
       header={
-        <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="relative aspect-square h-16 w-16 flex-none overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
-                <img
-                  src={card.portraitUrl || card.imgUrl}
-                  alt={card.nameEn}
-                  className="h-full w-full rounded-none object-contain filter drop-shadow-xs"
-                />
-              </div>
+        <div className="shrink-0 flex-none bg-white dark:bg-zinc-900 border-b border-zinc-200/80 dark:border-zinc-800">
+          {/* Top Actions Bar (Close button when modal) */}
+          {!page && (
+            <div className="flex items-center justify-end px-4 pt-3 pb-1">
+              <AppButton
+                variant="quiet"
+                onPress={onClose}
+                className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer ml-auto"
+                iconOnly
+                aria-label="Close"
+              >
+                <XIcon className="h-4 w-4" />
+              </AppButton>
+            </div>
+          )}
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <Badge
-                    size="compact"
-                    uppercase
-                    tone={card.rarity === 3 ? "amber" : card.rarity === 2 ? "sky" : "neutral"}
-                    className="font-black"
-                  >
-                    {card.rarity === 3 ? "SSR" : card.rarity === 2 ? "SR" : "R"}
-                  </Badge>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 capitalize">
-                    <CardTypeIcon type={card.type} className="h-3.5 w-3.5" />
-                    <span>{formatCardType(card.type)}</span>
-                  </span>
-                  {card.release && (
-                    <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
-                      • {card.release}
-                    </span>
-                  )}
-                </div>
-
-                <h3
-                  id="card-detail-title"
-                  className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 leading-snug"
-                >
-                  {card.charName || card.nameEn}
-                </h3>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-normal leading-tight">
-                  {card.titleEn || card.titleJa || card.nameJp}
-                </p>
-              </div>
+          {/* Centered Large Card Art */}
+          <div className="px-4 pb-2 pt-1">
+            <div className="relative mx-auto w-44 sm:w-52 aspect-[3/4] rounded-xl overflow-hidden border border-zinc-200/90 dark:border-zinc-700/80 bg-zinc-100 dark:bg-zinc-800 shadow-sm flex items-center justify-center">
+              <img
+                src={card.imgUrl || card.portraitUrl}
+                alt={card.nameEn}
+                className="h-full w-full object-cover select-none"
+                onError={(e) => {
+                  if (card.portraitUrl && e.currentTarget.src !== card.portraitUrl) {
+                    e.currentTarget.src = card.portraitUrl;
+                  }
+                }}
+              />
             </div>
 
-            {page ? <AriaLink href={backHref} className="inline-flex items-center gap-1 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"><ChevronLeftIcon className="h-4 w-4" /> Back to Supports</AriaLink> : <AppButton variant="quiet" onPress={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer" iconOnly aria-label="Close"><XIcon className="h-4 w-4" /></AppButton>}
+            {/* Rarity & Card Type Pill Row */}
+            <div className="flex items-center justify-center gap-1.5 flex-wrap mt-3">
+              <Badge
+                size="compact"
+                uppercase
+                tone={card.rarity === 3 ? "amber" : card.rarity === 2 ? "sky" : "neutral"}
+                className="font-black"
+              >
+                {card.rarity === 3 ? "SSR" : card.rarity === 2 ? "SR" : "R"}
+              </Badge>
+              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 capitalize">
+                <CardTypeIcon type={card.type} className="h-3.5 w-3.5" />
+                <span>{formatCardType(card.type)}</span>
+              </span>
+              {card.release && (
+                <span className="text-[10px] text-zinc-400 dark:text-zinc-500">
+                  • {card.release}
+                </span>
+              )}
+            </div>
+
+            {/* English Card Name (Large bold) */}
+            <h3
+              id="card-detail-title"
+              className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-zinc-100 text-center mt-1 leading-snug"
+            >
+              {card.charName || card.nameEn}
+            </h3>
+
+            {/* Japanese Name directly below (muted sub-line) */}
+            {(card.titleEn || card.titleJa || card.nameJp) && (
+              <p className="text-xs sm:text-sm text-zinc-400 dark:text-zinc-500 text-center font-medium mt-0.5 leading-tight">
+                {card.titleEn || card.titleJa || card.nameJp}
+              </p>
+            )}
           </div>
 
           {/* Limit Break Stepper + Ownership Row */}
-          <div className="mt-3.5 pt-3 border-t border-zinc-200/70 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="px-4 sm:px-6 py-2.5 border-t border-zinc-200/70 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs bg-zinc-50/50 dark:bg-zinc-900/50">
             <div className="flex items-center gap-2">
-              <span className="text-zinc-500 text-[11px]">Limit Break:</span>
-              <div className="flex items-center gap-1">
+              <span className="text-zinc-500 text-[11px] font-medium">Limit Break:</span>
+              <div className="inline-flex items-center rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5">
                 {[0, 1, 2, 3, 4].map((step) => (
                   <AppButton
                     key={step}
@@ -370,12 +390,12 @@ export function SupportCardDetailSheet({
                     variant="quiet"
                     onPress={() => onSetLimitBreak(card.id, step)}
                     title={`Set to ${step === 4 ? "MLB" : `${step} LB`}`}
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                    className={`px-2.5 py-1 rounded-md text-[10px] font-bold cursor-pointer transition-colors ${
                       isOwned && limitBreak === step
                         ? step === 4
                           ? "bg-amber-400 text-amber-950 font-black shadow-2xs"
                           : "bg-emerald-600 text-white font-bold"
-                        : "bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                     }`}
                   >
                     {LB_LABELS[step]}
@@ -404,120 +424,107 @@ export function SupportCardDetailSheet({
               )}
             </div>
           </div>
+
+          {/* Track Compatibility Bar */}
+          <div className="px-4 sm:px-6 py-2 bg-zinc-100/60 dark:bg-zinc-800/40 border-t border-zinc-200/70 dark:border-zinc-800 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <TrophyIcon className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 flex-none" />
+              <span className="font-semibold text-zinc-800 dark:text-zinc-200 truncate">
+                {course
+                  ? `${trackDetail?.nameEn || "Target Course"} ${course.length}m`
+                  : "Active Course: None"}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+              <span>{activatingSkillCount}/{totalSkillCount} Active</span>
+            </div>
+          </div>
         </div>
       }
     >
-        {/* Segmented Switcher: Skills vs Training Effects */}
-        <div className="shrink-0 flex-none flex items-center justify-between px-4 py-2 bg-zinc-100/60 dark:bg-zinc-800/40 border-b border-zinc-200/70 dark:border-zinc-800 text-xs">
-          <div className="inline-flex rounded-lg bg-zinc-200/80 dark:bg-zinc-800 p-0.5 border border-zinc-200 dark:border-zinc-700/50">
-            <AppButton
-              variant="quiet"
-              onPress={() => setActiveTab("skills")}
-              className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer ${
-                activeTab === "skills"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              Skills & Track ({totalSkillCount})
-            </AppButton>
-            <AppButton
-              variant="quiet"
-              onPress={() => setActiveTab("effects")}
-              className={`px-3 py-1 rounded-md font-semibold transition-all cursor-pointer ${
-                activeTab === "effects"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-xs"
-                  : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
-            >
-              Support Effects ({cardEffectsBlob?.effects.length || 0})
-            </AppButton>
-          </div>
+      {/* Continuous Scroll: Skills first, then Training Effects */}
+      <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+        {/* Section 1: Skills & Track */}
+        <div>
+          {/* Event Skills Section */}
+          {eventSkills.length > 0 && (
+            <div>
+              <div className="px-3.5 py-1.5 bg-violet-500/10 dark:bg-violet-950/20 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                Event Skills ({eventSkills.length})
+              </div>
+              {orderedChainGroups.map((group) => (
+                <section key={`${group.eventId}:${group.choice}`}>
+                  <div className="flex min-w-0 items-center gap-1.5 border-b border-violet-200/60 px-3.5 py-2 text-[10px] text-violet-700 dark:border-violet-900/50 dark:text-violet-300">
+                    <span className="shrink-0 font-bold uppercase tracking-wide">Chain {group.step}</span>
+                    <ChainArrowIcon step={group.step} size="sm" className="text-violet-600 dark:text-violet-400" />
+                    <span className="shrink-0 font-semibold">Choice {group.choice}</span>
+                    <span className="min-w-0 truncate text-violet-600/80 dark:text-violet-300/80">{group.choiceText}</span>
+                  </div>
+                  <div className="ml-3 border-l border-violet-200/70 pl-2 dark:border-violet-900/60">
+                    {group.skills.map((skill) => renderSkillRow(skill, "event", false))}
+                  </div>
+                </section>
+              ))}
+              {standaloneEventSkills.map((s) => renderSkillRow(s, "event"))}
+            </div>
+          )}
 
-          {activeTab === "skills" && (
-            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
-              <TrophyIcon className="h-3 w-3 text-purple-600 dark:text-purple-400" />
-              <span>{activatingSkillCount}/{totalSkillCount} Active</span>
+          {/* Hint Skills Section */}
+          {hintSkills.length > 0 && (
+            <div>
+              <div className="px-3.5 py-1.5 bg-emerald-500/10 dark:bg-emerald-950/20 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Hint Skills ({hintSkills.length})
+              </div>
+              {hintSkills.map((s) => renderSkillRow(s, "hint"))}
+            </div>
+          )}
+
+          {loading && !loadedSkills && (
+            <div className="py-16 text-center text-xs text-zinc-400">
+              <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
+              <p>Loading skills and effects...</p>
             </div>
           )}
         </div>
 
-        {/* Tab 1: Skills & Track Evaluation */}
-        {activeTab === "skills" && (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            {/* Event Skills Section */}
-            {eventSkills.length > 0 && (
-              <div>
-                <div className="px-3.5 py-1.5 bg-violet-500/10 dark:bg-violet-950/20 text-[10px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
-                  Event Skills ({eventSkills.length})
-                </div>
-                {orderedChainGroups.map((group) => (
-                  <section key={`${group.eventId}:${group.choice}`}>
-                    <div className="flex min-w-0 items-center gap-1.5 border-b border-violet-200/60 px-3.5 py-2 text-[10px] text-violet-700 dark:border-violet-900/50 dark:text-violet-300">
-                      <span className="shrink-0 font-bold uppercase tracking-wide">Chain {group.step}</span>
-                      <ChainArrowIcon step={group.step} size="sm" className="text-violet-600 dark:text-violet-400" />
-                      <span className="shrink-0 font-semibold">Choice {group.choice}</span>
-                      <span className="min-w-0 truncate text-violet-600/80 dark:text-violet-300/80">{group.choiceText}</span>
-                    </div>
-                    <div className="ml-3 border-l border-violet-200/70 pl-2 dark:border-violet-900/60">
-                      {group.skills.map((skill) => renderSkillRow(skill, "event", false))}
-                    </div>
-                  </section>
-                ))}
-                {standaloneEventSkills.map((s) => renderSkillRow(s, "event"))}
-              </div>
-            )}
-
-            {/* Hint Skills Section */}
-            {hintSkills.length > 0 && (
-              <div>
-                <div className="px-3.5 py-1.5 bg-emerald-500/10 dark:bg-emerald-950/20 text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                  Hint Skills ({hintSkills.length})
-                </div>
-                {hintSkills.map((s) => renderSkillRow(s, "hint"))}
-              </div>
-            )}
-
-            {loading && !loadedSkills && (
-              <div className="py-16 text-center text-xs text-zinc-400">
-                <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-                <p>Loading skills and effects...</p>
-              </div>
-            )}
+        {/* Section 2: Training Effects (Support Effects) */}
+        <div className="pt-2">
+          <div className="px-3.5 py-2 bg-amber-500/10 dark:bg-amber-950/20 text-[10px] font-bold uppercase tracking-wider text-amber-800 dark:text-amber-300 flex items-center justify-between">
+            <span>Training Effects ({cardEffectsBlob?.effects.length || 0})</span>
+            <span className="text-[10px] font-normal normal-case text-zinc-500">
+              Active: <strong className="font-bold text-amber-700 dark:text-amber-400">{LB_LABELS[currentLb]}</strong>
+            </span>
           </div>
-        )}
 
-        {/* Tab 2: Support Effects (Training Stats) Table */}
-        {activeTab === "effects" && (
-          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 space-y-4">
-            {/* Unique Effect Card */}
-            {cardEffectsBlob?.uniqueEffect && (
-              <div className="rounded-xl border border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/20 p-3">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">
-                  <SparklesIcon className="h-3.5 w-3.5 text-amber-600" />
-                  <span>Unique Effect (Lv {cardEffectsBlob.uniqueEffect.lv} Unlock)</span>
-                </div>
-                <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">
-                  {cardEffectsBlob.uniqueEffect.textEn || cardEffectsBlob.uniqueEffect.textJp}
-                </p>
-                {cardEffectsBlob.uniqueEffect.textJp && cardEffectsBlob.uniqueEffect.textEn !== cardEffectsBlob.uniqueEffect.textJp && (
-                  <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
-                    {cardEffectsBlob.uniqueEffect.textJp}
-                  </p>
-                )}
+          {/* Unique Effect Card: Left-accent stripe minimal-box per DESIGN.md */}
+          {cardEffectsBlob?.uniqueEffect && (
+            <div className="border-l-4 border-amber-500 bg-amber-50/40 dark:bg-amber-950/20 p-3 sm:px-4">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-300 mb-1">
+                <SparklesIcon className="h-3.5 w-3.5 text-amber-600" />
+                <span>Unique Effect (Lv {cardEffectsBlob.uniqueEffect.lv} Unlock)</span>
               </div>
-            )}
+              <p className="text-xs text-zinc-800 dark:text-zinc-200 leading-relaxed">
+                {cardEffectsBlob.uniqueEffect.textEn || cardEffectsBlob.uniqueEffect.textJp}
+              </p>
+              {cardEffectsBlob.uniqueEffect.textJp && cardEffectsBlob.uniqueEffect.textEn !== cardEffectsBlob.uniqueEffect.textJp && (
+                <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-0.5">
+                  {cardEffectsBlob.uniqueEffect.textJp}
+                </p>
+              )}
+            </div>
+          )}
 
-            {/* Effects Table */}
-            <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900">
+          {/* Flat Effects Table */}
+          {cardEffectsBlob?.effects && cardEffectsBlob.effects.length > 0 && (
+            <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 text-zinc-500 text-[11px]">
-                    <th className="py-2 px-3 font-semibold">Effect</th>
+                    <th className="py-2.5 px-3 sm:px-4 font-semibold">Effect</th>
                     {LB_LABELS.map((label, idx) => (
                       <th
                         key={label}
-                        className={`py-2 px-2 text-center font-bold ${
+                        className={`py-2 px-2 text-center font-bold min-w-12 ${
                           idx === currentLb
                             ? "bg-amber-500/15 text-amber-800 dark:text-amber-300"
                             : ""
@@ -529,12 +536,12 @@ export function SupportCardDetailSheet({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
-                  {(cardEffectsBlob?.effects || []).map((eff) => (
+                  {cardEffectsBlob.effects.map((eff) => (
                     <tr
                       key={eff.type}
                       className="hover:bg-zinc-50/70 dark:hover:bg-zinc-800/30 transition-colors"
                     >
-                      <td className="py-2 px-3">
+                      <td className="py-2.5 px-3 sm:px-4">
                         <span className="font-semibold text-zinc-900 dark:text-zinc-100 block leading-snug">
                           {eff.nameEn}
                         </span>
@@ -567,14 +574,15 @@ export function SupportCardDetailSheet({
                 </tbody>
               </table>
             </div>
+          )}
 
-            {(!cardEffectsBlob || cardEffectsBlob.effects.length === 0) && !loading && (
-              <p className="text-xs text-zinc-400 text-center py-8">
-                No training effects data available for this support card.
-              </p>
-            )}
-          </div>
-        )}
+          {(!cardEffectsBlob || cardEffectsBlob.effects.length === 0) && !loading && (
+            <p className="text-xs text-zinc-400 text-center py-8">
+              No training effects data available for this support card.
+            </p>
+          )}
+        </div>
+      </div>
     </CollectionDetailSurface>
   );
 }

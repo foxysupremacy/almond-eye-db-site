@@ -23,6 +23,19 @@ import { Badge } from "@/app/common/ui/primitives/badge";
 import { buildDuplicateSkillIndex, getDuplicateSkillIds } from "@/lib/skills/duplicates";
 import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain-attribution";
 
+function getRarityStripeClass(rarityKey: string): string {
+  switch (rarityKey) {
+    case "gold":
+      return "border-l-amber-500";
+    case "unique":
+      return "border-l-pink-500";
+    case "evolved":
+      return "border-l-purple-500";
+    default:
+      return "border-l-zinc-300 dark:border-l-zinc-700";
+  }
+}
+
 export default function SkillList() {
   const {
     mainSkills,
@@ -150,12 +163,12 @@ export default function SkillList() {
           <div className="hidden w-36 md:block sm:w-44"><PickerSearchBar label="Search deck skills" value={search} onChange={setSearch} placeholder="Search skills…" inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 pr-10 text-xs text-zinc-900 outline-none focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100" /></div>
 
           {/* Rarity Tabs */}
-          <RadioGroup aria-label="Skill rarity" value={rarityFilter} onChange={(value) => setRarityFilter(value as RarityFilterKey)} orientation="horizontal" className="flex flex-wrap md:flex-nowrap rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs scrollbar-none">
+          <RadioGroup aria-label="Skill rarity" value={rarityFilter} onChange={(value) => setRarityFilter(value as RarityFilterKey)} orientation="horizontal" className="inline-flex flex-wrap md:flex-nowrap rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium scrollbar-none">
             <Radio
               value="all"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "all"
-                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
@@ -163,9 +176,9 @@ export default function SkillList() {
             </Radio>
             <Radio
               value="white"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "white"
-                  ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                   : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
               }`}
             >
@@ -173,17 +186,17 @@ export default function SkillList() {
             </Radio>
             <Radio
               value="gold"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "gold"
                   ? "bg-amber-500 text-amber-950 font-bold shadow-2xs"
-                  : "text-amber-950 dark:text-amber-100 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 font-medium"
+                  : "text-amber-900 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 font-medium"
               }`}
             >
               Gold ({goldCount})
             </Radio>
             <Radio
               value="unique"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "unique"
                   ? "bg-pink-500 text-white font-bold shadow-2xs"
                   : "text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
@@ -193,7 +206,7 @@ export default function SkillList() {
             </Radio>
             <Radio
               value="evolved"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 transition-colors cursor-pointer whitespace-nowrap ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
                 rarityFilter === "evolved"
                   ? "bg-purple-600 text-white font-bold shadow-2xs"
                   : "text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
@@ -204,14 +217,14 @@ export default function SkillList() {
           </RadioGroup>
 
           {/* Source Filter */}
-          <RadioGroup aria-label="Skill source" value={sourceFilter} onChange={(value) => setSourceFilter(value as "all" | "event" | "hint")} orientation="horizontal" className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          <RadioGroup aria-label="Skill source" value={sourceFilter} onChange={(value) => setSourceFilter(value as "all" | "event" | "hint")} orientation="horizontal" className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium">
             {(["all", "hint", "event"] as const).map((f) => (
               <Radio
                 key={f}
                 value={f}
-                className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2 py-1 capitalize cursor-pointer transition-colors ${
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs capitalize cursor-pointer transition-colors ${
                   sourceFilter === f
-                    ? "bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 font-semibold"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
                 }`}
               >
@@ -221,12 +234,12 @@ export default function SkillList() {
           </RadioGroup>
 
           {/* View Mode Toggle (Unified List vs Group by Card) */}
-          <RadioGroup aria-label="Deck skill layout" value={viewMode} onChange={(value) => setViewMode(value as "list" | "card")} orientation="horizontal" className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          <RadioGroup aria-label="Deck skill layout" value={viewMode} onChange={(value) => setViewMode(value as "list" | "card")} orientation="horizontal" className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium">
             <Radio
               value="list"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                 viewMode === "list"
-                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
@@ -234,9 +247,9 @@ export default function SkillList() {
             </Radio>
             <Radio
               value="card"
-              className={`min-h-11 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 md:min-h-8 rounded-md px-2.5 py-1 transition-colors cursor-pointer ${
+              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
                 viewMode === "card"
-                  ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold"
+                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                   : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
@@ -289,10 +302,10 @@ export default function SkillList() {
             return (
               <div
                 key={card.id}
-                className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 overflow-hidden shadow-2xs"
+                className="pt-2"
               >
                 {/* Card Slot Header */}
-                <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-zinc-50/75 dark:bg-zinc-900/90 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
                   <div className="flex items-center gap-3">
                     <img
                       src={card.portraitUrl || card.imgUrl}
@@ -343,11 +356,14 @@ export default function SkillList() {
                     {cFiltered.map((s) => {
                       const isBanned = isSkillBanned(s.id, activePvpEvent);
                       const isDupe = duplicateSkillIdSet.has(s.id);
+                      const rStyle = getSkillRarityStyle(s.rarity);
 
                       return (
                         <li
                           key={`${card.id}-${s.id}-${s.source}`}
-                          className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
+                          className={`flex items-start gap-3 px-3.5 py-2.5 border-l-4 transition-colors ${
+                            getRarityStripeClass(rStyle.key)
+                          } ${rStyle.bgClass ?? ""} hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40 ${
                             isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10" : ""
                           }`}
                         >
@@ -393,7 +409,7 @@ export default function SkillList() {
           })}
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800/80">
           {filtered.map((s) => {
             const rStyle = getSkillRarityStyle(s.rarity);
             const isBanned = isSkillBanned(s.id, activePvpEvent);
@@ -401,9 +417,11 @@ export default function SkillList() {
             return (
               <li
                 key={s.id}
-                className={`flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
-                  rStyle.borderClass
-                } ${rStyle.bgClass ?? ""} ${isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10 border-rose-200 dark:border-rose-900/50" : ""}`}
+                className={`flex items-start gap-3 px-3.5 py-2.5 border-l-4 transition-colors ${
+                  getRarityStripeClass(rStyle.key)
+                } ${rStyle.bgClass ?? ""} hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40 ${
+                  isBanned ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10" : ""
+                }`}
               >
                 <div className="min-w-0 flex-1">
                   <SkillItem

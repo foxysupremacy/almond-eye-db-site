@@ -320,65 +320,98 @@ export function CharacterDetailSheet({
       title={character.nameEn}
       ariaLabel={character.nameEn}
       header={
-        <div className="shrink-0 flex-none border-b border-zinc-200/80 dark:border-zinc-800 p-4 bg-zinc-50/70 dark:bg-zinc-900/70">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="relative aspect-square h-16 w-16 flex-none rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800">
-                <img
-                  src={character.imgUrl}
-                  alt={character.nameEn}
-                  className="h-full w-full object-contain filter drop-shadow-xs"
-                  onError={(e) => {
-                    e.currentTarget.src = getCharacterImageUrl(
-                      character.charId,
-                      character.id,
-                      "01"
-                    );
-                  }}
-                />
+        <div className="shrink-0 flex-none bg-white dark:bg-zinc-900">
+          {/* 1. Hero Banner */}
+          <div className="relative overflow-hidden min-h-[190px] sm:min-h-[220px] md:min-h-[240px] px-4 sm:px-6 py-5 flex items-stretch justify-between bg-gradient-to-r from-zinc-50 via-zinc-100/50 to-sky-50/40 dark:from-zinc-900 dark:via-zinc-900/90 dark:to-zinc-800/60 border-b border-zinc-200/80 dark:border-zinc-800">
+            {/* Decorative subtle angular backdrop on the right */}
+            <div className="absolute right-0 top-0 bottom-0 w-2/5 sm:w-1/3 bg-gradient-to-l from-sky-100/40 via-sky-50/20 to-transparent dark:from-sky-950/20 dark:via-sky-950/10 pointer-events-none -skew-x-12 origin-top-right transform translate-x-4 sm:translate-x-8" />
+
+            {/* Left Column: Character Meta & Names */}
+            <div className="relative z-10 min-w-0 max-w-[65%] sm:max-w-[60%] flex flex-col justify-center">
+              {(character.titleEn || character.titleJp) && (
+                <div className="text-xs sm:text-sm font-semibold text-zinc-500 dark:text-zinc-400 mb-0.5 truncate">
+                  [{character.titleEn || character.titleJp}]
+                </div>
+              )}
+              <h3
+                id="chara-detail-title"
+                className="text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 leading-tight"
+              >
+                {character.nameEn}
+              </h3>
+              {character.nameJp && (
+                <p className="text-xs sm:text-sm text-zinc-400 dark:text-zinc-500 font-medium mt-1 leading-snug">
+                  {character.nameJp}
+                </p>
+              )}
+
+              {/* Rarity Stars */}
+              <div className="flex items-center gap-1 my-2" aria-label={`${character.rarity} stars`}>
+                {Array.from({ length: character.rarity || 3 }).map((_, i) => (
+                  <StarIcon
+                    key={i}
+                    className="h-4 w-4 fill-amber-400 text-amber-400 drop-shadow-2xs"
+                  />
+                ))}
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="rounded px-1.5 py-0.2 text-[10px] font-black bg-amber-400 text-amber-950">
-                    {"★".repeat(character.rarity)}
-                  </span>
-                  <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
-                    {character.titleEn || character.titleJp}
-                  </span>
-                </div>
-                <h3
-                  id="chara-detail-title"
-                  className="text-base sm:text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate mt-0.5 leading-snug"
-                >
-                  {character.nameEn}
-                </h3>
-                <p className="text-xs text-zinc-400 dark:text-zinc-500 font-normal leading-tight">
-                  {character.nameJp} {character.titleJp ? `[${character.titleJp}]` : ""}
+              {/* Release date */}
+              {character.release && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Release date <span className="font-medium text-zinc-700 dark:text-zinc-300 ml-1">{character.release}</span>
                 </p>
-              </div>
+              )}
             </div>
 
-            {page ? <AriaLink href={backHref} className="inline-flex items-center gap-1 rounded-lg p-1.5 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"><ChevronLeftIcon className="h-4 w-4" /> Back to Characters</AriaLink> : <AppButton variant="quiet" onPress={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-700 dark:hover:text-zinc-200 transition-colors cursor-pointer" iconOnly aria-label="Close"><XIcon className="h-4 w-4" /></AppButton>}
+            {/* Right Stand Portrait Art */}
+            <div className="absolute right-2 sm:right-6 bottom-0 top-1 h-full max-w-[42%] sm:max-w-[40%] flex items-end justify-end pointer-events-none z-10">
+              <img
+                src={character.imgUrl}
+                alt={character.nameEn}
+                className="h-[105%] max-w-none sm:max-w-full object-contain object-bottom drop-shadow-md select-none"
+                onError={(e) => {
+                  e.currentTarget.src = getCharacterImageUrl(
+                    character.charId,
+                    character.id,
+                    "01"
+                  );
+                }}
+              />
+            </div>
+
+            {/* Top Right Action Button (Close button in modal mode) */}
+            {!page && (
+              <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-20">
+                <AppButton
+                  variant="quiet"
+                  onPress={onClose}
+                  className="rounded-lg p-1.5 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-xs border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                  iconOnly
+                  aria-label="Close"
+                >
+                  <XIcon className="h-4 w-4" />
+                </AppButton>
+              </div>
+            )}
           </div>
 
-          {/* Star & Talent Steppers + Ownership Row */}
-          <div className="mt-3.5 pt-3 border-t border-zinc-200/70 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
+          {/* 2. Star & Talent Steppers + Ownership Row */}
+          <div className="px-4 sm:px-6 py-3 border-b border-zinc-200/70 dark:border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs bg-white dark:bg-zinc-900">
+            <div className="flex items-center gap-4 flex-wrap">
               {/* Star Stepper */}
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-500 text-[11px]">Stars:</span>
-                <div className="flex items-center gap-1">
+                <span className="text-zinc-500 text-[11px] font-medium">Stars:</span>
+                <div className="inline-flex items-center rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <AppButton
                       key={s}
                       aria-pressed={isOwned && currentStars === s}
                       variant="quiet"
                       onPress={() => onSetUmaDetails(character.id, s, currentTalent)}
-                      className={`w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center cursor-pointer transition-colors ${
+                      className={`w-6 h-6 rounded-md text-[10px] font-bold flex items-center justify-center cursor-pointer transition-colors ${
                         isOwned && s <= currentStars
                           ? "bg-amber-400 text-amber-950 font-black shadow-2xs"
-                          : "bg-zinc-100 dark:bg-zinc-800 text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                          : "text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
                       }`}
                     >
                       {s}
@@ -389,7 +422,7 @@ export function CharacterDetailSheet({
 
               {/* Talent Stepper */}
               <div className="flex items-center gap-1.5">
-                <span className="text-zinc-500 text-[11px]">Awakening:</span>
+                <span className="text-zinc-500 text-[11px] font-medium">Awakening:</span>
                 <AppSelect
                   value={String(isOwned ? currentTalent : 1)}
                   onValueChange={(value) =>
@@ -400,7 +433,12 @@ export function CharacterDetailSheet({
                     )
                   }
                   className=""
-                 label="Awakening level" options={[1, 2, 3, 4, 5, 6, 7].map(lvl => ({ value: String(lvl), label: `Lv ${lvl}` }))} />
+                  label="Awakening level"
+                  options={[1, 2, 3, 4, 5, 6, 7].map((lvl) => ({
+                    value: String(lvl),
+                    label: `Lv ${lvl}`,
+                  }))}
+                />
               </div>
             </div>
 
@@ -425,8 +463,8 @@ export function CharacterDetailSheet({
             </div>
           </div>
 
-          {/* Growth Rates & Aptitudes Shelf */}
-          <div className="mt-3.5 flex flex-col gap-2 pt-3 border-t border-zinc-200/70 dark:border-zinc-800">
+          {/* 3. Growth Rates & Aptitudes Shelf (Minimal-Box) */}
+          <div className="px-4 sm:px-6 py-3 border-b border-zinc-200/70 dark:border-zinc-800 flex flex-col gap-2.5 bg-white dark:bg-zinc-900">
             {/* Growth Rates */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[11px] font-semibold text-zinc-500">Growth:</span>
@@ -448,14 +486,14 @@ export function CharacterDetailSheet({
               )}
             </div>
 
-            {/* Aptitudes: three flat, scannable rows on mobile */}
+            {/* Aptitudes: three clean, scannable rows */}
             <div className="flex flex-col gap-1 text-[10px]">
               {[
                 { label: "Aptitude", start: 0, end: 2 },
                 { label: "Distance", start: 2, end: 6 },
                 { label: "Style", start: 6, end: 10 },
               ].map((group) => (
-                <div key={group.label} className="grid min-w-0 grid-cols-[4.5rem_repeat(4,minmax(0,1fr))] items-center gap-1">
+                <div key={group.label} className="grid min-w-0 grid-cols-[4.5rem_repeat(4,minmax(0,1fr))] items-center gap-1.5">
                   <span className="font-semibold text-zinc-500 dark:text-zinc-400">
                     {group.label}
                   </span>
@@ -463,9 +501,9 @@ export function CharacterDetailSheet({
                     const idx = group.start + offset;
                     const grade = character.aptitude?.[idx] || "-";
                     return (
-                      <span key={lbl} className="inline-flex min-w-0 items-center justify-between gap-1 rounded-md bg-zinc-100/80 px-1.5 py-0.5 dark:bg-zinc-800/80">
-                        <span className="truncate text-zinc-500">{lbl}</span>
-                        <StatusRankIcon grade={grade} className="h-4.5 w-4.5 shrink-0" />
+                      <span key={lbl} className="inline-flex min-w-0 items-center justify-between gap-1 py-0.5 px-1 text-zinc-600 dark:text-zinc-300">
+                        <span className="truncate text-zinc-500 dark:text-zinc-400">{lbl}</span>
+                        <StatusRankIcon grade={grade} className="h-4 w-4 shrink-0" />
                       </span>
                     );
                   })}
@@ -476,8 +514,8 @@ export function CharacterDetailSheet({
         </div>
       }
     >
-        {/* Track Compatibility Banner & Running Style Selector */}
-        <div className="shrink-0 flex-none px-4 py-2.5 bg-zinc-100/70 dark:bg-zinc-800/50 border-b border-zinc-200/70 dark:border-zinc-800 flex flex-col gap-2 text-xs">
+        {/* Track Compatibility Banner & Running Style Selector (Minimal-Box) */}
+        <div className="shrink-0 flex-none px-4 sm:px-6 py-2.5 bg-zinc-50/80 dark:bg-zinc-900/80 border-b border-zinc-200/70 dark:border-zinc-800 flex flex-col gap-2 text-xs">
           {/* Row 1: Target Track & Overall Compatibility */}
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5 min-w-0">
@@ -505,12 +543,12 @@ export function CharacterDetailSheet({
           </div>
 
           {/* Row 2: Running Style Selector (Auto-recommended from kit, ignores Global Track Bar) */}
-          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-700/50 flex-wrap">
+          <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-zinc-200/60 dark:border-zinc-800 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wide">
                 Eval Style:
               </span>
-              <div className="inline-flex items-center gap-0.5">
+              <div className="inline-flex items-center gap-0.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5">
                 {([
                   { id: 1 as RunningStyle, name: "Runner", aptIdx: 6 },
                   { id: 2 as RunningStyle, name: "Leader", aptIdx: 7 },
@@ -529,7 +567,7 @@ export function CharacterDetailSheet({
                       onPress={() => setSelectedStyle(st.id)}
                       className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold transition-all cursor-pointer ${
                         isActive
-                          ? "bg-white dark:bg-zinc-900 text-emerald-800 dark:text-emerald-300 shadow-xs border border-emerald-500/30"
+                          ? "bg-white dark:bg-zinc-900 text-emerald-800 dark:text-emerald-300 shadow-2xs font-bold"
                           : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
                       }`}
                     >
@@ -562,7 +600,7 @@ export function CharacterDetailSheet({
         </div>
 
         {/* Skills List Surface (Single surface with divide-y per DESIGN.md) */}
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/80">
+        <div className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
           {/* 1. Unique Skill Section */}
           {character.uniqueSkillId && (
             <div>

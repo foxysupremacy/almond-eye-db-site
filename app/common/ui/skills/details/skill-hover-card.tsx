@@ -87,7 +87,7 @@ function DesktopSkillInspectorPopover({
       } as React.CSSProperties}
       className={`outline-none z-[400] w-[420px] max-w-[calc(100vw-32px)] overflow-y-auto overscroll-contain [overflow-anchor:none] text-left ${positioned ? "visible" : "invisible"} ${active.mode === "preview" ? "pointer-events-none" : "pointer-events-auto"}`}
     >
-      <div className="skill-inspector-content animate-in fade-in zoom-in-95 duration-200 ease-out-expo" style={{ transformOrigin: side === "right" ? "left center" : "right center" }}>
+      <div className="skill-inspector-content relative animate-in fade-in zoom-in-95 duration-200 ease-out-expo" style={{ transformOrigin: side === "right" ? "left center" : "right center" }}>
         {active.mode === "pinned" && <AppButton variant="quiet" iconOnly onPress={() => onOpenChange(false)} aria-label="Close skill details" className="absolute right-3 top-3 z-10"><XIcon className="h-4 w-4" /></AppButton>}
         {children}
       </div>
@@ -130,6 +130,11 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
     cancelPreviewClose();
     setActive((current) => {
       if (!current || (key && current.key !== key)) return current;
+      if (current.mode === "pinned" && current.anchor && typeof current.anchor.focus === "function") {
+        if (!document.activeElement || document.activeElement === document.body || document.activeElement.closest?.('.skill-inspector-content, [aria-label="Skill details"]')) {
+          current.anchor.focus();
+        }
+      }
       return null;
     });
   }, [cancelPreviewClose]);
@@ -208,6 +213,7 @@ export function SkillInspectorProvider({ children, course, racerCount, runningSt
       isBanned={Boolean(active && isSkillBanned(active.skillId, activePvpEvent))}
       compact
       embedded={isMobile}
+      onClose={() => close()}
     />
   );
   const dismiss = (open: boolean) => { if (!open) close(); };

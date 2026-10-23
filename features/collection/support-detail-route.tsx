@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Link as AriaLink } from "react-aria-components/Link";
 import { api, type CardIndexEntry } from "@/lib/api";
 import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
+import { ChevronLeftIcon } from "@/app/common/ui/primitives/icons";
 import { SupportCardDetailSheet } from "./components/support-card-detail-sheet";
 import { parseCollectionRouteId } from "./model/routes";
 
@@ -21,7 +22,28 @@ export function SupportDetailRoute() {
   if (cards === null) return <LoadingDetail label="Loading support card..." />;
   if (!card) return <NotFoundDetail backHref="/supports" backLabel="Back to Supports" label="support card" />;
 
-  return <SupportCardDetailSheet page card={card} isOpen onClose={() => router.push("/supports")} limitBreak={getLimitBreak(card.id)} onSetLimitBreak={setLimitBreak} onRemoveCard={removeCard} />;
+  return (
+    <div className="flex flex-col gap-4">
+      <div>
+        <AriaLink
+          href="/supports"
+          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors w-fit"
+        >
+          <ChevronLeftIcon className="h-4 w-4" /> Back to Supports
+        </AriaLink>
+      </div>
+
+      <SupportCardDetailSheet
+        page
+        card={card}
+        isOpen
+        onClose={() => router.push("/supports")}
+        limitBreak={getLimitBreak(card.id)}
+        onSetLimitBreak={setLimitBreak}
+        onRemoveCard={removeCard}
+      />
+    </div>
+  );
 }
 
 function LoadingDetail({ label }: { label: string }) {

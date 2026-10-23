@@ -48,9 +48,9 @@ export function CardsCollectionTab({
             <ToggleButton
               id={t}
               key={t}
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium cursor-pointer min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 cardType === t
-                  ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-500/40"
+                  ? "bg-emerald-600 text-white font-semibold shadow-2xs dark:bg-emerald-600"
                   : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800/60"
               }`}
             >
@@ -61,7 +61,7 @@ export function CardsCollectionTab({
         </ToggleButtonGroup>
 
         {/* Rarity filter */}
-        <ToggleButtonGroup aria-label="Support card rarity" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(cardRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCardRarityChange(key === "all" ? "all" : Number(key)); }} className="flex items-center gap-1">
+        <ToggleButtonGroup aria-label="Support card rarity" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(cardRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCardRarityChange(key === "all" ? "all" : Number(key)); }} className="inline-flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
           {([
             { r: "all", label: "All" },
             { r: 3, label: "SSR" },
@@ -71,9 +71,9 @@ export function CardsCollectionTab({
             <ToggleButton
               id={String(rItem.r)}
               key={String(rItem.r)}
-              className={`px-2 py-0.5 rounded text-[11px] font-bold cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold cursor-pointer min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 cardRarity === rItem.r
-                  ? "bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-900"
+                  ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100 font-bold"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
@@ -85,7 +85,7 @@ export function CardsCollectionTab({
 
       {/* Grid Content */}
       {filteredCards.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-12 text-center text-zinc-500">
+        <div className="py-12 text-center text-sm text-zinc-400 dark:text-zinc-500">
           No cards matched your filter criteria.
         </div>
       ) : (

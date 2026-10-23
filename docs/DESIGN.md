@@ -40,18 +40,19 @@ When a leading icon is paired with a multi-line text container:
 
 ---
 
-## 3. Surface Flatness & Prohibited Nested Boxes (Anti-Slop Architecture)
+## 3. Surface Flatness & Minimal-Box Architecture (Rankings Design Standard)
 
-Per frontend design craftsmanship guidelines (`design-taste-frontend`), **nested boxes (boxes inside boxes inside boxes) are strictly prohibited**.
+Per frontend craftsmanship guidelines (`design-taste-frontend`), **unnecessary box containers (cards inside cards, heavy card borders around lists, and boxed filter toolbars) are strictly prohibited**. The application adopts the **Rankings Tab** as the design benchmark for minimal-box, high-density interfaces.
 
 ### Core Anti-Patterns & Mandates
 1. ❌ **No Nested "Russian Doll" Cards**: Never place a bordered, rounded card inside a container that is itself a bordered, rounded card of the same visual weight.
-2. ❌ **No Nested Boxes for Filter Toolbars & Sub-Panels**: Never wrap secondary search or filter controls (e.g. the Multi-Skill Filter in `CardPickerPopover`) in a heavy colored, bordered box (`rounded-xl border border-*-500/30 bg-*-50/40 p-*`).
-3. ✅ **Single Surface with Divider Lines**:
-   - Containers (such as card groups in `skill-list.tsx` and `parent-skill-list.tsx`) must be a single surface (`rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900`).
-   - Child items within the container must use separator lines (`divide-y divide-zinc-100 dark:divide-zinc-800/80`) or clean table/list rows, NOT individual inner bordered boxes.
+2. ❌ **No Enclosing Box Cards for Linear Lists & Tracks**: Do not wrap full-page lists (such as the Deck Skill List) or track canvases in bulky container cards (`rounded-2xl border border-zinc-200 bg-white shadow-xs`). Follow the **Rankings Tab** standard where the track diagram and list items sit directly on the page layout.
+3. ❌ **No Nested Boxes for Filter Toolbars & Sub-Panels**: Never wrap search, filter tabs, or layout switchers in heavy colored, bordered boxes (`rounded-xl border border-*-500/30 bg-*-50/40 p-*`). Use flat segmented pill groups (`inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5`).
+4. ✅ **Divider Lines over Card Enclosures (`divide-y`)**:
+   - List items must use hairline dividers (`divide-y divide-zinc-100 dark:divide-zinc-800/80`) or clean table/list rows, NOT individual 4-sided bordered cards stacked with gaps (`space-y-2`).
+   - For skill lists: distinguish rarity with a distinctive left accent stripe (`border-l-4`) and subtle background gradient/tint (`skill-surface-gold`, `skill-surface-unique`, `skill-surface-evolved`), never with separate card boxes.
    - Secondary filter sections within a popover/modal header must integrate seamlessly, demarcated only by a subtle top divider line (`pt-2.5 mt-2 border-t border-zinc-200/70 dark:border-zinc-800`) rather than an enclosed container box.
-4. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
+5. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
    - Both **Main Deck** and **Parent Deck** must render the identical clean 6-slot grid (`features/deck/screens/deck-picker.tsx`).
    - Do NOT embed a secondary "reference strip" box containing 6 mini-boxes inside the Parent Deck surface.
 
@@ -262,8 +263,10 @@ Before approving any UI change involving cards, skills, or deck pickers:
 - [ ] **Aspect Ratio**: Does the icon have `flex-none` / `shrink-0` to avoid aspect ratio distortion on narrow viewports?
 - [ ] **Parenting Portrait Layers**: Does the pop-out use a circle-sized wrapper with the top 90° sector and hidden left/right tangent bounds, above the clipped image and circular frame (Section 20)?
 - [ ] **Skill Action Geometry**: Do Rankings skill actions and their loading/empty states use `rounded-md` (6px), with no capsule silhouette (Section 21)?
-- [ ] **Visualizer List Surface**: Are skill rows flat with dividers, neutral rarity surfaces, and a restrained emerald selected state (Section 21)?
-- [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat and divider-based rather than nested cards?
+- [ ] **Track Flatness**: Is the track canvas completely unboxed and borderless, matching Rankings with a concise venue caption and segmented pill mode switcher (Section 21)?
+- [ ] **Visualizer 2-Column Surface**: Are the Visualizer sidebar and detail panel de-boxed, separated only by a clean vertical hairline (`md:border-r`) and flat list dividers (Section 21)?
+- [ ] **Deck Skill List Surfaces**: Are deck skills rendered as a continuous flat list (`divide-y`) with a left rarity accent stripe (`border-l-4`) and surface tint instead of individual bordered card boxes with gaps (Section 22)?
+- [ ] **No Nested Boxes**: Are lists rendered on flat surfaces with dividers instead of boxes inside boxes? Are filter toolbars flat segmented pill groups (`bg-zinc-100 dark:bg-zinc-800 p-0.5`) rather than nested cards?
 - [ ] **No Emojis in Functional UI**: Are all interface icons crisp SVG components from `app/common/ui/primitives/icons.tsx`? Are HTML `<option>` labels plain text without emojis?
 - [ ] **Multi-Skill Matching Integrity**: In Parent Deck mode, does skill filtering support ANY/ALL toggling and bi-directional Gold <-> White mapping?
 - [ ] **Uniform Card Layout**: Does candidate card row place target-skills badge (parent mode only), ownership chip, type icon & `Skills ↗` top-right, and release date bottom-right?
@@ -535,35 +538,75 @@ and the hat must not acquire a horizontal cutoff through its middle.
 
 ---
 
-## 21. Rankings Skill Actions & Visualizer Skill Rows
+## 21. Rankings Benchmark & Visualizer Flat Architecture
 
-### Rankings skill actions
+### 21.1 Rankings Design Benchmark
 
-- Compact actions containing a skill icon, name and Bashin score use `rounded-md`
-  (6px) corners. Keep the same radius for unavailable-slot placeholders and
-  loading skeletons. Do not use `rounded-full` capsules for these actions.
-- Keep neutral zinc borders and flat surfaces, centered icons with `shrink-0`,
-  truncated names and a readable score. Preserve `min-h-11` on touch layouts and
-  `md:min-h-8` on desktop, along with a visible keyboard focus ring.
-- Circular character portraits and small status dots remain circular; they are
-  not skill action buttons.
+The **Rankings Tab** serves as the application-wide benchmark for flat, high-density, minimal-box UX:
+- **Full-Width Flat Character Rows**: Characters are displayed as flat items divided only by hairline borders (`divide-y divide-zinc-100 dark:divide-zinc-800/80`). Competitor entries are never wrapped in individual card boxes.
+- **Skill Actions**: Compact actions containing a skill icon, name and Bashin score use `rounded-md` (6px) corners. Keep the same radius for unavailable-slot placeholders and loading skeletons. Do not use `rounded-full` capsules for these actions.
+- **Flat Surfaces**: Neutral zinc borders (`border-zinc-200 dark:border-zinc-700`) and flat backgrounds, centered icons with `shrink-0`, truncated names and readable score metrics. Preserve `min-h-11` on touch layouts and `md:min-h-8` on desktop, along with visible keyboard focus rings.
+- Circular character portraits and small status dots remain circular; they are not skill action buttons.
 
-### Visualizer sidebar
+### 21.2 Visualizer Track Canvas Flat Architecture
 
-- The sidebar owns one outer surface. Skill entries are flat, full-width rows
-  separated by `divide-y divide-zinc-100 dark:divide-zinc-800/80`, with no gaps
-  between separately bordered or rounded cards.
-- Use neutral row surfaces. Rarity is communicated by the skill icon and existing
-  rarity controls, not a gradient fill, rarity-colored outline or shadow per row.
-- Selection uses a restrained emerald tint (`bg-emerald-50
-  dark:bg-emerald-950/40`) and `aria-pressed`. Reserve focus rings for keyboard
-  focus; do not surround the entire selected row with a persistent thick ring.
-- Triggerability stays visible in the green status dot. A non-triggering skill
-  has a muted dot. Banned skills retain muted/struck-through titles, a subtle
-  rose tint and their explicit banned indicator.
-- Keep English above Japanese, center the icon against both lines, and place
-  source provenance below. Follow the shared `SkillItem` sizing and typography.
-- The row selection button and graph action must be sibling buttons. Use the
-  shared `AppButton` quiet/icon-only variant for the graph action; opening the
-  graph must not also select the row. Preserve mobile scrolling to the inspector
-  and the reduced-motion guard.
+To match the seamless aesthetic of the Rankings course strip, the Visualizer track canvas is completely de-boxed:
+1. **No Outer Card Container**: The track sits directly on the page layout without enclosing card borders, backgrounds, or shadows (`rounded-2xl border bg-white shadow-xs` is prohibited).
+2. **Concise Header Toolbar**:
+   - The top row pairs the concise venue caption (e.g. `Kyoto 2,200m · Turf · Right · Oct CM (Classic)`) with the layout switcher.
+   - Prohibited: bulky technical banner labels such as `"Board 1 · Course Map 2.5D"` or `"Board 2 · 1D Linear Timeline with Speed Estimate"`.
+3. **Segmented Pill View Mode Switcher**:
+   - Layout modes ("Map + timeline", "1D Only", "Map Only") are switched via an `inline-flex` segmented pill container (`bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg text-xs`).
+   - Active pill uses `bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs font-semibold` with `min-h-8 px-2.5 py-1 rounded-md`.
+4. **Unboxed Track Rendering Order**:
+   - When "Map + timeline" is active: 2.5D Course Map renders on top (`overflow-hidden`), and the 1D SVG Timeline with speed lane renders directly beneath (`overflow-x-auto`).
+   - Slices render with natural transparent backgrounds, allowing dark and light theme page surfaces to show through seamlessly.
+   - Synchronized hover telemetry and tooltips (`TrackUnifiedTooltip`) float cleanly over the track elements without container boundaries clipping coordinates.
+
+### 21.3 Visualizer 2-Column Flat Layout (Sidebar & Inspector)
+
+1. **Sidebar (`TrackSkillSidebar`)**:
+   - De-boxed: renders flatly on the page, demarcated from the inspector panel on desktop via a subtle vertical hairline (`md:border-r md:border-zinc-200/80 md:pr-4 dark:md:border-zinc-800/80`).
+   - Filter switchers (`visualizerDeck` and `rarityFilter`) use flat segmented pills (`bg-zinc-100 dark:bg-zinc-800 p-0.5 rounded-lg`).
+   - Skill entries are flat rows separated by `divide-y divide-zinc-100 dark:divide-zinc-800/80`.
+   - Selection uses a restrained emerald tint (`bg-emerald-50 dark:bg-emerald-950/40 rounded-md`) and `aria-pressed`.
+   - Triggerability status dot: green for triggers on course, muted for no trigger, rose for banned debuff rules.
+   - The row selection button and graph action must be sibling buttons. Use the shared `AppButton` quiet/icon-only variant for the graph action; opening the graph must not select the row.
+2. **Detail Inspector (`SkillDetailPanel`)**:
+   - De-boxed on the Visualizer page: renders with transparent background, no outer card border, and no shadow.
+   - Data blocks (Header, Effect badges, Trigger conditions, Calculation breakdown) flow naturally, separated cleanly by `divide-y divide-zinc-200/80 dark:divide-zinc-800`.
+
+---
+
+## 22. Deck Skill List Flat Architecture (Main Deck & Parent Deck)
+
+In `features/deck/screens/skill-list.tsx`, deck skills are displayed in a minimal-box format that maximizes readability and data density while preserving instant visual recognition of skill rarity.
+
+### 22.1 Unified List Specification
+1. **Continuous Flat List**:
+   - Rendered as a single list with divider lines: `<ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800/80">`.
+   - ❌ **PROHIBITED**: Stacking individual 4-sided bordered card boxes with vertical gaps (`space-y-2 rounded-xl border`).
+2. **Rarity Left Accent Stripe (`border-l-4`)**:
+   - Each skill row features a 4px solid left accent stripe indicating its rarity:
+     - **Gold**: `border-l-amber-500`
+     - **Unique**: `border-l-pink-500`
+     - **Evolved**: `border-l-purple-500`
+     - **White**: `border-l-zinc-300 dark:border-l-zinc-700`
+3. **Rarity Surface Tint**:
+   - Rows preserve their subtle rarity background gradient (`skill-surface-gold`, `skill-surface-unique`, `skill-surface-evolved`) or neutral surface for White skills, paired with a soft hover tint (`hover:bg-zinc-100/60 dark:hover:bg-zinc-800/40`).
+   - Banned skills receive `opacity-60 bg-rose-50/20 dark:bg-rose-950/10`.
+
+### 22.2 Group by Card Specification
+- When viewing skills grouped by support card slot (`viewMode === "card"`):
+  - Card slots are separated into flat sections (`className="pt-2"`) rather than enclosed in heavy card boxes.
+  - Card slot header uses a clean bottom divider line (`border-b border-zinc-200/80 dark:border-zinc-800/80 py-2.5`).
+  - Child skills within each card slot inherit the identical flat list structure with `border-l-4` rarity stripes and surface tints.
+
+### 22.3 Filter Bars & Toolbars
+- **Segmented Pill Controls**:
+  - Rarity tabs, Source filters, and View Mode toggles use flat segmented pill containers (`inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium`).
+  - Active pills use `bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs` (with custom accent colors for active Gold/Unique/Evo rarity pills).
+  - ❌ **PROHIBITED**: Wrapping filter toolbars in borders or drop shadows (`border border-zinc-200 shadow-2xs`).
+
+### 22.4 Support Card 6-Slot Grid Preservation
+- In `DeckPicker` (`features/deck/screens/deck-picker.tsx`), the 6 support card slots preserve their edge-to-edge poster card layout to showcase character artwork, rarity banners, card types, and event chain branch selectors. They are not compressed into a text-only strip.

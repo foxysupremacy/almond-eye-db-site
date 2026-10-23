@@ -80,8 +80,8 @@ export function CharactersCollectionTab({
     <div className="flex flex-col gap-4">
       {/* Secondary Filters: Initial Stars */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-zinc-800/80">
-        <ToggleButtonGroup aria-label="Character initial stars" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(charaRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCharaRarityChange(key === "all" ? "all" : Number(key)); }} className="flex items-center gap-1">
-          <span className="text-xs text-zinc-400 mr-1">Initial Stars:</span>
+        <ToggleButtonGroup aria-label="Character initial stars" selectionMode="single" disallowEmptySelection selectedKeys={new Set([String(charaRarity)])} onSelectionChange={(keys) => { const key = [...keys][0]; if (key !== undefined) onCharaRarityChange(key === "all" ? "all" : Number(key)); }} className="inline-flex items-center gap-0.5 rounded-lg bg-zinc-100 p-0.5 dark:bg-zinc-800">
+          <span className="text-xs text-zinc-400 px-1">Stars:</span>
           {([
             { r: "all", label: "All" },
             { r: 3, label: "3★" },
@@ -91,9 +91,9 @@ export function CharactersCollectionTab({
             <ToggleButton
               id={String(rItem.r)}
               key={String(rItem.r)}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer min-h-11 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
+              className={`px-2.5 py-1 rounded-md text-xs font-semibold cursor-pointer min-h-8 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/70 transition-colors ${
                 charaRarity === rItem.r
-                  ? "bg-sky-500/20 text-sky-700 dark:text-sky-300 border border-sky-500/40"
+                  ? "bg-white text-zinc-900 shadow-2xs dark:bg-zinc-900 dark:text-zinc-100 font-bold"
                   : "text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
               }`}
             >
@@ -118,7 +118,7 @@ export function CharactersCollectionTab({
 
       {/* Characters Grid */}
       {filteredCharacters.length === 0 ? (
-        <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 p-12 text-center text-zinc-500">
+        <div className="py-12 text-center text-sm text-zinc-400 dark:text-zinc-500">
           No characters matched your filter criteria.
         </div>
       ) : (
