@@ -80,15 +80,48 @@ export function GeneticDetails({ assessment, context, onNavigate }: { assessment
   </div>;
 }
 
-export function GeneticIndicator({ assessment, context, onNavigate }: { assessment: SlotGeneticAssessment; context: ParentingMinmaxContext; onNavigate?: (slot: LoopAncestorSlot) => void }) {
+export function GeneticIndicator({
+  assessment,
+  context,
+  onNavigate,
+  compactBadge = false,
+}: {
+  assessment: SlotGeneticAssessment;
+  context: ParentingMinmaxContext;
+  onNavigate?: (slot: LoopAncestorSlot) => void;
+  compactBadge?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(false);
   const { text, tone, alert } = geneticStatus(assessment, context);
   const StatusIcon = alert ? AlertTriangleIcon : CheckIcon;
-  return <ParentingPopover
-    isOpen={isOpen}
-    onOpenChange={setIsOpen}
-    label={`${slotLabel(assessment.slot)} genetics: ${text}`}
-    className={`mt-2 flex min-h-7 w-full min-w-0 items-center justify-center gap-1 border-t border-zinc-100 px-1 py-1 text-[10px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-800 ${GENETIC_TONE_CLASS[tone]}`}
-    trigger={<><StatusIcon className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 truncate">{text}</span></>}
-  ><GeneticDetails assessment={assessment} context={context} onNavigate={onNavigate ? (slot) => { setIsOpen(false); onNavigate(slot); } : undefined} /></ParentingPopover>;
+
+  if (compactBadge) {
+    return (
+      <ParentingPopover
+        isOpen={isOpen}
+        onOpenChange={setIsOpen}
+        label={`${slotLabel(assessment.slot)} genetics: ${text}`}
+        className={`flex h-6 w-6 items-center justify-center rounded-full shadow-md outline-none focus-visible:ring-2 focus-visible:ring-amber-500 transition-transform hover:scale-110 cursor-pointer ${
+          alert
+            ? "bg-amber-500 text-white ring-2 ring-white dark:ring-zinc-900"
+            : "bg-emerald-600 text-white ring-2 ring-white dark:ring-zinc-900"
+        }`}
+        trigger={<StatusIcon className="h-3.5 w-3.5 shrink-0" />}
+      >
+        <GeneticDetails assessment={assessment} context={context} onNavigate={onNavigate ? (slot) => { setIsOpen(false); onNavigate(slot); } : undefined} />
+      </ParentingPopover>
+    );
+  }
+
+  return (
+    <ParentingPopover
+      isOpen={isOpen}
+      onOpenChange={setIsOpen}
+      label={`${slotLabel(assessment.slot)} genetics: ${text}`}
+      className={`mt-1 flex min-h-7 w-full min-w-0 items-center justify-center gap-1 border-t border-zinc-100 px-1 py-1 text-[10px] font-medium outline-none focus-visible:ring-2 focus-visible:ring-amber-500 dark:border-zinc-800 ${GENETIC_TONE_CLASS[tone]}`}
+      trigger={<><StatusIcon className="h-3.5 w-3.5 shrink-0" /><span className="min-w-0 truncate">{text}</span></>}
+    >
+      <GeneticDetails assessment={assessment} context={context} onNavigate={onNavigate ? (slot) => { setIsOpen(false); onNavigate(slot); } : undefined} />
+    </ParentingPopover>
+  );
 }

@@ -30,6 +30,7 @@ import type { ParticipantSlot } from "@/lib/parenting/types";
 import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
 import { LOOP_ANCESTOR_SLOTS, type LoopAncestorSlot } from "@/lib/parenting/loop-planner";
+import { querySlotRecommendations } from "../workers/slot-recommendations-client";
 
 const STYLE_LABELS: Record<number, string> = {
   1: "Runner",
@@ -327,24 +328,12 @@ export function useParentingViewModel({
       return;
     }
 
-    let cancelled = false;
     setPickerRecommendations(null);
     setPickerRecommendationsError(null);
     setPickerRecommendationsLoading(true);
 
-    const worker = new Worker(
-      new URL("../workers/slot-recommendations.worker.ts", import.meta.url),
-      { type: "module" },
-    );
-    worker.onmessage = (event: MessageEvent<{
-      recommendations: SlotRecommendations;
-      error?: string;
-    }>) => {
-      if (cancelled) return;
-      const { error, recommendations } = event.data;
-      if (error) {
-        setPickerRecommendationsError(error);
-      } else {
+    const cancel = querySlotRecommendations(pickerRequest, {
+      onResult: (recommendations) => {
         const runBorrow = getRunBorrowState(setup, activePickerSlot);
         const branchParent = pickerRequest.branchParent;
         const generationLabel = activePickerSlot.split("_").length <= 2
@@ -362,20 +351,17 @@ export function useParentingViewModel({
           runLabel: runBorrow.runLabel,
           contextNote,
         });
-      }
-      setPickerRecommendationsLoading(false);
-    };
-    worker.onerror = (event) => {
-      if (cancelled) return;
-      console.error("Failed to calculate parenting recommendations:", event.message);
-      setPickerRecommendationsError("Could not load recommendations. Close and reopen this picker to try again.");
-      setPickerRecommendationsLoading(false);
-    };
-    worker.postMessage(pickerRequest);
+        setPickerRecommendationsLoading(false);
+      },
+      onError: (error) => {
+        console.error("Failed to calculate parenting recommendations:", error);
+        setPickerRecommendationsError("Could not load recommendations. Close and reopen this picker to try again.");
+        setPickerRecommendationsLoading(false);
+      },
+    });
 
     return () => {
-      cancelled = true;
-      worker.terminate();
+      cancel();
     };
   }, [
     activePickerSlot,

@@ -13,7 +13,8 @@ export const APTITUDE_LABEL: Record<AptitudeKey, string> = {
   Turf: "Turf", Dirt: "Dirt", Sprint: "Sprint", Mile: "Mile", Medium: "Medium", Long: "Long",
   Runner: "Runner", Leader: "Leader", Betweener: "Betweener", Chaser: "Chaser",
 };
-const COMPACT_STYLE_LABEL: Partial<Record<AptitudeKey, string>> = {
+export const COMPACT_STYLE_LABEL: Partial<Record<AptitudeKey, string>> = {
+  Sprint: "SPR", Mile: "MILE", Medium: "MED", Long: "LONG",
   Runner: "RUN", Leader: "LEAD", Betweener: "BTWN", Chaser: "CHASE",
 };
 export function AptitudeName({ value }: { value: AptitudeKey }) {
@@ -69,7 +70,7 @@ export function AptitudeCell({
   return (
     <ParentingPopover
       label={`${label} ${aptitude}: base ${projection.base}, projected ${result}`}
-      className={`parenting-aptitude-cell group flex min-h-9 min-w-0 flex-col overflow-hidden rounded-lg border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"} ${
+      className={`parenting-aptitude-cell group flex ${compactCell ? "min-h-8" : "min-h-9"} min-w-0 flex-col overflow-hidden rounded-lg border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"} ${
         isBoosted
           ? "border-pink-400 dark:border-pink-500 ring-2 ring-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.6)] dark:shadow-[0_0_12px_rgba(236,72,153,0.5)] z-1"
           : isPinkFactor
@@ -81,7 +82,7 @@ export function AptitudeCell({
           className="flex flex-col w-full"
           title={`${aptitude}: Base ${projection.base}${isBoosted ? ` → Boosted ${projection.projected} (${projection.availablePinkStars}★)` : ""}`}
         >
-          <div className={`w-full border-b py-0.5 text-center text-[8px] font-bold sm:text-[9px] ${
+          <div className={`w-full border-b py-0.5 text-center ${compactCell ? "text-[8px] sm:text-[9px]" : "text-[8.5px] sm:text-[9.5px]"} font-bold ${
             isBoosted
               ? "border-pink-300 dark:border-pink-600/80 bg-pink-50/90 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300"
               : "border-zinc-200/80 bg-white/95 text-zinc-600 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-300"
@@ -90,7 +91,7 @@ export function AptitudeCell({
             {COMPACT_STYLE_LABEL[aptitude] && <span aria-hidden="true" className="parenting-aptitude-label-compact">{COMPACT_STYLE_LABEL[aptitude]}</span>}
           </div>
           <div
-            className={`flex h-6 sm:h-7 w-full items-center justify-center py-0.5 ${
+            className={`flex ${compactCell ? "h-5.5 sm:h-6.5" : "h-6 sm:h-7"} w-full items-center justify-center py-0.5 ${
               isPinkFactor
                 ? "bg-[#e4007f] text-white"
                 : isBoosted
@@ -99,9 +100,9 @@ export function AptitudeCell({
             }`}
           >
             {displayGrade === "-" || displayGrade === "?" ? (
-              <span className={`text-[10px] font-bold ${isPinkFactor ? "text-white" : "text-zinc-400"}`}>?</span>
+              <span className={`text-[11px] font-bold ${isPinkFactor ? "text-white" : "text-zinc-400"}`}>?</span>
             ) : (
-              <StatusRankIcon grade={displayGrade} className="h-4 w-4 sm:h-5 sm:w-5 object-contain" />
+              <StatusRankIcon grade={displayGrade} className={`${compactCell ? "h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" : "h-4 w-4 sm:h-5 sm:w-5"} object-contain`} />
             )}
           </div>
         </div>
@@ -144,7 +145,7 @@ export function AptitudeTable(props: { assessment: BranchAssessment; label: stri
     </div>
   );
 }
-export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 3, className = "w-full min-w-0" }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string }) {
+export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 3, className = "w-full min-w-0", compact = false, chipOnly = false }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string; compact?: boolean; chipOnly?: boolean }) {
   useEffect(() => {
     const validTargets = targets.filter((key) => {
       const factor = assessment.whiteFactors.find((item) => item.name === key);
@@ -155,79 +156,105 @@ export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTa
     }
   }, [targets, assessment.whiteFactors, onChange]);
 
+  const popoverContent = (
+    <div className="space-y-2">
+      <p className="mb-2 text-xs font-semibold">Target genetic <span className="font-normal text-zinc-500">{targets.length}/{maxTargets}</span></p>
+      <CheckboxGroup
+        aria-label="White genetic targets"
+        value={targets}
+        onChange={(keys) => onChange((keys as AptitudeKey[]).slice(0, maxTargets))}
+      >
+        <AptitudeGrid
+          render={(key) => {
+            const factor = assessment.whiteFactors.find((item) => item.name === key);
+            const stars = factor?.availablePinkStars ?? 0;
+            const isEligible = stars >= 6;
+            const isMaxReached = targets.length >= maxTargets && !targets.includes(key);
+            const isDisabled = !isEligible || isMaxReached;
+
+            return (
+              <Checkbox
+                key={key}
+                value={key}
+                aria-label={key}
+                isDisabled={isDisabled}
+                className={`${GENETIC_CHOICE} ${
+                  !isEligible
+                    ? "cursor-not-allowed text-zinc-500 dark:text-zinc-400"
+                    : stars >= 12
+                    ? "font-bold"
+                    : "font-semibold"
+                }`}
+              >
+                <div
+                  className="flex flex-col items-center justify-center leading-none py-0.5 w-full"
+                  title={
+                    !isEligible
+                      ? `Requires ≥ 6★ pink factor (currently ${stars}★)`
+                      : stars >= 12
+                      ? `${key}: 12★ (Guaranteed)`
+                      : `${key}: ${stars}★ (Eligible)`
+                  }
+                >
+                  <span>{SHORT[key]}</span>
+                  <span className={`text-[8px] mt-0.5 ${
+                    !isEligible
+                      ? "text-zinc-500 dark:text-zinc-400"
+                      : stars >= 12
+                      ? "text-pink-700 dark:text-pink-300 font-extrabold group-data-[selected]:text-white"
+                      : "text-pink-600 dark:text-pink-400 font-bold group-data-[selected]:text-white"
+                  }`}>
+                    {stars}★{isEligible ? stars >= 12 ? " · 100%" : " · ≈40%" : ""}
+                  </span>
+                </div>
+              </Checkbox>
+            );
+          }}
+        />
+      </CheckboxGroup>
+      <p className="text-xs text-zinc-500">
+        {targets.length >= maxTargets
+          ? `Max ${maxTargets} genetics selected. Uncheck one to change.`
+          : "Requires ≥ 6★ pink factor in 3-generation lineage to unlock."}
+      </p>
+      <p className="text-[10px] text-zinc-500">White genetic roll odds: 6–11★ ≈40% · 12★ = 100%.</p>
+      <div className="mt-2 flex border-t border-zinc-200 pt-2 dark:border-zinc-800">
+        <button type="button" onClick={() => onChange([])} className={`${BUTTON} flex-1 text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800`}>
+          Clear targets
+        </button>
+      </div>
+    </div>
+  );
+
+  if (chipOnly) {
+    return (
+      <div className={className}>
+        <ParentingPopover
+          label={`${label} Target genetic`}
+          className="parenting-aptitude-cell flex h-full min-h-6 w-full min-w-0 items-center justify-center gap-0.5 rounded-md border border-violet-300/80 bg-violet-50/80 px-1 py-0.5 text-center font-bold text-[8.5px] sm:text-[9px] text-violet-800 transition-colors hover:bg-violet-100 cursor-pointer dark:border-violet-800/70 dark:bg-violet-950/30 dark:text-violet-300 dark:hover:bg-violet-900/40 outline-none focus-visible:ring-1 focus-visible:ring-violet-500 shadow-2xs"
+          trigger={
+            <div className="flex items-center justify-center gap-0.5 w-full truncate">
+              <span className="text-[9px] text-violet-600 dark:text-violet-400 flex-none leading-none">○</span>
+              <span className="truncate">{targets.length ? targets.map((key) => SHORT[key]).join("·") : "Targets"}</span>
+            </div>
+          }
+        >
+          {popoverContent}
+        </ParentingPopover>
+      </div>
+    );
+  }
+
   return (
     <div className={className}>
       <ParentingPopover
         label={`${label} Target genetic`}
-        className={`${BUTTON} h-10 min-h-10 w-full text-center flex items-center justify-center gap-1.5 font-bold text-violet-700 bg-violet-50/80 hover:bg-violet-100 border border-violet-300 dark:border-violet-800/80 dark:bg-violet-950/30 dark:hover:bg-violet-900/40 dark:text-violet-300 shadow-2xs rounded-lg py-1.5`}
-        trigger={<>Target genetic{targets.length ? ` (${targets.length})` : ""}</>}
+        className={`${BUTTON} ${compact ? "h-8 min-h-8 text-[11px]" : "h-10 min-h-10"} w-full text-center flex items-center justify-center gap-1.5 font-bold text-violet-700 bg-violet-50/80 hover:bg-violet-100 border border-violet-300 dark:border-violet-800/80 dark:bg-violet-950/30 dark:hover:bg-violet-900/40 dark:text-violet-300 shadow-2xs rounded-lg py-1.5`}
+        trigger={targets.length
+          ? <span className="min-w-0 truncate">Target: {targets.map((key) => SHORT[key]).join(" · ")}</span>
+          : <>Target genetic</>}
       >
-        <div className="space-y-2">
-          <p className="mb-2 text-xs font-semibold">Target genetic <span className="font-normal text-zinc-500">{targets.length}/{maxTargets}</span></p>
-          <CheckboxGroup
-            aria-label="White genetic targets"
-            value={targets}
-            onChange={(keys) => onChange((keys as AptitudeKey[]).slice(0, maxTargets))}
-          >
-            <AptitudeGrid
-              render={(key) => {
-                const factor = assessment.whiteFactors.find((item) => item.name === key);
-                const stars = factor?.availablePinkStars ?? 0;
-                const isEligible = stars >= 6;
-                const isMaxReached = targets.length >= maxTargets && !targets.includes(key);
-                const isDisabled = !isEligible || isMaxReached;
-
-                return (
-                  <Checkbox
-                    key={key}
-                    value={key}
-                    aria-label={key}
-                    isDisabled={isDisabled}
-                    className={`${GENETIC_CHOICE} ${
-                      !isEligible
-                        ? "cursor-not-allowed text-zinc-500 dark:text-zinc-400"
-                        : stars >= 12
-                        ? "font-bold"
-                        : "font-semibold"
-                    }`}
-                  >
-                    <div
-                      className="flex flex-col items-center justify-center leading-none py-0.5 w-full"
-                      title={
-                        !isEligible
-                          ? `Requires ≥ 6★ pink factor (currently ${stars}★)`
-                          : stars >= 12
-                          ? `${key}: 12★ (Guaranteed)`
-                          : `${key}: ${stars}★ (Eligible)`
-                      }
-                    >
-                      <span>{SHORT[key]}</span>
-                      <span className={`text-[8px] mt-0.5 ${
-                        !isEligible
-                          ? "text-zinc-500 dark:text-zinc-400"
-                          : stars >= 12
-                          ? "text-pink-700 dark:text-pink-300 font-extrabold group-data-[selected]:text-white"
-                          : "text-pink-600 dark:text-pink-400 font-bold group-data-[selected]:text-white"
-                      }`}>
-                        {stars}★
-                      </span>
-                    </div>
-                  </Checkbox>
-                );
-              }}
-            />
-          </CheckboxGroup>
-          <p className="text-xs text-zinc-500">
-            {targets.length >= maxTargets
-              ? `Max ${maxTargets} genetics selected. Uncheck one to change.`
-              : "Requires ≥ 6★ pink factor in 3-generation lineage to unlock."}
-          </p>
-          <div className="mt-2 flex border-t border-zinc-200 pt-2 dark:border-zinc-800">
-            <button type="button" onClick={() => onChange([])} className={`${BUTTON} flex-1 text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800`}>
-              Clear targets
-            </button>
-          </div>
-        </div>
+        {popoverContent}
       </ParentingPopover>
     </div>
   );

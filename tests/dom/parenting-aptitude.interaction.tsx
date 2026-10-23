@@ -55,10 +55,10 @@ test("white targets support multiple keyboard selections without closing", async
   const medium = screen.getByRole("checkbox", { name: "Medium" }); medium.focus(); await user.keyboard(" ");
   expect((medium as HTMLInputElement).checked).toBe(true);
   await user.click(screen.getByRole("checkbox", { name: "Turf" }));
-  expect(screen.getByRole("button", { name: "P1 Target genetic" }).textContent).toContain("(2)");
+  expect(screen.getByRole("button", { name: "P1 Target genetic" }).textContent).toContain("Target: Med · Turf");
   expect(screen.getByRole("dialog")).toBeTruthy();
   await user.click(screen.getByRole("button", { name: "Clear targets" }));
-  expect(screen.getByRole("button", { name: "P1 Target genetic" }).textContent).not.toContain("(2)");
+  expect(screen.getByRole("button", { name: "P1 Target genetic" }).textContent).not.toContain("Target: Med");
 });
 
 test("white targets greys out and disables aptitudes with below 6 stars", async () => {

@@ -137,25 +137,25 @@ test("GGGP source rows close the warning and jump to the exact desktop spark inp
   await waitFor(() => expect(destination.querySelector(".animate-ancestor-highlight")).not.toBe(firstHighlight));
 });
 
-test("phone navigation opens the GGP sheet and focuses the inline GGGP spark", async () => {
-  const opened: string[] = []; const scrolls: string[] = [];
+test("phone navigation to a GGGP closes the sheet then focuses the inline chip", async () => {
+  const opened: string[] = []; let closed = 0; const scrolls: string[] = [];
   function Probe() {
-    const [sheet, setSheet] = useState<string | null>(null);
-    const navigation = useAncestorNavigation({ tier: "phone", openSlot: (slot) => { opened.push(slot); setSheet(slot); }, closeSheet: () => {} });
-    const props = navigation.targetProps("p2_gp2_g2_g2", "sheet");
+    const navigation = useAncestorNavigation({ tier: "phone", openSlot: (slot) => opened.push(slot), closeSheet: () => { closed++; } });
+    const props = navigation.targetProps("p2_gp2_g2_g2", "phone");
     return <>
       <button onClick={() => navigation.navigate("p2_gp2_g2_g2")}>Find donor</button>
-      {sheet && <div {...props} ref={(element) => { props.ref(element); if (element) element.scrollIntoView = () => scrolls.push("sheet"); }} data-testid="sheet-donor">
-        {navigation.highlightKey("p2_gp2_g2_g2", "sheet") !== null ? "Highlighted donor" : "Donor"}</div>}
+      <div {...props} ref={(element) => { props.ref(element); if (element) element.scrollIntoView = () => scrolls.push("phone"); }} data-testid="phone-donor">
+        {navigation.highlightKey("p2_gp2_g2_g2", "phone") !== null ? "Highlighted donor" : "Donor"}</div>
     </>;
   }
   render(<Probe />);
   await userEvent.setup().click(screen.getByRole("button", { name: "Find donor" }));
   await waitFor(() => {
-    expect(opened).toEqual(["p2_gp2_g2"]);
-    expect(document.activeElement).toBe(screen.getByTestId("sheet-donor"));
-    expect(screen.getByTestId("sheet-donor").textContent).toBe("Highlighted donor");
-    expect(scrolls).toEqual(["sheet"]);
+    expect(closed).toBe(1);
+    expect(opened).toEqual([]);
+    expect(document.activeElement).toBe(screen.getByTestId("phone-donor"));
+    expect(screen.getByTestId("phone-donor").textContent).toBe("Highlighted donor");
+    expect(scrolls).toEqual(["phone"]);
   });
 });
 
@@ -181,13 +181,29 @@ test("tablet navigation to a GGGP closes the sheet then focuses the inline chip"
   });
 });
 
-test("phone and tablet navigation to a P/GP/GGP slot opens its sheet", async () => {
+test("phone and tablet navigation focuses P/GP cards and opens the GGP sheet", async () => {
   for (const tier of ["phone", "tablet"] as const) {
-    const opened: string[] = [];
-    function Probe() { const navigation = useAncestorNavigation({ tier, openSlot: (slot) => opened.push(slot), closeSheet: () => {} }); return <button onClick={() => navigation.navigate("p1_gp2")}>Go</button>; }
+    const opened: string[] = []; let closed = 0; const scrolls: string[] = [];
+    function Probe() {
+      const navigation = useAncestorNavigation({ tier, openSlot: (slot) => opened.push(slot), closeSheet: () => { closed++; } });
+      const props = navigation.targetProps("p1_gp2", tier);
+      return <>
+        <button onClick={() => navigation.navigate("p1_gp2")}>Go card</button>
+        <div {...props} ref={(element) => { props.ref(element); if (element) element.scrollIntoView = () => scrolls.push(tier); }} data-testid="tier-card">Card</div>
+        <button onClick={() => navigation.navigate("p1_gp1_g1")}>Go ggp</button>
+      </>;
+    }
     render(<Probe />);
-    await userEvent.setup().click(screen.getByRole("button", { name: "Go" }));
-    expect(opened).toEqual(["p1_gp2"]);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole("button", { name: "Go card" }));
+    await waitFor(() => {
+      expect(opened).toEqual([]);
+      expect(closed).toBe(1);
+      expect(document.activeElement).toBe(screen.getByTestId("tier-card"));
+      expect(scrolls).toEqual([tier]);
+    });
+    await user.click(screen.getByRole("button", { name: "Go ggp" }));
+    expect(opened).toEqual(["p1_gp1_g1"]);
     cleanup();
   }
 });
@@ -256,6 +272,9 @@ test("three six-star genetic targets can be selected, changed and cleared", asyn
   render(<Picker />);
   const user = userEvent.setup();
   await user.click(screen.getByRole("button", { name: "P1 Target genetic" }));
+  const dialog = screen.getByRole("dialog");
+  expect(dialog.textContent).toContain("6★ · ≈40%");
+  expect(dialog.textContent).toContain("White genetic roll odds: 6–11★ ≈40% · 12★ = 100%.");
   for (const aptitude of aptitudes) await user.click(screen.getByRole("checkbox", { name: aptitude }));
   expect(screen.getByText("3/3")).toBeTruthy();
   expect(screen.getByText("Max 3 genetics selected. Uncheck one to change.")).toBeTruthy();

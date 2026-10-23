@@ -29,12 +29,10 @@ test("sheet edits the pink spark and footer navigates sibling, parent and child"
   expect(screen.getByRole("dialog", { name: "Parent 1" })).toBeTruthy();
 });
 
-test("great-grandparent sheet on phone edits both deepest-row sparks inline", async () => {
-  const user = userEvent.setup(); render(<Probe start="p2_gp1_g2" />);
-  const groups = screen.getAllByRole("group", { name: /pink spark input/ });
-  expect(groups.map((g) => g.getAttribute("aria-label"))).toEqual(["P2 GP1 GGP2 GGGP1 pink spark input", "P2 GP1 GGP2 GGGP2 pink spark input"]);
-  await user.click(screen.getAllByRole("radio", { name: "Dirt" })[1]);
-  expect(screen.getByTestId("goals").textContent).toContain('"p2_gp1_g2_g1":{"pink":"Dirt","pinkStars":3}');
+test("great-grandparent sheet edits only its own pink spark; GGGP chips live on the tree", () => {
+  render(<Probe start="p2_gp1_g2" />);
+  expect(screen.queryAllByRole("group", { name: /pink spark input/ })).toHaveLength(0);
+  expect(screen.getAllByRole("group", { name: "P2 GP1 GGP2 pink spark" })).toHaveLength(1);
 });
 
 test("Choose uma hands the slot to the picker and keeps the sheet open", async () => {
@@ -80,7 +78,7 @@ test("footer keeps three buttons; missing targets are disabled with a label", ()
   expect((screen.getByRole("button", { name: "No child" }) as HTMLButtonElement).disabled).toBe(true);
 });
 
-test("phone great-grandparent sheet labels its own pink spark group distinctly", () => {
+test("phone great-grandparent sheet keeps its own pink spark group only", () => {
   render(<Probe start="p2_gp1_g2" />);
   expect(screen.getAllByRole("group", { name: "P2 GP1 GGP2 pink spark" })).toHaveLength(1);
 });

@@ -27,21 +27,22 @@ test("compact aptitude cells are narrower and remain centered in their grid trac
     compactCell
   />);
   expect(markup).toContain("max-w-[4rem] justify-self-center");
-  expect(markup).toContain("min-h-9");
+  expect(markup).toContain("min-h-8");
 });
-test("aptitude cells use full labels and responsive running-style abbreviations", () => {
+test("aptitude cells use full labels and responsive running-style and distance abbreviations", () => {
   const assessment = evaluateParentingBranch("target", {}, config, charactersById.get(106802)!);
   const { AptitudeCell } = require("./aptitude-controls");
-  const render = (aptitude: "Sprint" | "Medium" | "Runner" | "Leader" | "Betweener" | "Chaser") => renderToStaticMarkup(<AptitudeCell
+  const render = (aptitude: "Sprint" | "Mile" | "Medium" | "Long" | "Runner" | "Leader" | "Betweener" | "Chaser") => renderToStaticMarkup(<AptitudeCell
     aptitude={aptitude}
     assessment={assessment}
     label="P1"
     sources={[]}
     compactCell
   />);
-  expect(render("Sprint")).toContain(">Sprint</span>");
-  expect(render("Medium")).toContain(">Medium</span>");
-  for (const [aptitude, compact] of [["Runner", "RUN"], ["Leader", "LEAD"], ["Betweener", "BTWN"], ["Chaser", "CHASE"]] as const) {
+  for (const [aptitude, compact] of [
+    ["Sprint", "SPR"], ["Mile", "MILE"], ["Medium", "MED"], ["Long", "LONG"],
+    ["Runner", "RUN"], ["Leader", "LEAD"], ["Betweener", "BTWN"], ["Chaser", "CHASE"]
+  ] as const) {
     const markup = render(aptitude);
     expect(markup).toContain(`>${aptitude}</span>`);
     expect(markup).toContain(`>${compact}</span>`);
@@ -62,13 +63,21 @@ test("unset pink factor shows Set with three muted stars", () => {
   expect(markup.match(/text-zinc-400\/60 dark:text-zinc-600/g)?.length).toBe(3);
   expect(markup).toContain('aria-label="P1 GP1 GGP1 GGGP1 Red factor: Not set"');
 });
-test("white genetic selections stay on the button without a summary row", () => {
+test("white genetic selections list each target on the trigger; compact shrinks the row", () => {
   const assessment = evaluateParentingBranch("p1", {}, { ...config, factorGoals: { p1_gp1: { pink: "Medium", pinkStars: 3 }, p1_gp2: { pink: "Medium", pinkStars: 3 } } });
   const markup = renderToStaticMarkup(<WhiteGeneticPicker label="P1" assessment={assessment} targets={["Medium"]} onChange={() => {}} />);
-  expect(markup).toContain("Target genetic (1)");
+  expect(markup).toContain("Target: Med");
   expect(markup).not.toContain("Medium · 6★ · 6★");
   expect(markup).toContain("h-10 min-h-10");
   expect(markup).toContain("dark:bg-violet-950/30");
+  expect(markup).toContain('aria-label="P1 Target genetic"');
+  const compact = renderToStaticMarkup(<WhiteGeneticPicker label="P1" assessment={assessment} targets={["Medium"]} onChange={() => {}} compact />);
+  expect(compact).toContain("h-8 min-h-8");
+  expect(compact).toContain("Target: Med");
+  const chip = renderToStaticMarkup(<WhiteGeneticPicker label="P1" assessment={assessment} targets={["Medium"]} onChange={() => {}} chipOnly />);
+  expect(chip).toContain("min-h-6");
+  expect(chip).toContain(">Med</span>");
+  expect(chip).toContain(">○</span>");
 });
 
 test("projection display grade and boost branches", () => {

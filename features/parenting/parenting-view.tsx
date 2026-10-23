@@ -14,7 +14,7 @@ import { TraineeSpotlight } from "@/features/parenting/components/trainee-spotli
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { AppButton } from "@/app/common/ui/controls/app-button";
-import { CheckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
+import { CheckIcon, DeckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
 import { useParentingViewModel } from "./view-models/use-parenting-view-model";
 
@@ -66,12 +66,12 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     <div
       className={
         isCompactPage
-          ? "rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-3 flex items-center justify-between gap-3 shadow-xs"
-          : "rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/10 via-zinc-50 to-blue-500/10 dark:from-emerald-950/20 dark:via-zinc-900/60 dark:to-blue-950/20 p-4 sm:p-5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs"
+          ? "flex items-center justify-between gap-3 border-b border-zinc-200/70 pb-3 dark:border-zinc-800"
+          : "flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-b border-zinc-200/70 pb-3 dark:border-zinc-800"
       }
     >
       <div className="flex items-center gap-3">
-        <span className="text-2xl">🃏</span>
+        <DeckIcon className="h-6 w-6 shrink-0 text-emerald-600 dark:text-emerald-400" />
         <div>
           <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
             Ready to build your support cards & farm skills?
@@ -87,9 +87,9 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         <AppButton
           variant="quiet"
           onPress={onNavigateToParentDeck}
-          className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm active:scale-95 cursor-pointer transition-all shrink-0"
+          className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm active:scale-95 cursor-pointer transition-all duration-150 ease-out-quart shrink-0"
         >
-          Go to Parent Deck ➔
+          Go to Parent Deck
         </AppButton>
       )}
     </div>
@@ -139,8 +139,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
         course={course}
         runningStyle={runningStyle}
         targetStage={
-          <div className="relative rounded-3xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white/75 dark:bg-zinc-900/75 p-4 sm:p-6 shadow-sm overflow-hidden backdrop-blur-md">
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-48 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+          <div>
             <LineageAffinityHeader
               affinityBreakdown={affinityBreakdown}
               onOpenInheritedSkills={commands.openInheritedSkills}

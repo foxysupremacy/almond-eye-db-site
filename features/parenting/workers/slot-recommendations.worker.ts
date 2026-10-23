@@ -5,6 +5,7 @@ import type { SlotRecommendationOptions } from "@/lib/parenting/compatibility";
 import { getSlotRecommendations } from "@/lib/parenting";
 
 interface SlotRecommendationsRequest {
+  requestId?: number;
   targetCharaId: number;
   minmax?: SlotRecommendationOptions["minmax"];
   branchParent: KyumaruVeteranItem | null;
@@ -16,6 +17,7 @@ interface SlotRecommendationsRequest {
 }
 
 interface SlotRecommendationsResponse {
+  requestId?: number;
   recommendations: ReturnType<typeof getSlotRecommendations>;
   error?: string;
 }
@@ -26,10 +28,12 @@ const workerScope = self as unknown as {
 };
 
 workerScope.onmessage = (event) => {
+  const { requestId, ...payload } = event.data;
   try {
-    workerScope.postMessage({ recommendations: getSlotRecommendations(event.data) });
+    workerScope.postMessage({ requestId, recommendations: getSlotRecommendations(payload) });
   } catch (error) {
     workerScope.postMessage({
+      requestId,
       recommendations: { owned: [], borrow: [] },
       error: error instanceof Error ? error.message : "Recommendation calculation failed",
     });

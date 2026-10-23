@@ -14,7 +14,7 @@ import { GENETIC_TONE_CLASS, geneticStatus } from "../components/genetic-status"
 import { AlertTriangleIcon, CheckIcon } from "@/app/common/ui/primitives/icons";
 import { ancestorTitle } from "../components/ancestor-label";
 import type { PedigreeModel } from "../hooks/use-pedigree-model";
-import { AncestorNavTarget, type AncestorNavigationTarget } from "./ancestor-nav-target";
+import type { AncestorNavigationTarget } from "./ancestor-nav-target";
 import { AncestorPortrait } from "./ancestor-portrait";
 import { SLOT_LABEL, childSlots, parentSlot, siblingSlot, slotGeneration } from "./pedigree-slots";
 
@@ -34,7 +34,6 @@ export function AncestorSheet({ slot, tier, model, navigation, onNavigate, onCho
   const unique = model.uniqueSkill(slot);
   const genetic = model.geneticAssessment(slot);
   const generation = slotGeneration(slot);
-  const inlineChildren = generation === "great-grandparent" && tier === "phone";
   const firstChild = generation === "great-grandparent" ? null : childSlots(slot)[0] as LoopUmaSlot;
   const status = genetic ? geneticStatus(genetic, model.minmaxContext) : null;
   const StatusIcon = status?.alert ? AlertTriangleIcon : CheckIcon;
@@ -67,13 +66,5 @@ export function AncestorSheet({ slot, tier, model, navigation, onNavigate, onCho
     <section className={SECTION} role="group" aria-label={`${SLOT_LABEL[slot]} pink spark`}><PinkSparkFields value={plan.pink} stars={plan.pinkStars} onChange={(v, s) => model.setFactorGoal(slot, withPinkSpark(plan, v, s))} /></section>
     {generation !== "great-grandparent" && <section className={SECTION}>
       <WhiteGeneticPicker label={SLOT_LABEL[slot]} assessment={model.assessments[slot]} targets={model.whiteTargets(slot)} onChange={(t) => model.setWhiteTargets(slot, t)} /></section>}
-    {inlineChildren && childSlots(slot).map((child) => {
-      const childPlan = model.factorPlan(child);
-      return <AncestorNavTarget key={child} slot={child} layout="sheet" navigation={navigation} className={SECTION}>
-        <div role="group" aria-label={`${SLOT_LABEL[child]} pink spark input`}>
-          <PinkSparkFields title={ancestorTitle(child)} value={childPlan.pink} stars={childPlan.pinkStars} onChange={(v, s) => model.setFactorGoal(child, withPinkSpark(childPlan, v, s))} />
-        </div>
-      </AncestorNavTarget>;
-    })}
   </MobileSheet>;
 }

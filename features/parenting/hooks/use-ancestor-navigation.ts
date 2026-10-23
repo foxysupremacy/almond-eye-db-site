@@ -2,12 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { LoopAncestorSlot, LoopUmaSlot } from "@/lib/parenting/loop-planner";
-import { parentSlot } from "../pedigree/pedigree-slots";
 import type { PedigreeTier } from "./use-pedigree-tier";
 
-export type Layout = "desktop" | "tablet" | "sheet";
+export type Layout = "desktop" | "tablet" | "phone";
 
-/** Phone/tablet open a sheet for P/GP/GGP slots; desktop (and tablet GGGP) focus the inline target. */
+/** Only GGP opens a sheet; P/GP cards and GGGP chips are inline on the tree at every tier. */
 export function useAncestorNavigation({ tier, openSlot, closeSheet }: { tier: PedigreeTier; openSlot: (slot: LoopUmaSlot) => void; closeSheet: () => void }) {
   const elements = useRef(new Map<string, HTMLDivElement>());
   const sequence = useRef(0);
@@ -41,16 +40,12 @@ export function useAncestorNavigation({ tier, openSlot, closeSheet }: { tier: Pe
 
   return {
     navigate(slot: LoopAncestorSlot) {
-      const deepest = slot.split("_").length === 4;
+      const depth = slot.split("_").length;
       if (tier === "desktop") return setDestination({ slot, layout: "desktop", sequence: ++sequence.current });
-      if (!deepest) return openSlot(slot as LoopUmaSlot);
-      if (tier === "tablet") {
-        // The tablet chip sits behind the modal sheet; close it first (the focus retry covers the unmount).
-        closeSheet();
-        return setDestination({ slot, layout: "tablet", sequence: ++sequence.current });
-      }
-      openSlot(parentSlot(slot) as LoopUmaSlot);
-      setDestination({ slot, layout: "sheet", sequence: ++sequence.current });
+      if (depth === 3) return openSlot(slot as LoopUmaSlot);
+      // P/GP cards and GGGP chips are inline on the tree; the GGP sheet may cover them, so close it first (the focus retry covers the unmount).
+      closeSheet();
+      return setDestination({ slot, layout: tier, sequence: ++sequence.current });
     },
     targetProps(slot: LoopAncestorSlot, layout: Layout) {
       return {

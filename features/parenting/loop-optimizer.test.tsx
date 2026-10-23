@@ -59,8 +59,8 @@ test("Parent Planning keeps the pedigree controls without optimizer analysis clu
   expect(markup).toContain("P1 Turf: base ?, projected ?");
   expect(markup).toContain("P1 Target genetic");
   expect(markup).not.toContain("<select");
-  expect(markup).toContain("grid grid-cols-2 items-stretch gap-0.5 sm:gap-2");
-  expect(markup).toContain('aria-hidden="true" class="h-10 w-full"');
+  expect(markup).toContain("grid grid-cols-2 items-stretch gap-0.5 sm:gap-0");
+  expect(markup).toContain('aria-hidden="true" class="h-8 w-full"');
 });
 
 test("an empty Parent Planning setup keeps the target picker visible without pedigree slots", () => {
@@ -181,8 +181,8 @@ test("ancestor cards reserve extra top space for the portrait pop-out", () => {
     onOpenPicker={() => {}} updateSetup={() => {}}
   />);
 
-  expect(markup).toContain("p-1 pt-3 sm:p-2 sm:pt-4");
-  expect(markup).toContain("px-1 pb-1 pt-3");
+  expect(markup).toContain("p-1 pt-2 sm:p-1.5 sm:pt-3");
+  expect(markup).toContain("px-1 pb-1 pt-2");
 });
 
 test("empty Parent Planning character slots keep accessible pick labels and touch-sized triggers", () => {
@@ -304,40 +304,66 @@ test("AptitudeCell displays boosted grade and highlights when pink sparks are su
 });
 
 const course = { id: 1, terrain: 1, distance: 4, length: 2500, turn: 1, inout: 1, corners: [], straights: [], slopes: [] };
-test("phone tier renders the full lineage overview without zoom, swipe or branch tabs", () => {
+test("phone tier renders inline unified P/GP cards with auto-fit container and both branches", () => {
   const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="phone" course={course} runningStyle={2}
     target={charactersById.get(106802)!} veterans={[]} roster={[]}
     setup={DEFAULT_PARENTING_SETUP} targetStage={<p>Target</p>}
     onOpenPicker={() => {}} updateSetup={() => {}} />);
-  expect(markup.match(/data-ancestor-tile="parent"/g)).toHaveLength(2);
-  expect(markup.match(/data-ancestor-tile="grandparent"/g)).toHaveLength(4);
+  expect(markup).toContain('data-pedigree-autofit="true"');
   expect(markup.match(/data-ancestor-tile="great-grandparent"/g)).toHaveLength(8);
-  expect(markup.match(/data-tile-grade=/g)).toHaveLength(6 * 3);
-  expect(markup).not.toContain("pink spark input");
+  expect(markup).not.toContain('data-ancestor-tile="parent"');
+  expect(markup).not.toContain('data-ancestor-tile="grandparent"');
+  expect(markup).not.toContain("data-tile-grade=");
+  expect(markup.match(/pink spark input/g)).toHaveLength(16);
+  expect(markup.match(/data-ancestor-layout="phone"/g)).toHaveLength(30);
+  expect(markup).toContain('aria-label="Choose P1"');
+  expect(markup).toContain('aria-label="Choose P1 GP1"');
+  expect(markup).toContain("P1 Turf: base ?, projected ?");
+  expect(markup).toContain("P1 Target genetic");
   expect(markup).not.toContain("Zoom in branch");
   expect(markup).not.toContain("Swipe left or right");
   expect(markup).not.toContain('role="tablist"');
   expect(markup).toContain("Ace genetics: Turf · Long · Leader");
+  expect(markup).toContain("w-[148px]");
+  expect(markup).toContain("h-11 w-11");
+  expect(markup).toContain("width:660px");
 });
 
-test("tablet tier shows both branches and all 16 deepest-row spark inputs", () => {
+test("tablet tier shows both branches, all 16 spark inputs and the same unified P/GP cards", () => {
   const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="tablet"
     target={charactersById.get(106802)!} veterans={[]} roster={[]}
     setup={DEFAULT_PARENTING_SETUP} targetStage={<p>Target</p>}
     onOpenPicker={() => {}} updateSetup={() => {}} />);
   expect(markup.match(/pink spark input/g)).toHaveLength(16);
-  expect(markup.match(/data-ancestor-layout="tablet"/g)).toHaveLength(16);
-  expect(markup.match(/data-tile-grade=/g)).toHaveLength(6 * 10);
+  expect(markup.match(/data-ancestor-layout="tablet"/g)).toHaveLength(30);
+  expect(markup).not.toContain("data-tile-grade=");
+  expect(markup).toContain("P1 GP1 Dirt: base ?, projected ?");
+  expect(markup).toContain("w-[280px]");
+  expect(markup).toContain("width:1180px");
 });
 
-test("tablet GGGP chips stack under their own great-grandparent tile in tree order", () => {
+test("pedigree tree renders ancestors in branch-first tree order across all generations", () => {
   const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="tablet"
     target={charactersById.get(106802)!} veterans={[]} roster={[]}
     setup={DEFAULT_PARENTING_SETUP} targetStage={null}
     onOpenPicker={() => {}} updateSetup={() => {}} />);
-  expect(markup).not.toContain("repeat(16");
-  expect(markup).not.toContain("great-grandparent-to-great-great-grandparent");
   const order = [...markup.matchAll(/data-ancestor-slot="(\w+)" data-ancestor-layout="tablet"/g)].map((m) => m[1]);
-  expect(order).toHaveLength(16);
-  expect(order.slice(0, 2)).toEqual(["p1_gp1_g1_g1", "p1_gp1_g1_g2"]);
+  expect(order).toHaveLength(30);
+  expect(order[0]).toBe("p1");
+  expect(order).toContain("p1_gp1");
+  expect(order).toContain("p1_gp2");
+  expect(order).toContain("p2");
+  expect(order).toContain("p2_gp1");
+  expect(order).toContain("p2_gp2");
+});
+
+test("pedigree canvas provides zoom in, zoom out, and reset zoom controls", () => {
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer tier="desktop"
+    target={charactersById.get(106802)!} veterans={[]} roster={[]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={<p>Target</p>}
+    onOpenPicker={() => {}} updateSetup={() => {}} />);
+  expect(markup).toContain('aria-label="Pedigree zoom controls"');
+  expect(markup).toContain('aria-label="Zoom in"');
+  expect(markup).toContain('aria-label="Zoom out"');
+  expect(markup).toContain("100%");
 });

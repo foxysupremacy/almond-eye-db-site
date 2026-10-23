@@ -6,6 +6,7 @@ import { getStatRankBadge } from "@/lib/parenting/constants";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { StatIcon, StatusRankIcon, type StatName } from "@/app/common/ui/primitives/status-icons";
 import { AppDisclosure } from "@/app/common/ui/controls/app-disclosure";
+import { StarIcon } from "@/app/common/ui/primitives/icons";
 
 export interface TraineeSpotlightProps {
   targetChara: CharacterIndexEntry | null;
@@ -92,7 +93,7 @@ export function TraineeSpotlight({
             </div>
           ) : (
             <div className="w-32 h-44 sm:w-40 sm:h-52 rounded-2xl border-2 border-dashed border-emerald-500/70 bg-emerald-500/10 hover:bg-emerald-500/20 flex flex-col items-center justify-center text-center p-3 transition-all active:scale-[0.98]">
-              <span className="text-3xl mb-1.5">⭐</span>
+              <StarIcon filled className="mb-1.5 h-8 w-8 text-emerald-500" />
               <span className="text-xs font-bold text-emerald-800 dark:text-emerald-200">
                 + Select Trainee
               </span>
@@ -186,7 +187,7 @@ function TraineeStatsPanel({ targetChara, statBonuses }: Pick<TraineeSpotlightPr
       </div>
 
       {/* Trainee 5-Stat Bar */}
-      <div className="max-w-xl mx-auto rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 shadow-2xs mb-2.5">
+      <div className="max-w-xl mx-auto border-y border-zinc-200/80 dark:border-zinc-800/80 mb-2.5">
         {/* 5-Column Header */}
         <div className="grid grid-cols-5 text-center divide-x divide-zinc-200/80 dark:divide-zinc-800 border-b border-zinc-200/80 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800/60 py-1.5 text-[10px] sm:text-[11px] font-bold text-zinc-600 dark:text-zinc-300">
           {(["Speed", "Stamina", "Power", "Guts", "Wit"] as StatName[]).map((stat) => (
@@ -219,7 +220,7 @@ function TraineeStatsPanel({ targetChara, statBonuses }: Pick<TraineeSpotlightPr
       </div>
 
       {/* Trainee Aptitude Grid (Turf/Dirt, Sprint/Mile/Med/Long, Runner/Leader/Betweener/Chaser) */}
-      <div className="max-w-xl mx-auto rounded-xl border border-zinc-200/90 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/50 p-2.5 text-xs space-y-2 shadow-2xs">
+      <div className="max-w-xl mx-auto p-2.5 text-xs space-y-2">
         {/* Row 1: Surface */}
         <div className="flex items-center gap-2">
           <span className="w-16 sm:w-20 text-[10px] font-bold text-zinc-700 dark:text-zinc-300 uppercase tracking-wider">

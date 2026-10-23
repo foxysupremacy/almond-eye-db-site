@@ -15,6 +15,7 @@ import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LineageIcon } from "@/app/common/ui/primitives/icons";
 
 type PedigreeFilterTab =
   | "all"
@@ -124,8 +125,8 @@ export function PedigreeSkillsSection() {
 
   if (!hasConfiguredPedigree) {
     return (
-      <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center bg-zinc-50/50 dark:bg-zinc-900/30">
-        <span className="text-3xl mb-2 inline-block">🧬</span>
+      <div className="border-t border-zinc-200/70 py-10 text-center dark:border-zinc-800">
+        <LineageIcon className="mx-auto mb-2 h-7 w-7 text-zinc-400 dark:text-zinc-500" />
         <h3 className="text-sm font-bold text-zinc-800 dark:text-zinc-200">
           No Pedigree Configured
         </h3>
@@ -172,7 +173,7 @@ export function PedigreeSkillsSection() {
           />
 
           {/* Slot Branch Toggle */}
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          <div className="inline-flex rounded-lg bg-zinc-100 p-0.5 text-xs font-medium dark:bg-zinc-800">
             <AppButton
               variant="quiet"
               onPress={() => setSlotFilter("all")}
@@ -209,7 +210,7 @@ export function PedigreeSkillsSection() {
           </div>
 
           {/* View Mode Toggle */}
-          <div className="flex rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-0.5 text-xs font-medium shadow-2xs">
+          <div className="inline-flex rounded-lg bg-zinc-100 p-0.5 text-xs font-medium dark:bg-zinc-800">
             <AppButton
               variant="quiet"
               onPress={() => setViewMode("parent")}
@@ -330,9 +331,9 @@ export function PedigreeSkillsSection() {
 
       {/* Content: Group by Parent vs Unified List */}
       {filteredSkills.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-zinc-400 dark:text-zinc-500 text-xs">
+        <p className="py-8 text-center text-xs text-zinc-400 dark:text-zinc-500">
           No pedigree skills match the current filter or search criteria.
-        </div>
+        </p>
       ) : viewMode === "parent" ? (
         <div className="space-y-4">
           {pedigreeSlots.map((slot) => {
@@ -352,22 +353,9 @@ export function PedigreeSkillsSection() {
             const isP1 = slot.tag.startsWith("P1");
 
             return (
-              <div
-                key={slot.tag}
-                className={`rounded-xl border overflow-hidden shadow-2xs ${
-                  isP1
-                    ? "border-emerald-200/70 dark:border-emerald-900/50 bg-white dark:bg-zinc-900"
-                    : "border-blue-200/70 dark:border-blue-900/50 bg-white dark:bg-zinc-900"
-                }`}
-              >
+              <div key={slot.tag} className="pt-2">
                 {/* Parent / Grandparent Header */}
-                <div
-                  className={`flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b ${
-                    isP1
-                      ? "bg-emerald-50/40 dark:bg-emerald-950/20 border-emerald-100 dark:border-emerald-900/40"
-                      : "bg-blue-50/40 dark:bg-blue-950/20 border-blue-100 dark:border-blue-900/40"
-                  }`}
-                >
+                <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
                   <div className="flex items-center gap-3">
                     <img
                       src={avatarUrl}
@@ -415,7 +403,7 @@ export function PedigreeSkillsSection() {
 
                 {/* Skills List */}
                 {slotSkills.length === 0 ? (
-                  <p className="text-xs text-zinc-400 p-4 text-center">
+                  <p className="py-6 text-center text-xs text-zinc-400">
                     No skills match the current filter for this parent.
                   </p>
                 ) : (
@@ -466,7 +454,7 @@ export function PedigreeSkillsSection() {
                       return (
                         <li
                           key={`${slot.tag}-${s.id}-${idx}`}
-                          className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
+                          className={`flex items-start gap-3 py-2.5 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
                             isBanned
                               ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10"
                               : !canActivate
@@ -526,7 +514,7 @@ export function PedigreeSkillsSection() {
           })}
         </div>
       ) : (
-        <ul className="rounded-2xl border border-zinc-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 overflow-hidden shadow-xs divide-y divide-zinc-100 dark:divide-zinc-800/80">
+        <ul className="mt-2 divide-y divide-zinc-100 dark:divide-zinc-800/80">
           {filteredSkills.map((s, idx) => {
             const isBanned = isSkillBanned(s.id, activePvpEvent);
             const isDupeInMain = s.isDuplicateInMain ?? mainSkillIdSet.has(s.id);
@@ -537,7 +525,7 @@ export function PedigreeSkillsSection() {
             return (
               <li
                 key={`${s.id}-${s.source}-${idx}`}
-                className={`flex items-start gap-3 px-4 py-3 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
+                className={`flex items-start gap-3 py-2.5 transition-colors hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 ${
                   isBanned
                     ? "opacity-60 bg-rose-50/20 dark:bg-rose-950/10"
                     : !canActivate

@@ -30,10 +30,10 @@ function PinkChip({ plan, compact }: { plan: EditableFactorPlan; compact?: boole
   </span>;
 }
 
-export function AncestorTile({ slot, candidate, assessment, factorPlan, aptitudeKeys, whiteTargetCount, genetic, childSparks, tier = "phone", onOpen }: {
+export function AncestorTile({ slot, candidate, assessment, factorPlan, aptitudeKeys, whiteTargets = [], genetic, tier = "phone", onOpen }: {
   slot: LoopUmaSlot; candidate: LoopCandidate | null; assessment: BranchAssessment; factorPlan: EditableFactorPlan;
-  aptitudeKeys: AptitudeKey[]; whiteTargetCount: number; genetic?: { text: string; tone: keyof typeof GENETIC_TONE_CLASS; alert: boolean };
-  childSparks?: EditableFactorPlan[]; tier?: "phone" | "tablet"; onOpen: () => void;
+  aptitudeKeys: AptitudeKey[]; whiteTargets?: AptitudeKey[]; genetic?: { text: string; tone: keyof typeof GENETIC_TONE_CLASS; alert: boolean };
+  tier?: "phone" | "tablet"; onOpen: () => void;
 }) {
   const generation = slotGeneration(slot) as keyof typeof PORTRAIT.phone;
   const deep = generation === "great-grandparent";
@@ -45,36 +45,38 @@ export function AncestorTile({ slot, candidate, assessment, factorPlan, aptitude
     candidate?.name ?? (deep ? null : "Empty"),
     ...grades,
     pink,
-    generation === "parent" ? `${whiteTargetCount} white targets` : null,
+    generation === "parent" ? (whiteTargets.length ? `White targets: ${whiteTargets.join(", ")}` : "No white targets") : null,
     genetic?.text,
-    deep && childSparks ? `${childSparks.filter((plan) => plan.pink).length} of ${childSparks.length} deepest sparks set` : null,
   ].filter(Boolean).join(", ");
   const gradeCell = (key: AptitudeKey) => {
     const grade = projectionDisplayGrade(assessment.projections.find((p) => p.aptitude === key)!);
-    return <span key={key} data-tile-grade={key} className="inline-flex items-center gap-0.5 text-[9px] font-semibold text-zinc-500 dark:text-zinc-400">
-      {SHORT[key]}{grade === "?" ? <span className="text-zinc-400">?</span> : <StatusRankIcon grade={grade} className="h-3.5 w-3.5 object-contain" />}
+    return <span key={key} data-tile-grade={key} className="inline-flex min-w-0 flex-col items-center overflow-hidden rounded border border-zinc-200/90 bg-white text-center text-[8px] font-bold leading-none text-zinc-600 dark:border-zinc-700/80 dark:bg-zinc-800 dark:text-zinc-300">
+      <span className="w-full border-b border-zinc-200/80 bg-zinc-50 px-0.5 py-px dark:border-zinc-700/80 dark:bg-zinc-900/60">{SHORT[key]}</span>
+      <span className="flex h-4 w-full items-center justify-center py-px">{grade === "?" ? <span className="text-[9px] text-zinc-400">?</span> : <StatusRankIcon grade={grade} className="h-3 w-3 object-contain" />}</span>
     </span>;
   };
   return <Button onPress={onOpen} aria-describedby={summaryId} aria-label={`Edit ${ancestorTitle(slot)}${candidate ? `: ${candidate.name}` : ""}`} data-ancestor-tile={generation}
-    className="group/avatar flex min-h-10 min-w-10 w-full flex-col items-center gap-1 rounded-xl border border-zinc-200/90 bg-white/95 px-1 pb-1.5 pt-3 text-center shadow-2xs outline-none transition-colors duration-150 ease-out-quart hover:border-emerald-400 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:border-zinc-800/80 dark:bg-zinc-900/95">
+    className="group/avatar flex min-h-10 min-w-10 w-full flex-col items-center gap-1 rounded-lg px-1 pb-1.5 pt-3 text-center outline-none transition-colors duration-150 ease-out-quart hover:bg-zinc-100/80 focus-visible:ring-2 focus-visible:ring-emerald-500 dark:hover:bg-zinc-800/60">
     <AncestorPortrait candidate={candidate} className={PORTRAIT[tier][generation]} emptyLabel="Add" />
     <span id={summaryId} className="sr-only">{summary}</span>
     {!deep && candidate && <span className={`w-full line-clamp-2 break-words font-semibold text-zinc-900 dark:text-zinc-100 ${generation === "parent" ? "text-xs" : "text-[10px]"}`}>{candidate.name}</span>}
-    {!deep && aptitudeKeys.length > 0 && (tier === "tablet"
-      ? <span className="flex w-full flex-col gap-0.5">
+    {!deep && aptitudeKeys.length > 0 && (
+      <span className="flex w-full flex-col gap-0.5">
         {GRADE_GROUPS.map((group) => {
           const keys = group.keys.filter((key) => aptitudeKeys.includes(key));
           return keys.length > 0 && <span key={group.cols + group.keys[0]} data-tile-grade-group={group.keys[0]} className={`grid ${group.cols} justify-items-center gap-0.5`}>{keys.map(gradeCell)}</span>;
         })}
       </span>
-      : <span className="flex w-full flex-wrap justify-center gap-0.5">{aptitudeKeys.map(gradeCell)}</span>)}
+    )}
     <span className="flex items-center gap-1">
       <PinkChip plan={factorPlan} compact={deep} />
       {genetic && <GeneticIcon className={`h-3.5 w-3.5 shrink-0 ${GENETIC_TONE_CLASS[genetic.tone]}`} />}
     </span>
-    {generation === "parent" && <span className="text-[10px] text-violet-600 dark:text-violet-300">○ {whiteTargetCount || "—"} white</span>}
-    {deep && childSparks && <span aria-hidden="true" className="flex gap-0.5 text-[8px] leading-none">
-      {childSparks.map((plan, index) => <span key={index} data-child-spark={plan.pink ? "set" : "unset"} className={plan.pink ? "text-pink-500" : "text-zinc-300 dark:text-zinc-600"}>{plan.pink ? "●" : "○"}</span>)}
-    </span>}
+    {generation === "parent" && (
+      <span className="flex min-w-0 items-center gap-0.5 text-[10px] font-semibold text-violet-600 dark:text-violet-300">
+        <span aria-hidden="true">○</span>
+        <span className="truncate">{whiteTargets.length ? whiteTargets.map((key) => SHORT[key]).join("·") : "—"}</span>
+      </span>
+    )}
   </Button>;
 }

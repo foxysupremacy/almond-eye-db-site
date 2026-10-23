@@ -31,10 +31,19 @@ export function PinkSparkFields({ value, stars, onChange, title = "Pink spark" }
   </>;
 }
 
-export function PinkSparkPicker({ label, value, stars, onChange }: { label: string; value?: AptitudeKey | null; stars?: number; onChange: (value?: AptitudeKey | null, stars?: number) => void }) {
+export function PinkSparkPicker({ label, value, stars, onChange, compact }: { label: string; value?: AptitudeKey | null; stars?: number; onChange: (value?: AptitudeKey | null, stars?: number) => void; compact?: boolean }) {
   const triggerLabel = value
     ? `${value}, ${stars ?? "unknown"} star${stars === 1 ? "" : "s"}`
     : value === null ? "No factor" : "Not set";
+  if (compact) {
+    return <ParentingPopover label={`${label} Red factor: ${triggerLabel}`} className="parenting-aptitude-cell flex h-6 min-h-6 w-full min-w-0 items-center justify-center gap-px rounded-md border border-pink-300 bg-pink-50/80 text-[9px] leading-none font-bold text-pink-900 shadow-2xs hover:bg-pink-100/90 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-pink-500 dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100" trigger={
+      value
+        ? <span aria-hidden="true" className="flex shrink-0 gap-px leading-none">{[1, 2, 3].map((star) => <span key={star} className={star <= (stars ?? 0) ? "text-pink-600 dark:text-pink-400" : "text-zinc-400/60 dark:text-zinc-600"}>★</span>)}</span>
+        : <span className="max-w-full truncate text-zinc-700 dark:text-zinc-300">{value === null ? "None" : "Set"}</span>
+    }>
+      <PinkSparkFields value={value} stars={stars} onChange={onChange} />
+    </ParentingPopover>;
+  }
   return <ParentingPopover label={`${label} Red factor: ${triggerLabel}`} className={`${BUTTON} parenting-aptitude-cell flex h-11 w-full min-w-0 flex-col items-center justify-center gap-0.5 rounded-lg border border-pink-300 bg-pink-50/80 text-[9px] leading-tight text-pink-900 shadow-2xs hover:bg-pink-100/90 transition-colors dark:border-pink-800 dark:bg-pink-950/25 dark:text-pink-100`} trigger={<>
     <span className="max-w-full truncate">{value && <AptitudeName value={value} />}{value === null ? "None" : value === undefined ? "Set" : null}</span>
     <span aria-hidden="true" className="flex shrink-0 gap-px leading-none">{[1, 2, 3].map((star) => <span key={star} className={value && star <= (stars ?? 0) ? "text-pink-600 dark:text-pink-400" : "text-zinc-400/60 dark:text-zinc-600"}>★</span>)}</span>
