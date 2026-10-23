@@ -20,6 +20,7 @@ interface Props {
   roster: CharacterIndexEntry[];
   setup: ParentingSetup;
   targetStage: ReactNode;
+  actions?: ReactNode;
   course?: Course | null;
   runningStyle?: number | null;
   /** Test override; normally measured from the container width. */
@@ -39,13 +40,9 @@ export function ParentingLoopOptimizer(props: Props) {
 
   return (
     <section ref={containerRef} className="space-y-4">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="font-bold text-zinc-900 dark:text-zinc-100">Parent Planning</h3>
-          <p className="text-xs text-zinc-500 mt-1">
-            Set pink sparks below each branch to support its planned aptitude, G1 farming and white genetics.
-          </p>
-        </div>
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Parent Planning</h2>
+        {props.actions && <div className="flex items-center gap-2">{props.actions}</div>}
       </header>
       {props.targetStage && <div>{props.targetStage}</div>}
       {!props.target ? (

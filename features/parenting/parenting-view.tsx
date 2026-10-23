@@ -12,7 +12,6 @@ import InheritedSkillsModal from "@/features/parenting/components/inherited-skil
 import { LineageAffinityHeader } from "@/features/parenting/components/lineage-affinity-header";
 import { TraineeSpotlight } from "@/features/parenting/components/trainee-spotlight";
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
-import { Badge } from "@/app/common/ui/primitives/badge";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { CheckIcon, DeckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
@@ -97,47 +96,31 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
 
   return (
     <section ref={pageRef} className="w-full flex flex-col gap-6">
-      {/* Header Strip */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-200 dark:border-zinc-800 pb-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">
-              Parenting Hub
-            </h2>
-            <Badge size="standard" tone="emerald" className="font-bold">
-              Compatibility
-            </Badge>
-          </div>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Affinity-ranked legacy recommendations, filtered by unique-skill timing on the selected track.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <AppButton
-            variant="quiet"
-            onPress={commands.handleShare}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
-            title="Copy shareable link with current setup"
-          >
-            {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-            <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
-          </AppButton>
-          <AppButton
-            variant="quiet"
-            onPress={commands.resetParenting}
-            className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-colors"
-          >
-            Reset Setup
-          </AppButton>
-        </div>
-      </div>
-
       {/* Unified 14-ancestor pedigree and loop planner */}
       <ParentingLoopOptimizer
         target={targetChara}
         course={course}
         runningStyle={runningStyle}
+        actions={
+          <>
+            <AppButton
+              variant="quiet"
+              onPress={commands.handleShare}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
+              title="Copy shareable link with current setup"
+            >
+              {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+              <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
+            </AppButton>
+            <AppButton
+              variant="quiet"
+              onPress={commands.resetParenting}
+              className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-colors"
+            >
+              Reset Setup
+            </AppButton>
+          </>
+        }
         targetStage={
           <div>
             <LineageAffinityHeader

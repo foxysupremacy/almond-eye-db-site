@@ -4,7 +4,6 @@ import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppPopover } from "@/app/common/ui/controls/app-popover";
 import { AlertCircleIcon, XIcon } from "@/app/common/ui/primitives/icons";
 import type { FullLineageAffinityBreakdown } from "@/lib/lineage/affinity-engine";
-import { Badge } from "@/app/common/ui/primitives/badge";
 
 export interface LineageAffinityHeaderProps {
   affinityBreakdown: FullLineageAffinityBreakdown;
@@ -21,14 +20,9 @@ export function LineageAffinityHeader({
   const triggerRef = useRef<HTMLSpanElement>(null);
 
   return (
-    <div className={`relative z-20 mb-2 grid grid-cols-2 items-center gap-2 sm:grid-cols-[1fr_auto_1fr] ${className}`}>
-      {/* Left Badge */}
-      <Badge size="standard" className="bg-zinc-900/85 dark:bg-zinc-800/85 border-zinc-200/20 text-white backdrop-blur-md font-semibold shadow-xs">
-        <span>Lineage Planner</span>
-      </Badge>
-
+    <div className={`relative z-20 mb-2 flex items-center justify-center gap-2 ${className}`}>
       {/* Center Glowing Compatibility: Affinity : ◎ 383 */}
-      <div className="relative col-span-2 row-start-2 flex items-center justify-self-center gap-1.5 sm:col-span-1 sm:row-start-auto">
+      <div className="relative flex items-center justify-center gap-1.5">
         <div className="flex items-baseline gap-1.5">
           <span className="text-xs sm:text-sm font-bold text-amber-500 dark:text-amber-400">
             Affinity :
