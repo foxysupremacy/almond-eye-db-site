@@ -75,6 +75,41 @@ when one exists.
   in a CORE section and skips unknown extension sections. V1/V2/V3 payloads are
   rejected; do not add legacy decoding without an explicit compatibility change.
 
+### MVVM Architecture Guidelines (MANDATORY)
+
+The client application strictly follows **MVVM (Model-View-ViewModel)** for feature screens, pickers, and complex interaction components:
+
+1. **Layer Boundaries**:
+   - **View (`screens/`, `components/`)**: Pure presentation layer (JSX). Views MUST NOT contain inline asynchronous data-fetching (`api.list*`), direct localStorage side-effects, recommendation scoring loops, or complex business logic. Views consume ViewModel data through `const vm = use<Feature>ViewModel()` or `const { state, commands } = use<Feature>ViewModel()`.
+   - **ViewModel (`features/<feature>/view-models/`)**: Dedicated custom hooks (`use*ViewModel.ts`) that orchestrate feature state, derived computations/projections, async loaders, web workers, and event handlers. Each feature owns its `view-models/` directory with a public `index.ts`.
+   - **Model (`lib/*`, `features/<feature>/model/`)**: Pure domain logic, reducers, API clients, algorithms (affinity, skill engine, ratings, constraints), and schemas. Models are UI-agnostic and React-free.
+
+2. **ViewModel Contract**:
+   Every ViewModel hook MUST expose an object with explicit separation of `state` and `commands`:
+   ```typescript
+   export interface FeatureViewModel {
+     readonly state: {
+       readonly [key: string]: any; // Observable / Computed properties
+     };
+     readonly commands: {
+       readonly [action: string]: (...args: any[]) => void; // Event / Command actions
+     };
+   }
+   ```
+   - **`state`**: View reads observable state, derived collections, and visibility flags here.
+   - **`commands`**: View routes all user interactions (`onClick`, `onPick`, `onSelect`, `toggle`) to these functions.
+
+3. **Established ViewModels**:
+   - `useDeckPickerViewModel` (`features/deck/view-models/use-deck-picker-view-model.ts`)
+   - `useParentDeckViewModel` (`features/deck/view-models/use-parent-deck-view-model.ts`)
+   - `useDeckSkillListViewModel` (`features/deck/view-models/use-deck-skill-list-view-model.ts`)
+   - `useCardPickerViewModel` (`features/deck/view-models/use-card-picker-view-model.ts`)
+   - `useParentingViewModel` (`features/parenting/view-models/use-parenting-view-model.ts`)
+
+4. **Testing Invariant**:
+   - When introducing or refactoring ViewModels, add dedicated unit tests in `features/<feature>/view-models/*.test.ts` to test state transitions and commands independently from DOM rendering.
+   - Ensure 100% of existing tests continue to pass with zero regressions.
+
 ### Data gateway (IMPORTANT)
 
 `lib/data/generated/` holds normalized runtime JSON committed for deployment;

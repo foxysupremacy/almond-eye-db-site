@@ -5,88 +5,28 @@
 // 2. 6-slot Parent Support Card Deck for farming parent skills.
 // 3. All Possible Skills List (Card Hint, Card Event, Parent Unique, Bloodline Factors).
 
-import { useState, useEffect, useMemo } from "react";
-import { api, type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
-import type { GrandparentSlot } from "@/lib/parenting/state";
-import { useParentingSetup } from "@/features/parenting/hooks";
-import { calculateLineageAffinity, getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
+import { getCharacterImageUrl } from "@/lib/api";
+import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import ParentDeckPicker from "@/features/deck/components/parent-deck-picker";
 import { ParentSkillList } from "@/features/parenting";
 import AceComplementFinder from "@/features/deck/components/ace-complement-finder";
-import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { Badge } from "@/app/common/ui/primitives/badge";
+import { useParentDeckViewModel } from "@/features/deck/view-models/use-parent-deck-view-model";
 
 interface ParentDeckViewProps {
   onNavigateToParenting: () => void;
 }
 
 export default function ParentDeckView({ onNavigateToParenting }: ParentDeckViewProps) {
-  const { setup } = useParentingSetup();
-  const [characters, setCharacters] = useState<CharacterIndexEntry[]>([]);
-
-  useEffect(() => {
-    api.listCharacters().then(setCharacters).catch(console.error);
-  }, []);
-
-  const charaByCharIdMap = useMemo(() => {
-    return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.charId, c]));
-  }, [characters]);
-
-  const charaByCardIdMap = useMemo(() => {
-    return new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
-  }, [characters]);
-
-  const targetChara = useMemo(() => {
-    return resolveTargetCharacter(setup, charaByCardIdMap, charaByCharIdMap);
-  }, [setup, charaByCardIdMap, charaByCharIdMap]);
-
-  const p1Chara = useMemo(() => {
-    if (!setup.parent1) return null;
-    return charaByCardIdMap.get(setup.parent1.card_id) || null;
-  }, [setup.parent1, charaByCardIdMap]);
-
-  const p2Chara = useMemo(() => {
-    if (!setup.parent2) return null;
-    return charaByCardIdMap.get(setup.parent2.card_id) || null;
-  }, [setup.parent2, charaByCardIdMap]);
-
-  // Grandparents resolution
-  const p1_gp1 = useMemo((): GrandparentSlot | null => {
-    if (setup.gpOverrides.p1_gp1 !== undefined) return setup.gpOverrides.p1_gp1;
-    const gp = setup.parent1?.succession_chara_array?.find((p) => p.position_id === 10);
-    return gp ? { card_id: gp.card_id, win_saddle_id_array: gp.win_saddle_id_array, factor_info_array: gp.factor_info_array } : null;
-  }, [setup.gpOverrides.p1_gp1, setup.parent1]);
-
-  const p1_gp2 = useMemo((): GrandparentSlot | null => {
-    if (setup.gpOverrides.p1_gp2 !== undefined) return setup.gpOverrides.p1_gp2;
-    const gp = setup.parent1?.succession_chara_array?.find((p) => p.position_id === 20);
-    return gp ? { card_id: gp.card_id, win_saddle_id_array: gp.win_saddle_id_array, factor_info_array: gp.factor_info_array } : null;
-  }, [setup.gpOverrides.p1_gp2, setup.parent1]);
-
-  const p2_gp1 = useMemo((): GrandparentSlot | null => {
-    if (setup.gpOverrides.p2_gp1 !== undefined) return setup.gpOverrides.p2_gp1;
-    const gp = setup.parent2?.succession_chara_array?.find((p) => p.position_id === 10);
-    return gp ? { card_id: gp.card_id, win_saddle_id_array: gp.win_saddle_id_array, factor_info_array: gp.factor_info_array } : null;
-  }, [setup.gpOverrides.p2_gp1, setup.parent2]);
-
-  const p2_gp2 = useMemo((): GrandparentSlot | null => {
-    if (setup.gpOverrides.p2_gp2 !== undefined) return setup.gpOverrides.p2_gp2;
-    const gp = setup.parent2?.succession_chara_array?.find((p) => p.position_id === 20);
-    return gp ? { card_id: gp.card_id, win_saddle_id_array: gp.win_saddle_id_array, factor_info_array: gp.factor_info_array } : null;
-  }, [setup.gpOverrides.p2_gp2, setup.parent2]);
-
-  // Compatibility score
-  const affinityBreakdown = useMemo(() => {
-    return calculateLineageAffinity(
-      setup.targetCharaId,
-      setup.parent1,
-      setup.parent2,
-      { gp1: p1_gp1, gp2: p1_gp2 },
-      { gp1: p2_gp1, gp2: p2_gp2 }
-    );
-  }, [setup.targetCharaId, setup.parent1, setup.parent2, p1_gp1, p1_gp2, p2_gp1, p2_gp2]);
-
-  const hasLineage = Boolean(setup.targetCharaId || setup.parent1 || setup.parent2);
+  const { state, commands } = useParentDeckViewModel(onNavigateToParenting);
+  const {
+    targetChara,
+    p1Chara,
+    p2Chara,
+    affinityBreakdown,
+    hasLineage,
+    setup,
+  } = state;
 
   return (
     <div className="flex flex-col gap-6 sm:gap-8">
@@ -188,7 +128,7 @@ export default function ParentDeckView({ onNavigateToParenting }: ParentDeckView
           {/* Right: Manage Lineage Button */}
           <button
             type="button"
-            onClick={onNavigateToParenting}
+            onClick={commands.navigateToParenting}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-emerald-500/40 bg-white dark:bg-zinc-900 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 shadow-2xs cursor-pointer transition-all ease-out-quart duration-150 hover:scale-[1.02] active:scale-[0.98]"
           >
             <span>Manage Lineage ↗</span>
@@ -203,7 +143,7 @@ export default function ParentDeckView({ onNavigateToParenting }: ParentDeckView
       <AceComplementFinder />
 
       {/* 4. Unified All Possible Skills List */}
-      <ParentSkillList onNavigateToParenting={onNavigateToParenting} />
+      <ParentSkillList onNavigateToParenting={commands.navigateToParenting} />
     </div>
   );
 }

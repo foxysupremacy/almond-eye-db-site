@@ -2,26 +2,18 @@ import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
-import { useMemo, useState, useEffect } from "react";
-import { useDeck } from "@/features/deck/state";
 import { RUNNING_STYLE_OPTIONS } from "@/lib/deck/constants";
-import type { DeckSkill } from "@/lib/deck/types";
-import {
-  matchesRarityFilter,
-  type RarityFilterKey,
-} from "@/lib/skills/rarity";
+import { type RarityFilterKey } from "@/lib/skills/rarity";
 import { getSkillRarityStyle, RARITY_META } from "@/app/common/ui/skills/skill-rarity";
-import SkillIcon from "@/app/common/ui/skills/skill-icon";
-import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
 import SkillItem from "@/app/common/ui/skills/skill-item";
 import { isSkillBanned } from "@/lib/pvp/events";
-import { deriveSkillsForDeck } from "@/lib/deck/skill-resolver";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import DuplicateSkillBadge from "@/app/common/ui/skills/provenance/duplicate-skill-badge";
 import { SkillIndicator, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { Badge } from "@/app/common/ui/primitives/badge";
-import { buildDuplicateSkillIndex, getDuplicateSkillIds } from "@/lib/skills/duplicates";
 import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain-attribution";
+import { useDeckSkillListViewModel } from "@/features/deck/view-models/use-deck-skill-list-view-model";
+import { useDeck } from "@/features/deck/state";
 
 function getRarityStripeClass(rarityKey: string): string {
   switch (rarityKey) {
@@ -37,229 +29,215 @@ function getRarityStripeClass(rarityKey: string): string {
 }
 
 export default function SkillList() {
+  const { activePvpEvent } = useDeck();
+  const { state, commands } = useDeckSkillListViewModel();
   const {
     mainSkills,
-    mainSlots,
     loading,
     runningStyle,
-    setRunningStyle,
-    activePvpEvent,
-    activePreset,
-    skillsByCard,
-  } = useDeck();
-  const [sourceFilter, setSourceFilter] = useState<"all" | "event" | "hint">("all");
-  const [rarityFilter, setRarityFilter] = useState<RarityFilterKey>("all");
-  const [viewMode, setViewMode] = useState<"list" | "card">("list");
-  // Remember the skill view mode (Unified List / Group by Card) across visits
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("almond_skill_view_mode");
-      if (stored === "card" || stored === "list") setViewMode(stored);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    try {
-      localStorage.setItem("almond_skill_view_mode", viewMode);
-    } catch {}
-  }, [viewMode]);
-  const [search, setSearch] = useState("");
-
-  // Map each card slot to its exact granted skills (respecting chosen chain branches)
-  const cardSkillsMap = useMemo(() => {
-    const map = new Map<number, DeckSkill[]>();
-    mainSlots.forEach((card) => {
-      if (!card) return;
-      const cSkills = deriveSkillsForDeck(
-        [card],
-        false,
-        skillsByCard,
-        activePreset.mainChainChoices
-      );
-      map.set(card.id, cSkills);
-    });
-    return map;
-  }, [mainSlots, skillsByCard, activePreset.mainChainChoices]);
-
-  // Map skillId -> all deck cards that provide this skill
-  const duplicateSkillCardsMap = useMemo(() => {
-    return buildDuplicateSkillIndex(
-      mainSlots.flatMap((card) => {
-        if (!card) return [];
-        return [{
-          card: {
-            cardId: card.id,
-            cardName: card.nameEn || card.nameJp || `Card #${card.id}`,
-            cardNameJp: card.nameJp,
-            rarity: card.rarity,
-            type: card.type,
-            portraitUrl: card.portraitUrl,
-            imgUrl: card.imgUrl,
-          },
-          grants: (cardSkillsMap.get(card.id) || []).map((s) => ({
-            id: s.id,
-            source: s.source,
-            eventMeta: s.grants?.find((g) => g.cardId === card.id)?.eventMeta ?? null,
-            originalGoldSkill: s.grants?.find((g) => g.cardId === card.id)?.originalGoldSkill,
-          })),
-        }];
-      })
-    );
-  }, [mainSlots, cardSkillsMap]);
-
-  // Track skills appearing in more than one support card
-  const duplicateSkillIdSet = useMemo(() => {
-    return getDuplicateSkillIds(duplicateSkillCardsMap);
-  }, [duplicateSkillCardsMap]);
-
-  const whiteCount = useMemo(() => mainSkills.filter((s) => (s.rarity ?? 1) === 1).length, [mainSkills]);
-  const goldCount = useMemo(() => mainSkills.filter((s) => s.rarity === 2).length, [mainSkills]);
-  const uniqueCount = useMemo(() => mainSkills.filter((s) => [3, 4, 5].includes(s.rarity)).length, [mainSkills]);
-  const evolvedCount = useMemo(() => mainSkills.filter((s) => s.rarity === 6).length, [mainSkills]);
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return mainSkills.filter((s) => {
-      if (sourceFilter !== "all" && s.source !== sourceFilter) return false;
-      if (!matchesRarityFilter(s.rarity, rarityFilter)) return false;
-      if (q && !`${s.nameEn} ${s.nameJp} ${s.descEn ?? ""}`.toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }, [mainSkills, sourceFilter, rarityFilter, search]);
-
-  const hasDeck = mainSlots.some(Boolean);
+    sourceFilter,
+    rarityFilter,
+    viewMode,
+    search,
+    hasDeck,
+    whiteCount,
+    goldCount,
+    uniqueCount,
+    evolvedCount,
+    filtered,
+    groupedCards,
+    duplicateSkillCardsMap,
+    duplicateSkillIdSet,
+  } = state;
 
   return (
     <section className="mt-8">
       <div className="mb-3 md:hidden">
-        <h2 className="mb-2 text-lg font-semibold">Deck skills <span className="text-sm font-normal text-zinc-500">({mainSkills.length})</span></h2>
-        <PickerSearchBar label="Search deck skills" value={search} onChange={setSearch} placeholder="Search skills…" inputClassName="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900" />
+        <h2 className="mb-2 text-lg font-semibold">
+          Deck skills <span className="text-sm font-normal text-zinc-500">({mainSkills.length})</span>
+        </h2>
+        <PickerSearchBar
+          label="Search deck skills"
+          value={search}
+          onChange={commands.setSearch}
+          placeholder="Search skills…"
+          inputClassName="min-h-11 w-full rounded-xl border border-zinc-200 bg-white px-3 text-base dark:border-zinc-800 dark:bg-zinc-900"
+        />
       </div>
-      <MobileFilters count={Number(sourceFilter !== "all") + Number(rarityFilter !== "all")} summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}>
-      {/* Header & Controls */}
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-            Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({mainSkills.length})</span>
-          </h2>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            {hasDeck
-              ? "Union of event + hint skills across the deck. Click any skill to inspect activation conditions."
-              : "Add cards to see the skills they grant."}
-          </p>
-        </div>
+      <MobileFilters
+        count={Number(sourceFilter !== "all") + Number(rarityFilter !== "all")}
+        summary={`${filtered.length} skills · ${viewMode === "card" ? "by card" : "unified list"}`}
+      >
+        {/* Header & Controls */}
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+              Skills <span className="text-sm font-normal text-zinc-400 dark:text-zinc-500">({mainSkills.length})</span>
+            </h2>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              {hasDeck
+                ? "Union of event + hint skills across the deck. Click any skill to inspect activation conditions."
+                : "Add cards to see the skills they grant."}
+            </p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-            <span className="hidden sm:inline">Style</span>
-            <AppSelect
-              value={String(runningStyle ?? "")}
-              onValueChange={(value) =>
-                setRunningStyle(value === "" ? null : (Number(value) as 1 | 2 | 3 | 4 | 5))
-              }
-              className=""
-             label="Running style" options={RUNNING_STYLE_OPTIONS.map(o => ({ value: String(o.value ?? ""), label: o.label }))} />
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+              <span className="hidden sm:inline">Style</span>
+              <AppSelect
+                value={String(runningStyle ?? "")}
+                onValueChange={(value) =>
+                  commands.setRunningStyle(value === "" ? null : (Number(value) as 1 | 2 | 3 | 4 | 5))
+                }
+                className=""
+                label="Running style"
+                options={RUNNING_STYLE_OPTIONS.map((o) => ({ value: String(o.value ?? ""), label: o.label }))}
+              />
+            </label>
 
-          <div className="hidden w-36 md:block sm:w-44"><PickerSearchBar label="Search deck skills" value={search} onChange={setSearch} placeholder="Search skills…" inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 pr-10 text-xs text-zinc-900 outline-none focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100" /></div>
+            <div className="hidden w-36 md:block sm:w-44">
+              <PickerSearchBar
+                label="Search deck skills"
+                value={search}
+                onChange={commands.setSearch}
+                placeholder="Search skills…"
+                inputClassName="min-h-8 w-full rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 pr-10 text-xs text-zinc-900 outline-none focus:border-emerald-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </div>
 
-          {/* Rarity Tabs */}
-          <RadioGroup aria-label="Skill rarity" value={rarityFilter} onChange={(value) => setRarityFilter(value as RarityFilterKey)} orientation="horizontal" className="inline-flex flex-wrap md:flex-nowrap rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium scrollbar-none">
-            <Radio
-              value="all"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
-                rarityFilter === "all"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
+            {/* Rarity Tabs */}
+            <RadioGroup
+              aria-label="Skill rarity"
+              value={rarityFilter}
+              onChange={(value) => commands.setRarityFilter(value as RarityFilterKey)}
+              orientation="horizontal"
+              className="inline-flex flex-wrap md:flex-nowrap rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium scrollbar-none"
             >
-              All ({mainSkills.length})
-            </Radio>
-            <Radio
-              value="white"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
-                rarityFilter === "white"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
-                  : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
-              }`}
-            >
-              White ({whiteCount})
-            </Radio>
-            <Radio
-              value="gold"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
-                rarityFilter === "gold"
-                  ? "bg-amber-500 text-amber-950 font-bold shadow-2xs"
-                  : "text-amber-900 dark:text-amber-200 hover:bg-amber-100/60 dark:hover:bg-amber-950/40 font-medium"
-              }`}
-            >
-              Gold ({goldCount})
-            </Radio>
-            <Radio
-              value="unique"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
-                rarityFilter === "unique"
-                  ? "bg-pink-500 text-white font-bold shadow-2xs"
-                  : "text-pink-700 dark:text-pink-400 hover:bg-pink-50 dark:hover:bg-pink-950/30"
-              }`}
-            >
-              Unique ({uniqueCount})
-            </Radio>
-            <Radio
-              value="evolved"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
-                rarityFilter === "evolved"
-                  ? "bg-purple-600 text-white font-bold shadow-2xs"
-                  : "text-purple-700 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
-              }`}
-            >
-              Evo ({evolvedCount})
-            </Radio>
-          </RadioGroup>
-
-          {/* Source Filter */}
-          <RadioGroup aria-label="Skill source" value={sourceFilter} onChange={(value) => setSourceFilter(value as "all" | "event" | "hint")} orientation="horizontal" className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium">
-            {(["all", "hint", "event"] as const).map((f) => (
               <Radio
-                key={f}
-                value={f}
-                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs capitalize cursor-pointer transition-colors ${
-                  sourceFilter === f
+                value="all"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                  rarityFilter === "all"
                     ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
                     : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
                 }`}
               >
-                {f === "all" ? "Sources" : f}
+                All ({mainSkills.length})
               </Radio>
-            ))}
-          </RadioGroup>
+              <Radio
+                value="white"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                  rarityFilter === "white"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                White ({whiteCount})
+              </Radio>
+              <Radio
+                value="gold"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                  rarityFilter === "gold"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Gold ({goldCount})
+              </Radio>
+              <Radio
+                value="unique"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                  rarityFilter === "unique"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Unique ({uniqueCount})
+              </Radio>
+              <Radio
+                value="evolved"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2 py-1 text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                  rarityFilter === "evolved"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Evolved ({evolvedCount})
+              </Radio>
+            </RadioGroup>
 
-          {/* View Mode Toggle (Unified List vs Group by Card) */}
-          <RadioGroup aria-label="Deck skill layout" value={viewMode} onChange={(value) => setViewMode(value as "list" | "card")} orientation="horizontal" className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium">
-            <Radio
-              value="list"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
-                viewMode === "list"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
+            {/* Source Filter Tabs */}
+            <RadioGroup
+              aria-label="Skill source"
+              value={sourceFilter}
+              onChange={(value) => commands.setSourceFilter(value as "all" | "event" | "hint")}
+              orientation="horizontal"
+              className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium"
             >
-              Unified List
-            </Radio>
-            <Radio
-              value="card"
-              className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
-                viewMode === "card"
-                  ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
-                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
-              }`}
+              <Radio
+                value="all"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                  sourceFilter === "all"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                All Sources
+              </Radio>
+              <Radio
+                value="event"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                  sourceFilter === "event"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Event
+              </Radio>
+              <Radio
+                value="hint"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                  sourceFilter === "hint"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Hint
+              </Radio>
+            </RadioGroup>
+
+            {/* View Mode Switcher */}
+            <RadioGroup
+              aria-label="Skill view mode"
+              value={viewMode}
+              onChange={(value) => commands.setViewMode(value as "list" | "card")}
+              orientation="horizontal"
+              className="inline-flex rounded-lg bg-zinc-100 dark:bg-zinc-800 p-0.5 text-xs font-medium"
             >
-              Group by Card
-            </Radio>
-          </RadioGroup>
+              <Radio
+                value="list"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                  viewMode === "list"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                List
+              </Radio>
+              <Radio
+                value="card"
+                className={`min-h-8 flex items-center outline-none data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 rounded-md px-2.5 py-1 text-xs transition-colors cursor-pointer ${
+                  viewMode === "card"
+                    ? "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 font-semibold shadow-2xs"
+                    : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-800 dark:hover:text-zinc-200"
+                }`}
+              >
+                Group by Card
+              </Radio>
+            </RadioGroup>
+          </div>
         </div>
-      </div>
-
       </MobileFilters>
+
       {/* List Body */}
       {loading && !hasDeck ? (
         <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading card index…</p>
@@ -268,7 +246,7 @@ export default function SkillList() {
           No cards equipped yet. Add cards above to view granted skills.
         </div>
       ) : filtered.length === 0 ? (
-        (rarityFilter === "unique" || rarityFilter === "evolved") ? (
+        rarityFilter === "unique" || rarityFilter === "evolved" ? (
           <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 bg-zinc-50/50 dark:bg-zinc-800/30 p-6 text-center">
             <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
               No {rarityFilter === "unique" ? "Unique" : "Evolved"} Skills in Support Deck
@@ -282,28 +260,11 @@ export default function SkillList() {
         )
       ) : viewMode === "card" ? (
         <div className="mt-4 space-y-6">
-          {mainSlots.map((card, slotIdx) => {
-            if (!card) return null;
-            const allCardSkills = cardSkillsMap.get(card.id) || [];
-            const cFiltered = allCardSkills.filter((s) => {
-              if (sourceFilter !== "all" && s.source !== sourceFilter) return false;
-              if (!matchesRarityFilter(s.rarity, rarityFilter)) return false;
-              if (
-                search.trim() &&
-                !`${s.nameEn} ${s.nameJp} ${s.descEn ?? ""}`.toLowerCase().includes(search.trim().toLowerCase())
-              ) {
-                return false;
-              }
-              return true;
-            });
-
+          {groupedCards.map(({ card, slotIndex, skills: cFiltered }) => {
             const cardLabel = card.nameEn || card.nameJp;
 
             return (
-              <div
-                key={card.id}
-                className="pt-2"
-              >
+              <div key={card.id} className="pt-2">
                 {/* Card Slot Header */}
                 <div className="flex flex-wrap items-center justify-between gap-3 py-2.5 border-b border-zinc-200/80 dark:border-zinc-800/80">
                   <div className="flex items-center gap-3">
@@ -316,7 +277,7 @@ export default function SkillList() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                          Slot {slotIdx + 1}: {cardLabel}
+                          Slot {slotIndex + 1}: {cardLabel}
                         </span>
                         <span
                           className={`rounded px-1.5 py-0.2 text-[9px] font-bold uppercase ${
@@ -429,15 +390,15 @@ export default function SkillList() {
                     size="md"
                     isBanned={isBanned}
                     isParentMode={false}
-                                trailing={
-                                  <div className="flex flex-wrap items-center gap-1.5">
-                                    {isBanned && (
-                                      <SkillIndicator
-                                        kind="banned"
-                                        title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
-                                      />
-                                    )}
-                                    {duplicateSkillIdSet.has(s.id) && (
+                    trailing={
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {isBanned && (
+                          <SkillIndicator
+                            kind="banned"
+                            title="Banned by Special Rule (No Debuffs) - this skill cannot be used and will not activate"
+                          />
+                        )}
+                        {duplicateSkillIdSet.has(s.id) && (
                           <DuplicateSkillBadge
                             cards={duplicateSkillCardsMap.get(s.id) || []}
                             skillName={s.nameEn}
@@ -450,25 +411,25 @@ export default function SkillList() {
                     {s.descEn && (
                       <p className="mt-0.5 line-clamp-2 text-xs leading-5 text-zinc-700 dark:text-zinc-300">{s.descEn}</p>
                     )}
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                    <SkillSourceIcons
-                      sources={(s.grants?.length ? s.grants : [{ cardId: s.cardId, cardName: s.cardName }]).map((grant) => ({
-                        kind: "card" as const,
-                        cardId: grant.cardId,
-                        name: grant.cardName,
-                      }))}
-                    />
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      <SkillSourceIcons
+                        sources={(s.grants?.length ? s.grants : [{ cardId: s.cardId, cardName: s.cardName }]).map((grant) => ({
+                          kind: "card" as const,
+                          cardId: grant.cardId,
+                          name: grant.cardName,
+                        }))}
+                      />
 
-                    {s.grants
-                      ?.filter((g) => g.eventMeta)
-                      .map((g, idx) => {
-                        return <EventChainAttribution key={idx} eventMeta={g.eventMeta!} />;
-                      })}
+                      {s.grants
+                        ?.filter((g) => g.eventMeta)
+                        .map((g, idx) => {
+                          return <EventChainAttribution key={idx} eventMeta={g.eventMeta!} />;
+                        })}
 
-                    <span>· #{s.id}</span>
-                  </div>
-                </SkillItem>
-              </div>
+                      <span>· #{s.id}</span>
+                    </div>
+                  </SkillItem>
+                </div>
               </li>
             );
           })}

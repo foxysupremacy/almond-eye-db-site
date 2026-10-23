@@ -274,6 +274,65 @@ For the full sample (DI wiring, View code-behind, XAML, unit tests), see
 
 ---
 
+## React / TypeScript MVVM Pattern (AlmondEye DB Standard)
+
+In React/TypeScript applications like `almond-eye-db-site`, MVVM principles are adapted into idiomatic React Custom Hooks:
+
+### Concept Mapping
+
+| C# CommunityToolkit.Mvvm | React / TypeScript Equivalent | Purpose |
+|--------------------------|-------------------------------|---------|
+| `ObservableObject` / `[ObservableProperty]` | `state` object inside custom hook (`useXxxViewModel`) | Encapsulates reactive values, loaded entities, and computed projections |
+| `[RelayCommand]` / `[AsyncRelayCommand]` | `commands` object of functions inside custom hook | Encapsulates user actions, mutations, and side-effects |
+| `ObservableValidator` | Validation rules inside ViewModel returning error messages in `state` | Decouples validation from JSX inputs |
+| `IMessenger` / `ObservableRecipient` | React Context / Custom Event dispatchers (`window.dispatchEvent`) | Cross-feature decoupled notifications |
+| XAML / View Code-behind | Pure JSX React Component (`screens/`, `components/`) | Renders UI, reading from `vm.state` and delegating events to `vm.commands` |
+
+### Architecture Contract
+
+Each feature defines its ViewModels under `features/<feature>/view-models/`:
+```typescript
+export interface ExampleViewModelState {
+  readonly items: readonly Item[];
+  readonly isLoading: boolean;
+  readonly selectedItem: Item | null;
+}
+
+export interface ExampleViewModelCommands {
+  readonly selectItem: (item: Item) => void;
+  readonly clearSelection: () => void;
+  readonly refresh: () => Promise<void>;
+}
+
+export interface ExampleViewModel {
+  readonly state: ExampleViewModelState;
+  readonly commands: ExampleViewModelCommands;
+}
+
+export function useExampleViewModel(): ExampleViewModel {
+  // state, effects, API queries, projections
+  return {
+    state: { ... },
+    commands: { ... },
+  };
+}
+```
+
+The View simply binds to the ViewModel:
+```tsx
+export default function ExampleView() {
+  const { state, commands } = useExampleViewModel();
+  if (state.isLoading) return <LoadingSpinner />;
+  return (
+    <div>
+      <ItemList items={state.items} onSelect={commands.selectItem} />
+    </div>
+  );
+}
+```
+
+---
+
 ## References & companion skills
 
 | Topic | Where |

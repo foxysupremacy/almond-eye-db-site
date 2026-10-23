@@ -4,20 +4,16 @@
 // that lists ALL cards with search + sort; picking fills the slot.
 // Supports mode="main" (default) and mode="parent" (for Parent Deck farming).
 
-import { useState, useMemo } from "react";
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
 import type { CardIndexEntry } from "@/lib/api";
-import { useDeck } from "@/features/deck/state";
 import { DECK_SIZE } from "@/lib/deck/constants";
 import CardPickerPopover from "@/features/deck/pickers/card-picker-popover";
 import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
 import CardChainSelector from "@/features/deck/components/card-chain-selector";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
-import { useParentingSetup } from "@/features/parenting/hooks";
 import { findCharConflict } from "@/lib/deck/card-constraints";
-import { charactersByCharId, charactersById } from "@/lib/api";
-import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
+import { useDeckPickerViewModel } from "@/features/deck/view-models/use-deck-picker-view-model";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
@@ -28,40 +24,22 @@ export interface DeckPickerProps {
 }
 
 export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
+  const { state, commands } = useDeckPickerViewModel(mode);
   const {
-    mainSlots,
-    setMainCard,
-    parentSlots,
-    setParentCard,
-    clearParent,
-    copyMainToParent,
-    mainSkills,
+    isParent,
+    activeSlots,
+    openSlot,
+    mobileSlot,
+    mobileCard,
+    inspectCard,
+    targetChara,
+    hasMainDeck,
+    hasParentDeck,
+    mainCardIdSet,
     skillsByCard,
-  } = useDeck();
-
-  const { setup } = useParentingSetup();
-  const targetChara = useMemo(() => {
-    return resolveTargetCharacter(setup, charactersById, charactersByCharId);
-  }, [setup]);
-
-  const isParent = mode === "parent";
-  const activeSlots = isParent ? parentSlots : mainSlots;
-  const onPickCard = isParent ? setParentCard : setMainCard;
-
-  const [mobileSlot, setMobileSlot] = useState<number | null>(null);
-  const mobileCard = mobileSlot !== null ? activeSlots[mobileSlot] : null;
-  const [openSlot, setOpenSlot] = useState<number | null>(null);
-  const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
-
-  function pick(card: CardIndexEntry) {
-    if (openSlot == null) return;
-    onPickCard(openSlot, card);
-    setOpenSlot(null);
-  }
-
-  const mainCardIdSet = new Set(mainSlots.filter(Boolean).map((c) => c!.id));
-  const hasMainDeck = mainSlots.some(Boolean);
-  const hasParentDeck = parentSlots.some(Boolean);
+    parentSlots,
+    mainSlots,
+  } = state;
 
   return (
     <section className="flex flex-col gap-4">
@@ -83,7 +61,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
             {hasMainDeck && (
               <button
                 type="button"
-                onClick={copyMainToParent}
+                onClick={commands.copyMainToParent}
                 className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-100 shadow-xs cursor-pointer transition-colors"
                 title="Copy the 6 cards from your Main Deck into the Parent Deck"
               >
@@ -93,7 +71,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
             {hasParentDeck && (
               <button
                 type="button"
-                onClick={clearParent}
+                onClick={commands.clearParent}
                 className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1.5 text-xs font-medium text-zinc-500 dark:text-zinc-400 hover:border-red-200 dark:hover:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 shadow-xs cursor-pointer transition-colors"
               >
                 Clear Parent Deck
@@ -106,43 +84,54 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
       <div className="grid grid-cols-3 gap-2 lg:hidden" aria-label={isParent ? "Parent support deck" : "Main support deck"}>
         {Array.from({ length: DECK_SIZE }, (_, index) => {
           const card = activeSlots[index];
-          const conflict = card && (findCharConflict(activeSlots, index, card) || (!isParent && targetChara && (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp)));
-          return <button key={index} type="button" aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`} onClick={() => card ? setMobileSlot(index) : setOpenSlot(index)}
-            className={`relative flex min-h-32 min-w-0 flex-col overflow-hidden rounded-xl border bg-white text-left dark:bg-zinc-900 ${conflict ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"}`}>
-            {card ? <>
-              <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                <img src={card.imgUrl} alt="" className="block h-auto w-full object-contain" />
-                <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
-                <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
-                {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}
-              </div>
-              <div className="w-full min-w-0 p-2"><p className="truncate text-xs font-semibold">{cardLabel(card)}</p><p className="mt-0.5 truncate text-[10px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p></div>
-            </> : <span className="flex flex-1 flex-col items-center justify-center gap-2 self-stretch px-2 py-5 text-zinc-400"><span className="grid h-9 w-9 place-items-center rounded-full border border-dashed border-zinc-300 text-xl dark:border-zinc-700">+</span><span className="text-xs">Slot {index + 1}</span></span>}
-          </button>;
+          const conflict = card && (findCharConflict(activeSlots as CardIndexEntry[], index, card) || (!isParent && targetChara && (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp)));
+          return (
+            <button
+              key={index}
+              type="button"
+              aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`}
+              onClick={() => card ? commands.openMobileSlot(index) : commands.openSlotPicker(index)}
+              className={`relative flex min-h-32 min-w-0 flex-col overflow-hidden rounded-xl border bg-white text-left dark:bg-zinc-900 ${conflict ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"}`}
+            >
+              {card ? (
+                <>
+                  <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                    <img src={card.imgUrl} alt="" className="block h-auto w-full object-contain" />
+                    <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
+                    <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
+                    {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}
+                  </div>
+                  <div className="w-full min-w-0 p-2">
+                    <p className="truncate text-xs font-semibold">{cardLabel(card)}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p>
+                  </div>
+                </>
+              ) : (
+                <span className="flex flex-1 flex-col items-center justify-center gap-2 self-stretch px-2 py-5 text-zinc-400">
+                  <span className="grid h-9 w-9 place-items-center rounded-full border border-dashed border-zinc-300 text-xl dark:border-zinc-700">+</span>
+                  <span className="text-xs">Slot {index + 1}</span>
+                </span>
+              )}
+            </button>
+          );
         })}
       </div>
       <p className="-mt-2 text-xs text-zinc-500 lg:hidden">{activeSlots.filter(Boolean).length} of 6 cards · Tap a card for choices and skills</p>
-            {/* 6-Slot Grid */}
+
+      {/* 6-Slot Grid */}
       <div className="hidden lg:grid grid-cols-2 min-[1100px]:grid-cols-[repeat(3,208px)] justify-center justify-items-center gap-2 sm:gap-3.5 max-w-[440px] min-[1100px]:max-w-none mx-auto">
         {Array.from({ length: DECK_SIZE }, (_, i) => i).map((slotIndex) => {
           const card = activeSlots[slotIndex];
           const isInMain = isParent && card && mainCardIdSet.has(card.id);
-          const cardSkills = card ? skillsByCard[card.id] : undefined;
-          const allSkills = [
-            ...(cardSkills?.eventSkills.map((s) => ({ ...s, source: "event" as const })) ?? []),
-            ...(cardSkills?.hintSkills.map((s) => ({ ...s, source: "hint" as const })) ?? []),
-          ];
           const isTraineeConflict = Boolean(
-            !isParent && // Parent Deck targets P1/P2, not the trainee — cards sharing the trainee's character are allowed there
+            !isParent &&
             card &&
             targetChara &&
             (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() ||
              card.nameJp === targetChara.nameJp)
           );
-          // Same-uma rule (per deck): another DIFFERENT card of this character is
-          // equipped elsewhere in this deck (possible via imported/shared presets).
           const charConflict = card
-            ? findCharConflict(isParent ? parentSlots : mainSlots, slotIndex, card)
+            ? findCharConflict((isParent ? parentSlots : mainSlots) as CardIndexEntry[], slotIndex, card)
             : null;
 
           return (
@@ -209,7 +198,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                     <div className="flex items-center justify-between pt-1 border-t border-zinc-100/80 dark:border-zinc-800/80">
                       <button
                         type="button"
-                        onClick={() => setInspectCard(card)}
+                        onClick={() => commands.inspectCard(card)}
                         className="text-[10px] font-medium text-emerald-700 dark:text-emerald-400 hover:underline cursor-pointer"
                         title="Click to view and inspect all skills from this card"
                       >
@@ -220,7 +209,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                       <button
                         type="button"
                         className="text-[10px] font-medium text-zinc-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors"
-                        onClick={() => onPickCard(slotIndex, null)}
+                        onClick={() => commands.removeCard(slotIndex)}
                       >
                         remove
                       </button>
@@ -233,7 +222,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                     <button
                       type="button"
                       className="flex w-full flex-col items-center justify-center gap-2 sm:gap-2.5 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-3.5 sm:p-5 text-zinc-400 dark:text-zinc-500 hover:border-emerald-400 dark:hover:border-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/30 dark:hover:bg-emerald-950/20 cursor-pointer transition-all ease-out-quart duration-150 active:scale-[0.98]"
-                      onClick={() => setOpenSlot(slotIndex)}
+                      onClick={() => commands.openSlotPicker(slotIndex)}
                     >
                       <span className="grid h-8 w-8 sm:h-10 sm:w-10 place-items-center rounded-full border border-dashed border-zinc-300 dark:border-zinc-700 text-base sm:text-xl font-light">
                         +
@@ -248,27 +237,55 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         })}
       </div>
 
-      <MobileSheet open={mobileSlot !== null && Boolean(mobileCard)} onClose={() => setMobileSlot(null)} title={mobileCard ? cardLabel(mobileCard) : "Support card"}>
-        {mobileCard && <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <img src={mobileCard.portraitUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
-            <div className="min-w-0"><p className="font-semibold">{cardLabel(mobileCard)}</p><p className="mt-0.5 text-xs text-zinc-400">{mobileCard.nameJp}</p><p className="mt-1 text-xs text-zinc-500">{RARITY_META[mobileCard.rarity]?.label} · {formatCardType(mobileCard.type)}</p></div>
+      <MobileSheet open={mobileSlot !== null && Boolean(mobileCard)} onClose={commands.closeMobileSlot} title={mobileCard ? cardLabel(mobileCard) : "Support card"}>
+        {mobileCard && (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <img src={mobileCard.portraitUrl} alt="" className="h-16 w-16 rounded-lg object-cover" />
+              <div className="min-w-0">
+                <p className="font-semibold">{cardLabel(mobileCard)}</p>
+                <p className="mt-0.5 text-xs text-zinc-400">{mobileCard.nameJp}</p>
+                <p className="mt-1 text-xs text-zinc-500">{RARITY_META[mobileCard.rarity]?.label} · {formatCardType(mobileCard.type)}</p>
+              </div>
+            </div>
+            <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800">
+              <p className="mb-3 text-sm font-semibold">Event choices</p>
+              <CardChainSelector card={mobileCard} mode={mode} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border border-zinc-200 px-3 text-sm dark:border-zinc-700 cursor-pointer"
+                onClick={commands.inspectCard ? () => { commands.inspectCard(mobileCard); commands.closeMobileSlot(); } : undefined}
+              >
+                Inspect skills
+              </button>
+              <button
+                type="button"
+                className="min-h-11 rounded-xl bg-emerald-700 px-3 text-sm font-semibold text-white cursor-pointer"
+                onClick={commands.replaceFromMobile}
+              >
+                Replace card
+              </button>
+            </div>
+            <button
+              type="button"
+              className="min-h-11 w-full text-sm text-rose-600 dark:text-rose-400 cursor-pointer"
+              onClick={commands.removeFromMobile}
+            >
+              Remove from deck
+            </button>
           </div>
-          <div className="border-t border-zinc-100 pt-4 dark:border-zinc-800"><p className="mb-3 text-sm font-semibold">Event choices</p><CardChainSelector card={mobileCard} mode={mode} /></div>
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" className="min-h-11 rounded-xl border border-zinc-200 px-3 text-sm dark:border-zinc-700" onClick={() => { setInspectCard(mobileCard); setMobileSlot(null); }}>Inspect skills</button>
-            <button type="button" className="min-h-11 rounded-xl bg-emerald-700 px-3 text-sm font-semibold text-white" onClick={() => { setOpenSlot(mobileSlot); setMobileSlot(null); }}>Replace card</button>
-          </div>
-          <button type="button" className="min-h-11 w-full text-sm text-rose-600 dark:text-rose-400" onClick={() => { if (mobileSlot !== null) onPickCard(mobileSlot, null); setMobileSlot(null); }}>Remove from deck</button>
-        </div>}
+        )}
       </MobileSheet>
+
       {/* Support Card Picker Modal */}
       {openSlot !== null && (
         <CardPickerPopover
           mode={mode}
           slotIndex={openSlot}
-          onPick={pick}
-          onClose={() => setOpenSlot(null)}
+          onPick={commands.pickCard}
+          onClose={commands.closeSlotPicker}
         />
       )}
 
@@ -277,7 +294,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         <CardSkillsSheet
           card={inspectCard}
           isOpen={Boolean(inspectCard)}
-          onClose={() => setInspectCard(null)}
+          onClose={commands.closeInspect}
           mode={mode}
         />
       )}

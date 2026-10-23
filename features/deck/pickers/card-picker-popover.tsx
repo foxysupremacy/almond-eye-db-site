@@ -8,48 +8,22 @@ import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { ToggleButton } from "react-aria-components/ToggleButton";
 import { ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import { CardTargetSkillSearch } from "./card-target-skill-search";
-
-// Popover listing ALL support cards for one deck slot, with search + sort by
-// recommendation score (for parent farming), rarity (SSR/SR/R), or type.
-// Composes standard interaction controls inside a custom card-selection layout.
-
-import { useEffect, useMemo, useRef, useState } from "react";
-import { api, type CardIndexEntry, type SkillDetail } from "@/lib/api";
-import { useDeck } from "@/features/deck/state";
-import { recommendCardsForParent, type CardRecommendation } from "@/lib/recommendation/engine";
+import { useRef } from "react";
+import type { CardIndexEntry } from "@/lib/api";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
-import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
 import { EFFECT_CATEGORIES } from "@/app/common/ui/skills/skill-effects";
-import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
-import { getPvpRaceParameters } from "@/lib/pvp/events";
-import { useParentingSetup } from "@/features/parenting/hooks";
 import { cardCharacterKey } from "@/lib/deck/card-constraints";
-import { charactersByCharId, charactersById, skillsById } from "@/lib/api";
-import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
-import { getInheritableSkillForGold, GOLD_TO_WHITE_MAP } from "@/lib/skills/rarity";
-import { getSkillRarityStyle, RARITY_META } from "@/app/common/ui/skills/skill-rarity";
-import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
-import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
+import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { TargetIcon, CheckIcon, XIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
 import { Badge } from "@/app/common/ui/primitives/badge";
-import {
-  CARD_PICKER_TYPES,
-  filterAndSortCards,
-  type CardPickerSort,
-  type CardPickerType,
-  type EvaluatedTargetSkill,
-} from "./model/card-filter";
-import { cardPickerAdapter } from "./model/card-picker-state";
-import { usePickerController } from "@/app/common/hooks/use-picker-controller";
+import { CARD_PICKER_TYPES, type CardPickerSort, type CardPickerType } from "./model/card-filter";
+import { useCardPickerViewModel } from "@/features/deck/view-models/use-card-picker-view-model";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
 }
-
-// Leave the first frame free for the picker shell to become visibly usable.
-const PICKER_WORK_DELAY_MS = 250;
 
 function CardPickerSkeleton({ mode, label }: { mode: "main" | "parent"; label: string }) {
   return (
@@ -82,8 +56,6 @@ function CardPickerSkeleton({ mode, label }: { mode: "main" | "parent"; label: s
   );
 }
 
-// Rarity label + chip colors. Rarity: 3 = SSR, 2 = SR, 1 = R.
-
 export default function CardPickerPopover({
   onPick,
   onClose,
@@ -95,453 +67,40 @@ export default function CardPickerPopover({
   mode?: "main" | "parent";
   slotIndex?: number | null;
 }) {
+  const { state, commands } = useCardPickerViewModel({
+    mode,
+    slotIndex,
+    onPick,
+    onClose,
+  });
+
   const {
-    mainSkillIdSet,
-    mainSlots,
-    parentSlots,
-    course,
-    runningStyle,
-    distance,
-    surface,
-    activePvpEvent,
-    activeRaceParameters,
-    activePreset,
-  } = useDeck();
-  const { state, view, dispatch } = usePickerController(cardPickerAdapter, mode);
+    cards,
+    pickerState,
+    filteredCards,
+    inspectCard,
+    recommendationsMap,
+    parentCardTargetSkillsMap,
+    cardMatchedSelectedSkillsMap,
+    searchedSkills,
+    mainCardIdSet,
+    parentCardIdSet,
+    occupiedCharMap,
+    targetChara,
+    getLimitBreak,
+    totalOwned,
+  } = state;
 
-  const [cards, setCards] = useState<CardIndexEntry[] | null>(null);
-  const [skills, setSkills] = useState<SkillDetail[] | null>(null);
-  const { query, sort, type, selectedEffects, onlyOwned, selectedSkills, skillMatchMode, skillQuery, isSkillPanelOpen } = state;
-  const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
+  const { query, sort, type, selectedEffects, onlyOwned, selectedSkills, skillMatchMode, skillQuery, isSkillPanelOpen } = pickerState;
 
-  // Multi-skill filter states for Parent Deck
-
-  const { getLimitBreak, isOwned, totalOwned } = useOwnedCards();
   const searchBoxRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-
-  // Keep the first picker frame light; loading these cached datasets can
-  // immediately trigger a large card list render on the same click.
-  useEffect(() => {
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const frame = window.requestAnimationFrame(() => {
-      timer = setTimeout(() => {
-        api.listCardIndex()
-          .then((result) => { if (!cancelled) setCards(result); })
-          .catch(() => { if (!cancelled) setCards([]); });
-        api.listSkills()
-          .then((result) => { if (!cancelled) setSkills(result); })
-          .catch(() => { if (!cancelled) setSkills([]); });
-      }, PICKER_WORK_DELAY_MS);
-    });
-    return () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, []);
-
-
-  // Main & Parent cards presence sets
-  const mainCardIdSet = useMemo(() => {
-    return new Set(mainSlots.filter(Boolean).map((c) => c!.id));
-  }, [mainSlots]);
-
-  const parentCardIdSet = useMemo(() => {
-    return new Set(parentSlots.filter(Boolean).map((c) => c!.id));
-  }, [parentSlots]);
-
-  // Character-identity occupancy within the CURRENT deck only: charKey -> equipped
-  // card ids. Main and Parent decks are independent, so the other deck never
-  // constrains this picker. A card is unpickable when its uma is occupied here by
-  // a DIFFERENT card. The open slot's current occupant is excluded so replacing a
-  // card never conflicts with itself.
-  const occupiedCharMap = useMemo(() => {
-    const map = new Map<string, Set<number>>();
-    const slots = mode === "parent" ? parentSlots : mainSlots;
-    slots.forEach((c, i) => {
-      if (!c) return;
-      if (i === slotIndex) return;
-      const key = cardCharacterKey(c);
-      const ids = map.get(key);
-      if (ids) ids.add(c.id);
-      else map.set(key, new Set([c.id]));
-    });
-    return map;
-  }, [mainSlots, parentSlots, mode, slotIndex]);
-
-  const { setup } = useParentingSetup();
-  const targetChara = useMemo(() => {
-    return resolveTargetCharacter(setup, charactersById, charactersByCharId);
-  }, [setup]);
-
-  // Recommendations map for both parent and main deck modes
-  const raceParams = activeRaceParameters;
-
-  const [recommendationsMap, setRecommendationsMap] = useState<Map<number, CardRecommendation> | null>(null);
-  useEffect(() => {
-    if (sort !== "recommended") return;
-    // Course evaluation across the entire card index is expensive. Let the
-    // picker frame paint before starting it so the click responds immediately.
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const frame = window.requestAnimationFrame(() => {
-      timer = setTimeout(() => {
-        const isParent = mode === "parent";
-        const recs = recommendCardsForParent({
-          mainDeckSkillIds: isParent ? mainSkillIdSet : new Set(),
-          equippedParentCardIds: isParent
-            ? parentSlots.map((c) => c?.id ?? null)
-            : mainSlots.map((c) => c?.id ?? null),
-          course,
-          style: runningStyle,
-          distance,
-          surface,
-          limit: 600, // wider pool for search & sort
-          raceParams,
-
-
-          chainChoicesMap: isParent ? activePreset.parentChainChoices : activePreset.mainChainChoices,
-        });
-        setRecommendationsMap(new Map(recs.map((r) => [r.cardId, r])));
-      }, PICKER_WORK_DELAY_MS);
-    });
-    return () => {
-      window.cancelAnimationFrame(frame);
-      if (timer !== undefined) clearTimeout(timer);
-    };
-  }, [sort, mode, mainSkillIdSet, parentSlots, mainSlots, course, runningStyle, distance, surface, raceParams, activePreset.parentChainChoices, activePreset.mainChainChoices]);
-
-  // Precompute evaluated target skills for parent deck mode:
-  // - Gathers hint skills and selected event chain choice skills
-  // - Rejects skills already owned in the main deck
-  // - Converts Gold skills to inheritable White skills (rejects uninheritable)
-  // - Verifies activation via evaluateSkillActivation (rejects style/rank traps and dead activations)
-  const parentCardTargetSkillsMap = useMemo(() => {
-    const map = new Map<number, EvaluatedTargetSkill[]>();
-    if (!cards || mode !== "parent" || !course) return map;
-
-    const activationCache = new Map<number, boolean>();
-    const checkActivation = (sid: number) => {
-      let cached = activationCache.get(sid);
-      if (cached !== undefined) return cached;
-      const res = evaluateSkillActivation(sid, course, runningStyle, raceParams);
-      activationCache.set(sid, res.activates);
-      return res.activates;
-    };
-
-    const parentChoices = activePreset.parentChainChoices;
-
-    for (const c of cards) {
-      const cardSkills: EvaluatedTargetSkill[] = [];
-      const seenSids = new Set<number>();
-
-      // 1. Hint skills
-      for (const rawSid of c.hintSkills || []) {
-        let sid = rawSid;
-        const rawSkill = skillsById.get(rawSid);
-        if (rawSkill?.rarity === 2) {
-          const mapped = getInheritableSkillForGold(rawSid);
-          if (!mapped) continue;
-          sid = mapped.whiteId;
-        }
-        if (seenSids.has(sid) || mainSkillIdSet.has(sid)) continue;
-        seenSids.add(sid);
-
-        if (!checkActivation(sid)) continue;
-
-        const resolvedSkill = skillsById.get(sid) || rawSkill;
-        const cats = resolvedSkill ? classifySkillEffects(resolvedSkill) : ["other" as SkillEffectCategory];
-        cardSkills.push({
-          id: sid,
-          nameEn: resolvedSkill?.nameEn || `Skill #${sid}`,
-          nameJp: resolvedSkill?.nameJp || "",
-          source: "hint",
-          categories: cats,
-        });
-      }
-
-      // 2. Event skills (respecting chosen/default event branch)
-      const handledEventSkillIds = new Set<number>();
-      if (c.eventDetails && c.eventDetails.length > 0) {
-        for (const ev of c.eventDetails) {
-          let chosenChoiceIndex = 1;
-          if (ev.choices.length > 1) {
-            const choiceKey = `${c.id}:${ev.eventId}`;
-            chosenChoiceIndex =
-              parentChoices?.[choiceKey] ??
-              parentChoices?.[String(c.id)] ??
-              getDefaultChoiceIndex(ev, (sid) => skillsById.get(sid)?.rarity ?? 1);
-          }
-
-          for (const ch of ev.choices) {
-            for (const sId of ch.skillIds) handledEventSkillIds.add(sId);
-          }
-
-          const chosenChoice = ev.choices.find((ch) => ch.index === chosenChoiceIndex) ?? ev.choices[0];
-          if (chosenChoice) {
-            for (const rawSid of chosenChoice.skillIds) {
-              let sid = rawSid;
-              const rawSkill = skillsById.get(rawSid);
-              if (rawSkill?.rarity === 2) {
-                const mapped = getInheritableSkillForGold(rawSid);
-                if (!mapped) continue;
-                sid = mapped.whiteId;
-              }
-              if (seenSids.has(sid) || mainSkillIdSet.has(sid)) continue;
-              seenSids.add(sid);
-
-              if (!checkActivation(sid)) continue;
-
-              const resolvedSkill = skillsById.get(sid) || rawSkill;
-              const cats = resolvedSkill ? classifySkillEffects(resolvedSkill) : ["other" as SkillEffectCategory];
-              cardSkills.push({
-                id: sid,
-                nameEn: resolvedSkill?.nameEn || `Skill #${sid}`,
-                nameJp: resolvedSkill?.nameJp || "",
-                source: "event",
-                eventMeta: {
-                  eventNameEn: ev.nameEn,
-                  eventNameJp: ev.nameJp,
-                  choiceIndex: chosenChoice.index,
-                },
-                categories: cats,
-              });
-            }
-          }
-        }
-      }
-
-      // 3. Fallback: Loose event skills not in eventDetails
-      for (const rawSid of c.eventSkills || []) {
-        if (handledEventSkillIds.has(rawSid)) continue;
-        let sid = rawSid;
-        const rawSkill = skillsById.get(rawSid);
-        if (rawSkill?.rarity === 2) {
-          const mapped = getInheritableSkillForGold(rawSid);
-          if (!mapped) continue;
-          sid = mapped.whiteId;
-        }
-        if (seenSids.has(sid) || mainSkillIdSet.has(sid)) continue;
-        seenSids.add(sid);
-
-        if (!checkActivation(sid)) continue;
-
-        const resolvedSkill = skillsById.get(sid) || rawSkill;
-        const cats = resolvedSkill ? classifySkillEffects(resolvedSkill) : ["other" as SkillEffectCategory];
-        cardSkills.push({
-          id: sid,
-          nameEn: resolvedSkill?.nameEn || `Skill #${sid}`,
-          nameJp: resolvedSkill?.nameJp || "",
-          source: "event",
-          categories: cats,
-        });
-      }
-
-      map.set(c.id, cardSkills);
-    }
-
-    return map;
-  }, [cards, mode, course, runningStyle, raceParams, activePreset.parentChainChoices, mainSkillIdSet]);
-
-  // Precompute skill effect categories and names per card
-  const { cardEffectMap, cardSkillNamesMap } = useMemo(() => {
-    const effectMap = new Map<number, Set<SkillEffectCategory>>();
-    const nameMap = new Map<number, string>();
-
-    if (cards && skills) {
-      const skillsByIdMap = new Map<number, SkillDetail>(skills.map((s) => [s.id, s]));
-      const skillCatLookup = new Map<number, SkillEffectCategory[]>(
-        skills.map((s) => [s.id, classifySkillEffects(s)])
-      );
-
-      for (const c of cards) {
-        const cats = new Set<SkillEffectCategory>();
-        const skillNames: string[] = [];
-
-        const allSids = [...(c.eventSkills || []), ...(c.hintSkills || [])];
-        for (const sid of allSids) {
-          const sCats = skillCatLookup.get(sid);
-          if (sCats) {
-            for (const cat of sCats) cats.add(cat);
-          }
-          const s = skillsByIdMap.get(sid);
-          if (s) {
-            if (s.nameEn) skillNames.push(s.nameEn.toLowerCase());
-            if (s.nameJp) skillNames.push(s.nameJp.toLowerCase());
-          }
-        }
-
-        effectMap.set(c.id, cats);
-        nameMap.set(c.id, skillNames.join(" "));
-      }
-    }
-
-    return { cardEffectMap: effectMap, cardSkillNamesMap: nameMap };
-  }, [cards, skills]);
-
-  // Reverse map from White skill ID to all Gold skill IDs that map to it
-  const whiteToGoldsMap = useMemo(() => {
-    const map = new Map<number, number[]>();
-    for (const [goldIdStr, mapped] of Object.entries(GOLD_TO_WHITE_MAP)) {
-      const gId = Number(goldIdStr);
-      const existing = map.get(mapped.whiteId);
-      if (existing) existing.push(gId);
-      else map.set(mapped.whiteId, [gId]);
-    }
-    return map;
-  }, []);
-
-  // Set of equivalent IDs for each selected skill (including self, gold <-> white)
-  const selectedSkillEquivMap = useMemo(() => {
-    const map = new Map<number, Set<number>>();
-    for (const s of selectedSkills) {
-      const equiv = new Set<number>([s.id]);
-      const goldMapped = GOLD_TO_WHITE_MAP[String(s.id)];
-      if (goldMapped) equiv.add(goldMapped.whiteId);
-      const reverseGolds = whiteToGoldsMap.get(s.id);
-      if (reverseGolds) {
-        for (const gId of reverseGolds) equiv.add(gId);
-      }
-      map.set(s.id, equiv);
-    }
-    return map;
-  }, [selectedSkills, whiteToGoldsMap]);
-
-  // Pre-index granted skill IDs for each card (hints + events)
-  const cardGrantedSkillsMap = useMemo(() => {
-    const map = new Map<number, Set<number>>();
-    if (!cards) return map;
-    for (const c of cards) {
-      const sids = new Set<number>();
-      if (c.hintSkills) {
-        for (const sid of c.hintSkills) sids.add(sid);
-      }
-      if (c.eventSkills) {
-        for (const sid of c.eventSkills) sids.add(sid);
-      }
-      map.set(c.id, sids);
-    }
-    return map;
-  }, [cards]);
-
-  // Map of matched selected skills for each card
-  const cardMatchedSelectedSkillsMap = useMemo(() => {
-    const map = new Map<number, { matchedSkills: SkillDetail[]; count: number }>();
-    if (!cards || mode !== "parent" || selectedSkills.length === 0) return map;
-
-    for (const c of cards) {
-      const granted = cardGrantedSkillsMap.get(c.id);
-      if (!granted || granted.size === 0) {
-        map.set(c.id, { matchedSkills: [], count: 0 });
-        continue;
-      }
-
-      const matched: SkillDetail[] = [];
-      for (const s of selectedSkills) {
-        const equiv = selectedSkillEquivMap.get(s.id);
-        if (!equiv) continue;
-        let hasSkill = false;
-        for (const sid of equiv) {
-          if (granted.has(sid)) {
-            hasSkill = true;
-            break;
-          }
-        }
-        if (hasSkill) matched.push(s);
-      }
-      map.set(c.id, { matchedSkills: matched, count: matched.length });
-    }
-    return map;
-  }, [cards, mode, selectedSkills, selectedSkillEquivMap, cardGrantedSkillsMap]);
-
-  // All skill IDs granted across all cards in index
-  const allCardGrantedSkillIds = useMemo(() => {
-    const set = new Set<number>();
-    if (cards) {
-      for (const c of cards) {
-        if (c.hintSkills) for (const sid of c.hintSkills) set.add(sid);
-        if (c.eventSkills) for (const sid of c.eventSkills) set.add(sid);
-      }
-    }
-    return set;
-  }, [cards]);
-
-  // Filter available skills for autocomplete search
-  const searchedSkills = useMemo(() => {
-    if (!skills || !skillQuery.trim()) return [];
-    const q = view.normalizedSkillQuery;
-    const selectedIds = view.selectedSkillIds;
-
-    const results: SkillDetail[] = [];
-    for (const s of skills) {
-      if (selectedIds.has(s.id)) continue;
-      const equivGolds = whiteToGoldsMap.get(s.id);
-      const goldMapped = GOLD_TO_WHITE_MAP[String(s.id)];
-      const hasCardGrant =
-        allCardGrantedSkillIds.has(s.id) ||
-        Boolean(goldMapped && allCardGrantedSkillIds.has(goldMapped.whiteId)) ||
-        Boolean(equivGolds && equivGolds.some((gid) => allCardGrantedSkillIds.has(gid)));
-
-      if (!hasCardGrant) continue;
-
-      const match =
-        (s.nameEn && s.nameEn.toLowerCase().includes(q)) ||
-        (s.nameJp && s.nameJp.toLowerCase().includes(q)) ||
-        (s.descEn && s.descEn.toLowerCase().includes(q));
-
-      if (match) {
-        results.push(s);
-        if (results.length >= 20) break;
-      }
-    }
-    return results;
-  }, [skills, skillQuery, selectedSkills, whiteToGoldsMap, allCardGrantedSkillIds]);
-
-  const filtered = useMemo(
-    () =>
-      filterAndSortCards({
-        cards,
-        query,
-        type,
-        selectedEffects,
-        cardEffectMap,
-        cardSkillNamesMap,
-        parentCardTargetSkillsMap,
-        sort,
-        mode,
-        recommendationsMap: recommendationsMap ?? new Map(),
-        onlyOwned,
-        isOwned,
-        selectedSkillCount: selectedSkills.length,
-        skillMatchMode,
-        cardMatchedSelectedSkillsMap,
-      }),
-    [
-      cards,
-      query,
-      type,
-      selectedEffects,
-      cardEffectMap,
-      cardSkillNamesMap,
-      parentCardTargetSkillsMap,
-      sort,
-      mode,
-      recommendationsMap,
-      onlyOwned,
-      isOwned,
-      selectedSkills.length,
-      skillMatchMode,
-      cardMatchedSelectedSkillsMap,
-    ],
-  );
 
   return (
     <>
       <AppDialog
         isOpen
-        onOpenChange={(open) => { if (!open) onClose(); }}
+        onOpenChange={(open) => { if (!open) commands.close(); }}
         title="Pick Support Card"
         ariaLabel="Pick Support Card"
         size="full"
@@ -559,13 +118,13 @@ export default function CardPickerPopover({
             <PickerSearchBar
               inputRef={searchBoxRef}
               value={query}
-              onChange={(value) => dispatch({ type: "queryChanged", value })}
+              onChange={commands.setQuery}
               placeholder="Search cards by English or Japanese name…"
               label="Search support cards"
               autoFocus
               inputClassName="min-h-11 w-full rounded-lg border border-zinc-200 bg-white px-3 text-base text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:placeholder:text-zinc-500 sm:min-h-0 sm:px-2.5 sm:py-1.5 sm:text-[13px]"
             />
-            <AppButton variant="quiet" iconOnly onPress={onClose} aria-label="Close support card picker">
+            <AppButton variant="quiet" iconOnly onPress={commands.close} aria-label="Close support card picker">
               <XIcon className="h-4 w-4" />
             </AppButton>
           </div>
@@ -573,14 +132,22 @@ export default function CardPickerPopover({
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <AppSelect
               value={sort}
-              onValueChange={(value) => dispatch({ type: "sortChanged", value: value as CardPickerSort })}
+              onValueChange={(value) => commands.setSort(value as CardPickerSort)}
               className="min-h-11 flex-1 sm:flex-none"
-             label="Sort cards" options={[{ value: "recommended", label: "Sort: Recommended" }, ...(mode === "parent" ? [{ value: "targetSkills", label: "Sort: Target Skills" }] : []), { value: "release", label: "Sort: Release Date" }, { value: "rarity", label: "Sort: Rarity" }, { value: "type", label: "Sort: Type" }]} />
+              label="Sort cards"
+              options={[
+                { value: "recommended", label: "Sort: Recommended" },
+                ...(mode === "parent" ? [{ value: "targetSkills", label: "Sort: Target Skills" }] : []),
+                { value: "release", label: "Sort: Release Date" },
+                { value: "rarity", label: "Sort: Rarity" },
+                { value: "type", label: "Sort: Type" },
+              ]}
+            />
 
             {totalOwned > 0 && (
               <ToggleButton
                 isSelected={onlyOwned}
-                onChange={() => dispatch({ type: "ownershipToggled" })}
+                onChange={commands.toggleOwnership}
                 className={`rounded-md border px-2 py-1 text-[13px] font-semibold transition-colors cursor-pointer ${
                   onlyOwned
                     ? "bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300"
@@ -604,8 +171,14 @@ export default function CardPickerPopover({
           </div>
 
           {/* Type Filter Pills */}
-          <RadioGroup aria-label="Support card type" value={type} onChange={(value) => dispatch({ type: "typeChanged", value: value as CardPickerType })} orientation="horizontal" className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-              {CARD_PICKER_TYPES.map((t) => (
+          <RadioGroup
+            aria-label="Support card type"
+            value={type}
+            onChange={(value) => commands.setType(value as CardPickerType)}
+            orientation="horizontal"
+            className="mt-2 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none"
+          >
+            {CARD_PICKER_TYPES.map((t) => (
               <Radio
                 key={t}
                 value={t}
@@ -624,20 +197,38 @@ export default function CardPickerPopover({
 
           {/* Skill Effect Filter Chips */}
           <div className="mt-1.5 flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
-            <AppButton variant={selectedEffects.length === 0 ? "primary" : "quiet"} onPress={() => dispatch({ type: "effectsCleared" })}>All Effects</AppButton>
-            <ToggleButtonGroup aria-label="Filter cards by skill effect" selectionMode="multiple" selectedKeys={selectedEffects} onSelectionChange={(keys) => {
-              const next = Array.from(keys) as SkillEffectCategory[];
-              for (const category of EFFECT_CATEGORIES) {
-                if (next.includes(category.id) !== selectedEffects.includes(category.id)) dispatch({ type: "effectToggled", value: category.id });
-              }
-            }} className="flex items-center gap-1.5">
-              {EFFECT_CATEGORIES.map((category) => <ToggleButton key={category.id} id={category.id} aria-description={category.description} className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-600 outline-none transition-colors data-[selected]:border-emerald-700 data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500/70 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:data-[selected]:bg-emerald-700 dark:data-[selected]:text-white sm:min-h-8">
-                <span className={`h-1.5 w-1.5 rounded-full ${category.dotColor}`} />{category.label}
-              </ToggleButton>)}
+            <AppButton variant={selectedEffects.length === 0 ? "primary" : "quiet"} onPress={commands.clearEffects}>
+              All Effects
+            </AppButton>
+            <ToggleButtonGroup
+              aria-label="Filter cards by skill effect"
+              selectionMode="multiple"
+              selectedKeys={selectedEffects}
+              onSelectionChange={(keys) => {
+                const next = Array.from(keys) as (typeof EFFECT_CATEGORIES)[number]["id"][];
+                for (const category of EFFECT_CATEGORIES) {
+                  if (next.includes(category.id) !== selectedEffects.includes(category.id)) {
+                    commands.toggleEffect(category.id);
+                  }
+                }
+              }}
+              className="flex items-center gap-1.5"
+            >
+              {EFFECT_CATEGORIES.map((category) => (
+                <ToggleButton
+                  key={category.id}
+                  id={category.id}
+                  aria-description={category.description}
+                  className="inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg border border-zinc-200 bg-white px-2.5 text-[11px] font-semibold text-zinc-600 outline-none transition-colors data-[selected]:border-emerald-700 data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500/70 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:data-[selected]:bg-emerald-700 dark:data-[selected]:text-white sm:min-h-8"
+                >
+                  <span className={`h-1.5 w-1.5 rounded-full ${category.dotColor}`} />
+                  {category.label}
+                </ToggleButton>
+              ))}
             </ToggleButtonGroup>
           </div>
 
-          {/* Multi-Skill Filter (Parent Mode only - Flat layout, no nested box) */}
+          {/* Multi-Skill Filter (Parent Mode only) */}
           {mode === "parent" && (
             <div className="pt-2.5 mt-2 border-t border-zinc-200/70 dark:border-zinc-800">
               <div className="flex items-center justify-between gap-2">
@@ -655,16 +246,32 @@ export default function CardPickerPopover({
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   {selectedSkills.length > 1 && (
-                    <RadioGroup aria-label="Target skill matching" value={skillMatchMode} onChange={(value) => dispatch({ type: "skillMatchModeChanged", value: value as "OR" | "AND" })} orientation="horizontal" className="inline-flex gap-0.5 rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700">
-                      <Radio value="OR" className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8">ANY (OR)</Radio>
-                      <Radio value="AND" className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8">ALL (AND)</Radio>
+                    <RadioGroup
+                      aria-label="Target skill matching"
+                      value={skillMatchMode}
+                      onChange={(value) => commands.setSkillMatchMode(value as "OR" | "AND")}
+                      orientation="horizontal"
+                      className="inline-flex gap-0.5 rounded-lg border border-zinc-200 p-0.5 dark:border-zinc-700"
+                    >
+                      <Radio
+                        value="OR"
+                        className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8"
+                      >
+                        ANY (OR)
+                      </Radio>
+                      <Radio
+                        value="AND"
+                        className="flex min-h-11 cursor-pointer items-center rounded-md px-2 text-[11px] font-semibold outline-none data-[selected]:bg-emerald-700 data-[selected]:text-white data-[focus-visible]:ring-2 data-[focus-visible]:ring-emerald-500 sm:min-h-8"
+                      >
+                        ALL (AND)
+                      </Radio>
                     </RadioGroup>
                   )}
 
                   {selectedSkills.length > 0 && (
                     <button
                       type="button"
-                      onClick={() => dispatch({ type: "skillsCleared" })}
+                      onClick={commands.clearSkills}
                       className="text-[11px] font-semibold text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 transition-colors cursor-pointer"
                     >
                       Clear all
@@ -673,7 +280,7 @@ export default function CardPickerPopover({
 
                   <button
                     type="button"
-                    onClick={() => dispatch({ type: "skillPanelToggled" })}
+                    onClick={commands.toggleSkillPanel}
                     className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
                     aria-label={isSkillPanelOpen ? "Collapse skill panel" : "Expand skill panel"}
                   >
@@ -686,10 +293,14 @@ export default function CardPickerPopover({
 
               {isSkillPanelOpen && (
                 <div className="mt-2 space-y-2">
-                  <CardTargetSkillSearch query={skillQuery} results={searchedSkills} selected={selectedSkills}
-                    onQueryChange={(value) => dispatch({ type: "skillQueryChanged", value })}
-                    onAdd={(skill) => dispatch({ type: "skillAdded", skill })}
-                    onRemove={(skillId) => dispatch({ type: "skillRemoved", skillId })} />
+                  <CardTargetSkillSearch
+                    query={skillQuery}
+                    results={searchedSkills as Parameters<typeof CardTargetSkillSearch>[0]["results"]}
+                    selected={selectedSkills}
+                    onQueryChange={commands.setSkillQuery}
+                    onAdd={commands.addSkill}
+                    onRemove={commands.removeSkill}
+                  />
                 </div>
               )}
             </div>
@@ -700,15 +311,14 @@ export default function CardPickerPopover({
         <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/60">
           {!cards || (sort === "recommended" && !recommendationsMap) ? (
             <CardPickerSkeleton mode={mode} label={!cards ? "Loading support cards" : "Ranking recommendations"} />
-          ) : filtered.length === 0 ? (
+          ) : filteredCards.length === 0 ? (
             <p className="p-4 text-[13px] text-zinc-400 dark:text-zinc-500">{query ? "No matches found." : "No cards."}</p>
           ) : (
             <ul>
-              {filtered.map((c) => {
+              {filteredCards.map((c) => {
                 const isInMain = mainCardIdSet.has(c.id);
                 const isInParent = parentCardIdSet.has(c.id);
 
-                // Target skills: only valid activating skills that match selected effect filter (or all if none selected)
                 const cardTargetSkills = parentCardTargetSkillsMap.get(c.id) ?? [];
                 const displaySkills = selectedEffects.length > 0
                   ? cardTargetSkills.filter((s) => s.categories.some((cat) => selectedEffects.includes(cat)))
@@ -720,9 +330,6 @@ export default function CardPickerPopover({
                   (c.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() ||
                    c.nameJp === targetChara.nameJp)
                 );
-                // Trainee cards are only prohibited in the Main Deck (the trainee
-                // cannot equip their own card); the Parent Deck targets P1/P2, so
-                // a trainee-character card is fine there.
                 const isTraineeBlocked = isTraineeCard && mode === "main";
                 const occupantIds = occupiedCharMap.get(cardCharacterKey(c));
                 const isCharConflict = Boolean(occupantIds && !occupantIds.has(c.id));
@@ -758,7 +365,7 @@ export default function CardPickerPopover({
                         type="button"
                         onClick={() => {
                           if (isDisabled) return;
-                          onPick(c);
+                          commands.pickCard(c);
                         }}
                         disabled={isDisabled}
                         className={`shrink-0 focus:outline-hidden ${
@@ -788,7 +395,7 @@ export default function CardPickerPopover({
                             type="button"
                             onClick={() => {
                               if (isDisabled) return;
-                              onPick(c);
+                              commands.pickCard(c);
                             }}
                             disabled={isDisabled}
                             className={`flex flex-1 min-w-0 items-center gap-1.5 text-left flex-wrap focus:outline-hidden ${
@@ -822,7 +429,7 @@ export default function CardPickerPopover({
                             )}
                           </button>
 
-                          {/* Top Right (desktop): Matched skills + Target skills + Same Uma + Ownership + Type Icon + Skills ↗ */}
+                          {/* Top Right: Matched skills + Target skills + Same Uma + Ownership + Type Icon + Skills ↗ */}
                           <div className="flex items-center gap-1.5 shrink-0">
                             {hasMatchedSkills && (
                               <span
@@ -851,9 +458,6 @@ export default function CardPickerPopover({
                             )}
                             {(() => {
                               const lb = getLimitBreak(c.id);
-                              // Fixed width (fits "Unowned", the widest state) so the
-                              // ownership column — and the target-skills badge to its
-                              // left — aligns across every row.
                               if (lb === undefined) {
                                 return (
                                   <span className="inline-flex w-11 items-center justify-center rounded bg-zinc-100 dark:bg-zinc-800 py-0.2 text-[10px] font-medium text-zinc-400 shrink-0">
@@ -884,7 +488,7 @@ export default function CardPickerPopover({
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setInspectCard(c);
+                                commands.openInspect(c);
                               }}
                               className="rounded-lg border border-zinc-200/90 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-2 py-0.5 text-[12px] font-semibold text-zinc-600 dark:text-zinc-300 hover:border-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50/50 dark:hover:bg-emerald-950/40 shadow-2xs transition-all cursor-pointer"
                               title="Quickly inspect all skills and events from this card"
@@ -894,7 +498,7 @@ export default function CardPickerPopover({
                           </div>
                         </div>
 
-                        {/* Mobile-only line: Matched skills + Target skills (parent) + Same Uma */}
+                        {/* Mobile-only line */}
                         {(hasMatchedSkills || showTargetSkills || isCharConflict) && (
                           <div className="flex items-center gap-1.5 mt-1.5 sm:hidden">
                             {hasMatchedSkills && (
@@ -922,7 +526,7 @@ export default function CardPickerPopover({
                           </div>
                         )}
 
-                        {/* Matched skills pill row (Parent mode when filtering by skills) */}
+                        {/* Matched skills pill row */}
                         {hasMatchedSkills && (
                           <div className="flex flex-wrap items-center gap-1 mt-1">
                             {matchedInfo!.matchedSkills.map((s) => (
@@ -937,13 +541,13 @@ export default function CardPickerPopover({
                           </div>
                         )}
 
-                        {/* Row 2: Left: Japanese descriptor | Right: Release date */}
+                        {/* Row 2: Japanese descriptor | Release date */}
                         <div className="flex items-center justify-between gap-2 mt-1">
                           <button
                             type="button"
                             onClick={() => {
                               if (isDisabled) return;
-                              onPick(c);
+                              commands.pickCard(c);
                             }}
                             disabled={isDisabled}
                             className={`text-[12px] text-zinc-400 dark:text-zinc-500 truncate text-left flex-1 focus:outline-hidden ${
@@ -973,11 +577,11 @@ export default function CardPickerPopover({
         <CardSkillsSheet
           card={inspectCard}
           isOpen={Boolean(inspectCard)}
-          onClose={() => setInspectCard(null)}
+          onClose={commands.closeInspect}
           mode={mode}
           onPick={(picked) => {
-            setInspectCard(null);
-            onPick(picked);
+            commands.closeInspect();
+            commands.pickCard(picked);
           }}
         />
       )}
