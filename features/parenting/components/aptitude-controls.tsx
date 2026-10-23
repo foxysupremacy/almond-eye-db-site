@@ -145,7 +145,7 @@ export function AptitudeTable(props: { assessment: BranchAssessment; label: stri
     </div>
   );
 }
-export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 3, className = "w-full min-w-0", compact = false, chipOnly = false }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string; compact?: boolean; chipOnly?: boolean }) {
+export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTargets = 3, className = "w-full min-w-0", compact = false, chipOnly = false, footerMode = false }: { label: string; targets: AptitudeKey[]; assessment: BranchAssessment; onChange: (targets: AptitudeKey[]) => void; maxTargets?: number; className?: string; compact?: boolean; chipOnly?: boolean; footerMode?: boolean }) {
   useEffect(() => {
     const validTargets = targets.filter((key) => {
       const factor = assessment.whiteFactors.find((item) => item.name === key);
@@ -225,6 +225,44 @@ export function WhiteGeneticPicker({ label, targets, assessment, onChange, maxTa
       </div>
     </div>
   );
+
+  if (footerMode) {
+    const triggerText = targets.length
+      ? targets.map((key) => SHORT[key]).join(" · ")
+      : "Target genetic";
+    return (
+      <div className={className}>
+        <ParentingPopover
+          label={`${label} Target genetic`}
+          className="group/footer flex items-center justify-center gap-1 sm:gap-1.5 w-full border-t border-zinc-200/80 bg-zinc-50/90 dark:border-zinc-700/80 dark:bg-zinc-900/60 px-2 py-1.5 sm:py-2 text-center cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-b-xl sm:rounded-b-2xl shadow-2xs"
+          trigger={
+            <div className="flex items-center justify-center gap-1 sm:gap-1.5 w-full min-w-0">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth="2"
+                stroke="currentColor"
+                className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-none text-amber-500/90 dark:text-amber-400 transition-transform group-hover/footer:scale-110"
+                aria-hidden="true"
+              >
+                <g transform="translate(0 -1.2)">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 2.5 11.2 8.2M15.5 2.5 12.8 8.2" />
+                  <circle cx="12" cy="15" r="6.8" />
+                  <path d="M12 11.2 12.94 13.71 15.61 13.83 13.52 15.49 14.23 18.07 12 16.6 9.77 18.07 10.48 15.49 8.39 13.83 11.06 13.71Z" fill="currentColor" stroke="none" />
+                </g>
+              </svg>
+              <span className={`truncate text-[9px] sm:text-[11px] font-bold ${targets.length ? "text-violet-700 dark:text-violet-300" : "text-zinc-500 dark:text-zinc-400"} group-hover/footer:text-violet-900 dark:group-hover/footer:text-violet-200 transition-colors`}>
+                {triggerText}
+              </span>
+            </div>
+          }
+        >
+          {popoverContent}
+        </ParentingPopover>
+      </div>
+    );
+  }
 
   if (chipOnly) {
     return (

@@ -78,6 +78,10 @@ test("white genetic selections list each target on the trigger; compact shrinks 
   expect(chip).toContain("min-h-6");
   expect(chip).toContain(">Med</span>");
   expect(chip).toContain(">○</span>");
+  const footer = renderToStaticMarkup(<WhiteGeneticPicker label="P1" assessment={assessment} targets={["Medium"]} onChange={() => {}} footerMode />);
+  expect(footer).toContain("group/footer");
+  expect(footer).toContain("text-violet-700");
+  expect(footer).toContain("Med");
 });
 
 test("projection display grade and boost branches", () => {

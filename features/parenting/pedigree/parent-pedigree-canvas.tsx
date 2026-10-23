@@ -142,6 +142,9 @@ export function AncestorCard({
                 className="group/avatar flex flex-col items-center justify-center min-h-9 sm:min-h-10 max-w-full outline-none cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-500/70 rounded-lg relative"
               >
                 <AncestorPortrait candidate={candidate} className={portraitSize} />
+                <span className={`mt-0.5 w-full ${isPhone ? "max-w-[68px] text-[7.5px]" : "max-w-[85px] text-[8.5px] sm:text-[9.5px]"} truncate text-center font-bold text-zinc-800 dark:text-zinc-100 leading-tight transition-colors duration-150 group-hover/avatar:text-emerald-700 dark:group-hover/avatar:text-emerald-400`}>
+                  {candidate?.name ?? "Select parent"}
+                </span>
                 {geneticIndicator && (
                   <div className="absolute -top-1 -right-1 z-20">
                     {geneticIndicator}
@@ -206,100 +209,38 @@ export function AncestorCard({
             </ParentingPopover>
           </div>
 
-          {/* Row 5: Unique Skill & White Genetics */}
-          {isPhone ? (
-            <div className="flex h-6 w-full items-stretch gap-1 min-w-0">
-              <div className="flex-1 min-w-0">
-                {uniqueSkill ? (
-                  <SkillHoverCard
-                    skillId={uniqueSkill.id}
-                    fallbackSkill={uniqueSkill}
-                    isParentMode
-                    className="group inline-flex h-full w-full min-w-0 cursor-pointer items-center justify-center gap-1 rounded-md border border-zinc-200/90 bg-white/95 px-1 py-0.5 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:hover:bg-zinc-700/90"
-                  >
-                    <SkillIcon iconId={uniqueSkill.iconId} name={uniqueSkill.nameEn} className="h-3.5 w-3.5 flex-none object-contain drop-shadow-2xs" />
-                    <span className="truncate text-[8px] font-semibold text-zinc-900 group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400">
-                      {uniqueSkill.nameEn}
-                    </span>
-                  </SkillHoverCard>
-                ) : (
-                  <div aria-hidden="true" className="h-full w-full flex items-center justify-center rounded-md border border-dashed border-zinc-200 dark:border-zinc-700/60 bg-zinc-50/50 dark:bg-zinc-800/30 text-[8px] text-zinc-400 dark:text-zinc-500">
-                    <span>No skill</span>
-                  </div>
-                )}
+          {/* Row 5: Unique Skill */}
+          <div className={`${isPhone ? "h-6 min-h-6" : "h-7 sm:h-8 min-h-7 sm:min-h-8"} w-full min-w-0 flex-none`}>
+            {uniqueSkill ? (
+              <SkillHoverCard
+                skillId={uniqueSkill.id}
+                fallbackSkill={uniqueSkill}
+                isParentMode
+                className="group inline-flex h-full w-full min-w-0 cursor-pointer items-center justify-center gap-1 sm:gap-1.5 rounded-lg border border-zinc-200/90 bg-white/95 px-2 py-0.5 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:hover:bg-zinc-700/90"
+              >
+                <SkillIcon iconId={uniqueSkill.iconId} name={uniqueSkill.nameEn} className="h-3.5 w-3.5 sm:h-4 sm:w-4 flex-none object-contain drop-shadow-2xs" />
+                <span className={`truncate ${isPhone ? "text-[8px]" : "text-[9px] sm:text-[10px]"} font-semibold leading-tight text-zinc-900 transition-colors group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400`}>
+                  {uniqueSkill.nameEn}
+                </span>
+              </SkillHoverCard>
+            ) : (
+              <div aria-hidden="true" className="h-8 w-full">
+                <div className="h-full w-full flex items-center justify-center rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700/60 bg-zinc-50/50 dark:bg-zinc-800/30 text-[8px] sm:text-[9px] text-zinc-400 dark:text-zinc-500">
+                  <span>No unique skill</span>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <WhiteGeneticPicker
-                  label={SLOT_LABEL[slot]}
-                  assessment={assessment}
-                  targets={whiteTargets}
-                  onChange={onWhiteTargetsChange}
-                  chipOnly
-                />
-              </div>
-            </div>
-          ) : (
-            <>
-              <div className="h-8 min-h-8 min-w-0 flex-none">
-                {uniqueSkill ? (
-                  <SkillHoverCard
-                    skillId={uniqueSkill.id}
-                    fallbackSkill={uniqueSkill}
-                    isParentMode
-                    className="group inline-flex h-full w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border border-zinc-200/90 bg-white/95 px-2 py-1 shadow-2xs transition-colors hover:bg-zinc-50 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:hover:bg-zinc-700/90"
-                  >
-                    <SkillIcon iconId={uniqueSkill.iconId} name={uniqueSkill.nameEn} className="h-4 w-4 flex-none object-contain drop-shadow-2xs sm:h-5 sm:w-5" />
-                    <div className="min-w-0 flex-1 text-left">
-                      <p className="truncate text-[10px] font-semibold leading-tight text-zinc-900 transition-colors group-hover:text-emerald-700 dark:text-zinc-100 dark:group-hover:text-emerald-400 sm:text-[11px]">{uniqueSkill.nameEn}</p>
-                      {uniqueSkill.nameJp && <p className="mt-0.5 truncate text-[9px] font-normal leading-tight text-zinc-400 dark:text-zinc-500">{uniqueSkill.nameJp}</p>}
-                    </div>
-                  </SkillHoverCard>
-                ) : (
-                  <div aria-hidden="true" className="h-8 w-full">
-                    <div className="h-full w-full flex items-center justify-center rounded-lg border border-dashed border-zinc-200 dark:border-zinc-700/60 bg-zinc-50/50 dark:bg-zinc-800/30 text-[10px] text-zinc-400 dark:text-zinc-500">
-                      <span>No unique skill</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div>
-                <WhiteGeneticPicker
-                  label={SLOT_LABEL[slot]}
-                  assessment={assessment}
-                  targets={whiteTargets}
-                  onChange={onWhiteTargetsChange}
-                  compact
-                />
-              </div>
-            </>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Card Footer: Medal Icon + Uma Name */}
-        <Button
-          onPress={onOpenPicker}
-          aria-label={`Choose ${SLOT_LABEL[slot]}${candidate ? `: ${candidate.name}` : ""}`}
-          className={`group/avatar flex items-center justify-center gap-1 sm:gap-1.5 w-full border-t border-zinc-200/80 bg-zinc-50/90 dark:border-zinc-700/80 dark:bg-zinc-900/60 ${isPhone ? "px-1 py-1" : "px-2 py-2"} text-center cursor-pointer transition-colors hover:bg-zinc-100 dark:hover:bg-zinc-800 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-b-xl sm:rounded-b-2xl`}
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth="2"
-            stroke="currentColor"
-            className="h-3 w-3 sm:h-3.5 sm:w-3.5 flex-none text-amber-500/90 dark:text-amber-400 transition-transform group-hover/avatar:scale-110"
-            aria-hidden="true"
-          >
-            <g transform="translate(0 -1.2)">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.5 2.5 11.2 8.2M15.5 2.5 12.8 8.2" />
-              <circle cx="12" cy="15" r="6.8" />
-              <path d="M12 11.2 12.94 13.71 15.61 13.83 13.52 15.49 14.23 18.07 12 16.6 9.77 18.07 10.48 15.49 8.39 13.83 11.06 13.71Z" fill="currentColor" stroke="none" />
-            </g>
-          </svg>
-          <span className="truncate text-[9px] sm:text-[11px] font-bold text-zinc-800 dark:text-zinc-100 group-hover/avatar:text-emerald-700 dark:group-hover/avatar:text-emerald-400 transition-colors">
-            {candidate?.name ?? "Select parent"}
-          </span>
-        </Button>
+        {/* Card Footer: White Genetics Picker with Medal Icon */}
+        <WhiteGeneticPicker
+          label={SLOT_LABEL[slot]}
+          assessment={assessment}
+          targets={whiteTargets}
+          onChange={onWhiteTargetsChange}
+          footerMode
+        />
       </div>
     </div>
   );
