@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "react-aria-components/Button";
-import type { AptitudeKey, BranchAssessment, LoopAncestorSlot, LoopCandidate, LoopUmaSlot } from "@/lib/parenting/loop-planner";
-import { AptitudeCell, AptitudeName, WhiteGeneticPicker, type SparkSource } from "../components/aptitude-controls";
+import type { AptitudeKey, BranchAssessment, LoopAncestorSlot, LoopCandidate, LoopUmaSlot, TargetRank } from "@/lib/parenting/loop-planner";
+import { branchIsComplete, suggestBranchSparks } from "@/lib/parenting/spark-suggester";
+import { AptitudeCell, AptitudeName, SHORT, WhiteGeneticPicker, type SparkSource } from "../components/aptitude-controls";
 import { PinkSparkFields, withPinkSpark } from "../components/pink-spark-fields";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import SkillHoverCard from "@/app/common/ui/skills/details/skill-hover-card";
@@ -60,6 +61,7 @@ export function AncestorCard({
   sources,
   whiteTargets,
   onWhiteTargetsChange,
+  onAptitudeTargetChange,
   geneticIndicator,
 }: {
   slot: LoopUmaSlot;
@@ -74,6 +76,7 @@ export function AncestorCard({
   sources: SparkSource[];
   whiteTargets: AptitudeKey[];
   onWhiteTargetsChange: (targets: AptitudeKey[]) => void;
+  onAptitudeTargetChange?: (aptitude: AptitudeKey, rank: TargetRank | null) => void;
   geneticIndicator?: ReactNode;
 }) {
   const isPhone = tier === "phone";
@@ -153,25 +156,25 @@ export function AncestorCard({
               </Button>
             </div>
             <div data-aptitude-group="Surface" className="col-span-2 grid grid-cols-2 gap-0.5 sm:gap-1">
-              <AptitudeCell aptitude="Turf" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-              <AptitudeCell aptitude="Dirt" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
+              <AptitudeCell aptitude="Turf" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+              <AptitudeCell aptitude="Dirt" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
             </div>
           </div>
 
           {/* Row 2: Distance Aptitudes (Sprint, Mile, Medium, Long) */}
           <div data-aptitude-group="Distance" className="grid w-full grid-cols-4 justify-items-stretch gap-0.5 sm:gap-1">
-            <AptitudeCell aptitude="Sprint" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Mile" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Medium" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Long" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
+            <AptitudeCell aptitude="Sprint" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Mile" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Medium" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Long" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
           </div>
 
           {/* Row 3: Running Style Aptitudes (Runner, Leader, Betweener, Chaser) */}
           <div data-aptitude-group="Style" className="grid w-full grid-cols-4 justify-items-stretch gap-0.5 sm:gap-1">
-            <AptitudeCell aptitude="Runner" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Leader" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Betweener" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
-            <AptitudeCell aptitude="Chaser" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} compactCell />
+            <AptitudeCell aptitude="Runner" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Leader" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Betweener" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Chaser" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
           </div>
 
           {/* Row 4: Pink Factor Pill */}
@@ -399,6 +402,106 @@ export function AutoFitPedigreeTree({ children, tier = "desktop" }: { children: 
   );
 }
 
+const SUGGEST_CHIP = "inline-flex h-6 min-h-6 items-center justify-center gap-1 rounded-full border px-2.5 text-[9.5px] font-bold leading-none transition-all duration-150 ease-out-quart cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-violet-500";
+
+/** Per-branch automation trigger: suggests pink plans for the GGP/GGGP slots
+ * once the branch has all three trainees selected. Nothing is written until
+ * the user applies the preview. */
+function BranchSparkSuggester({ model, branch }: { model: PedigreeModel; branch: "p1" | "p2" }) {
+  const [open, setOpen] = useState(false);
+  const complete = branchIsComplete(model.selectedCandidates, branch);
+  const suggestion = useMemo(() => (open && complete ? suggestBranchSparks(model.minmaxContext, branch) : null), [open, complete, model.minmaxContext, branch]);
+
+  if (!complete) {
+    return (
+      <button
+        type="button"
+        disabled
+        aria-disabled="true"
+        title={`Select ${SLOT_LABEL[branch]} and both of its grandparents to auto-plan their sparks`}
+        className={`${SUGGEST_CHIP} border-dashed border-zinc-300 bg-zinc-50/60 text-zinc-400 dark:border-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-500 cursor-not-allowed`}
+      >
+        <SparkGlyph /> Suggest sparks
+      </button>
+    );
+  }
+
+  return (
+    <ParentingPopover
+      label={`Suggest ${SLOT_LABEL[branch]} branch sparks`}
+      isOpen={open}
+      onOpenChange={setOpen}
+      className={`${SUGGEST_CHIP} group/suggest border-violet-300/90 bg-violet-50/90 text-violet-700 hover:bg-violet-100 hover:border-violet-400 dark:border-violet-800/70 dark:bg-violet-950/40 dark:text-violet-300 dark:hover:bg-violet-900/50 shadow-2xs`}
+      trigger={
+        <span className="flex items-center gap-1">
+          <SparkGlyph /> Suggest sparks
+        </span>
+      }
+    >
+      {suggestion ? (
+        <div className="space-y-2">
+          <p className="text-sm font-semibold">{SLOT_LABEL[branch]} branch spark plan</p>
+          <p className="text-xs text-zinc-500">
+            On-target genetics: <span className="font-bold text-violet-700 dark:text-violet-300">{suggestion.obtainableGenetics} obtainable</span>
+            {" "}· ≈{suggestion.expectedGenetics.toFixed(1)} expected per run
+            {suggestion.kept.length > 0 && ` · ${suggestion.kept.length} manual slot${suggestion.kept.length > 1 ? "s" : ""} kept`}
+          </p>
+          {suggestion.trainees.map((trainee) => (
+            <div key={trainee.slot} className="rounded-lg border border-zinc-200 p-2 text-xs dark:border-zinc-800">
+              <p className="flex items-center gap-1.5 font-semibold">
+                {SLOT_LABEL[trainee.slot]}
+                {trainee.retrainingNote && <span className="rounded bg-zinc-100 px-1 py-px text-[9px] font-bold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">retraining</span>}
+              </p>
+              <p className="mt-1 text-zinc-600 dark:text-zinc-300">
+                {trainee.genetics.filter((genetic) => genetic.status !== "insufficient").length
+                  ? trainee.genetics.filter((genetic) => genetic.status !== "insufficient").map((genetic) => (
+                    <span key={genetic.aptitude} className={`mr-1.5 inline-flex items-center gap-0.5 rounded px-1 py-px font-semibold ${genetic.status === "guaranteed" ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300" : "bg-violet-100 text-violet-700 dark:bg-violet-950/60 dark:text-violet-300"}`}>
+                      {SHORT[genetic.aptitude]} {genetic.stars}★{genetic.status === "guaranteed" ? " · 100%" : " · ≈40%"}
+                    </span>
+                  ))
+                  : <span className="text-zinc-400">No on-target genetic in reach</span>}
+              </p>
+              <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+                {(() => {
+                  const unmet = trainee.targets.filter((entry) => !entry.met);
+                  return unmet.length
+                    ? unmet.map((entry) => `${entry.aptitude}→${entry.target} (${entry.projected})`).join(", ")
+                    : "All aptitude targets met";
+                })()}
+              </p>
+            </div>
+          ))}
+          {suggestion.junkWarnings.map((warning) => <p key={warning} className="rounded bg-amber-50 px-2 py-1 text-[11px] text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">{warning}</p>)}
+          {suggestion.warnings.map((warning) => <p key={warning} className="text-[11px] text-zinc-500 dark:text-zinc-400">{warning}</p>)}
+          <div className="flex gap-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+            <button
+              type="button"
+              onClick={() => {
+                model.applyBranchSparks(suggestion.assignments);
+                setOpen(false);
+              }}
+              className="min-h-9 flex-1 rounded-md bg-violet-600 px-2 text-xs font-bold text-white transition-all duration-150 ease-out-quart hover:bg-violet-500 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            >
+              Apply to {Object.keys(suggestion.assignments).length} slots
+            </button>
+          </div>
+        </div>
+      ) : (
+        <p className="text-xs text-zinc-500">Planning…</p>
+      )}
+    </ParentingPopover>
+  );
+}
+
+function SparkGlyph() {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className="h-3 w-3 flex-none text-amber-500 transition-transform duration-150 ease-out-quart group-hover/suggest:scale-110 dark:text-amber-400">
+      <path d="M12 2.5 13.8 8.2 19.5 10 13.8 11.8 12 17.5 10.2 11.8 4.5 10 10.2 8.2Z" />
+      <path d="M19 14.5 19.9 17.1 22.5 18 19.9 18.9 19 21.5 18.1 18.9 15.5 18 18.1 17.1Z" opacity="0.7" />
+    </svg>
+  );
+}
+
 export interface ParentPedigreeCanvasProps {
   model: PedigreeModel;
   navigation: ReturnType<typeof useAncestorNavigation>;
@@ -451,6 +554,7 @@ export function ParentPedigreeCanvas({
         sources={model.sparkSources(umaSlot)}
         whiteTargets={model.whiteTargets(umaSlot)}
         onWhiteTargetsChange={(targets) => model.setWhiteTargets(umaSlot, targets)}
+        onAptitudeTargetChange={(aptitude, rank) => model.setAptitudeGoal(umaSlot, aptitude, rank)}
         onFactorGoalChange={(goal) => model.setFactorGoal(slot, goal)}
         onOpenPicker={() => onOpenPicker(slot)}
         geneticIndicator={
@@ -497,6 +601,9 @@ export function ParentPedigreeCanvas({
         aria-label={`${parentSlot.toUpperCase()} lineage branch`}
         className={`min-w-0 ${isPhone ? "px-1" : "sm:px-3"} ${parentSlot === "p2" ? "sm:border-l sm:border-zinc-200/70 dark:sm:border-zinc-800" : ""}`}
       >
+        <div className="flex w-full justify-center pb-1">
+          <BranchSparkSuggester model={model} branch={parentSlot} />
+        </div>
         <div className="w-full flex justify-center pb-1">
           <div className={`${cardWidthClass} min-w-0 flex justify-center px-1`}>
             {ancestorCard(parentSlot, "parent")}

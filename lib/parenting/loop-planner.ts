@@ -27,6 +27,9 @@ export const PARENT_WHITE_TARGET_SLOTS: LoopUmaSlot[] = ["p1", "p2", "p1_gp1", "
 export const FARM_APTITUDES = ["Turf", "Dirt", "Sprint", "Mile", "Medium", "Long"] as const;
 export type FarmAptitude = typeof FARM_APTITUDES[number];
 export type FarmRank = "C" | "D" | "E";
+/** Editable per-slot aptitude target. Farm floors stay C/D/E; B/A express
+ * ambitions such as an A output the card needs for its own red factor. */
+export type TargetRank = "E" | "D" | "C" | "B" | "A";
 export const DEFAULT_FARM_GOALS: Record<FarmAptitude, FarmRank> = { Turf: "C", Dirt: "E", Sprint: "C", Mile: "C", Medium: "C", Long: "C" };
 export type LoopGeneType = "distance" | "style" | "surface";
 export const APTITUDE_KEYS = ["Turf", "Dirt", "Sprint", "Mile", "Medium", "Long", "Runner", "Leader", "Betweener", "Chaser"] as const;
@@ -42,7 +45,11 @@ export const DEFAULT_APTITUDE_GOALS: Record<AptitudeKey, string> = {
 
 export interface ParentingLoopConfig {
   slotWhiteTargets?: Partial<Record<LoopUmaSlot, AptitudeKey[]>>;
-  slotAptitudeGoals?: Partial<Record<LoopUmaSlot, Partial<Record<FarmAptitude, FarmRank>>>>;
+  slotAptitudeGoals?: Partial<Record<LoopUmaSlot, Partial<Record<AptitudeKey, TargetRank>>>>;
+  /** Farm aptitudes opted out of ancestor planning: no floor target, and G1
+   * races that require them leave the calendar. Explicit per-slot targets
+   * still win over the toggle. */
+  disabledFarmAptitudes?: FarmAptitude[];
   geneGoals: Partial<Record<LoopGeneType, number[]>>;
   /** White aptitude factor group ID -> requested minimum rarity stars. */
   whiteFactorGoals?: Partial<Record<number, number>>;
@@ -128,7 +135,7 @@ export interface AptitudeProjection {
   projected: string;
   confidence: "confirmed" | "projected" | "feasible" | "unknown";
   needsOutputA: boolean;
-  target?: FarmRank;
+  target?: TargetRank;
   missingPinkStars?: number | null;
   targetStatus?: "met" | "unmet" | "unknown";
 }
@@ -236,7 +243,7 @@ function geneTypes(candidate: LoopCandidate): Record<LoopGeneType, number[]> {
 }
 
 const eligibleRaceCache = new WeakMap<LoopCandidate, Map<string, CareerG1Race[]>>();
-function eligibleRaces(candidate: LoopCandidate, goals = DEFAULT_FARM_GOALS): CareerG1Race[] {
+function eligibleRaces(candidate: LoopCandidate, goals: Partial<Record<FarmAptitude, FarmRank>> = DEFAULT_FARM_GOALS): CareerG1Race[] {
   const key = FARM_APTITUDES.map((aptitude) => goals[aptitude]).join("");
   const cached = eligibleRaceCache.get(candidate)?.get(key);
   if (cached) return cached;
@@ -368,8 +375,22 @@ function projectAptitudes(
   });
 }
 
-export function farmGoals(config: ParentingLoopConfig, slot: LoopUmaSlot | "target"): Record<FarmAptitude, FarmRank> {
-  return { ...DEFAULT_FARM_GOALS, ...(slot === "target" ? {} : config.slotAptitudeGoals?.[slot]) };
+/** Farm floors per trainee. Omitted aptitudes are toggled off: no floor, no
+ * target, and their races are excluded from the calendar. */
+export function farmGoals(config: ParentingLoopConfig, slot: LoopUmaSlot | "target"): Partial<Record<FarmAptitude, FarmRank>> {
+  const disabled = new Set(config.disabledFarmAptitudes ?? []);
+  const targets = slot === "target" ? {} : config.slotAptitudeGoals?.[slot] ?? {};
+  const goals: Partial<Record<FarmAptitude, FarmRank>> = {};
+  for (const aptitude of FARM_APTITUDES) {
+    const goal = targets[aptitude];
+    // A C/D/E target is the farm floor and directly drives the G1 calendar,
+    // raised or lowered; B/A are ambitions above the floor and must not
+    // tighten race eligibility.
+    if (goal === "C" || goal === "D" || goal === "E") { goals[aptitude] = goal; continue; }
+    if (disabled.has(aptitude)) continue;
+    goals[aptitude] = DEFAULT_FARM_GOALS[aptitude];
+  }
+  return goals;
 }
 
 export function branchSourceSlots(slot: LoopUmaSlot | "target"): LoopAncestorSlot[] {
@@ -388,9 +409,10 @@ export function evaluateParentingBranch(slot: LoopUmaSlot | "target", ancestors:
   const partialLineage = sourceSlots.length < 6;
   const projections = projectAptitudes(base, sourceSlots, ancestors, config, candidate ?? undefined, slot === "target" ? undefined : slot);
   const goals = farmGoals(config, slot);
+  const targets = { ...goals, ...(slot === "target" ? {} : config.slotAptitudeGoals?.[slot]) } as Partial<Record<AptitudeKey, TargetRank>>;
   for (const projection of projections) {
-    if (!FARM_APTITUDES.includes(projection.aptitude as FarmAptitude)) continue;
-    const goal = goals[projection.aptitude as FarmAptitude];
+    const goal = targets[projection.aptitude];
+    if (!goal) continue;
     projection.target = goal;
     const baseRank = RANKS.indexOf(projection.base);
     const requiredBoost = RANKS.indexOf(goal) - baseRank;

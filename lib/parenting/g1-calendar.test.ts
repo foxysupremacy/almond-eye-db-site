@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { careersByCharId, g1Calendar } from "../data/registry";
 import type { CalendarG1Race, G1CalendarData } from "../data/types";
-import { APTITUDE_KEYS, DEFAULT_FARM_GOALS, type AptitudeProjection } from "./loop-planner";
+import { APTITUDE_KEYS, DEFAULT_FARM_GOALS, type AptitudeProjection, type FarmAptitude, type FarmRank } from "./loop-planner";
 import { evaluateG1Calendar } from "./g1-calendar";
 
 const aptitudes: AptitudeProjection[] = APTITUDE_KEYS.map((aptitude) => ({ aptitude, base: "A", projected: "A", availablePinkStars: 0, confidence: "feasible", needsOutputA: false }));
@@ -46,5 +46,19 @@ describe("ordinary G1 calendar", () => {
     const projected = aptitudes.map((entry) => entry.aptitude === "Mile" ? { ...entry, projected: "E", confidence: "unknown" as const } : entry);
     expect(evaluateG1Calendar(1001, projected, DEFAULT_FARM_GOALS, data).races[0].status).toBe("unknown");
     expect(evaluateG1Calendar(1001, projected, { ...DEFAULT_FARM_GOALS, Mile: "E" }, data).races[0].status).toBe("eligible");
+  });
+
+  test("aptitudes toggled off in farm focus exclude their races from the calendar", () => {
+    const data: G1CalendarData = { races: [race(1), { ...race(2), distance: 1200 }], objectivesByCharId: {} };
+    const goals: Partial<Record<FarmAptitude, FarmRank>> = { ...DEFAULT_FARM_GOALS };
+    delete goals.Sprint;
+    const result = evaluateG1Calendar(1001, aptitudes, goals, data);
+    expect(result.races.find((entry) => entry.race.programId === 1)!.status).toBe("eligible");
+    const sprint = result.races.find((entry) => entry.race.programId === 2)!;
+    expect(sprint.status).toBe("excluded");
+    const sprintRequirement = sprint.requirements.find((entry) => entry.aptitude === "Sprint")!;
+    expect(sprintRequirement.status).toBe("excluded");
+    expect(sprintRequirement.required).toBeNull();
+    expect(result.schedulableCount).toBe(1);
   });
 });

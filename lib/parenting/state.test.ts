@@ -113,6 +113,13 @@ describe("normalizeParentingSetup — exact costume and legacy data", () => {
     expect(restored.loopConfig?.selectedSlots).toEqual({ p1: "r:103202" });
   });
 
+  test("per-slot targets accept B/A ambitions and style keys but strip junk values", async () => {
+    const setup = normalizeParentingSetup({ loopConfig: { geneGoals: {}, aptitudeGoals: {}, selectedSlots: {}, lockedSlots: {}, slotAptitudeGoals: { p1: { Medium: "A", Leader: "B", Dirt: "junk", Sprint: "S" }, p1_gp1: { Chaser: "E" }, p2_gp2_g2: { Turf: "C" } } as unknown as ParentingLoopConfig["slotAptitudeGoals"], includeTripleCrownAffinity: false, includeTiaraAffinity: false } });
+    expect(setup.loopConfig?.slotAptitudeGoals).toEqual({ p1: { Medium: "A", Leader: "B" }, p1_gp1: { Chaser: "E" }, p2_gp2_g2: { Turf: "C" } });
+    const restored = await deserializeParentingFromHash(await serializeParentingToHash(setup));
+    expect(restored.loopConfig?.slotAptitudeGoals).toEqual(setup.loopConfig?.slotAptitudeGoals);
+  });
+
   test("normalizes an exact target costume without changing the affinity character id", () => {
     const setup = normalizeParentingSetup({
       targetCharaId: 1033,
@@ -154,10 +161,15 @@ describe("normalizeParentingSetup — exact costume and legacy data", () => {
       includeTripleCrownAffinity: true,
       includeTiaraAffinity: false,
     };
-    expect(normalizeParentingSetup({ loopConfig }).loopConfig).toEqual({ ...loopConfig, slotAptitudeGoals: {}, slotWhiteTargets: {} });
+    expect(normalizeParentingSetup({ loopConfig }).loopConfig).toEqual({ ...loopConfig, slotAptitudeGoals: {}, slotWhiteTargets: {}, disabledFarmAptitudes: [] });
     expect(normalizeParentingSetup({ targetCharaId: 1068 }).loopConfig).toEqual({
-      slotAptitudeGoals: {}, slotWhiteTargets: {}, geneGoals: {}, whiteFactorGoals: {}, aptitudeGoals: DEFAULT_APTITUDE_GOALS, selectedSlots: {}, lockedSlots: {}, factorGoals: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false,
+      slotAptitudeGoals: {}, slotWhiteTargets: {}, disabledFarmAptitudes: [], geneGoals: {}, whiteFactorGoals: {}, aptitudeGoals: DEFAULT_APTITUDE_GOALS, selectedSlots: {}, lockedSlots: {}, factorGoals: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false,
     });
+  });
+
+  test("farm focus toggles persist valid aptitudes in canonical order", () => {
+    const setup = normalizeParentingSetup({ loopConfig: { geneGoals: {}, aptitudeGoals: {}, selectedSlots: {}, lockedSlots: {}, disabledFarmAptitudes: ["Sprint", "junk", "Long", "Sprint"], includeTripleCrownAffinity: false, includeTiaraAffinity: false } as unknown as ParentingLoopConfig });
+    expect(setup.loopConfig?.disabledFarmAptitudes).toEqual(["Sprint", "Long"]);
   });
 
   test("share hash round-trips editable factor values and selected slots", async () => {

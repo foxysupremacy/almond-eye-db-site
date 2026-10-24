@@ -6,8 +6,9 @@ export interface G1RaceAssessment {
   race: CalendarG1Race;
   year: number;
   turn: number;
-  status: "eligible" | "aptitude-blocked" | "unknown" | "career-blocked";
-  requirements: { aptitude: FarmAptitude; required: FarmRank; actual: string; status: "met" | "unmet" | "unknown" }[];
+  /** "excluded" = the race needs an aptitude toggled off in Farm focus. */
+  status: "eligible" | "aptitude-blocked" | "unknown" | "career-blocked" | "excluded";
+  requirements: { aptitude: FarmAptitude; required: FarmRank | null; actual: string; status: "met" | "unmet" | "unknown" | "excluded" }[];
   conditions: string[];
 }
 export interface G1CalendarAssessment {
@@ -20,8 +21,9 @@ export interface G1CalendarAssessment {
 const RANKS = ["G", "F", "E", "D", "C", "B", "A", "S"];
 const cache = new Map<string, G1CalendarAssessment>();
 
-/** Assess ordinary-calendar opportunities, not a promise of fan counts or wins. */
-export function evaluateG1Calendar(charId: number | undefined, projections: AptitudeProjection[], goals: Record<FarmAptitude, FarmRank>, data: G1CalendarData = g1Calendar): G1CalendarAssessment {
+/** Assess ordinary-calendar opportunities, not a promise of fan counts or wins.
+ * A goal omitted for an aptitude marks races that need it as excluded. */
+export function evaluateG1Calendar(charId: number | undefined, projections: AptitudeProjection[], goals: Partial<Record<FarmAptitude, FarmRank>>, data: G1CalendarData = g1Calendar): G1CalendarAssessment {
   if (charId == null) return { races: [], eligibleCount: 0, schedulableCount: 0, scheduledSaddles: [], unknown: true };
   const cacheKey = data === g1Calendar ? `${charId}:${["Turf", "Dirt", "Sprint", "Mile", "Medium", "Long"].map((aptitude) => {
     const entry = projections.find((projection) => projection.aptitude === aptitude);
@@ -46,8 +48,10 @@ export function evaluateG1Calendar(charId: number | undefined, projections: Apti
       const projection = projections.find((entry) => entry.aptitude === aptitude);
       const actual = projection?.projected ?? "?";
       const knownBase = RANKS.includes(actual);
-      const met = knownBase && RANKS.indexOf(actual) >= RANKS.indexOf(goals[aptitude]);
-      return { aptitude, required: goals[aptitude], actual, status: met ? "met" as const : !knownBase || projection?.confidence === "unknown" ? "unknown" as const : "unmet" as const };
+      const required = goals[aptitude] ?? null;
+      if (required == null) return { aptitude, required, actual, status: "excluded" as const };
+      const met = knownBase && RANKS.indexOf(actual) >= RANKS.indexOf(required);
+      return { aptitude, required, actual, status: met ? "met" as const : !knownBase || projection?.confidence === "unknown" ? "unknown" as const : "unmet" as const };
     });
     const careerBlocked = Boolean(objective && !objective.programIds.includes(race.programId));
     const conditions = [
@@ -55,7 +59,10 @@ export function evaluateG1Calendar(charId: number | undefined, projections: Apti
       ...(careerBlocked ? ["Career objective occupies this turn"] : objective ? ["Career objective"] : []),
       ...(race.fillyOnly ? ["Tiara race"] : []),
     ];
-    const status = careerBlocked ? "career-blocked" : requirements.some((entry) => entry.status === "unmet") ? "aptitude-blocked" : requirements.some((entry) => entry.status === "unknown") ? "unknown" : "eligible";
+    const status = requirements.some((entry) => entry.status === "excluded") ? "excluded"
+      : careerBlocked ? "career-blocked"
+      : requirements.some((entry) => entry.status === "unmet") ? "aptitude-blocked"
+      : requirements.some((entry) => entry.status === "unknown") ? "unknown" : "eligible";
     return [{ race, year, turn, status, requirements, conditions }];
   })).sort((a, b) => a.turn - b.turn || a.race.programId - b.race.programId);
   // Maximum bipartite matching: one trophy per unique G1, one race per turn.

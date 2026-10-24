@@ -3,11 +3,25 @@
 import { useEffect, type ReactNode } from "react";
 import { RadioGroup, Radio } from "react-aria-components/RadioGroup";
 import { CheckboxGroup, Checkbox } from "react-aria-components/CheckboxGroup";
-import { APTITUDE_KEYS, type AptitudeKey, type AptitudeProjection, type BranchAssessment, type FarmAptitude, type FarmRank } from "@/lib/parenting/loop-planner";
+import { APTITUDE_KEYS, type AptitudeKey, type AptitudeProjection, type BranchAssessment, type TargetRank } from "@/lib/parenting/loop-planner";
 import { StatusRankIcon } from "@/app/common/ui/primitives/status-icons";
 import { ParentingPopover } from "./parenting-popover";
 
 const GROUPS = [APTITUDE_KEYS.slice(0, 2), APTITUDE_KEYS.slice(2, 6), APTITUDE_KEYS.slice(6)] as const;
+const BASE_RANKS = ["G", "F", "E", "D", "C", "B", "A", "S"];
+const TARGET_RANKS = ["E", "D", "C", "B", "A"] as const;
+
+/** Lowest selectable target rank for a base: pink only ever raises aptitude,
+ * so targets below the parent's own base are unreachable. "?" (no parent
+ * picked) and G/F bases leave the whole ladder open. */
+function targetFloorIndex(base: string): number {
+  const baseIndex = BASE_RANKS.indexOf(base);
+  if (baseIndex < 0 || baseIndex <= BASE_RANKS.indexOf("E")) return 0;
+  return Math.min(TARGET_RANKS.length - 1, baseIndex - BASE_RANKS.indexOf("E"));
+}
+function baseLocksTarget(base: string): boolean {
+  return BASE_RANKS.indexOf(base) >= BASE_RANKS.indexOf("A");
+}
 export const SHORT: Record<AptitudeKey, string> = { Turf: "Turf", Dirt: "Dirt", Sprint: "Spr", Mile: "Mile", Medium: "Med", Long: "Long", Runner: "Run", Leader: "Lead", Betweener: "Bet", Chaser: "Chase" };
 export const APTITUDE_LABEL: Record<AptitudeKey, string> = {
   Turf: "Turf", Dirt: "Dirt", Sprint: "Sprint", Mile: "Mile", Medium: "Medium", Long: "Long",
@@ -56,7 +70,7 @@ export function AptitudeCell({
   assessment: BranchAssessment;
   label: string;
   sources: SparkSource[];
-  onTargetChange?: (key: FarmAptitude, rank: FarmRank) => void;
+  onTargetChange?: (aptitude: AptitudeKey, rank: TargetRank | null) => void;
   isPinkFactor?: boolean;
   allowTargetSelection?: boolean;
   compactCell?: boolean;
@@ -89,6 +103,18 @@ export function AptitudeCell({
           }`}>
             <span className={`parenting-aptitude-label-full${COMPACT_STYLE_LABEL[aptitude] ? " parenting-aptitude-label-has-compact" : ""}`}>{APTITUDE_LABEL[aptitude]}</span>
             {COMPACT_STYLE_LABEL[aptitude] && <span aria-hidden="true" className="parenting-aptitude-label-compact">{COMPACT_STYLE_LABEL[aptitude]}</span>}
+            {projection.target && (
+              <span
+                title={`Target ${projection.target}${projection.targetStatus === "met" ? " · met" : ""}`}
+                className={`ml-0.5 inline-flex items-center rounded-[3px] px-[3px] py-px text-[7px] font-extrabold leading-none transition-colors ${
+                  projection.targetStatus === "met"
+                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-950/70 dark:text-amber-300"
+                }`}
+              >
+                {projection.target}
+              </span>
+            )}
           </div>
           <div
             className={`flex ${compactCell ? "h-5.5 sm:h-6.5" : "h-6 sm:h-7"} w-full items-center justify-center py-0.5 ${
@@ -114,12 +140,47 @@ export function AptitudeCell({
         <p className="mt-1 text-xs text-zinc-500">Some ancestors not yet set. Current projection: {projection.projected}.</p>
       )}
       {assessment.partialLineage && <p className="mt-1 text-xs text-zinc-500">Only the two declared GGGP inputs are included.</p>}
-      {allowTargetSelection && projection.target && onTargetChange && (
+      {allowTargetSelection && onTargetChange && baseLocksTarget(projection.base) && (
         <div className="mt-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
-          <RadioGroup aria-label={`${label} ${aptitude} target aptitude`} value={projection.target} onChange={(rank) => onTargetChange(aptitude as FarmAptitude, rank as FarmRank)} className="flex gap-1">
-            {["C", "D", "E"].map((rank) => <Radio key={rank} value={rank} className={`${CHOICE} flex-1`}>{rank}</Radio>)}
+          <p className="text-xs text-zinc-500">Base {projection.base} — already at the top rank, no target needed.</p>
+          {projection.target && (
+            <button type="button" onClick={() => onTargetChange(aptitude, null)} className={`${BUTTON} mt-1 max-w-20 flex-1 text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800`}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+      {allowTargetSelection && onTargetChange && !baseLocksTarget(projection.base) && (
+        <div className="mt-2 border-t border-zinc-200 pt-2 dark:border-zinc-800">
+          <RadioGroup
+            aria-label={`${label} ${aptitude} target aptitude`}
+            value={projection.target ?? ""}
+            onChange={(rank) => onTargetChange(aptitude, rank as TargetRank)}
+            className="flex gap-1"
+          >
+            {TARGET_RANKS.map((rank) => {
+              const belowBase = TARGET_RANKS.indexOf(rank) < targetFloorIndex(projection.base);
+              return (
+                <Radio key={rank} value={rank} isDisabled={belowBase} className={`${CHOICE} flex-1`}>
+                  <span title={belowBase ? `Below the parent's base ${projection.base}` : undefined}>{rank}</span>
+                </Radio>
+              );
+            })}
           </RadioGroup>
-          <p className="mt-1 text-xs">{projection.targetStatus === "met" ? "Target met" : projection.missingPinkStars == null ? "Unknown requirement" : `+${projection.missingPinkStars}★ needed from known inputs`}</p>
+          <div className="mt-1 flex items-center justify-between gap-2">
+            <p className="text-xs">
+              {projection.targetStatus === "met"
+                ? "Target met"
+                : projection.target
+                ? projection.missingPinkStars == null ? "Unknown requirement" : `+${projection.missingPinkStars}★ needed from known inputs`
+                : "No target set"}
+            </p>
+            {projection.target && (
+              <button type="button" onClick={() => onTargetChange(aptitude, null)} className={`${BUTTON} flex-1 max-w-20 text-zinc-700 transition-colors hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800`}>
+                Clear
+              </button>
+            )}
+          </div>
         </div>
       )}
       <ul className="mt-2 border-t border-zinc-200 pt-2 text-xs dark:border-zinc-800">
@@ -128,7 +189,7 @@ export function AptitudeCell({
     </ParentingPopover>
   );
 }
-export function AptitudeTable(props: { assessment: BranchAssessment; label: string; sources: SparkSource[]; onTargetChange?: (key: FarmAptitude, rank: FarmRank) => void; pinkFactor?: AptitudeKey | null }) {
+export function AptitudeTable(props: { assessment: BranchAssessment; label: string; sources: SparkSource[]; onTargetChange?: (aptitude: AptitudeKey, rank: TargetRank | null) => void; pinkFactor?: AptitudeKey | null }) {
   return (
     <div className="mt-2">
       <AptitudeGrid

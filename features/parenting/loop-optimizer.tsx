@@ -11,6 +11,7 @@ import { usePedigreeTier, type PedigreeTier } from "./hooks/use-pedigree-tier";
 import { AncestorSheet } from "./pedigree/ancestor-sheet";
 import { usePedigreeModel } from "./hooks/use-pedigree-model";
 import { ParentPedigreeCanvas } from "./pedigree/parent-pedigree-canvas";
+import { FarmFocusToggles } from "./components/farm-focus-toggles";
 
 export { AncestorCard, AutoFitPedigreeTree, ParentPedigreeCanvas, PEDIGREE_ZOOM_STORAGE_KEY } from "./pedigree/parent-pedigree-canvas";
 
@@ -50,9 +51,12 @@ export function ParentingLoopOptimizer(props: Props) {
       ) : (
         <>
           <div className="border-t border-zinc-100 pt-3 text-xs dark:border-zinc-800" aria-live="polite">
-            <p className="font-semibold text-zinc-900 dark:text-zinc-100">
-              Ace genetics: {[model.minmax.target.surface, model.minmax.target.distance, model.minmax.target.style].filter(Boolean).join(" · ") || "Select a course and style"}
-            </p>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                Ace genetics: {[model.minmax.target.surface, model.minmax.target.distance, model.minmax.target.style].filter(Boolean).join(" · ") || "Select a course and style"}
+              </p>
+              <FarmFocusToggles disabled={model.config.disabledFarmAptitudes ?? []} onChange={model.setDisabledFarmAptitudes} />
+            </div>
           </div>
 
           <div className="border-t border-zinc-100 pt-3 dark:border-zinc-800 space-y-3">

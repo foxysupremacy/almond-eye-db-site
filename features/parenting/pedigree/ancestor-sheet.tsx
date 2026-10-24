@@ -54,7 +54,7 @@ export function AncestorSheet({ slot, tier, model, navigation, onNavigate, onCho
       </div>
     </section>
     <section className={SECTION}><p className="mb-1 text-xs font-semibold text-zinc-500">Aptitudes (projected)</p>
-      <AptitudeTable assessment={model.assessments[slot]} label={SLOT_LABEL[slot]} sources={model.sparkSources(slot)} pinkFactor={plan.pink} /></section>
+      <AptitudeTable assessment={model.assessments[slot]} label={SLOT_LABEL[slot]} sources={model.sparkSources(slot)} pinkFactor={plan.pink} onTargetChange={(aptitude, rank) => model.setAptitudeGoal(slot, aptitude, rank)} /></section>
     {genetic && status && <section className={SECTION}>
       <p data-testid="sheet-genetic-status" className={`mb-2 flex items-center gap-1.5 text-xs font-semibold ${GENETIC_TONE_CLASS[status.tone]}`}><StatusIcon className="h-3.5 w-3.5 shrink-0" />{status.text}</p>
       <GeneticDetails assessment={genetic} context={model.minmaxContext} onNavigate={navigation.navigate} /></section>}

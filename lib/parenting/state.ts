@@ -2,7 +2,7 @@
 // Manages Trainee, Parents, Grandparent overrides, and Parent Support Deck slots.
 
 import type { KyumaruVeteranItem } from "../veterans/types";
-import { APTITUDE_KEYS, DEFAULT_APTITUDE_GOALS, LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, FARM_APTITUDES, GGGP_SPARK_SLOTS, PARENT_WHITE_TARGET_SLOTS } from "./loop-planner";
+import { APTITUDE_KEYS, DEFAULT_APTITUDE_GOALS, FARM_APTITUDES, LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, GGGP_SPARK_SLOTS, PARENT_WHITE_TARGET_SLOTS } from "./loop-planner";
 import { extractSlotPrimaryFactors } from "../lineage/factor-decoder";
 import {
   readJsonStorage,
@@ -160,12 +160,13 @@ export function normalizeLoopConfig(value?: import("./loop-planner").ParentingLo
   const lockedSlots = normalizeSlots(value?.lockedSlots);
   const aptitudeKeySet = new Set<string>(APTITUDE_KEYS);
   const slotAptitudeGoals: NonNullable<import("./loop-planner").ParentingLoopConfig["slotAptitudeGoals"]> = {};
+  const targetRanks = new Set(["E", "D", "C", "B", "A"]);
   for (const slot of LOOP_UMA_SLOTS) {
     const goals = value?.slotAptitudeGoals?.[slot];
     if (!goals || typeof goals !== "object") continue;
-    for (const aptitude of FARM_APTITUDES) {
+    for (const aptitude of APTITUDE_KEYS) {
       const rank = goals[aptitude];
-      if (rank === "C" || rank === "D" || rank === "E") (slotAptitudeGoals[slot] ??= {})[aptitude] = rank;
+      if (typeof rank === "string" && targetRanks.has(rank)) (slotAptitudeGoals[slot] ??= {})[aptitude] = rank as import("./loop-planner").TargetRank;
     }
   }
   const slotWhiteTargets: NonNullable<import("./loop-planner").ParentingLoopConfig["slotWhiteTargets"]> = {};
@@ -173,6 +174,8 @@ export function normalizeLoopConfig(value?: import("./loop-planner").ParentingLo
     const targets = value?.slotWhiteTargets?.[slot];
     if (Array.isArray(targets)) slotWhiteTargets[slot] = [...new Set(targets.filter((key) => aptitudeKeySet.has(key)))];
   }
+  const disabledFarmAptitudes = value?.disabledFarmAptitudes == null ? [] :
+    FARM_APTITUDES.filter((aptitude) => value!.disabledFarmAptitudes!.includes(aptitude));
   const factorGoals: NonNullable<import("./loop-planner").ParentingLoopConfig["factorGoals"]> = {};
   for (const [slot, goal] of Object.entries(value?.factorGoals ?? {})) {
     if (!allowedSlots.has(slot) || !goal || typeof goal !== "object") continue;
@@ -208,6 +211,7 @@ export function normalizeLoopConfig(value?: import("./loop-planner").ParentingLo
   return {
     slotAptitudeGoals,
     slotWhiteTargets,
+    disabledFarmAptitudes,
     geneGoals,
     whiteFactorGoals,
     aptitudeGoals,

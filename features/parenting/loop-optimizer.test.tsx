@@ -372,3 +372,37 @@ test("PEDIGREE_ZOOM_STORAGE_KEY is configured for zoom persistence", () => {
   expect(PEDIGREE_ZOOM_STORAGE_KEY).toBe("almond_pedigree_zoom");
 });
 
+
+test("suggest sparks chips render per branch and enable only for complete branches", () => {
+  const tachyon = characters.find((character) => character.nameEn === "Agnes Tachyon")!;
+  const setup = {
+    ...DEFAULT_PARENTING_SETUP,
+    loopConfig: {
+      ...DEFAULT_PARENTING_SETUP.loopConfig!,
+      selectedSlots: {
+        p1: `r:${tachyon.id}`,
+        p1_gp1: `r:${tachyon.id}`,
+        p1_gp2: `r:${tachyon.id}`,
+      },
+    },
+  };
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer
+    target={charactersById.get(106802)!} veterans={[]} roster={[tachyon]}
+    setup={setup} targetStage={null}
+    onOpenPicker={() => {}} updateSetup={() => {}}
+  />);
+  // Complete P1 branch → enabled popover trigger; incomplete P2 branch → disabled hint.
+  expect(markup).toContain('aria-label="Suggest P1 branch sparks"');
+  expect(markup).toContain("Select P2 and both of its grandparents to auto-plan their sparks");
+});
+
+test("farm focus toggles render beside the Ace genetics line", () => {
+  const tachyon = characters.find((character) => character.nameEn === "Agnes Tachyon")!;
+  const markup = renderToStaticMarkup(<ParentingLoopOptimizer
+    target={charactersById.get(106802)!} veterans={[]} roster={[tachyon]}
+    setup={DEFAULT_PARENTING_SETUP} targetStage={null}
+    onOpenPicker={() => {}} updateSetup={() => {}}
+  />);
+  expect(markup).toContain('aria-label="Farm focus"');
+  expect(markup).toContain("Farm focus: all");
+});

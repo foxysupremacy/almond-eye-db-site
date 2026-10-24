@@ -5,7 +5,8 @@ import { User } from "@react-aria/test-utils";
 import { useState } from "react";
 import { WhiteGeneticPicker, AptitudeTable } from "@/features/parenting/components/aptitude-controls";
 import { PinkSparkPicker } from "@/features/parenting/components/pink-spark-fields";
-import { evaluateParentingBranch, type AptitudeKey } from "@/lib/parenting/loop-planner";
+import { buildLoopCandidates, evaluateParentingBranch, type AptitudeKey } from "@/lib/parenting/loop-planner";
+import { charactersById } from "@/lib/data/registry";
 afterEach(cleanup);
 const assessment = evaluateParentingBranch("p1", {}, { geneGoals: {}, aptitudeGoals: {}, selectedSlots: {}, lockedSlots: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false });
 function PinkProbe() {
@@ -78,4 +79,48 @@ test("aptitude shows unknown result and confines keyboard focus", async () => {
   expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
   await user.keyboard("{Tab}{Tab}{Tab}{Tab}");
   expect(screen.getByRole("dialog").contains(document.activeElement)).toBe(true);
+});
+test("target picker offers E–A ambitions and Clear on every aptitude including styles", async () => {
+  const calls: [AptitudeKey, string | null][] = [];
+  const user = userEvent.setup();
+  render(<AptitudeTable label="P1" assessment={assessment} sources={[]} onTargetChange={(aptitude, rank) => calls.push([aptitude, rank])} />);
+  await user.click(screen.getByRole("button", { name: "P1 Turf: base ?, projected ?" }));
+  for (const rank of ["E", "D", "C", "B", "A"]) expect(screen.getByRole("radio", { name: new RegExp(`^${rank}$`) })).toBeTruthy();
+  await user.click(screen.getByRole("radio", { name: "B" }));
+  expect(calls).toEqual([["Turf", "B"]]);
+  await user.click(screen.getByRole("button", { name: "Clear" }));
+  expect(calls[1]).toEqual(["Turf", null]);
+  await user.click(document.body);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  // Style aptitudes get the picker too, with "No target set" until one is chosen.
+  await user.click(screen.getByRole("button", { name: "P1 Leader: base ?, projected ?" }));
+  expect(screen.getByText("No target set")).toBeTruthy();
+  await user.click(screen.getByRole("radio", { name: "A" }));
+  expect(calls[2]).toEqual(["Leader", "A"]);
+});
+test("target ladder locks to the picked parent's base: A hides it, ranks below base disable", async () => {
+  const calls: [AptitudeKey, string | null][] = [];
+  const ranks = Array(10).fill("A");
+  ranks[1] = "B"; // Dirt base B, everything else A
+  const candidate = buildLoopCandidates([], [charactersById.get(106802)!])[0];
+  candidate.baseAptitude = ranks;
+  candidate.aptitude = [...ranks];
+  const locked = evaluateParentingBranch("p1", { p1: candidate }, {
+    geneGoals: {}, aptitudeGoals: {}, selectedSlots: {}, lockedSlots: {}, includeTripleCrownAffinity: false, includeTiaraAffinity: false,
+  });
+  const user = userEvent.setup();
+  render(<AptitudeTable label="P1" assessment={locked} sources={[]} onTargetChange={(aptitude, rank) => calls.push([aptitude, rank])} />);
+  // Base A: pink cannot raise it further, so the ladder is replaced by a note.
+  await user.click(screen.getByRole("button", { name: "P1 Turf: base A, projected ?" }));
+  expect(screen.queryByRole("radio", { name: /^E$/ })).toBeNull();
+  expect(screen.getByText("Base A — already at the top rank, no target needed.")).toBeTruthy();
+  await user.click(document.body);
+  await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  // Base B: E/D/C are unreachable targets and disable; B/A stay selectable.
+  await user.click(screen.getByRole("button", { name: "P1 Dirt: base B, projected ?" }));
+  for (const rank of ["E", "D", "C"]) {
+    expect((screen.getByRole("radio", { name: new RegExp(`^${rank}$`) }) as HTMLInputElement).disabled).toBe(true);
+  }
+  await user.click(screen.getByRole("radio", { name: "A" }));
+  expect(calls).toEqual([["Dirt", "A"]]);
 });

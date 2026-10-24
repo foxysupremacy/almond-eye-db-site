@@ -2,7 +2,8 @@ import { useEffect, useMemo } from "react";
 import type { CharacterIndexEntry } from "@/lib/data/types";
 import { characters as allCharacters, skillsById, uniqueInheritMap } from "@/lib/data/registry";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
-import { LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig } from "@/lib/parenting/loop-planner";
+import { LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type FarmAptitude, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig, type TargetRank } from "@/lib/parenting/loop-planner";
+import type { BranchSparkAssignment } from "@/lib/parenting/spark-suggester";
 import type { ParentingSetup } from "@/lib/parenting/state";
 import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
 import { evaluateParentingMinmax, type ParentingMinmaxAssessment, type ParentingMinmaxContext, type SlotGeneticAssessment } from "@/lib/parenting/minmax";
@@ -39,6 +40,11 @@ export interface PedigreeModel {
   geneticAssessment(slot: LoopUmaSlot): SlotGeneticAssessment | undefined;
   setFactorGoal(slot: LoopAncestorSlot, goal: EditableFactorPlan): void;
   setWhiteTargets(slot: LoopUmaSlot, targets: AptitudeKey[]): void;
+  setAptitudeGoal(slot: LoopUmaSlot, aptitude: AptitudeKey, rank: TargetRank | null): void;
+  /** Single write for the whole focus set — per-aptitude writes would each
+   * start from the same stale config and overwrite each other. */
+  setDisabledFarmAptitudes(next: FarmAptitude[]): void;
+  applyBranchSparks(assignments: Partial<Record<LoopAncestorSlot, BranchSparkAssignment>>): void;
 }
 
 export interface PedigreeModelProps {
@@ -100,6 +106,25 @@ export function usePedigreeModel(props: PedigreeModelProps): PedigreeModel {
   const geneticAssessment = (slot: LoopUmaSlot) => minmax.slots.find((entry) => entry.slot === slot);
   const setWhiteTargets = (slot: LoopUmaSlot, targets: AptitudeKey[]) =>
     updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [slot]: targets } });
+  const setAptitudeGoal = (slot: LoopUmaSlot, aptitude: AptitudeKey, rank: TargetRank | null) => {
+    const goals = { ...config.slotAptitudeGoals?.[slot] };
+    if (rank == null) delete goals[aptitude];
+    else goals[aptitude] = rank;
+    const slotAptitudeGoals = { ...config.slotAptitudeGoals, [slot]: goals };
+    if (!Object.keys(goals).length) delete slotAptitudeGoals[slot];
+    updateConfig({ ...config, slotAptitudeGoals });
+  };
+  const setDisabledFarmAptitudes = (next: FarmAptitude[]) => {
+    updateConfig({ ...config, disabledFarmAptitudes: [...new Set(next)] });
+  };
+  const applyBranchSparks = (assignments: Partial<Record<LoopAncestorSlot, BranchSparkAssignment>>) => {
+    const factorGoals = { ...config.factorGoals };
+    for (const [slot, assignment] of Object.entries(assignments)) {
+      const key = slot as LoopAncestorSlot;
+      factorGoals[key] = { ...factorGoals[key], pink: assignment.pink, pinkStars: assignment.pinkStars };
+    }
+    updateConfig({ ...config, factorGoals });
+  };
 
-  return { config, selectedCandidates, assessments, minmaxContext, minmax, factorPlan, sparkSources, uniqueSkill, whiteTargets, geneticAssessment, setFactorGoal, setWhiteTargets };
+  return { config, selectedCandidates, assessments, minmaxContext, minmax, factorPlan, sparkSources, uniqueSkill, whiteTargets, geneticAssessment, setFactorGoal, setWhiteTargets, setAptitudeGoal, setDisabledFarmAptitudes, applyBranchSparks };
 }
