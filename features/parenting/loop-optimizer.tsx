@@ -12,7 +12,7 @@ import { AncestorSheet } from "./pedigree/ancestor-sheet";
 import { usePedigreeModel } from "./hooks/use-pedigree-model";
 import { ParentPedigreeCanvas } from "./pedigree/parent-pedigree-canvas";
 
-export { AncestorCard, AutoFitPedigreeTree, ParentPedigreeCanvas } from "./pedigree/parent-pedigree-canvas";
+export { AncestorCard, AutoFitPedigreeTree, ParentPedigreeCanvas, PEDIGREE_ZOOM_STORAGE_KEY } from "./pedigree/parent-pedigree-canvas";
 
 interface Props {
   target: CharacterIndexEntry | null;

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { characters, charactersById } from "@/lib/data/registry";
 import { DEFAULT_PARENTING_SETUP } from "@/lib/parenting/state";
 import { LOOP_UMA_SLOTS } from "@/lib/parenting/loop-planner";
-import { ParentingLoopOptimizer } from "./loop-optimizer";
+import { ParentingLoopOptimizer, PEDIGREE_ZOOM_STORAGE_KEY } from "./loop-optimizer";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 
 test("Parent Planning shows the Ace profile and actual Dirt warning only on its six P/GP slots", () => {
@@ -367,3 +367,8 @@ test("pedigree canvas provides zoom in, zoom out, and reset zoom controls", () =
   expect(markup).toContain('aria-label="Zoom out"');
   expect(markup).toContain("100%");
 });
+
+test("PEDIGREE_ZOOM_STORAGE_KEY is configured for zoom persistence", () => {
+  expect(PEDIGREE_ZOOM_STORAGE_KEY).toBe("almond_pedigree_zoom");
+});
+

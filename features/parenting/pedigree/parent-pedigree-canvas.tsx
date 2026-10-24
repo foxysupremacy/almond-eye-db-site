@@ -246,6 +246,8 @@ export function AncestorCard({
   );
 }
 
+export const PEDIGREE_ZOOM_STORAGE_KEY = "almond_pedigree_zoom";
+
 export function AutoFitPedigreeTree({ children, tier = "desktop" }: { children: ReactNode; tier?: PedigreeTier }) {
   const outerRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -260,6 +262,18 @@ export function AutoFitPedigreeTree({ children, tier = "desktop" }: { children: 
   const BASE_WIDTH = isPhone ? 660 : 1180;
   // Keep scale legible on small devices: do not shrink below 0.70x on phone or 0.72x on desktop
   const MIN_SCALE = isPhone ? 0.70 : 0.72;
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(PEDIGREE_ZOOM_STORAGE_KEY);
+      if (stored !== null) {
+        const val = parseFloat(stored);
+        if (!isNaN(val) && val >= 0.45 && val <= 1.5) {
+          setUserZoom(val);
+        }
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     const outer = outerRef.current;
@@ -294,16 +308,23 @@ export function AutoFitPedigreeTree({ children, tier = "desktop" }: { children: 
     }
   }, [effectiveScale, userZoom]);
 
+  const saveZoom = (next: number) => {
+    setUserZoom(next);
+    try {
+      localStorage.setItem(PEDIGREE_ZOOM_STORAGE_KEY, String(next));
+    } catch {}
+  };
+
   const handleZoomIn = () => {
-    setUserZoom((prev) => Math.min(1.5, Math.round((prev + 0.1) * 10) / 10));
+    saveZoom(Math.min(1.5, Math.round((userZoom + 0.1) * 10) / 10));
   };
 
   const handleZoomOut = () => {
-    setUserZoom((prev) => Math.max(0.45, Math.round((prev - 0.1) * 10) / 10));
+    saveZoom(Math.max(0.45, Math.round((userZoom - 0.1) * 10) / 10));
   };
 
   const handleResetZoom = () => {
-    setUserZoom(1);
+    saveZoom(1);
   };
 
   return (
