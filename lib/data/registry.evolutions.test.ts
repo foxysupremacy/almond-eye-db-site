@@ -36,7 +36,7 @@ describe("evolution slots (master.mdb skill_upgrade_description)", () => {
         if ((e.condition1 || undefined) !== want) stale.push(`${cardId}:${e.skillId} "${e.condition1}" != "${want}"`);
       }
     }
-    expect(checked).toBe(633);
+    expect(checked).toBe(636);
     expect(stale).toEqual([]);
   });
 

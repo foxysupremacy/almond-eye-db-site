@@ -33,7 +33,7 @@ describe("skills-inherit.json: instant (zero-duration) triggers are kept", () =>
   });
 
   test("every inherited unique carries activation (activate_lot)", () => {
-    expect(skillsInherit.length).toBe(274);
+    expect(skillsInherit.length).toBe(275);
     expect(skillsInherit.every((s) => s.activation === 1)).toBe(true);
   });
 

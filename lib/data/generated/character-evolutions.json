@@ -769,6 +769,32 @@
       "condition1": "running_style==1&is_last_straight==1&order==1&bashin_diff_behind<=1"
     }
   ],
+  "100903": [
+    {
+      "rank": 3,
+      "baseSkillId": 203201,
+      "skillId": 100903111,
+      "nameEn": "Skill 100903111",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Medium",
+      "condition1": "phase_random==1&order_rate<=50"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 203381,
+      "skillId": 100903211,
+      "nameEn": "Skill 100903211",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Turf",
+      "condition1": "running_style==1&ground_type==1&course_distance>=2000&is_lastspurt==1"
+    }
+  ],
   "101001": [
     {
       "rank": 3,
@@ -3434,6 +3460,18 @@
       "iconId": 20016,
       "branchTag": "Leader",
       "condition1": "phase_random==1&running_style==2"
+    },
+    {
+      "rank": 3,
+      "baseSkillId": 202371,
+      "skillId": 104503121,
+      "nameEn": "Skill 104503121",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Long",
+      "condition1": "distance_type==4&running_style==2&track_id==10008&phase_straight_random==1"
     },
     {
       "rank": 5,
