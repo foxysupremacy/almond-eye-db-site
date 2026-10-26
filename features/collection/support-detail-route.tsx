@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Link as AriaLink } from "react-aria-components/Link";
 import { api, type CardIndexEntry } from "@/lib/api";
 import { useOwnedCards } from "@/app/common/hooks/use-owned-cards";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { ChevronLeftIcon } from "@/app/common/ui/primitives/icons";
 import { SupportCardDetailSheet } from "./components/support-card-detail-sheet";
 import { parseCollectionRouteId } from "./model/routes";
@@ -19,35 +20,36 @@ export function SupportDetailRoute() {
   useEffect(() => { api.listCardIndex().then(setCards).catch(() => setCards([])); }, []);
   const card = useMemo(() => cardId === null ? null : cards?.find((entry) => entry.id === cardId) ?? null, [cardId, cards]);
 
-  if (cards === null) return <LoadingDetail label="Loading support card..." />;
-  if (!card) return <NotFoundDetail backHref="/supports" backLabel="Back to Supports" label="support card" />;
+  const loading = cards === null;
 
   return (
-    <div className="flex flex-col gap-4">
-      <div>
-        <AriaLink
-          href="/supports"
-          className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors w-fit"
-        >
-          <ChevronLeftIcon className="h-4 w-4" /> Back to Supports
-        </AriaLink>
-      </div>
+    <div className="relative">
+      {!loading && card && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <AriaLink
+              href="/supports"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors w-fit"
+            >
+              <ChevronLeftIcon className="h-4 w-4" /> Back to Supports
+            </AriaLink>
+          </div>
 
-      <SupportCardDetailSheet
-        page
-        card={card}
-        isOpen
-        onClose={() => router.push("/supports")}
-        limitBreak={getLimitBreak(card.id)}
-        onSetLimitBreak={setLimitBreak}
-        onRemoveCard={removeCard}
-      />
+          <SupportCardDetailSheet
+            page
+            card={card}
+            isOpen
+            onClose={() => router.push("/supports")}
+            limitBreak={getLimitBreak(card.id)}
+            onSetLimitBreak={setLimitBreak}
+            onRemoveCard={removeCard}
+          />
+        </div>
+      )}
+      {!loading && !card && <NotFoundDetail backHref="/supports" backLabel="Back to Supports" label="support card" />}
+      <LoadingAnimation active={loading} label="Loading support card..." />
     </div>
   );
-}
-
-function LoadingDetail({ label }: { label: string }) {
-  return <div className="flex min-h-64 flex-col items-center justify-center gap-3"><div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" /><p className="text-xs text-zinc-400">{label}</p></div>;
 }
 
 export function NotFoundDetail({ backHref, backLabel, label }: { backHref: string; backLabel: string; label: string }) {

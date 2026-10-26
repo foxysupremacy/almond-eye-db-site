@@ -8,6 +8,7 @@ import { decodeKyumaruSyncPayload } from "@/lib/veterans/import/kyumaru-decode";
 import { saveVeterans, getVeteransCount } from "@/lib/IndexDB/veterans-db";
 import { FileTrigger } from "react-aria-components";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 export default function ImportPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -215,10 +216,13 @@ export default function ImportPage() {
 
       {status === "loading" && (
         <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/60 p-12 text-center shadow-xs">
-          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-100 mb-1">
-            Processing Game Data...
-          </h2>
+          <LoadingAnimation
+            active={status === "loading"}
+            label="Processing Game Data..."
+            size="md"
+            fill={false}
+            className="mb-4 py-6"
+          />
           <p className="text-xs text-zinc-500">Decompressing and storing locally into your browser sandbox.</p>
         </div>
       )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { ToggleButton } from "react-aria-components/ToggleButton";
 import { AppButton } from "@/app/common/ui/controls/app-button";
@@ -384,7 +385,9 @@ export default function SkillPickerModal({
 
             <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/60 p-2 space-y-1">
               {!skills ? (
-                <p className="p-4 text-xs text-zinc-400">Loading skills database…</p>
+                <div className="p-4">
+                  <LoadingAnimation active={!skills} variant="inline" label="Loading skills database…" />
+                </div>
               ) : filteredSkills.length === 0 ? (
                 <p className="p-4 text-xs text-zinc-400">No matching skills found.</p>
               ) : (

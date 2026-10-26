@@ -3,6 +3,7 @@
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { ToggleButton } from "react-aria-components/ToggleButton";
@@ -25,7 +26,18 @@ function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
 }
 
-function CardPickerSkeleton({ mode, label }: { mode: "main" | "parent"; label: string }) {
+function CardPickerSkeleton({ active, mode, label }: { active: boolean; mode: "main" | "parent"; label: string }) {
+  return (
+    <LoadingAnimation
+      active={active}
+      label={label}
+      size="md"
+      fallback={<CardPickerSkeletonRows mode={mode} label={label} />}
+    />
+  );
+}
+
+function CardPickerSkeletonRows({ mode, label }: { mode: "main" | "parent"; label: string }) {
   return (
     <div role="status" aria-label={label} aria-live="polite" className="divide-y divide-zinc-100 dark:divide-zinc-800/60">
       <span className="sr-only">{label}</span>
@@ -308,10 +320,8 @@ export default function CardPickerPopover({
         </div>
 
         {/* Cards List */}
-        <div className="flex-1 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/60">
-          {!cards || (sort === "recommended" && !recommendationsMap) ? (
-            <CardPickerSkeleton mode={mode} label={!cards ? "Loading support cards" : "Ranking recommendations"} />
-          ) : filteredCards.length === 0 ? (
+        <div className="relative flex-1 overflow-y-auto overscroll-contain divide-y divide-zinc-100 dark:divide-zinc-800/60">
+          {(!cards || (sort === "recommended" && !recommendationsMap)) ? null : filteredCards.length === 0 ? (
             <p className="p-4 text-[13px] text-zinc-400 dark:text-zinc-500">{query ? "No matches found." : "No cards."}</p>
           ) : (
             <ul>
@@ -569,6 +579,11 @@ export default function CardPickerPopover({
               })}
             </ul>
           )}
+          <CardPickerSkeleton
+            active={!cards || (sort === "recommended" && !recommendationsMap)}
+            mode={mode}
+            label={!cards ? "Loading support cards" : "Ranking recommendations"}
+          />
         </div>
       </AppDialog>
 

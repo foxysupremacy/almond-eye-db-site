@@ -17,6 +17,7 @@ import {
   type SkillSource,
 } from "@/lib/skills/skill-sources";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { CardSourceIcon } from "@/app/common/ui/skills/skill-badges";
 import CardTypeIcon from "@/app/common/ui/cards/card-type-icon";
@@ -196,9 +197,13 @@ export default function SkillScannerDialog({ isOpen, onClose, onUseSkill, useSki
 
         {deferredText.trim() && !isScanning && (
           matches.length === 0 ? (
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {data ? "No skill name recognized. Try a tighter crop or fix the text above." : "Loading skills…"}
-            </p>
+            data ? (
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                No skill name recognized. Try a tighter crop or fix the text above.
+              </p>
+            ) : (
+              <LoadingAnimation active={!data} variant="inline" label="Loading skills…" />
+            )
           ) : (
             <section aria-label="Matched skills">
               <h3 className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">

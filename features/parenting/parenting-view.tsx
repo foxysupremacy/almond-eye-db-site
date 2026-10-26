@@ -13,6 +13,7 @@ import { LineageAffinityHeader } from "@/features/parenting/components/lineage-a
 import { TraineeSpotlight } from "@/features/parenting/components/trainee-spotlight";
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { CheckIcon, DeckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
 import { useParentingViewModel } from "./view-models/use-parenting-view-model";
@@ -49,18 +50,7 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
     excludedCharId,
   } = state;
 
-  if (loading) {
-    // Keeps the same <section> element across loading -> loaded so pageRef stays observed.
-    return (
-      <section ref={pageRef} className="w-full">
-        <div className="py-24 flex flex-col items-center justify-center gap-3">
-          <div className="w-9 h-9 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-xs text-zinc-400">Loading Parenting Hub & Inheritance Engine...</p>
-        </div>
-      </section>
-    );
-  }
-
+  // The <section> below is the same element across loading -> loaded so pageRef stays observed.
   const parentDeckBanner = (
     <div
       className={
@@ -95,95 +85,104 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
   );
 
   return (
-    <section ref={pageRef} className="w-full flex flex-col gap-6">
-      {/* Unified 14-ancestor pedigree and loop planner */}
-      <ParentingLoopOptimizer
-        target={targetChara}
-        course={course}
-        runningStyle={runningStyle}
-        actions={
-          <>
-            <AppButton
-              variant="quiet"
-              onPress={commands.handleShare}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
-              title="Copy shareable link with current setup"
-            >
-              {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
-              <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
-            </AppButton>
-            <AppButton
-              variant="quiet"
-              onPress={commands.resetParenting}
-              className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-colors"
-            >
-              Reset Setup
-            </AppButton>
-          </>
-        }
-        targetStage={
-          <div>
-            <LineageAffinityHeader
-              affinityBreakdown={affinityBreakdown}
-              onOpenInheritedSkills={commands.openInheritedSkills}
-            />
-            <TraineeSpotlight
-              compact={isCompactPage}
-              targetChara={targetChara}
-              statBonuses={statBonuses}
-              onSelectTrainee={commands.openTraineeModal}
-            />
-          </div>
-        }
-        veterans={veterans}
-        roster={characters}
-        setup={setup}
-        onOpenPicker={commands.openPicker}
-        updateSetup={commands.updateSetup}
-      />
+    <section ref={pageRef} className="relative w-full flex flex-col gap-6">
+      {!loading && (
+        <>
+          {/* Unified 14-ancestor pedigree and loop planner */}
+          <ParentingLoopOptimizer
+            target={targetChara}
+            course={course}
+            runningStyle={runningStyle}
+            actions={
+              <>
+                <AppButton
+                  variant="quiet"
+                  onPress={commands.handleShare}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
+                  title="Copy shareable link with current setup"
+                >
+                  {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
+                  <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
+                </AppButton>
+                <AppButton
+                  variant="quiet"
+                  onPress={commands.resetParenting}
+                  className="px-2.5 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs text-zinc-500 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/50 cursor-pointer transition-colors"
+                >
+                  Reset Setup
+                </AppButton>
+              </>
+            }
+            targetStage={
+              <div>
+                <LineageAffinityHeader
+                  affinityBreakdown={affinityBreakdown}
+                  onOpenInheritedSkills={commands.openInheritedSkills}
+                />
+                <TraineeSpotlight
+                  compact={isCompactPage}
+                  targetChara={targetChara}
+                  statBonuses={statBonuses}
+                  onSelectTrainee={commands.openTraineeModal}
+                />
+              </div>
+            }
+            veterans={veterans}
+            roster={characters}
+            setup={setup}
+            onOpenPicker={commands.openPicker}
+            updateSetup={commands.updateSetup}
+          />
 
-      {/* 3. NAVIGATION BANNER TO PARENT DECK (desktop: before the skills section) */}
-      {!isCompactPage && parentDeckBanner}
+          {/* 3. NAVIGATION BANNER TO PARENT DECK (desktop: before the skills section) */}
+          {!isCompactPage && parentDeckBanner}
 
-      {/* 4. PEDIGREE INHERITABLE SKILLS (Innate, Awakening, Events, Uniques, Factors) */}
-      <PedigreeSkillsSection />
+          {/* 4. PEDIGREE INHERITABLE SKILLS (Innate, Awakening, Events, Uniques, Factors) */}
+          <PedigreeSkillsSection />
 
-      {/* Phone/tablet: the banner moves after the skills section as a single row */}
-      {isCompactPage && parentDeckBanner}
+          {/* Phone/tablet: the banner moves after the skills section as a single row */}
+          {isCompactPage && parentDeckBanner}
 
-      {/* Trainee Character Picker Modal */}
-      <CharacterPickerModal
-        isOpen={isTraineeModalOpen}
-        onClose={commands.closeTraineeModal}
-        characters={characters}
-        onSelect={commands.selectTrainee}
-        title="Select Target Trainee"
-      />
+          {/* Trainee Character Picker Modal */}
+          <CharacterPickerModal
+            isOpen={isTraineeModalOpen}
+            onClose={commands.closeTraineeModal}
+            characters={characters}
+            onSelect={commands.selectTrainee}
+            title="Select Target Trainee"
+          />
 
-      {/* Veteran / Template Picker Modal */}
-      <VeteranPickerModal
-        isOpen={activePickerSlot !== null}
-        minmaxEnabled
-        onClose={commands.closePicker}
-        slotLabel={activeSlotLabel}
-        recommendations={pickerRecommendations ?? undefined}
-        recommendationsLoading={pickerRecommendationsLoading}
-        recommendationsError={pickerRecommendationsError}
-        onSelectCandidate={commands.selectCandidate}
-        targetCharaId={setup.targetCharaId}
-        excludedCharId={excludedCharId}
-        veterans={veterans}
-        characters={characters}
-        contextParent={pickerContextParent}
-        onSelectVeteran={commands.selectVeteran}
-        onSelectCharacterTemplate={commands.selectTemplate}
-      />
+          {/* Veteran / Template Picker Modal */}
+          <VeteranPickerModal
+            isOpen={activePickerSlot !== null}
+            minmaxEnabled
+            onClose={commands.closePicker}
+            slotLabel={activeSlotLabel}
+            recommendations={pickerRecommendations ?? undefined}
+            recommendationsLoading={pickerRecommendationsLoading}
+            recommendationsError={pickerRecommendationsError}
+            onSelectCandidate={commands.selectCandidate}
+            targetCharaId={setup.targetCharaId}
+            excludedCharId={excludedCharId}
+            veterans={veterans}
+            characters={characters}
+            contextParent={pickerContextParent}
+            onSelectVeteran={commands.selectVeteran}
+            onSelectCharacterTemplate={commands.selectTemplate}
+          />
 
       {/* Inherited Skills & Factors Modal */}
-      <InheritedSkillsModal
-        isOpen={isInheritedSkillsOpen}
-        onClose={commands.closeInheritedSkills}
-        participants={participantsList}
+          <InheritedSkillsModal
+            isOpen={isInheritedSkillsOpen}
+            onClose={commands.closeInheritedSkills}
+            participants={participantsList}
+          />
+        </>
+      )}
+      <LoadingAnimation
+        active={loading}
+        label="Loading Parenting Hub & Inheritance Engine..."
+        className="py-16"
       />
     </section>
   );

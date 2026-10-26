@@ -17,6 +17,7 @@ import { useTier } from "@/app/common/hooks/use-tier";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDisclosure } from "@/app/common/ui/controls/app-disclosure";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { XIcon } from "@/app/common/ui/primitives/icons";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { ActivationStrip, GainPositionChart, phaseBandsForCourse, SpeedTimeChart } from "./charts";
@@ -186,7 +187,7 @@ function ChipRow({ rail, focused, onSelect }: { rail: SkillEffectRail; focused: 
   );
 }
 
-function Skeleton() {
+function SkeletonBlocks() {
   return (
     <div aria-busy="true" aria-label="Loading skill effect" className="flex flex-col gap-4">
       <div className="h-40 animate-pulse rounded-md bg-zinc-100 dark:bg-zinc-900" />
@@ -259,7 +260,8 @@ export function SkillEffectDetailsModal(props: SkillEffectDetailsModalProps) {
     );
   } else if (!skill) {
     // On a rail switch the previous skill stays visible while the next loads; only open/close blanks it.
-    content = <Skeleton />;
+    // The loading visual itself is the always-mounted LoadingAnimation rendered next to {content}.
+    content = null;
   } else {
     content = (
       <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/80 [&>section]:py-4 [&>section:first-child]:pt-0">
@@ -366,7 +368,15 @@ export function SkillEffectDetailsModal(props: SkillEffectDetailsModalProps) {
         bodyClassName={`min-h-0 flex-1 overflow-hidden ${rail ? "sm:grid sm:grid-cols-[200px_1fr]" : "flex flex-col"}`}
       >
         {rail ? <Rail rail={rail} focused={focused} onSelect={setFocused} /> : null}
-        <div aria-busy={effect.switching} className={`min-h-0 overflow-y-auto overscroll-contain px-5 py-4 sm:h-full ${busyClass}`}>{content}</div>
+        <div aria-busy={effect.switching} className={`relative min-h-0 overflow-y-auto overscroll-contain px-5 py-4 sm:h-full ${busyClass}`}>
+          {content}
+          <LoadingAnimation
+            active={!skill && effect.status !== "error"}
+            label="Loading skill effect"
+            size="md"
+            fallback={<SkeletonBlocks />}
+          />
+        </div>
       </AppDialog>
     );
   }
@@ -381,7 +391,15 @@ export function SkillEffectDetailsModal(props: SkillEffectDetailsModalProps) {
       headerAction={closeButton}
     >
       {rail ? <ChipRow rail={rail} focused={focused} onSelect={setFocused} /> : null}
-      <div aria-busy={effect.switching} className={`px-4 py-4 ${busyClass}`}>{content}</div>
+      <div aria-busy={effect.switching} className={`relative px-4 py-4 ${busyClass}`}>
+        {content}
+        <LoadingAnimation
+          active={!skill && effect.status !== "error"}
+          label="Loading skill effect"
+          size="md"
+          fallback={<SkeletonBlocks />}
+        />
+      </div>
     </AppDialog>
   );
 }

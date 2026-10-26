@@ -1,6 +1,25 @@
 "use client";
 
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
+
+/**
+ * Suspense fallback for the lazy feature tabs. The fallback unmounts the
+ * moment the chunk resolves, so only the enter + loop clips ever play here —
+ * the exit clip cannot (see DESIGN.md §13.6).
+ */
 export function TabSkeleton() {
+  return (
+    <LoadingAnimation
+      active
+      label="Loading section"
+      fill={false}
+      className="min-h-[50vh]"
+      fallback={<TabSkeletonLayout />}
+    />
+  );
+}
+
+function TabSkeletonLayout() {
   return (
     <div
       role="status"

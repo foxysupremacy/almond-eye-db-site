@@ -3,6 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ToggleButton, ToggleButtonGroup } from "react-aria-components/ToggleButtonGroup";
 import { CheckIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { renderCourse } from "@/features/visualizer/rendering";
 import { evaluateDemoSkill } from "../demo-model";
@@ -101,9 +102,15 @@ function InteractiveDemo({ data }: { data: LandingDemoData }) {
         <div className={styles.timelineScroll} tabIndex={0} role="region" aria-label="Race timeline, scroll horizontally to explore the full course">
           <div ref={hostRef} className={styles.timeline} />
         </div>
-        {renderStatus !== "ready" && (
+        <LoadingAnimation
+          active={renderStatus === "loading"}
+          variant="overlay"
+          size="md"
+          label="Preparing the race timeline..."
+        />
+        {renderStatus === "error" && (
           <p className={styles.timelineMessage} role="status">
-            {renderStatus === "loading" ? "Preparing the race timeline..." : "This skill's timeline is unavailable. Try another skill or open the full visualizer."}
+            This skill's timeline is unavailable. Try another skill or open the full visualizer.
           </p>
         )}
       </div>

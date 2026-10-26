@@ -2,6 +2,7 @@
 
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 
 
@@ -305,10 +306,13 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
           )}
 
           {loading && !cardSkills && (
-            <div className="py-12 text-center text-xs text-zinc-400 dark:text-zinc-500">
-              <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-              <p>Loading card skills…</p>
-            </div>
+            <LoadingAnimation
+              active={loading && !cardSkills}
+              label="Loading card skills…"
+              size="md"
+              fill={false}
+              className="py-12"
+            />
           )}
 
           {!loading && totalCount === 0 && (

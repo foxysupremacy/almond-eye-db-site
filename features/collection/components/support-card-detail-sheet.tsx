@@ -3,6 +3,7 @@
 import { CollectionDetailSurface } from "./collection-detail-surface";
 import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 
 import React, { useEffect, useMemo, useState } from "react";
@@ -480,10 +481,13 @@ export function SupportCardDetailSheet({
           )}
 
           {loading && !loadedSkills && (
-            <div className="py-16 text-center text-xs text-zinc-400">
-              <div className="mx-auto mb-2 h-5 w-5 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-              <p>Loading skills and effects...</p>
-            </div>
+            <LoadingAnimation
+              active={loading && !loadedSkills}
+              label="Loading skills and effects..."
+              size="md"
+              fill={false}
+              className="py-16"
+            />
           )}
         </div>
 

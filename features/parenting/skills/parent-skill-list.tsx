@@ -1,5 +1,6 @@
 "use client";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 import { useMemo, useEffect, useState } from "react";
 import { useDeck } from "@/features/deck/state";
@@ -504,7 +505,12 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
       </MobileFilters>
       {/* Skill List Body */}
       {sourceFilter !== "hard_to_get" && loading && !hasParentDeck && !hasLineage ? (
-        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading skills…</p>
+        <LoadingAnimation
+          active={loading && !hasParentDeck && !hasLineage}
+          variant="inline"
+          label="Loading skills…"
+          className="mt-4"
+        />
       ) : unifiedSkillList.length === 0 && sourceFilter !== "hard_to_get" ? (
         <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-zinc-400 dark:text-zinc-500">
           No skills in pool yet. Add cards above or configure parents in Parenting to view all possible skills.
@@ -514,7 +520,12 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
           Select a course and running style to find track active skills that can be inherited from Uma but are unavailable from support cards.
         </div>
       ) : sourceFilter === "hard_to_get" && !hardToGetData ? (
-        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading Uma skill sources…</p>
+        <LoadingAnimation
+          active={!hardToGetData}
+          variant="inline"
+          label="Loading Uma skill sources…"
+          className="mt-4"
+        />
       ) : filtered.length === 0 ? (
         <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">No skills match the selected filter.</p>
       ) : sourceFilter === "hard_to_get" ? (

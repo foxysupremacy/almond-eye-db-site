@@ -1,6 +1,7 @@
 "use client";
 
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
@@ -442,11 +443,17 @@ export function Track3DCanvas({
         </span>
       </div>
 
-      {loadingShape && (
-        <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 backdrop-blur-xs z-20">
-          <span className="text-xs text-zinc-300 font-medium animate-pulse">Loading 3D track spline...</span>
-        </div>
-      )}
+      <LoadingAnimation
+        active={loadingShape}
+        variant="overlay"
+        label="Loading 3D track spline..."
+        className="bg-zinc-950/60 backdrop-blur-xs"
+        fallback={
+          <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 backdrop-blur-xs z-20">
+            <span className="text-xs text-zinc-300 font-medium">Loading 3D track spline...</span>
+          </div>
+        }
+      />
     </div>
   );
 }

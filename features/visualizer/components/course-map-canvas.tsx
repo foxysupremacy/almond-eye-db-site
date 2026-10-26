@@ -1,6 +1,7 @@
 "use client";
 
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
 import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import type { Course } from "@/lib/skill-engine/types";
@@ -338,10 +339,13 @@ export function CourseMapCanvas({
 
       {/* Canvas */}
       {loading ? (
-        <div className="flex h-[240px] w-full items-center justify-center text-sm text-muted-foreground md:h-[420px]">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mr-2" />
-          Loading course shape...
-        </div>
+        <LoadingAnimation
+          active={loading}
+          label="Loading course shape..."
+          size="md"
+          fill={false}
+          className="h-[240px] w-full text-sm text-muted-foreground md:h-[420px]"
+        />
       ) : error ? (
         <div className="flex h-[240px] w-full flex-col items-center justify-center gap-2 text-sm text-muted-foreground md:h-[420px]">
           <AlertCircleIcon className="h-6 w-6 text-destructive" />

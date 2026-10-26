@@ -6,6 +6,7 @@ import type { Course } from "@/lib/skill-engine/types";
 import type { SkillZoneResult } from "@/lib/skill-engine/zones";
 import type { SkillEvaluationResult, SpecialEffectItem } from "@/lib/evaluator/types";
 import type { VisualizerSkill } from "@/lib/visualizer/skills";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { isUniqueSkill, type RaceImpactProfile, type RaceImpactResult } from "@/lib/race-impact";
 import { conditionBranches, formatEffect } from "@/lib/skill-engine/describe";
 import { ZONE_COLORS } from "@/lib/visualizer/colors";
@@ -97,7 +98,9 @@ export function SkillDetailPanel({
       className={`order-1 min-w-0 ${embedded ? "" : "rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl"} ${compact ? "text-xs" : "text-sm"} text-left scroll-mt-20 sm:scroll-mt-24 divide-y divide-zinc-200/80 dark:divide-zinc-800 overflow-hidden md:order-2`}
     >
       {skillLoading ? (
-        <div className="p-4 sm:p-5 text-zinc-400 dark:text-zinc-500">Loading skill…</div>
+        <div className="p-4 sm:p-5">
+          <LoadingAnimation active={skillLoading} variant="inline" label="Loading skill…" />
+        </div>
       ) : skillDetail ? (
         <>
           {/* Block 1: Skill Info Header */}

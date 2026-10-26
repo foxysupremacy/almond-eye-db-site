@@ -1,4 +1,5 @@
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
@@ -240,7 +241,12 @@ export default function SkillList() {
 
       {/* List Body */}
       {loading && !hasDeck ? (
-        <p className="mt-4 text-sm text-zinc-400 dark:text-zinc-500">Loading card index…</p>
+        <LoadingAnimation
+          active={loading && !hasDeck}
+          variant="inline"
+          label="Loading card index…"
+          className="mt-4"
+        />
       ) : !hasDeck ? (
         <div className="mt-4 rounded-xl border border-dashed border-zinc-300 dark:border-zinc-700 p-8 text-center text-zinc-400 dark:text-zinc-500">
           No cards equipped yet. Add cards above to view granted skills.

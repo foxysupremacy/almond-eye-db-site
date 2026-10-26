@@ -334,6 +334,24 @@ The desktop skill inspector stays positioned relative to its active skill trigge
 4. **Frame-coalesced updates**: observe the trigger and panel, plus scroll and viewport changes, but schedule all reads and writes through one `requestAnimationFrame`. The inspector owns placement, so React Aria `Popover` must use `shouldUpdatePosition={false}` here; do not update layout synchronously from a resize callback.
 5. **Composited placement**: apply coordinates with `translate3d` and only when they change. Keep scale animation on an inner content wrapper so it cannot overwrite the positioned outer popover; its origin follows the side nearest the trigger.
 
+### 13.6 Video Loading Animation (`LoadingAnimation`)
+
+All loading UI goes through `app/common/ui/controls/loading-animation.tsx`: a three-phase VP9-with-alpha WebM clip (enter 0.55s → loop 0.30s → exit 0.47s) composited over any background. Assets live in `public/assets/video/loading/` (cropped to the 480×200 mark region so the mark fills the frame; `loading_mark.png` is the transparent still of the loop pose).
+
+1. **Mount contract**: always mounted as a sibling of the content it covers, driven by `active`. `active` true → enter once, then loop. `active` false → the content renders immediately underneath while the exit clip plays once as a `pointer-events-none` overlay; the wrapper then hides itself (`display:none`, no layout gap). Callers with `if (loading) return <Spinner/>` early-returns must be restructured to conditional content + always-mounted loader, or the exit phase is silently lost.
+2. **Suspense exception**: Suspense fallbacks (`TabSkeleton`) unmount the moment the chunk resolves, so they can only ever play enter + loop. Do not fake an exit there.
+3. **Tier ladder** (decided in `useClipMode`, one mount effect after first paint):
+   | Tier | Condition | Renders |
+   |---|---|---|
+   | `unknown` | SSR / pre-effect | static mark — **never a spinner**; an SSR spinner outlives fast loads until hydration and makes the video look like it never shipped (shipped bug, fixed 2026-10-25) |
+   | `video` | Chromium/Firefox (VP9 WebM plays) | the three clips |
+   | `static` | Safari (plays VP9 WebM but ignores the alpha channel → black box) or `prefers-reduced-motion: reduce` | static PNG mark + label |
+   | `spinner` | no WebM at all (jsdom/happy-dom tests, ancient browsers) | caller's `fallback` prop, else `DefaultSpinner` |
+4. **Reduced motion**: the clips are JS-driven and bypass the §13.4 CSS guard — the tier ladder *is* the guard. Reduced motion gets the static mark; do not autoplay the clips there.
+5. **Variants & sizing**: `block` (full loading area, `min-h-64` unless `fill={false}` for padded cards), `inline` (rows/sheets, default `size="sm"`), `overlay` (`absolute inset-0`; caller `className` — e.g. the 3D-track dark veil — applies only while loading and is dropped for the exit pass so the clip fades over clean content).
+6. **Labels are contract**: pass the exact strings the previous spinners/skeletons had (`"Loading support cards"`, `"Loading skill…"`, …). DOM tests assert them, and the sr-only + visible label pair is what screen readers get.
+7. **Determinate progress stays bars**: the rankings worker progress and the OCR progress bar keep their real `progressbar` UI — a looping clip cannot convey `X / Y`. They may pair with a loader, never be replaced by one.
+
 ---
 
 ## 14. SVG Icons Over Emojis Standard (Clean UI Typography)

@@ -11,6 +11,7 @@ import { useRaceImpactProfile } from "@/app/common/hooks/use-race-impact-profile
 import { allTabRows, isAtLeastA, rowsForMetric, rowTotal, styleTabRows, type RankingCandidate, type RankingMetric, type RankingRow, type SlotScore } from "@/lib/rankings";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { XIcon } from "@/app/common/ui/primitives/icons";
 import {
   ModelAssumptions,
@@ -224,14 +225,19 @@ export function RankingsFeature({ runner }: { runner?: RankingsRunner } = {}) {
 
   if (!course) {
     return (
-      <section aria-label="Rankings" className="flex flex-col gap-3">
-        {loading ? (
-          <ul aria-busy="true" className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-            {Array.from({ length: 4 }, (_, i) => <CharacterCardSkeleton key={i} />)}
-          </ul>
-        ) : (
+      <section aria-label="Rankings" className="relative flex flex-col gap-3">
+        {!loading && (
           <p className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Pick a race in the header to see rankings.</p>
         )}
+        <LoadingAnimation
+          active={loading}
+          label="Loading deck track..."
+          fallback={
+            <ul aria-busy="true" className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              {Array.from({ length: 4 }, (_, i) => <CharacterCardSkeleton key={i} />)}
+            </ul>
+          }
+        />
       </section>
     );
   }
@@ -267,9 +273,6 @@ export function RankingsFeature({ runner }: { runner?: RankingsRunner } = {}) {
             <div className="h-full bg-emerald-600 transition-[width] duration-150 dark:bg-emerald-500" style={{ width: `${pct}%` }} />
           </div>
         </div>
-        <ul aria-busy="true" className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
-          {Array.from({ length: 6 }, (_, i) => <CharacterCardSkeleton key={i} />)}
-        </ul>
       </div>
     );
   } else {
@@ -307,7 +310,7 @@ export function RankingsFeature({ runner }: { runner?: RankingsRunner } = {}) {
   }
 
   return (
-    <section aria-label="Rankings" className="flex flex-col gap-3">
+    <section aria-label="Rankings" className="relative flex flex-col gap-3">
       <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{venueCaption}</p>
       <CourseStrip course={course} zones={stripZones} compact={tier === "phone"} numberedSegments={selectedRow != null} />
       <StyleTabs value={styleTab} onChange={onTabChange} sticky={tier !== "desktop"} />
@@ -325,6 +328,15 @@ export function RankingsFeature({ runner }: { runner?: RankingsRunner } = {}) {
       </div>
       <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{SCORE_CAPTION}</p>
       {body}
+      <LoadingAnimation
+        active={rankings.status !== "ready" && rankings.status !== "error"}
+        label="Ranking support cards..."
+        fallback={
+          <ul aria-busy="true" className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+            {Array.from({ length: 6 }, (_, i) => <CharacterCardSkeleton key={i} />)}
+          </ul>
+        }
+      />
 
       <SkillEffectDetailsModal
         open={modal.open}

@@ -3,6 +3,7 @@
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { Tabs, TabList, Tab, TabPanel } from "react-aria-components/Tabs";
 import { XIcon, StarIcon, AlertTriangleIcon } from "@/app/common/ui/primitives/icons";
 
@@ -752,10 +753,13 @@ export default function VeteranPickerModal({
               }}
             />
           ) : activeTab === "recommended" && recommendationsLoading ? (
-            <div className="flex items-center justify-center gap-3 py-16 text-xs text-zinc-500" role="status">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-              Ranking candidates for this slot…
-            </div>
+            <LoadingAnimation
+              active={recommendationsLoading}
+              label="Ranking candidates for this slot…"
+              size="md"
+              fill={false}
+              className="py-16"
+            />
           ) : activeTab === "recommended" && recommendationsError ? (
             <div className="py-16 text-center text-xs text-rose-600 dark:text-rose-400" role="alert">
               {recommendationsError}
@@ -765,10 +769,13 @@ export default function VeteranPickerModal({
               {tabContentError}
             </div>
           ) : tabContentLoading ? (
-            <div className="flex items-center justify-center gap-3 py-16 text-xs text-zinc-500" role="status">
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-emerald-500 border-t-transparent" />
-              Preparing candidates…
-            </div>
+            <LoadingAnimation
+              active={tabContentLoading}
+              label="Preparing candidates…"
+              size="md"
+              fill={false}
+              className="py-16"
+            />
           ) : activeTab === "owned" ? (
             <OwnedTabContent
               entries={ownedUmaEntries.slice(0, visibleLimit)}
