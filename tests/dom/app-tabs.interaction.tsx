@@ -8,7 +8,7 @@ import { appRouteHref, isRootAppRoute, MOBILE_TABS, TABS, type RootAppRoute } fr
 afterEach(cleanup);
 
 test("Rankings sits between Parenting and Visualizer", () => {
-  expect(TABS.map((t) => t.id)).toEqual(["main", "parent-deck", "parenting", "rankings", "visualizer", "supports", "characters"]);
+  expect(TABS.map((t) => t.id)).toEqual(["main", "parent-deck", "parenting", "rankings", "visualizer", "stamina", "supports", "characters"]);
   const rankings = TABS.find((t) => t.id === "rankings");
   expect(rankings?.label).toBe("Rankings");
 });
@@ -26,6 +26,7 @@ test("Library opens a sheet with canonical destinations and can be dismissed", a
   const library = screen.getByRole("navigation", { name: "Library navigation" });
   expect(within(library).getByRole("link", { name: "Supports" }).getAttribute("href")).toBe("/supports");
   expect(within(library).getByRole("link", { name: "Characters" }).getAttribute("href")).toBe("/characters");
+  expect(within(library).getByRole("link", { name: "Stamina" }).getAttribute("href")).toBe("/#stamina");
   expect(within(library).queryByRole("link", { name: "Trained Umas" })).toBeNull();
   expect(within(library).getByRole("link", { name: "Supports" }).getAttribute("aria-current")).toBe("page");
   await user.click(screen.getByRole("button", { name: "Close Library" }));
@@ -66,4 +67,22 @@ test("shared desktop header exposes Rankings and retains collection page URLs", 
   expect(within(nav).getByRole("link", { name: "Characters" }).getAttribute("href")).toBe("/characters");
   await user.click(rankings);
   expect(selected).toEqual(["rankings"]);
+});
+
+test("Stamina is a desktop tab and a Library destination, not a seventh mobile slot", async () => {
+  const user = userEvent.setup();
+  expect(TABS.find((t) => t.id === "stamina")?.label).toBe("Stamina");
+  expect(isRootAppRoute("stamina")).toBe(true);
+  expect(appRouteHref("stamina")).toBe("/#stamina");
+  expect(MOBILE_TABS).toHaveLength(6);
+  const selected: RootAppRoute[] = [];
+  render(<AppMobileNavigation activeRoute="stamina" onRootRouteChange={(route) => selected.push(route)} />);
+  const trigger = screen.getByRole("button", { name: "Library" });
+  expect(trigger.className).toContain("text-emerald-700");
+  await user.click(trigger);
+  const library = screen.getByRole("navigation", { name: "Library navigation" });
+  const stamina = within(library).getByRole("link", { name: "Stamina" });
+  expect(stamina.getAttribute("aria-current")).toBe("page");
+  await user.click(stamina);
+  expect(selected).toEqual(["stamina"]);
 });

@@ -1,6 +1,6 @@
 import { DeckIcon, LineageIcon, LibraryIcon, TargetIcon, FlagIcon, TrophyIcon } from "@/app/common/ui/primitives/icons";
 
-export type RootAppRoute = "main" | "parent-deck" | "parenting" | "rankings" | "visualizer" | "veterans";
+export type RootAppRoute = "main" | "parent-deck" | "parenting" | "rankings" | "visualizer" | "stamina" | "veterans";
 export type AppShellRoute = RootAppRoute | "supports" | "characters";
 export type Tab = RootAppRoute;
 
@@ -11,6 +11,7 @@ export const TABS: { id: AppShellRoute; label: string; badge?: string }[] = [
   { id: "parenting", label: "Parenting", badge: "Inheritance" },
   { id: "rankings", label: "Rankings" },
   { id: "visualizer", label: "Visualizer" },
+  { id: "stamina", label: "Stamina" },
   { id: "supports", label: "Supports" },
   { id: "characters", label: "Characters" },
 ];
@@ -24,10 +25,11 @@ export const MOBILE_TABS = [
   { id: "library", label: "Library", icon: LibraryIcon },
 ] as const;
 
-export const LIBRARY_ITEMS = TABS.filter(({ id }) => id === "supports" || id === "characters");
+// Stamina has no bottom-bar slot; phones reach it from the Library sheet.
+export const LIBRARY_ITEMS = (["supports", "characters", "stamina"] as const).map((id) => TABS.find((tab) => tab.id === id)!);
 
 export function isRootAppRoute(route: string): route is RootAppRoute {
-  return route === "main" || route === "parent-deck" || route === "parenting" || route === "rankings" || route === "visualizer" || route === "veterans";
+  return route === "main" || route === "parent-deck" || route === "parenting" || route === "rankings" || route === "visualizer" || route === "stamina" || route === "veterans";
 }
 
 export function appRouteHref(route: AppShellRoute): string {

@@ -26,6 +26,9 @@ const RankingsFeature = lazy(() =>
 const VeteransFeature = lazy(() =>
   import("../features/veterans").then((m) => ({ default: m.VeteransFeature }))
 );
+const StaminaFeature = lazy(() =>
+  import("@/features/stamina").then((m) => ({ default: m.StaminaFeature }))
+);
 const ImportModal = lazy(() =>
   import("@/features/importer").then((m) => ({ default: m.ImportModal }))
 );
@@ -81,7 +84,7 @@ export default function Home() {
       <ApplicationSkillInspectorProvider>
       <div className="app-shell flex min-h-[100dvh] min-w-0 flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[400] focus:rounded-lg focus:bg-emerald-700 focus:p-3 focus:text-white">Skip to content</a>
-        <AppShellHeader activeRoute={tab} isControlsCollapsed={isControlsCollapsed} mobileTitle={tab === "veterans" ? "Your library" : tab === "parent-deck" ? "Parent Deck" : tab === "main" ? "Main Deck" : tab === "parenting" ? "Parenting" : tab === "rankings" ? "Rankings" : "Visualizer"} onToggleControls={toggleControls} onRootRouteChange={handleTabChange} onOpenBuildTools={() => setToolsOpen(true)} />
+        <AppShellHeader activeRoute={tab} isControlsCollapsed={isControlsCollapsed} mobileTitle={tab === "veterans" ? "Your library" : tab === "parent-deck" ? "Parent Deck" : tab === "main" ? "Main Deck" : tab === "parenting" ? "Parenting" : tab === "rankings" ? "Rankings" : tab === "stamina" ? "Stamina" : "Visualizer"} onToggleControls={toggleControls} onRootRouteChange={handleTabChange} onOpenBuildTools={() => setToolsOpen(true)} />
         <GlobalControlsBar isCollapsed={isControlsCollapsed} onOpenImport={() => setIsImportModalOpen(true)} onOpenSkillScanner={() => setIsSkillScannerOpen(true)} />
 
         <main id="main-content" className={`mx-auto w-full min-w-0 ${tab === "parenting" ? "max-w-6xl xl:max-w-7xl" : "max-w-5xl"} flex-1 px-3 py-5 sm:px-6 sm:py-8 transition-all duration-200`}>
@@ -96,6 +99,8 @@ export default function Home() {
               <RankingsFeature />
             ) : tab === "visualizer" ? (
               <VisualizerFeature />
+            ) : tab === "stamina" ? (
+              <StaminaFeature />
             ) : (
               <VeteransFeature />
             )}

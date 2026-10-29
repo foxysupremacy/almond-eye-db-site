@@ -44,6 +44,10 @@ export function PlusIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={className} {...props}><path d="M12 5v14M5 12h14" /></svg>;
 }
 
+export function MinusIcon({ className = "h-4 w-4", ...props }: IconProps) {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true" className={className} {...props}><path d="M5 12h14" /></svg>;
+}
+
 export function ListIcon({ className = "h-4 w-4", ...props }: IconProps) {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className={className} {...props}><path d="M9 6h11M9 12h11M9 18h11" /><circle cx="4" cy="6" r="1" /><circle cx="4" cy="12" r="1" /><circle cx="4" cy="18" r="1" /></svg>;
 }
