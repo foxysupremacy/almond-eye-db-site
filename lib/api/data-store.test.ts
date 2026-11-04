@@ -31,6 +31,15 @@ describe("data-store", () => {
     expect(cs.hintSkills.length).toBe(withEvents.hintSkills.length);
   });
 
+  test("getCardSkills keeps every event choice that grants the same skill", async () => {
+    const store = await initDataStore();
+    // Satono Diamond [永久の誓い、永久の輝き]: "With All My Might" sits in both Step 3 options.
+    const cs = store.getCardSkills(30302);
+    const shared = cs.eventSkills.find((s) => (s.eventSources?.length ?? 0) > 1);
+    expect(shared?.eventSources?.map((m) => m.choiceIndex).sort()).toEqual([1, 2]);
+    expect(shared?.eventMeta).toEqual(shared?.eventSources?.[0]);
+  });
+
   test("getCardSkills falls back to placeholder summaries for unknown ids", async () => {
     const store = await initDataStore();
     expect(store.getCardSkills(99999999)).toEqual({ eventSkills: [], hintSkills: [] });

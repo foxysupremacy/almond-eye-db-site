@@ -145,14 +145,18 @@ export async function initDataStore(): Promise<DataStore> {
         const c = cardsById.get(cardId);
         if (!c) return { eventSkills: [], hintSkills: [] };
 
-        const eventMetaMap = new Map<number, EventSkillMetadata>();
+        // A skill can be granted by several choices (e.g. a shared gold in
+        // two climax options), so keep every distinct (event, choice) source.
+        const eventMetaMap = new Map<number, EventSkillMetadata[]>();
         if (c.eventDetails) {
           for (const ev of c.eventDetails) {
             const totalChoices = ev.choices.length;
             for (const ch of ev.choices) {
               for (const sid of ch.skillIds) {
-                if (!eventMetaMap.has(sid)) {
-                  eventMetaMap.set(sid, {
+                const sources = eventMetaMap.get(sid) ?? [];
+                eventMetaMap.set(sid, sources);
+                if (!sources.some((m) => m.eventId === ev.eventId && m.choiceIndex === ch.index)) {
+                  sources.push({
                     eventId: ev.eventId,
                     eventNameEn: ev.nameEn,
                     eventNameJp: ev.nameJp,
@@ -192,9 +196,10 @@ export async function initDataStore(): Promise<DataStore> {
         return {
           eventSkills: c.eventSkills.map((id) => {
             const summary = resolve(id);
-            const meta = eventMetaMap.get(id);
-            if (meta) {
-              summary.eventMeta = meta;
+            const sources = eventMetaMap.get(id);
+            if (sources?.length) {
+              summary.eventMeta = sources[0];
+              if (sources.length > 1) summary.eventSources = sources;
             }
             return summary;
           }),

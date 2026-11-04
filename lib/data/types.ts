@@ -199,7 +199,11 @@ export interface SkillSummary {
   descEn?: string;
   rarity: number;
   isRCard?: 0 | 1;
+  /** First event choice that grants this skill (display default). */
   eventMeta?: EventSkillMetadata;
+  /** Every distinct event choice that grants this skill, in event order;
+   * eventMeta is eventSources[0]. Present only when there are several. */
+  eventSources?: EventSkillMetadata[];
   iconId?: number | null;
 }
 

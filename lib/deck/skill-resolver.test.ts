@@ -81,6 +81,49 @@ describe("deriveSkillsForDeck", () => {
     expect(out.map((s) => s.id)).not.toContain(200);
   });
 
+  test("a skill offered by several choices of one event survives whichever of them is picked", () => {
+    // Satono Diamond Step 3: opt1 = [300 shared, 301], opt2 = [300 shared, 302]
+    const sources = [
+      { eventId: 7, choiceIndex: 1 },
+      { eventId: 7, choiceIndex: 2 },
+    ] as NonNullable<SkillSummary["eventSources"]>;
+    const shared = skill({ id: 300, rarity: 2, eventMeta: sources[0], eventSources: sources });
+    const opt1Only = skill({ id: 301, rarity: 2, eventMeta: { eventId: 7, choiceIndex: 1 } as SkillSummary["eventMeta"] });
+    const opt2Only = skill({ id: 302, rarity: 2, eventMeta: { eventId: 7, choiceIndex: 2 } as SkillSummary["eventMeta"] });
+    const byCard: Record<number, CardSkills | null> = {
+      1: cardSkills({ id: 1, hintSkills: [], eventSkills: [shared, opt1Only, opt2Only] }),
+    };
+    const slots = [card({ id: 1, eventDetails: [{ eventId: 7, nameEn: "C3", nameJp: "C3", eventType: "chain", chainStep: 3, choices: [{ index: 1, textEn: "a", textJp: "a", skillIds: [300, 301] }, { index: 2, textEn: "b", textJp: "b", skillIds: [300, 302] }] }] })];
+
+    const opt2 = deriveSkillsForDeck(slots, false, byCard, { "1:7": 2 });
+    expect(opt2.map((s) => s.id).sort()).toEqual([300, 302]);
+    // Attribution follows the picked option, not the first listed one.
+    expect(opt2.find((s) => s.id === 300)?.grants?.[0].eventMeta?.choiceIndex).toBe(2);
+
+    const opt1 = deriveSkillsForDeck(slots, false, byCard, { "1:7": 1 });
+    expect(opt1.map((s) => s.id).sort()).toEqual([300, 301]);
+  });
+
+  test("a skill also granted by an unconditional later step survives an earlier branch choice", () => {
+    // Seiun Sky: C2 opt2/2 hints the gold, C3 (single option) always grants it.
+    const sources = [
+      { eventId: 8, choiceIndex: 2 },
+      { eventId: 9, choiceIndex: 1 },
+    ] as NonNullable<SkillSummary["eventSources"]>;
+    const gold = skill({ id: 400, rarity: 2, eventMeta: sources[0], eventSources: sources });
+    const byCard: Record<number, CardSkills | null> = {
+      1: cardSkills({ id: 1, hintSkills: [], eventSkills: [gold] }),
+    };
+    const slots = [card({ id: 1, eventDetails: [
+      { eventId: 8, nameEn: "C2", nameJp: "C2", eventType: "chain", chainStep: 2, choices: [{ index: 1, textEn: "a", textJp: "a", skillIds: [] }, { index: 2, textEn: "b", textJp: "b", skillIds: [400] }] },
+      { eventId: 9, nameEn: "C3", nameJp: "C3", eventType: "chain", chainStep: 3, choices: [{ index: 1, textEn: "c", textJp: "c", skillIds: [400] }] },
+    ] })];
+
+    const out = deriveSkillsForDeck(slots, false, byCard, { "1:8": 1 });
+    expect(out.map((s) => s.id)).toEqual([400]);
+    expect(out[0].grants?.[0].eventMeta?.eventId).toBe(9);
+  });
+
   test("without chainChoicesMap, picks the default optimal branch (gold skills weigh 10x)", () => {
     const whiteEv = skill({ id: 201, eventMeta: { eventId: 6, choiceIndex: 1 } as SkillSummary["eventMeta"] });
     const goldEv = skill({ id: GOLD_ID, rarity: 2, eventMeta: { eventId: 6, choiceIndex: 2 } as SkillSummary["eventMeta"] });

@@ -1,6 +1,6 @@
 import type { CardIndexEntry, CardSkills } from "../api";
 import type { DeckSkill, DeckSkillGrant, ParentDeckSkill } from "./types";
-import { getDefaultChoiceIndex } from "./event-choices";
+import { resolveActiveEventSource } from "./event-choices";
 import { getInheritableSkillForGold } from "../skills/rarity";
 
 export function deriveSkillsForDeck(
@@ -55,23 +55,16 @@ export function deriveSkillsForDeck(
     cs.hintSkills.forEach((s) => push(s, "hint"));
 
     // Events: Filter by user's chosen branch (or default optimal choice)
-    cs.eventSkills.forEach((s) => {
-      if (s.eventMeta && card.eventDetails) {
-        const evDetail = card.eventDetails.find((ev) => ev.eventId === s.eventMeta!.eventId);
-        if (evDetail && evDetail.choices && evDetail.choices.length > 1) {
-          const choiceKey = `${card.id}:${s.eventMeta.eventId}`;
-          const selectedChoice =
-            chainChoicesMap?.[choiceKey] ??
-            chainChoicesMap?.[String(card.id)] ??
-            getDefaultChoiceIndex(
-              evDetail,
-              (id) => skillsByCard[card.id]?.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
-            );
-          if (s.eventMeta.choiceIndex !== selectedChoice) {
-            return; // User/default choice excludes this skill
-          }
-        }
-      }
+    cs.eventSkills.forEach((granted) => {
+      const { active, meta } = resolveActiveEventSource(
+        card,
+        granted,
+        chainChoicesMap,
+        (id) => cs.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
+      );
+      if (!active) return; // User/default choices exclude every granting option
+      // Attribute the grant to the option that is actually picked.
+      const s = meta === granted.eventMeta ? granted : { ...granted, eventMeta: meta };
 
       if (isParentDeck && s.rarity === 2) {
         const mapped = getInheritableSkillForGold(s.id);

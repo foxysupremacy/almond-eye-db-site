@@ -21,7 +21,7 @@ import { isSkillBanned, getPvpRaceParameters } from "@/lib/pvp/events";
 import { SkillIndicatorGroup, SkillSourceIcons } from "@/app/common/ui/skills/skill-badges";
 import { buildDuplicateSkillIndex, type DuplicateSkillIndex } from "@/lib/skills/duplicates";
 import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
-import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
+import { resolveActiveEventSource } from "@/lib/deck/event-choices";
 import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain-attribution";
 
 interface CardSkillsSheetProps {
@@ -130,20 +130,17 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
     // Check event branch choice
     let isActiveChoice = true;
     let isBranchingEvent = false;
-    if (source === "event" && s.eventMeta && card.eventDetails) {
-      const evDetail = card.eventDetails.find((ev) => ev.eventId === s.eventMeta!.eventId);
-      if (evDetail && evDetail.choices && evDetail.choices.length > 1) {
-        isBranchingEvent = true;
-        const choiceKey = `${card.id}:${s.eventMeta.eventId}`;
-        const selectedChoice =
-          activePreset.parentChainChoices?.[choiceKey] ??
-          activePreset.parentChainChoices?.[String(card.id)] ??
-          getDefaultChoiceIndex(
-            evDetail,
-            (id) => skillsByCard[card.id]?.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
-          );
-        isActiveChoice = s.eventMeta.choiceIndex === selectedChoice;
-      }
+    let eventMeta = s.eventMeta;
+    if (source === "event") {
+      const resolved = resolveActiveEventSource(
+        card,
+        s,
+        activePreset.parentChainChoices,
+        (id) => skillsByCard[card.id]?.eventSkills.find((sk) => sk.id === id)?.rarity ?? 1,
+      );
+      isActiveChoice = resolved.active;
+      isBranchingEvent = resolved.branching;
+      eventMeta = resolved.meta;
     }
 
     // Unique to this card: not in the main deck, no other parent card has it, activates on track/style, and is on active choice branch
@@ -213,8 +210,8 @@ export default function CardSkillsSheet({ card, isOpen, onClose, onPick, mode = 
               <SkillSourceIcons sources={[{ kind: "card", cardId: card.id, name: cardTitle }]} />
             </div>
 
-            {s.eventMeta && (
-              <div className="mt-1"><EventChainAttribution eventMeta={s.eventMeta} /></div>
+            {eventMeta && (
+              <div className="mt-1"><EventChainAttribution eventMeta={eventMeta} /></div>
             )}
           </SkillItem>
         </div>
