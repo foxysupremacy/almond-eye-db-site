@@ -19,7 +19,7 @@ sitemap, which covers every support page.
 
 Usage:
     python3 scripts/crawl_gametora_cards.py                  # compile skill-meta.json only
-    python3 scripts/crawl_gametora_cards.py --new-only       # incremental: cards not yet crawled
+    python3 scripts/crawl_gametora_cards.py --new-only       # incremental: new or incomplete cards
     python3 scripts/crawl_gametora_cards.py --crawl-all      # full live crawl from Gametora
     python3 scripts/crawl_gametora_cards.py --card-id 30308  # test single card crawl
 """
@@ -329,8 +329,27 @@ def apply_crawl_result(entry: dict, item: dict, event_details: list[dict]) -> No
     entry["eventDetails"] = event_details
 
 
+def needs_crawl(card: dict) -> bool:
+    """Incremental-mode selection. Besides never-crawled cards and Japanese
+    fallback names, retry cards crawled before GameTora published their
+    events (release-day crawls): no events at all, or a non-Pal SSR without
+    its chain. Pal/Group SSRs keep their outings outside `arrows`, so they
+    never carry chain steps."""
+    if not card.get("urlName"):
+        return True
+    if not card.get("nameEn") or is_japanese_fallback(card.get("nameEn")):
+        return True
+    events = card.get("eventDetails") or []
+    if not events:
+        return True
+    is_ssr = str(card.get("rarity")) == "3"
+    if is_ssr and card.get("type") not in ("friend", "group"):
+        return not any(ev.get("eventType") == "chain" for ev in events)
+    return False
+
+
 def save_cards(cards: list[dict]) -> None:
-    CARDS_JSON.write_text(json.dumps(cards, separators=(",", ":"), ensure_ascii=False))
+    CARDS_JSON.write_text(json.dumps(cards, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
 
 
 def build_card_data(crawl_all: bool = False, specific_id: int | None = None, new_only: bool = False):
@@ -354,12 +373,7 @@ def build_card_data(crawl_all: bool = False, specific_id: int | None = None, new
     elif new_only:
         # Re-crawl unprocessed cards and cards whose current name is still a
         # Japanese fallback, even if event data/slug were already merged.
-        cards_to_crawl = [
-            c for c in cards
-            if (not c.get("eventDetails") and not c.get("urlName"))
-            or not c.get("nameEn")
-            or is_japanese_fallback(c.get("nameEn"))
-        ]
+        cards_to_crawl = [c for c in cards if needs_crawl(c)]
         print(f"Incremental mode: {len(cards_to_crawl)} of {len(cards)} cards need a crawl.")
     else:
         print("Compile mode: regenerating skill-meta.json only.")
@@ -412,7 +426,7 @@ def build_card_data(crawl_all: bool = False, specific_id: int | None = None, new
         print(f"Updated {CARDS_JSON} ({updated} cards refreshed).")
 
     SITE_LIB_DIR.mkdir(parents=True, exist_ok=True)
-    OUT_JSON.write_text(json.dumps(skill_meta, separators=(",", ":"), ensure_ascii=False))
+    OUT_JSON.write_text(json.dumps(skill_meta, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
     size_kb = OUT_JSON.stat().st_size / 1024
     print(f"Successfully wrote {OUT_JSON} ({size_kb:.1f} KB, {len(skill_meta)} skills).")
 
