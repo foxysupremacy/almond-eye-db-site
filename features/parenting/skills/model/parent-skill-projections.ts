@@ -1,6 +1,7 @@
 import type { ParentDeckSkill } from "@/lib/deck/types";
 import {
   getInheritableSkillForGold,
+  getRarityCategory,
   matchesRarityFilter,
   type RarityFilterKey,
 } from "@/lib/skills/rarity";
@@ -163,6 +164,50 @@ export function mergeParentSkills(
   }
 
   return [...byId.values()];
+}
+
+export interface GoldOrigin {
+  id?: number;
+  nameEn: string;
+  nameJp?: string;
+}
+
+interface GoldOriginCarrier {
+  originalGoldSkill?: GoldOrigin;
+  grants?: readonly { originalGoldSkill?: GoldOrigin }[];
+}
+
+/** The gold a parent white was downgraded from (parents pass on the white
+ * counterpart), read from the row itself or from its card grant. */
+export function goldOriginOf(skill: GoldOriginCarrier): GoldOrigin | undefined {
+  return skill.originalGoldSkill ?? skill.grants?.find((g) => g.originalGoldSkill)?.originalGoldSkill;
+}
+
+export interface FarmingSortRules<T> {
+  activates: (skillId: number) => boolean;
+  isUniqueTarget: (skill: T) => boolean;
+  isInMainDeck: (skill: T) => boolean;
+}
+
+/** Order skills for parent farming: gold (including whites inherited from a
+ * gold), unique white targets, main-deck duplicates, other activating
+ * skills, then No Activation / Rank Trap. Skills keep their original order
+ * within each tier. */
+export function sortParentSkillsForFarming<T extends { id: number; rarity?: number } & GoldOriginCarrier>(
+  skills: readonly T[],
+  rules: FarmingSortRules<T>,
+): T[] {
+  const tier = (skill: T) => {
+    if (!rules.activates(skill.id)) return 4;
+    if (getRarityCategory(skill.rarity) === "gold" || goldOriginOf(skill)) return 0;
+    if (rules.isUniqueTarget(skill)) return 1;
+    if (rules.isInMainDeck(skill)) return 2;
+    return 3;
+  };
+  return skills
+    .map((skill, index) => ({ skill, index, tier: tier(skill) }))
+    .sort((a, b) => a.tier - b.tier || a.index - b.index)
+    .map(({ skill }) => skill);
 }
 
 /** Apply source, category, rarity, duplicate and text filters to the unified skill pool. */

@@ -3,7 +3,7 @@ import type { ParentDeckSkill } from "@/lib/deck/types";
 import type { CharacterIndexEntry, SkillDetail } from "@/lib/api";
 import { getInheritableSkillForUnique } from "@/lib/skills/rarity";
 import type { DisplayParentSkill } from "../../hooks/use-lineage-skills";
-import { buildHardToGetSkills, filterParentSkills, mergeParentSkills, type ParentSkillFilterOptions } from "./parent-skill-projections";
+import { buildHardToGetSkills, filterParentSkills, mergeParentSkills, goldOriginOf, sortParentSkillsForFarming, type ParentSkillFilterOptions } from "./parent-skill-projections";
 
 const cardSkill = (overrides: Partial<ParentDeckSkill> = {}): ParentDeckSkill => ({
   id: 1,
@@ -165,6 +165,46 @@ describe("parent skill projections", () => {
     } as CharacterIndexEntry;
 
     expect(buildHardToGetSkills([twinklingStar], [], [uma], () => true)).toEqual([]);
+  });
+
+  it("orders farming tiers: gold, unique white targets, main-deck dupes, rest, then no activation", () => {
+    const skills = [
+      { id: 1, rarity: 1 }, // rest (activates, not target, not in main)
+      { id: 2, rarity: 2 }, // dead gold -> last tier wins over gold
+      { id: 3, rarity: 1 }, // in main deck
+      { id: 4, rarity: 1 }, // unique target
+      { id: 5, rarity: 2 }, // gold
+      { id: 6, rarity: 1 }, // dead white (Rank Trap)
+      { id: 7, rarity: 1 }, // unique target
+      { id: 8, rarity: 2 }, // gold, also in main deck -> gold tier first
+    ];
+    const dead = new Set([2, 6]);
+    const targets = new Set([4, 7]);
+    const inMain = new Set([3, 8]);
+    const out = sortParentSkillsForFarming(skills, {
+      activates: (id) => !dead.has(id),
+      isUniqueTarget: (s) => targets.has(s.id),
+      isInMainDeck: (s) => inMain.has(s.id),
+    });
+    expect(out.map((s) => s.id)).toEqual([5, 8, 4, 7, 3, 1, 2, 6]);
+  });
+
+  it("ranks parent whites inherited from a gold in the gold tier", () => {
+    const tailOfVictory = { id: 900, nameEn: "Tail of Victory" };
+    const skills = [
+      { id: 10, rarity: 1 }, // unique white target
+      { id: 11, rarity: 1, originalGoldSkill: tailOfVictory }, // unified-list / lineage row
+      { id: 12, rarity: 1, grants: [{ originalGoldSkill: { id: 901, nameEn: "Uncharted Heights" } }] }, // card-view row
+    ];
+    const out = sortParentSkillsForFarming(skills, {
+      activates: () => true,
+      isUniqueTarget: () => true,
+      isInMainDeck: () => false,
+    });
+    expect(out.map((s) => s.id)).toEqual([11, 12, 10]);
+    expect(goldOriginOf(skills[1])?.nameEn).toBe("Tail of Victory");
+    expect(goldOriginOf(skills[2])?.nameEn).toBe("Uncharted Heights");
+    expect(goldOriginOf(skills[0])).toBeUndefined();
   });
 
 });

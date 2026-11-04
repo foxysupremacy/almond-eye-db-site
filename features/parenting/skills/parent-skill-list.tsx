@@ -28,7 +28,8 @@ import EventChainAttribution from "@/app/common/ui/skills/provenance/event-chain
 import { SkillEffectFilter } from "@/app/common/ui/skills/skill-effect-filter";
 import type { SkillEffectCategory } from "@/lib/skills/effects";
 import { matchesSkillEffectFilter } from "@/lib/skills/effects";
-import { buildHardToGetSkills, filterParentSkills, mergeParentSkills } from "./model/parent-skill-projections";
+import { buildHardToGetSkills, filterParentSkills, goldOriginOf, mergeParentSkills, sortParentSkillsForFarming } from "./model/parent-skill-projections";
+import GoldOriginLabel from "@/app/common/ui/skills/provenance/gold-origin-label";
 import { parentSkillPickerAdapter } from "./model/parent-skill-state";
 import { usePickerController } from "@/app/common/hooks/use-picker-controller";
 
@@ -244,9 +245,24 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
         duplicateInParentIds: new Set(),
       })
     : view.filteredSkills;
-  const filtered = sourceFilter === "hard_to_get" && hardToGetEffects.length > 0
-    ? categoryFiltered.filter((skill) => matchesSkillEffectFilter(hardToGetSkillDetails.get(skill.id), hardToGetEffects))
-    : categoryFiltered;
+  const skillActivates = (skillId: number) =>
+    (activationMap.get(skillId) ?? evaluateSkillActivation(skillId, course, runningStyle, raceParams)).activates;
+  // Card/parent groups share the per-card unique-target rule used by their badges.
+  const groupFarmingRules = {
+    activates: skillActivates,
+    isUniqueTarget: (s: { id: number }) => !mainSkillIdSet.has(s.id),
+    isInMainDeck: (s: { id: number }) => mainSkillIdSet.has(s.id),
+  };
+  const filtered = sortParentSkillsForFarming(
+    sourceFilter === "hard_to_get" && hardToGetEffects.length > 0
+      ? categoryFiltered.filter((skill) => matchesSkillEffectFilter(hardToGetSkillDetails.get(skill.id), hardToGetEffects))
+      : categoryFiltered,
+    {
+      activates: skillActivates,
+      isUniqueTarget: (s) => Boolean(s.isUniqueToParent) && !s.isDuplicateInMain,
+      isInMainDeck: (s) => Boolean(s.isDuplicateInMain),
+    },
+  );
 
   // Persist the selected view without putting browser storage in the reducer.
   useEffect(() => {
@@ -568,7 +584,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                 {parentSlots.map((card, slotIdx) => {
                   if (!card) return null;
                   const allCardSkills = parentCardSkillsMap.get(card.id) || [];
-                  const cFiltered = allCardSkills.filter((s) => {
+                  const cFiltered = sortParentSkillsForFarming(allCardSkills, groupFarmingRules).filter((s) => {
                     const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                     const canAct = act.activates;
                     const isDupe = mainSkillIdSet.has(s.id);
@@ -649,6 +665,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                             const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                             const canActivate = activation.activates;
                             const isUniqueTarget = !isDupeInMain && canActivate;
+                            const goldOrigin = goldOriginOf(s);
 
                             return (
                               <li
@@ -697,8 +714,9 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                         {s.descEn}
                                       </p>
                                     )}
-                                    <div className="mt-1">
+                                    <div className="mt-1 flex flex-wrap items-center gap-2">
                                       <SkillSourceIcons sources={[{ kind: "card", cardId: card.id, name: cardLabel }]} />
+                                      {goldOrigin && <GoldOriginLabel gold={goldOrigin} />}
                                     </div>
                                   </SkillItem>
 
@@ -769,7 +787,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                       const avatarUrl = getCharacterImageUrl(charaId, slot.cardId);
                       const charaName = chara?.nameEn || chara?.nameJp || `${slot.slotLabel} Character`;
 
-                      const parentSkillsList = pedigreeSkills
+                      const parentSkillsList = sortParentSkillsForFarming(pedigreeSkills, groupFarmingRules)
                         .filter((s) => s.grants?.some((g) => g.slotLabel === slot.slotLabel))
                         .filter((s) => {
                           const act = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
@@ -865,6 +883,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                 const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
                                 const canActivate = activation.activates;
                                 const isUniqueTarget = !isDupeInMain && canActivate;
+                                const goldOrigin = goldOriginOf(s);
                                 const slotGrant = s.grants?.find((g) => g.slotLabel === slot.slotLabel);
                                 const otherGrants =
                                   s.grants?.filter((g) => g.slotLabel !== slot.slotLabel) ?? [];
@@ -949,6 +968,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                               label: grant?.slotLabel,
                                             }))}
                                           />
+                                          {goldOrigin && <GoldOriginLabel gold={goldOrigin} />}
                                           <span>· #{s.id}</span>
                                         </div>
                                       </SkillItem>
@@ -991,6 +1011,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             const activation = activationMap.get(s.id) ?? evaluateSkillActivation(s.id, course, runningStyle, raceParams);
             const canActivate = activation.activates;
             const isUniqueTarget = s.isUniqueToParent && !s.isDuplicateInMain && canActivate;
+            const goldOrigin = goldOriginOf(s);
 
             return (
               <li
@@ -1050,6 +1071,8 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                           label: (grant as { slotLabel?: string }).slotLabel,
                         }))}
                       />
+
+                      {goldOrigin && <GoldOriginLabel gold={goldOrigin} />}
 
                       {/* Event Choice Guidance */}
                       {s.grants
