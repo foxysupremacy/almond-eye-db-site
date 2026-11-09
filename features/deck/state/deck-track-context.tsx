@@ -7,6 +7,7 @@ import type {
   RacetrackDetail,
 } from "@/lib/api";
 import type { CustomRaceConditions } from "@/lib/deck/race-conditions";
+import type { G1RacePreset } from "@/lib/deck/g1-races";
 import type { Course, RaceParameters } from "@/lib/skill-engine/types";
 import type {
   DistanceType,
@@ -38,6 +39,8 @@ export interface DeckTrackContextValue {
 
   setCustomRaceConditions: (conditions: Partial<CustomRaceConditions>) => void;
   selectCustomTrack: () => void;
+  /** Custom track preset: a G1's course, season and time in one step. */
+  selectG1Race: (race: G1RacePreset) => void;
 
   // PvP Event Presets
   activePvpEventId: string | null;

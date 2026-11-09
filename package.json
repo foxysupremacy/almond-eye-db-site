@@ -38,7 +38,7 @@
 	"type": "module",
 	"scripts": {
 		"bump": "node --experimental-strip-types scripts/bump-version.ts",
-		"build:data": "node --experimental-strip-types scripts/generate-data.ts && node --experimental-strip-types scripts/extract-mdb.ts",
+		"build:data": "node --experimental-strip-types scripts/generate-data.ts && node --experimental-strip-types scripts/extract-mdb.ts && node --experimental-strip-types scripts/extract-g1-races.ts",
 		"data:build:pvp-recommendations": "node --experimental-strip-types scripts/build-pvp-recommendations.ts",
 		"data:refresh": "node --experimental-strip-types scripts/refresh-data.ts",
 		"fetch:gametora": "node --experimental-strip-types scripts/fetch-gametora.ts",

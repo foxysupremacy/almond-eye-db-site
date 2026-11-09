@@ -14,6 +14,7 @@ describe("GlobalTrackBar SSR", () => {
     for (const mode of ["CM", "LoH", "Master Challenge", "Custom"]) expect(html).toContain(`>${mode}</button>`);
     expect(html).toContain('aria-pressed="true"');
     for (const field of ["season", "weather", "groundCondition", "time"]) expect(html).toContain(`aria-label="Custom ${field}"`);
+    expect(html).toContain('aria-label="G1 race"');
     expect(html).not.toContain('aria-label="Master Challenge race"');
     expect(html).not.toContain('aria-label="CM event"');
     expect(html).not.toContain('aria-label="LoH event"');

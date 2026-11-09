@@ -13,7 +13,7 @@ const OUTPUT_DIR = path.resolve(__dirname, "../lib/data/source/gametora");
 const BROWSER_UA =
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36";
 
-const SOURCES = ["factors", "skills", "character-cards", "support-cards", "racetracks"];
+const SOURCES = ["factors", "skills", "character-cards", "support-cards", "racetracks", "races"];
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url, { headers: { "User-Agent": BROWSER_UA } });

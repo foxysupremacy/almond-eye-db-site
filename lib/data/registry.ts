@@ -16,6 +16,7 @@ import rawCharactersJson from "./generated/characters.json";
 import rawAffinityJson from "./generated/affinity.json";
 import rawCareersJson from "./generated/careers.json";
 import rawG1CalendarJson from "./generated/g1-calendar.json";
+import rawG1RacesJson from "./generated/g1-races.json";
 import rawUniqueInheritJson from "./generated/unique-inherit-map.json";
 import rawCharacterEvolutionsJson from "./generated/character-evolutions.json";
 import rawCardEffectsJson from "./generated/card-effects.json";
@@ -27,9 +28,11 @@ import rawFactorsCompactJson from "./generated/factors-compact.json";
 import rawSuccessionFactorsJson from "./generated/succession-factors.json";
 
 export const g1Calendar = rawG1CalendarJson as G1CalendarData;
+export const g1Races = rawG1RacesJson as G1RaceEntry[];
 
 import type {
   G1CalendarData,
+  G1RaceEntry,
   AffinityDataPayload,
   CardEffectEntry,
   CardIndexEntry,

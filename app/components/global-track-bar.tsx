@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { AppSelect } from "@/app/common/ui/controls/app-select";
+import { G1_RACES, matchingG1Races } from "@/lib/deck/g1-races";
 
 // Unified Target Race Profile: Venue + Course + Running Style + Racers.
 // This is the single source of truth that drives Parent recommendations,
@@ -35,10 +37,12 @@ export function GlobalRaceControls() {
     activeMasterChallengeRace,
     selectMasterChallengeRace,
     selectCustomTrack,
+    selectG1Race,
     setCustomRaceConditions,
     racetrackDetails,
     applyPvpPreset,
   } = useDeckTrack();
+  const [pickedG1, setPickedG1] = useState<number | null>(null);
 
   const masterChallengeSelection = activePreset.trackInfo.masterChallengeSelection ?? null;
   function courseLabel(courseId: number): string {
@@ -74,6 +78,10 @@ export function GlobalRaceControls() {
   const customConditions = normalizeRaceConditions(activePreset.trackInfo.customRaceConditions);
   const isCustomTrack = !activePvpEvent && !activeMasterChallengeRace;
   const raceMode = activeMasterChallengeRace ? "master" : activePvpEvent ? (activePvpEvent.recommendationEventType === 2 ? "loh" : "cm") : "custom";
+  // The picked G1 stays shown while the course/season/time still match it;
+  // otherwise show a G1 only when the current track matches exactly one.
+  const g1Matches = matchingG1Races(activePreset.trackInfo);
+  const g1Value = String((g1Matches.find((race) => race.id === pickedG1) ?? (g1Matches.length === 1 ? g1Matches[0] : null))?.id ?? "");
   const pvpEvents = getActivePvpEvents();
   if (activePvpEvent && !pvpEvents.some((event) => event.id === activePvpEvent.id)) pvpEvents.push(activePvpEvent);
   const modeEvents = pvpEvents.filter((event) => (event.recommendationEventType === 2 ? "loh" : "cm") === raceMode);
@@ -129,6 +137,30 @@ export function GlobalRaceControls() {
                 label="Master Challenge race" options={masterChallengeEvents.flatMap(event => event.races.map(race => ({ value: `${event.eventId}:${race.eventSubId}`, label: courseLabel(race.raceCourseSetId), group: `Master Challenge #${event.eventId} · ${event.schedule}` })))} />
           )}
 
+
+          {isCustomTrack && (
+            <AppSelect value={g1Value}
+                onValueChange={(value) => {
+                  const race = G1_RACES.find((entry) => entry.id === Number(value));
+                  if (!race) return;
+                  setPickedG1(race.id);
+                  selectG1Race(race);
+                }}
+                className="w-full md:w-96" triggerLabel="G1" label="G1 race" placeholder="Quick pick…"
+                searchPlaceholder="Search race, venue, ground, distance…"
+                popoverClassName="md:min-w-[34rem]"
+                columnTemplate="minmax(0,1fr) 7.5rem 3rem 3.5rem"
+                options={[...G1_RACES].sort((a, b) => a.terrain - b.terrain || a.id - b.id).map((race) => {
+                  const venue = (tracks ?? []).find((track) => track.id === race.trackId)?.nameEn ?? `Track ${race.trackId}`;
+                  const ground = groundLabel(race.terrain);
+                  return {
+                    value: String(race.id),
+                    label: `${race.nameEn} · ${venue} ${ground} ${race.distance}m`,
+                    columns: [race.nameEn, venue, ground, `${race.distance}m`],
+                    group: `${ground} G1`,
+                  };
+                })} />
+          )}
 
           {(isCustomTrack || activeMasterChallengeRace) && (
             <RaceConditionChips

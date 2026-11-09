@@ -26,6 +26,7 @@ import {
   flattenCourse,
 } from "@/lib/api";
 import { customTrackInfo, normalizeRaceConditions, type CustomRaceConditions } from "@/lib/deck/race-conditions";
+import { g1TrackInfo, type G1RacePreset } from "@/lib/deck/g1-races";
 import type { Course } from "@/lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
 import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
@@ -372,6 +373,12 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const selectCustomTrack = clearMasterChallenge;
+  const selectG1Race = useCallback((race: G1RacePreset) => {
+    dispatch({
+      type: "updateActivePreset",
+      update: (p) => ({ ...p, trackInfo: g1TrackInfo(p.trackInfo, race) }),
+    });
+  }, []);
   const setCustomRaceConditions = useCallback((conditions: Partial<CustomRaceConditions>) => {
     dispatch({
       type: "updateActivePreset",
@@ -540,6 +547,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       activePvpEvent,
       activeRaceParameters,
       selectCustomTrack,
+      selectG1Race,
       setCustomRaceConditions,
       applyPvpPreset,
       clearPvpPreset,
@@ -571,6 +579,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       activePvpEvent,
       activeRaceParameters,
       selectCustomTrack,
+      selectG1Race,
       setCustomRaceConditions,
       applyPvpPreset,
       clearPvpPreset,

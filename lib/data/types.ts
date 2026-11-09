@@ -370,6 +370,25 @@ export interface CalendarG1Race extends Omit<CareerG1Race, "mustWin"> {
   defaultProgram: boolean;
   nameJp: string;
 }
+/** Custom-map G1 quick pick (lib/data/generated/g1-races.json, scripts/extract-g1-races.ts — GameTora races). */
+export interface G1RaceEntry {
+  /** GameTora race instance id (unique). */
+  id: number;
+  raceId: number;
+  nameEn: string;
+  nameJa: string;
+  trackId: number;
+  /** Same id space as racetracks.json courses. */
+  courseId: number;
+  distance: number;
+  /** 1 Turf, 2 Dirt. */
+  terrain: number;
+  /** RACE_CONDITION_OPTIONS.season index: 1 Spring … 4 Winter, 5 Cherry blossom. */
+  season: number;
+  /** RACE_CONDITION_OPTIONS.time index: 1 Morning … 4 Night. */
+  time: number;
+}
+
 export interface G1CalendarData {
   races: CalendarG1Race[];
   objectivesByCharId: Record<string, { turn: number; programIds: number[] }[]>;
