@@ -10,6 +10,7 @@ import { getCharaIdFromCardId } from "@/lib/lineage/affinity-engine";
 import ParentDeckPicker from "@/features/deck/components/parent-deck-picker";
 import { ParentSkillList } from "@/features/parenting";
 import AceComplementFinder from "@/features/deck/components/ace-complement-finder";
+import { ParentAutoPick } from "@/features/deck/components/parent-auto-pick-bar";
 import { Badge } from "@/app/common/ui/primitives/badge";
 import { useParentDeckViewModel } from "@/features/deck/view-models/use-parent-deck-view-model";
 
@@ -136,8 +137,11 @@ export default function ParentDeckView({ onNavigateToParenting }: ParentDeckView
         </div>
       </div>
 
-      {/* 2. The 6-Slot Support Card Deck */}
-      <ParentDeckPicker />
+      {/* 2. The 6-Slot Support Card Deck, with the Auto Pick bar above the slot grid */}
+      <div className="flex flex-col gap-3">
+        <ParentAutoPick />
+        <ParentDeckPicker />
+      </div>
 
       {/* 3. Ace Complement Finder: List A (activating ace+lineage skills) & cards farming missing speed skills */}
       <AceComplementFinder />

@@ -272,6 +272,16 @@ export interface SuccessionInitialFactorThreshold {
   addRank: number;
 }
 
+export interface ScenarioLinkEntry {
+  scenarioId: number;
+  nameJp: string;
+  linkedCharaIds: number[];
+  /** Linked characters' support cards with support_card_type 2 (friend) or 3 (group), newest id last. */
+  palCardIds: number[];
+  /** Support cards of the other linked characters. */
+  linkedCardIds: number[];
+}
+
 export interface SuccessionFactorsPayload {
   factors: SuccessionFactorEntry[];
   aptitudeThresholds: SuccessionInitialFactorThreshold[];

@@ -111,6 +111,7 @@ export interface DeckContextValue {
   parentSlots: (CardIndexEntry | null)[];
   setParentCard: (index: number, card: CardIndexEntry | null) => void;
   clearParent: () => void;
+  applyParentDeck: (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>) => void;
   copyMainToParent: () => void;
   parentSkills: ParentDeckSkill[];
 

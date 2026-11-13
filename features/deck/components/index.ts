@@ -7,3 +7,5 @@ export { default as RecommendedShelf } from "./recommended-shelf";
 export { default as ShareModal } from "./share-modal";
 export { default as SharedImportDialog } from "./shared-import-dialog";
 export { PvpExpiredModal } from "./pvp-expired-modal";
+export { ParentAutoPick, ParentAutoPickBar } from "./parent-auto-pick-bar";
+export { ParentAutoPickPreview } from "./parent-auto-pick-preview";

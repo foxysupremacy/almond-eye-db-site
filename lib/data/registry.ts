@@ -26,6 +26,7 @@ import rawSkillRatingBenchmarksJson from "./generated/skill-rating-benchmarks.js
 import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
 import rawFactorsCompactJson from "./generated/factors-compact.json";
 import rawSuccessionFactorsJson from "./generated/succession-factors.json";
+import rawScenarioLinksJson from "./generated/scenario-links.json";
 
 export const g1Calendar = rawG1CalendarJson as G1CalendarData;
 export const g1Races = rawG1RacesJson as G1RaceEntry[];
@@ -47,6 +48,7 @@ import type {
   PvpRecommendationsPayload,
   CompactFactorEntry,
   SuccessionFactorsPayload,
+  ScenarioLinkEntry,
   RacetrackDetail,
 } from "./types";
 
@@ -278,6 +280,16 @@ export const compactFactors = rawFactorsCompactJson as Record<string, CompactFac
 
 /** MDB factor_type catalog and pink aptitude rank thresholds. */
 export const successionFactors = rawSuccessionFactorsJson as SuccessionFactorsPayload;
+
+export const scenarioLinks = rawScenarioLinksJson as ScenarioLinkEntry[];
+
+/** Newest scenarios that have at least one pal card, highest scenarioId first. */
+export function latestScenarioLinks(count = 3): ScenarioLinkEntry[] {
+  return scenarioLinks
+    .filter((s) => s.palCardIds.length > 0)
+    .sort((a, b) => b.scenarioId - a.scenarioId)
+    .slice(0, count);
+}
 
 /** Racetrack data is loaded lazily through this gateway to keep it code-split. */
 export async function loadRacetracks(): Promise<RacetrackDetail[]> {

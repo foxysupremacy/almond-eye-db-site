@@ -70,6 +70,12 @@ when one exists.
   serialization live in `lib/parenting/state.ts`; the React hook
   `useParentingSetup` lives in `features/parenting/hooks/` and keeps the same
   storage key and subscription behavior.
+- **Parent Deck Auto Pick**: `lib/parent-autopick/` is the pure model — skill
+  groups, per-card skills (gold resolved to white), the value table over
+  `scoreSkill`, the greedy + swap picker, the scenario pal card, and the
+  `parent_autopick.v1` settings. Scoring runs in
+  `features/deck/workers/parent-auto-pick.worker.ts`, orchestrated by
+  `useParentAutoPickViewModel`.
 - **Share links**: `lib/share-link/codec.ts` owns the only supported V4 bit-packed
   wire format; `lib/share-link/url.ts` owns URL parsing/building. V4 wraps the payload
   in a CORE section and skips unknown extension sections. V1/V2/V3 payloads are
@@ -105,6 +111,7 @@ The client application strictly follows **MVVM (Model-View-ViewModel)** for feat
    - `useDeckSkillListViewModel` (`features/deck/view-models/use-deck-skill-list-view-model.ts`)
    - `useCardPickerViewModel` (`features/deck/view-models/use-card-picker-view-model.ts`)
    - `useParentingViewModel` (`features/parenting/view-models/use-parenting-view-model.ts`)
+   - `useParentAutoPickViewModel` (`features/deck/view-models/use-parent-auto-pick-view-model.ts`)
 
 4. **Testing Invariant**:
    - When introducing or refactoring ViewModels, add dedicated unit tests in `features/<feature>/view-models/*.test.ts` to test state transitions and commands independently from DOM rendering.
@@ -147,6 +154,7 @@ cross-tab notify via `notifyLocalUpdate` / `subscribeLocalUpdates`). Domains:
 | `visualizer.v1` | `{ trackId, courseId, racerCount }` — last visualizer selection |
 | `chain_choices.v1` | LEGACY — one-time migrated into the active preset, then retired |
 | `almondeye_parenting_setup` | Parenting Hub setup (trainee, parents, GP overrides, deck) |
+| `parent_autopick.v1` | Parent Deck Auto Pick settings (scenario, pal card per scenario, enabled skill groups) |
 
 Validate saved values before trusting them (`loadStoredPresets` is the
 reference implementation).
@@ -263,7 +271,9 @@ Key contracts defined in `docs/DESIGN.md`:
     entries are preserved verbatim) and owns `lib/data/generated/affinity.json` +
     `lib/data/generated/careers.json` (`succession_relation`, `succession_relation_member`,
     `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program`
-    → `race_instance` → `race` → `race_course_set`).
+    → `race_instance` → `race` → `race_course_set`). It also owns
+    `lib/data/generated/scenario-links.json` (`single_mode_scenario`,
+    `single_mode_special_chara`, `support_card_data`).
   - `scripts/crawl_gametora_cards.py` (repo root, manual) operates **directly
     on `lib/data/generated/`**: reads cards.json + skills.json, crawls GameTora, and
     updates cards.json in place (type/nameEn/urlName/hints/eventSkills/

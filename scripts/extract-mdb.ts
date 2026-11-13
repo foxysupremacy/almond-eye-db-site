@@ -35,6 +35,7 @@ const CARDS_PATH = path.resolve(__dirname, "../lib/data/generated/cards.json");
 const OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/affinity.json");
 const CAREERS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/careers.json");
 const SUCCESSION_FACTORS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/succession-factors.json");
+const SCENARIO_LINKS_OUTPUT_PATH = path.resolve(__dirname, "../lib/data/generated/scenario-links.json");
 
 interface GameToraFactor {
   id: string;
@@ -74,6 +75,58 @@ function openMdb(): DatabaseSync {
     process.exit(1);
   }
   return new DatabaseSync(MDB_PATH, { readOnly: true });
+}
+
+// Scenario Link: per scenario, the linked characters and their support cards.
+// Friend (2) / group (3) support cards are "pal" cards; the rest are Uma cards.
+function extractScenarioLinks(db: DatabaseSync) {
+  const rows = db.prepare(
+    `SELECT s.id AS scenarioId,
+            (SELECT text FROM text_data WHERE category = 119 AND "index" = s.id) AS nameJp,
+            sc.chara_id AS charaId
+     FROM single_mode_scenario s
+     JOIN single_mode_special_chara sc ON sc.scenario_id = s.id
+     ORDER BY s.id, sc.id`
+  ).all() as { scenarioId: number; nameJp: string | null; charaId: number }[];
+  const cardRows = db.prepare(
+    "SELECT id, chara_id, support_card_type FROM support_card_data ORDER BY id"
+  ).all() as { id: number; chara_id: number; support_card_type: number }[];
+
+  const cardsByChara = new Map<number, { id: number; type: number }[]>();
+  for (const c of cardRows) {
+    const list = cardsByChara.get(Number(c.chara_id)) ?? [];
+    list.push({ id: Number(c.id), type: Number(c.support_card_type) });
+    cardsByChara.set(Number(c.chara_id), list);
+  }
+
+  const byScenario = new Map<number, {
+    scenarioId: number; nameJp: string; linkedCharaIds: number[]; palCardIds: number[]; linkedCardIds: number[];
+  }>();
+  for (const r of rows) {
+    const scenarioId = Number(r.scenarioId);
+    let entry = byScenario.get(scenarioId);
+    if (!entry) {
+      entry = {
+        scenarioId,
+        nameJp: (r.nameJp ?? "").replace(/\\n/g, " "),
+        linkedCharaIds: [], palCardIds: [], linkedCardIds: [],
+      };
+      byScenario.set(scenarioId, entry);
+    }
+    const charaId = Number(r.charaId);
+    if (entry.linkedCharaIds.includes(charaId)) continue;
+    entry.linkedCharaIds.push(charaId);
+    for (const card of cardsByChara.get(charaId) ?? []) {
+      (card.type === 2 || card.type === 3 ? entry.palCardIds : entry.linkedCardIds).push(card.id);
+    }
+  }
+  const entries = [...byScenario.values()].sort((a, b) => a.scenarioId - b.scenarioId);
+  for (const e of entries) {
+    e.palCardIds.sort((a, b) => a - b);
+    e.linkedCardIds.sort((a, b) => a - b);
+  }
+  fs.writeFileSync(SCENARIO_LINKS_OUTPUT_PATH, JSON.stringify(entries));
+  console.log(`Scenario links: ${entries.length} scenarios → ${SCENARIO_LINKS_OUTPUT_PATH}`);
 }
 
 export function extractAffinityData() {
@@ -455,6 +508,7 @@ export function extractAffinityData() {
   console.log(`Factor names: ${Object.keys(factorNames).length} (JP from mdb, +${gtFactorNames} EN from GameTora)`);
   if (coverage) console.log(coverage);
   if (careerCoverage) console.log(careerCoverage);
+  extractScenarioLinks(db);
   extractG1Calendar(db);
   extractSkillLevelCoef(db);
   patchCharacterEvolutions(db);

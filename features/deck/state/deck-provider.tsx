@@ -27,6 +27,7 @@ import {
 } from "@/lib/api";
 import { customTrackInfo, normalizeRaceConditions, type CustomRaceConditions } from "@/lib/deck/race-conditions";
 import { g1TrackInfo, type G1RacePreset } from "@/lib/deck/g1-races";
+import { applyParentDeckToPreset } from "@/lib/deck/apply-parent-deck";
 import type { Course } from "@/lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
 import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
@@ -243,6 +244,16 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       update: (p) => ({ ...p, parentDeckIds: Array(DECK_SIZE).fill(null) }),
     });
   }, []);
+
+  const applyParentDeck = useCallback(
+    (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>) => {
+      dispatch({
+        type: "updateActivePreset",
+        update: (p) => applyParentDeckToPreset(p, cardIds, chainChoices),
+      });
+    },
+    [],
+  );
 
   const copyMainToParent = useCallback(() => {
     dispatch({
@@ -609,6 +620,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       parentSlots,
       setParentCard,
       clearParent,
+      applyParentDeck,
       copyMainToParent,
       parentSkills,
 
@@ -631,6 +643,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       parentSlots,
       setParentCard,
       clearParent,
+      applyParentDeck,
       copyMainToParent,
       parentSkills,
       parentingSetup,
