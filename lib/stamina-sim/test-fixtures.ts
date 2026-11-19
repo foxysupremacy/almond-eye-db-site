@@ -1,5 +1,5 @@
 import type { Course } from "../skill-engine/types";
-import type { StaminaInput } from "./types";
+import { emptyGreens, type StaminaInput } from "./types";
 
 /** Kyoto 2200 m turf (course 10808). Stamina / max HP do not depend on stat thresholds, so a literal course is exact. */
 export const kyoto2200: Course = {
@@ -12,7 +12,7 @@ export const defaults: StaminaInput = {
   style: 3,
   aptitude: { ground: "A", distance: "A", style: "A" },
   motivation: "normal",
-  greens: { spd60: 0, spd40: 0, sta60: 0, sta40: 0 },
+  greens: emptyGreens(),
   recovery: [0, 0, 0, 0, 0, 0, 0],
   hpLoss: [0, 0, 0, 0, 0, 0],
   toggles: { dueling: false, spotStruggle: false, kakari: false },

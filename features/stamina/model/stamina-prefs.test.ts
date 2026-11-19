@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import type { StaminaInput } from "@/lib/stamina-sim";
+import { emptyGreens, type StaminaInput } from "@/lib/stamina-sim";
 import { DEFAULT_STAMINA_INPUT, loadStaminaPrefs, saveStaminaPrefs, STAMINA_PREFS_KEY } from "./stamina-prefs";
 
 // Fake window.localStorage per test, as in lib/deck/preset-storage.test.ts (no DOM preload in unit tests).
@@ -20,7 +20,7 @@ const custom: StaminaInput = {
   style: 5,
   aptitude: { ground: "S", distance: "B", style: "G" },
   motivation: "best",
-  greens: { spd60: 1, spd40: 0, sta60: 2, sta40: 3 },
+  greens: { ...emptyGreens(), spd60: 1, sta60: 2, sta40: 3, spd20: 4, sta80: 1, gut100: 2 },
   recovery: [1, 2, 0, 0, 0, 0, 20],
   hpLoss: [0, 1, 0, 0, 0, 4],
   toggles: { dueling: true, spotStruggle: false, kakari: true },
@@ -60,7 +60,7 @@ test("out-of-range and invalid fields fall back field by field", () => {
     style: 6,
     aptitude: { ground: "SS", distance: "B", style: null },
     motivation: "great",
-    greens: { spd60: -1, spd40: 21, sta60: 2.5, sta40: 3 },
+    greens: { spd60: -1, spd40: 21, sta60: 2.5, sta40: 3, sta80: "1", wit40: 2 },
     recovery: [1, 2, 0],
     hpLoss: [0, 1, 0, 0, 0, 21],
     toggles: { dueling: "yes", spotStruggle: false, kakari: true },
@@ -72,7 +72,7 @@ test("out-of-range and invalid fields fall back field by field", () => {
     style: d.style,
     aptitude: { ground: d.aptitude.ground, distance: "B", style: d.aptitude.style },
     motivation: d.motivation,
-    greens: { spd60: d.greens.spd60, spd40: d.greens.spd40, sta60: d.greens.sta60, sta40: 3 },
+    greens: { ...d.greens, sta40: 3, wit40: 2 },
     recovery: d.recovery,
     hpLoss: [0, 1, 0, 0, 0, d.hpLoss[5]],
     toggles: { dueling: d.toggles.dueling, spotStruggle: false, kakari: true },
@@ -86,4 +86,9 @@ test("defaults are not shared by reference", () => {
   a.stats.speed = 1;
   expect(loadStaminaPrefs()).toEqual(DEFAULT_STAMINA_INPUT);
   expect(DEFAULT_STAMINA_INPUT.recovery[0]).toBe(0);
+});
+
+test("a save from before the extra green buckets keeps its counts and zeroes the new ones", () => {
+  localStorage.setItem(STAMINA_PREFS_KEY, JSON.stringify({ ...custom, greens: { spd60: 1, spd40: 2, sta60: 3, sta40: 4 } }));
+  expect(loadStaminaPrefs().greens).toEqual({ ...emptyGreens(), spd60: 1, spd40: 2, sta60: 3, sta40: 4 });
 });

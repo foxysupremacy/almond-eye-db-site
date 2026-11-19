@@ -25,7 +25,7 @@ describe("StaminaView", () => {
       expect((screen.getByRole("spinbutton", { name }) as HTMLInputElement).value).toMatch(/^\d+$/);
     }
     const increases = (region: string) => within(screen.getByRole("region", { name: region })).getAllByRole("button", { name: /^Increase / });
-    expect(increases("Green skills")).toHaveLength(4);
+    expect(increases("Green skills")).toHaveLength(23);
     expect(increases("Recovery skills")).toHaveLength(7);
     expect(increases("HP-loss skills")).toHaveLength(6);
     for (const name of ["Dueling 追い比べ", "Spot Struggle 位置取り争い", "Kakari 掛かり"]) {
@@ -40,14 +40,18 @@ describe("StaminaView", () => {
     for (const word of ["Zenkai", "Stamina Keep", "Spot Struggle", "Dueling", "Champions Meeting"]) expect(note.textContent).toContain(word);
   });
 
-  test("green counters show a short bonus with the stat underneath, so nothing truncates", () => {
+  test("green counters are grouped by stat, each showing a short bonus so nothing truncates", () => {
     render(<StaminaView course={kyoto2200} loading={false} raceGround={null} runner={syncRunner} />);
     const greens = screen.getByRole("region", { name: "Green skills" });
-    for (const [stat, bonus] of [["Speed", 60], ["Speed", 40], ["Stamina", 60], ["Stamina", 40]] as const) {
-      const group = within(greens).getByRole("group", { name: `${stat} +${bonus}` });
-      const [label, sublabel] = Array.from(group.querySelectorAll("p")).map((p) => p.textContent);
-      expect(label).toBe(`+${bonus}`);
-      expect(sublabel).toBe(stat);
+    const expected = {
+      Speed: [120, 100, 80, 60, 40, 20], Stamina: [80, 60, 40], Power: [120, 100, 80, 60, 40, 20], Guts: [100, 80, 60, 40], Wit: [100, 80, 60, 40],
+    } as const;
+    for (const [stat, bonuses] of Object.entries(expected)) {
+      const statGroup = within(greens).getByRole("group", { name: `${stat} green skills` });
+      for (const bonus of bonuses) {
+        const group = within(statGroup).getByRole("group", { name: `${stat} +${bonus}` });
+        expect(Array.from(group.querySelectorAll("p")).map((p) => p.textContent)).toEqual([`+${bonus}`]);
+      }
     }
   });
 

@@ -1,6 +1,6 @@
 import { readJsonStorage, writeJsonStorage } from "@/lib/storage/persistence";
 import { STAT_CAP, type Motivation, type Proficiency, type StatBlock } from "@/lib/race-impact/adjusted-stats";
-import { GREEN_BUCKETS, HP_LOSS_BUCKETS, RECOVERY_BUCKETS, type StaminaInput } from "@/lib/stamina-sim";
+import { emptyGreens, GREEN_BUCKETS, HP_LOSS_BUCKETS, RECOVERY_BUCKETS, type GreenKey, type StaminaInput } from "@/lib/stamina-sim";
 import type { RunningStyle } from "@/lib/deck/types";
 
 export const STAMINA_PREFS_KEY = "stamina.v1";
@@ -8,7 +8,7 @@ export const STAMINA_PREFS_KEY = "stamina.v1";
 export const MAX_SKILL_COUNT = 20;
 
 export const STAT_KEYS = ["speed", "stamina", "power", "guts", "wisdom"] as const satisfies readonly (keyof StatBlock)[];
-export const GREEN_KEYS = Object.keys(GREEN_BUCKETS) as (keyof typeof GREEN_BUCKETS)[];
+export const GREEN_KEYS = Object.keys(GREEN_BUCKETS) as GreenKey[];
 export const PROFICIENCIES: readonly Proficiency[] = ["S", "A", "B", "C", "D", "E", "F", "G"];
 export const MOTIVATIONS: readonly Motivation[] = ["best", "good", "normal", "bad", "worst"];
 export const STYLES: readonly RunningStyle[] = [1, 2, 3, 4, 5];
@@ -19,7 +19,7 @@ export const DEFAULT_STAMINA_INPUT: StaminaInput = Object.freeze({
   style: 2,
   aptitude: Object.freeze({ ground: "A", distance: "A", style: "A" }),
   motivation: "best",
-  greens: Object.freeze({ spd60: 0, spd40: 0, sta60: 0, sta40: 0 }),
+  greens: Object.freeze(emptyGreens()),
   recovery: Object.freeze(RECOVERY_BUCKETS.map(() => 0)),
   hpLoss: Object.freeze(HP_LOSS_BUCKETS.map(() => 0)),
   toggles: Object.freeze({ dueling: false, spotStruggle: false, kakari: false }),

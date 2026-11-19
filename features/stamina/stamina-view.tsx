@@ -23,7 +23,8 @@ type Ground = StaminaInput["groundCondition"];
 const GROUND_JP: Record<Ground, string> = { 1: "良", 2: "稍重", 3: "重", 4: "不良" };
 const groundLabel = (g: Ground) => `${RACE_CONDITION_OPTIONS.groundCondition[g - 1]} (${GROUND_JP[g]})`;
 const MOOD_LABELS: Record<Motivation, string> = { best: "Great", good: "Good", normal: "Normal", bad: "Bad", worst: "Awful" };
-const GREEN_LABELS: Record<keyof typeof GREEN_BUCKETS, string> = { spd60: "Speed", spd40: "Speed", sta60: "Stamina", sta40: "Stamina" };
+const GREEN_STAT_LABELS = { speed: "Speed", stamina: "Stamina", power: "Power", guts: "Guts", wisdom: "Wit" } as const;
+const GREEN_STATS = Object.keys(GREEN_STAT_LABELS) as (keyof typeof GREEN_STAT_LABELS)[];
 
 const isGround = (v: unknown): v is Ground => GROUNDS.includes(v as Ground);
 const proficiencyOptions = PROFICIENCIES.map((p) => ({ value: p, label: p }));
@@ -112,11 +113,21 @@ function StaminaScreen({ vm }: { vm: StaminaViewModel }) {
             </div>
           </Section>
 
-          <Section title="Green skills" caption="Passive stat skills, always active.">
-            <div className="grid grid-cols-1 gap-x-6 min-[420px]:grid-cols-2 md:grid-cols-4">
-              {GREEN_KEYS.map((k) => {
-                const [, bonus] = GREEN_BUCKETS[k];
-                return <BucketCounter key={k} label={`+${bonus}`} sublabel={GREEN_LABELS[k]} name={`${GREEN_LABELS[k]} +${bonus}`} value={input.greens[k]} onChange={(n) => update({ greens: { ...input.greens, [k]: n } })} />;
+          <Section title="Green skills" caption="Passive stat skills, always active. A skill that raises two stats counts once under each.">
+            <div className="flex flex-col divide-y divide-zinc-100 dark:divide-zinc-800/80">
+              {GREEN_STATS.map((stat) => {
+                const statLabel = GREEN_STAT_LABELS[stat];
+                return (
+                  <div key={stat} role="group" aria-label={`${statLabel} green skills`} className="py-1.5 first:pt-0 last:pb-0">
+                    <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{statLabel}</p>
+                    <div className="grid grid-cols-1 gap-x-6 min-[420px]:grid-cols-2 md:grid-cols-4">
+                      {GREEN_KEYS.filter((k) => GREEN_BUCKETS[k][0] === stat).map((k) => {
+                        const bonus = GREEN_BUCKETS[k][1];
+                        return <BucketCounter key={k} label={`+${bonus}`} name={`${statLabel} +${bonus}`} value={input.greens[k]} onChange={(n) => update({ greens: { ...input.greens, [k]: n } })} />;
+                      })}
+                    </div>
+                  </div>
+                );
               })}
             </div>
           </Section>

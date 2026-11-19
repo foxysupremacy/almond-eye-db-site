@@ -61,3 +61,13 @@ test("final straight starts at the course's last straight, else the last-spurt p
   expect(raceContext(defaults, withStraights).finalStraightStart).toBe(1800);
   expect(raceContext({ ...defaults, aptitude: { ...defaults.aptitude, style: "B" } }, kyoto2200).styleProf).toBe(0.85);
 });
+
+test("every green bucket adds its bonus to its own stat (incl. Speed +20, Stamina +80, Guts/Power/Wit)", () => {
+  const base = raceContext(defaults, kyoto2200);
+  const green = raceContext({ ...defaults, greens: { ...defaults.greens, spd20: 1, spd80: 1, sta80: 2, pow120: 1, gut100: 1, wit40: 3 } }, kyoto2200);
+  expect(green.stats.speed - base.stats.speed).toBe(100);
+  expect(green.stats.stamina - base.stats.stamina).toBe(160);
+  expect(green.stats.power - base.stats.power).toBe(120);
+  expect(green.stats.guts - base.stats.guts).toBe(100);
+  expect(green.stats.wisdom - base.stats.wisdom).toBe(120);
+});
