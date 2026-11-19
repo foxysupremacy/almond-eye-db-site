@@ -1,19 +1,11 @@
 #!/usr/bin/env python3
 """
-Populate playable-character data, mdb-first, operating directly on the
-datasets inside almond-eye-db-site/lib/data/ (no intermediate files):
+Add GameTora-owned fields to playable characters (English name/title,
+urlName, event skills), operating on lib/data/generated/characters.json.
 
-  reads   lib/data/generated/characters.json — character index (id = base card_id)
-  reads   lib/data/generated/skills.json     — known skills
-  merges  master.mdb               — new playable characters (card_data rows
-                                     where id == chara_id*100 + 1): JP name,
-                                     rarity, release, innate/awakening skills
-  updates lib/data/generated/characters.json — fills EN name/title, aptitudes, base
-                                     stats, unique/innate/awakening/event
-                                     skill ids from GameTora
-  appends lib/data/generated/skills.json     — referenced skills missing from the site
-                                     (e.g. brand-new uniques), built from mdb
-                                     skill_data with JP text (cat 47/48)
+The character index itself (new entries, innate/awakening/unique skills,
+aptitude, base stats) and skills.json backfill come from master.mdb via
+scripts/extract-mdb.ts, which must run first.
 
 Queries GameTora's Next.js data endpoint:
   https://gametora.com/_next/data/{buildId}/umamusume/characters/{slug}.json
@@ -21,7 +13,7 @@ Character slugs are resolved from GameTora's sitemap, which covers every
 character page (listing pages are client-rendered).
 
 Usage:
-    python3 scripts/crawl_gametora_characters.py                 # mdb merge + crawl uncrawled
+    python3 scripts/crawl_gametora_characters.py                 # crawl characters lacking an English name
     python3 scripts/crawl_gametora_characters.py --all           # re-crawl every character
     python3 scripts/crawl_gametora_characters.py --card-id 114401  # single character
 """
@@ -30,12 +22,10 @@ import argparse
 import json
 import os
 import re
-import sqlite3
 import sys
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from skill_icons import resolve_skill_icon_id
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -53,7 +43,6 @@ else:
     SITE_LIB_DIR = ROOT_DIR / "almond-eye-db-site" / "lib"
 GENERATED_DATA_DIR = SITE_LIB_DIR / "data" / "generated"
 CHARACTERS_JSON = GENERATED_DATA_DIR / "characters.json"
-SKILLS_JSON = GENERATED_DATA_DIR / "skills.json"
 
 CHARACTERS_LIST_URL = "https://gametora.com/umamusume/characters"
 SITEMAP_URL = "https://gametora.com/sitemap.xml"
@@ -67,13 +56,6 @@ HEADERS = {
     "Referer": "https://gametora.com/umamusume/characters",
     "Accept": "*/*",
 }
-
-N_ABILITIES = 3
-
-
-def resolve_mdb_path() -> str:
-    return os.environ.get("UMAMUSUME_MDB_PATH", "")
-
 
 def strip_brackets(s: str) -> str:
     return re.sub(r"^\s*\[|\]\s*$", "", s or "").strip()
@@ -154,170 +136,10 @@ def merge_game_tora(entry: dict, item: dict) -> None:
         entry["rarity"] = int(item["rarity"])
     if item.get("release"):
         entry["release"] = item["release"]
-    if isinstance(item.get("aptitude"), list) and item["aptitude"]:
-        entry["aptitude"] = [str(a) for a in item["aptitude"]]
-    if isinstance(item.get("base_stats"), list) and item["base_stats"]:
-        entry["baseStats"] = [int(v) for v in item["base_stats"]]
-    uniques = [int(u) for u in item.get("skills_unique") or []]
-    if uniques:
-        entry["uniqueSkillId"] = uniques[-1]
-    if item.get("skills_innate"):
-        entry["innateSkills"] = [int(s) for s in item["skills_innate"]]
-    if item.get("skills_awakening"):
-        entry["awakeningSkills"] = [int(s) for s in item["skills_awakening"]]
+    # uniqueSkillId / innate / awakening / aptitude / baseStats are owned by
+    # extract-mdb.ts (master.mdb); only eventSkills come from GameTora.
     if item.get("skills_event"):
         entry["eventSkills"] = [int(s) for s in item["skills_event"]]
-
-
-# ---------------------------------------------------------------------------
-# master.mdb extraction
-# ---------------------------------------------------------------------------
-
-def open_mdb():
-    mdb_path = resolve_mdb_path()
-    if not mdb_path or not os.path.exists(mdb_path):
-        print(
-            "[warn] master.mdb unavailable — skipping mdb index merge and "
-            "mdb skill backfill (set UMAMUSUME_MDB_PATH in .env)."
-        )
-        return None
-    conn = sqlite3.connect(f"file:{mdb_path}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def mdb_index_merge(db, characters: list[dict]) -> int:
-    """Add skeleton entries for playable characters missing from the site.
-    Playable base cards: card_data rows where id == chara_id*100 + 1."""
-    text = lambda cat, idx: db.execute(
-        'SELECT text FROM text_data WHERE category=? AND "index"=?', (cat, idx)
-    ).fetchone()
-
-    known = {int(c["id"]) for c in characters}
-    rows = db.execute(
-        """SELECT cd.id, cd.chara_id, cd.default_rarity, ch.start_date
-           FROM card_data cd JOIN chara_data ch ON ch.id = cd.chara_id
-           WHERE cd.id = cd.chara_id * 100 + 1 AND cd.id < 9000000"""
-    ).fetchall()
-    added = 0
-    for card_id, chara_id, rarity, start_date in rows:
-        if card_id in known:
-            continue
-        name_jp = (text(6, chara_id) or [""])[0].strip()
-        release = None
-        if start_date and int(start_date) > 0:
-            release = __import__("datetime").datetime.fromtimestamp(
-                int(start_date) + 9 * 3600, __import__("datetime").timezone.utc
-            ).strftime("%Y-%m-%d")
-        innate, awakening = [], []
-        for (skill_id, need_rank) in db.execute(
-            "SELECT skill_id, need_rank FROM available_skill_set "
-            "WHERE available_skill_set_id=? ORDER BY skill_id",
-            (card_id,),
-        ):
-            if need_rank == 0:
-                innate.append(int(skill_id))
-            elif need_rank >= 2:
-                awakening.append(int(skill_id))
-        characters.append({
-            "id": int(card_id),
-            "charId": int(chara_id),
-            "variant": "01",
-            "nameEn": name_jp,
-            "nameJp": name_jp,
-            "titleEn": "",
-            "titleJp": "",
-            "rarity": int(rarity),
-            "release": release,
-            "aptitude": [],
-            "baseStats": [],
-            "uniqueSkillId": None,
-            "innateSkills": innate,
-            "awakeningSkills": awakening,
-            "eventSkills": [],
-        })
-        added += 1
-        print(f"  mdb index: added character {card_id} ({name_jp or '?'})")
-    return added
-
-
-def build_condition_groups(row) -> list[dict]:
-    """Mirror the GameTora condition_groups schema (same as
-    generate_inherit_skills.py): one group per skill detail."""
-    groups = []
-    for d in (1, 2):
-        cond = row[f"condition_{d}"]
-        base_time = row[f"float_ability_time_{d}"]
-        if not cond or not base_time:
-            continue
-        effects = []
-        for a in range(1, N_ABILITIES + 1):
-            atype = row[f"ability_type_{d}_{a}"]
-            if not atype:
-                continue
-            effect = {"type": atype, "value": row[f"float_ability_value_{d}_{a}"]}
-            target = row[f"target_type_{d}_{a}"]
-            if target not in (0, 1):
-                effect["target"] = target
-            effects.append(effect)
-        if not effects:
-            continue
-        groups.append({
-            "condition": cond,
-            "precondition": row[f"precondition_{d}"] or None,
-            "base_time": base_time,
-            "effects": effects,
-        })
-    return groups
-
-
-def mdb_skill_backfill(db, characters: list[dict], skills: list[dict]) -> int:
-    """Append site skills.json entries for referenced skill ids that are
-    missing (brand-new uniques etc.), built from mdb skill_data."""
-    known = {int(s["id"]) for s in skills}
-    referenced = {
-        int(sid)
-        for c in characters
-        for k in ("uniqueSkillId", "innateSkills", "awakeningSkills", "eventSkills")
-        for sid in (c.get(k) if isinstance(c.get(k), list) else [c.get(k)])
-        if sid
-    }
-    missing = sorted(referenced - known)
-    if not missing:
-        return 0
-
-    hangul = re.compile(r"[\uac00-\ud7af\u1100-\u11ff]")
-    text = lambda cat, idx: (db.execute(
-        'SELECT text FROM text_data WHERE category=? AND "index"=?', (cat, idx)
-    ).fetchone() or [""])[0]
-    added = 0
-    for sid in missing:
-        row = db.execute(
-            "SELECT * FROM skill_data WHERE id=?", (sid,)
-        ).fetchone()
-        if row is None:
-            print(f"  [warn] skill {sid} not in mdb skill_data — skipped")
-            continue
-        name_jp = text(47, sid).strip()
-        desc_jp = text(48, sid).strip()
-        # No EN source available offline (hachimi/GameTora dumps are legacy
-        # workspace files) — EN falls back to the JP name until generate-data
-        # runs with fresh dumps.
-        name_en = name_jp if name_jp and not hangul.search(name_jp) else name_jp
-        skills.append({
-            "id": sid,
-            "nameEn": name_en,
-            "nameJp": name_jp,
-            "descEn": "",
-            "descJp": desc_jp,
-            "rarity": int(row["rarity"]),
-            "iconId": resolve_skill_icon_id(row),
-            "tags": [],
-            "conditionGroups": build_condition_groups(row),
-        })
-        added += 1
-        print(f"  skill backfill: added {sid} ({name_jp}) from mdb")
-    return added
 
 
 def main() -> None:
@@ -327,13 +149,7 @@ def main() -> None:
     args = parser.parse_args()
 
     characters: list[dict] = json.loads(CHARACTERS_JSON.read_text(encoding="utf-8"))
-    skills: list[dict] = json.loads(SKILLS_JSON.read_text(encoding="utf-8"))
     by_id = {int(c["id"]): c for c in characters}
-
-    db = open_mdb()
-    if db is not None:
-        mdb_index_merge(db, characters)
-        by_id = {int(c["id"]): c for c in characters}
 
     to_crawl: list[dict] = []
     if args.card_id:
@@ -385,10 +201,6 @@ def main() -> None:
 
             print(f"Updated {updated}/{len(to_crawl)} characters from GameTora.")
 
-    if db is not None:
-        mdb_skill_backfill(db, characters, skills)
-        db.close()
-
     # Keep the generate-data ordering: rarity desc, then nameEn, then id.
     characters.sort(key=lambda c: (-int(c.get("rarity") or 0),
                                    str(c.get("nameEn") or ""), int(c["id"])))
@@ -396,12 +208,7 @@ def main() -> None:
         json.dumps(characters, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
-    SKILLS_JSON.write_text(
-        json.dumps(skills, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
     print(f"Wrote {len(characters)} characters -> {CHARACTERS_JSON}")
-    print(f"Wrote {len(skills)} skills -> {SKILLS_JSON}")
 
 
 if __name__ == "__main__":

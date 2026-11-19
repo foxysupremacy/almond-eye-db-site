@@ -194,7 +194,7 @@ export const PVP_EVENTS: PvpEvent[] = [
     recommendationEventType: 2,
     recommendationEventId: 17,
     recommendationEventSubId: 0,
-    startDate: "2026-11-10T12:00:00+09:00",
+    startDate: "2026-11-22T12:00:00+09:00",
     durationDays: 6,
   },
   {

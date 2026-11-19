@@ -2325,6 +2325,32 @@
       "condition1": "ground_type==1&distance_type==2&is_finalcorner_random==1"
     }
   ],
+  "102903": [
+    {
+      "rank": 3,
+      "baseSkillId": 202471,
+      "skillId": 102903111,
+      "nameEn": "Skill 102903111",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Leader",
+      "condition1": "running_style==2&distance_rate>=50&is_overtake==1&order_rate<=50"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 204171,
+      "skillId": 102903211,
+      "nameEn": "Skill 102903211",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Mile",
+      "condition1": "is_lastspurt==1&phase_firsthalf_random==3"
+    }
+  ],
   "103001": [
     {
       "rank": 3,
@@ -5430,6 +5456,44 @@
       "iconId": null,
       "branchTag": "Betweener",
       "condition1": "running_style==3&course_distance>=2000&phase_firsthalf_random==2&lastspurt==2"
+    }
+  ],
+  "107501": [
+    {
+      "rank": 3,
+      "baseSkillId": 204911,
+      "skillId": 107501111,
+      "nameEn": "Skill 107501111",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Betweener",
+      "condition1": "running_style==3&phase_laterhalf_random==1"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 203591,
+      "skillId": 107501211,
+      "nameEn": "Skill 107501211",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Medium",
+      "condition1": "running_style==3&distance_type==3&is_lastspurt==1"
+    },
+    {
+      "rank": 5,
+      "baseSkillId": 203591,
+      "skillId": 107501221,
+      "nameEn": "Skill 107501221",
+      "nameJp": "",
+      "descEn": "",
+      "descJp": "",
+      "iconId": null,
+      "branchTag": "Mile",
+      "condition1": "running_style==3&distance_type==2&phase_firsthalf_random==2"
     }
   ],
   "107601": [

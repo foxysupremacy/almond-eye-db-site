@@ -273,7 +273,12 @@ Key contracts defined in `docs/DESIGN.md`:
     `single_mode_wins_saddle`, `single_mode_route(_race)` → `single_mode_program`
     → `race_instance` → `race` → `race_course_set`). It also owns
     `lib/data/generated/scenario-links.json` (`single_mode_scenario`,
-    `single_mode_special_chara`, `support_card_data`).
+    `single_mode_special_chara`, `support_card_data`). It also owns the mdb part of
+    `lib/data/generated/characters.json` (`scripts/extract-characters.ts`: skeleton entries for
+    new playable characters; `uniqueSkillId`/`innateSkills`/`awakeningSkills`/
+    `aptitude`/`baseStats` overwritten from `available_skill_set`, `card_rarity_data`,
+    `skill_set`) and backfills missing `skills.json` entries. GameTora
+    (`crawl_gametora_characters.py`) only supplies EN name/title, urlName, eventSkills.
   - `scripts/crawl_gametora_cards.py` (repo root, manual) operates **directly
     on `lib/data/generated/`**: reads cards.json + skills.json, crawls GameTora, and
     updates cards.json in place (type/nameEn/urlName/hints/eventSkills/

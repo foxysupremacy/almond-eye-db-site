@@ -58,8 +58,8 @@ Step details (each script is also runnable standalone):
 
 | Script | Inputs | Outputs |
 |---|---|---|
-| `scripts/extract-mdb.ts` | game `master.mdb` (SQLite, read-only) + `lib/data/source/gametora/factors.json` | `lib/data/generated/{cards,affinity,careers}.json` |
-| `scripts/crawl_gametora_characters.py` | `master.mdb`, `lib/data/generated/{characters,skills}.json`, GameTora | updates `lib/data/generated/{characters,skills}.json` |
+| `scripts/extract-mdb.ts` | game `master.mdb` (SQLite, read-only) + `lib/data/source/gametora/factors.json` | `lib/data/generated/{cards,affinity,careers}.json`; also updates `characters.json` (new playable characters; unique/innate/awakening skills, aptitude, baseStats — mdb-owned) and backfills missing `skills.json` entries |
+| `scripts/crawl_gametora_characters.py` | `lib/data/generated/characters.json`, GameTora | fills GameTora-owned `characters.json` fields (EN name/title, urlName, eventSkills) |
 | `scripts/crawl_gametora_cards.py` | `lib/data/generated/{cards,skills}.json` + GameTora | updates `cards.json` **in place** (type/nameEn/urlName/hints/eventSkills/eventDetails), writes `skill-meta.json` |
 | `scripts/generate_inherit_skills.py` | `master.mdb` | `lib/data/generated/{skills-inherit,unique-inherit-map}.json` |
 | `scripts/crawl_card_images.py` | `lib/data/generated/{characters,cards}.json` + GameTora | PNGs into `data/images/` (character stands 512×512 full art + icons 256×256, support card full art; incremental, skips existing) |

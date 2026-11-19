@@ -18,6 +18,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 import { loadEnv } from "./env.ts";
+import { backfillMissingSkills, extractCharacters } from "./extract-characters.ts";
 import { extractG1Calendar } from "./extract-g1-calendar.ts";
 import { extractSkillLevelCoef, patchCharacterEvolutions } from "./extract-skill-tables.ts";
 import { patchRacetrackCourseFlags } from "./extract-course-flags.ts";
@@ -392,6 +393,8 @@ export function extractAffinityData() {
 
   fs.writeFileSync(CAREERS_OUTPUT_PATH, JSON.stringify(careers));
   const careersStats = fs.statSync(CAREERS_OUTPUT_PATH);
+  extractCharacters(db);
+
   let withCareer = 0;
   let rosterTotal = 0;
   if (fs.existsSync(CHARACTERS_PATH)) {
@@ -512,6 +515,7 @@ export function extractAffinityData() {
   extractG1Calendar(db);
   extractSkillLevelCoef(db);
   patchCharacterEvolutions(db);
+  backfillMissingSkills(db);
   patchRacetrackCourseFlags(db);
 }
 

@@ -3,7 +3,7 @@ import { cardsById, latestScenarioLinks, scenarioLinks } from "./registry";
 
 test("latest three scenarios, newest first, each with a pal card", () => {
   const latest = latestScenarioLinks();
-  expect(latest.map((s) => s.scenarioId)).toEqual([14, 13, 12]);
+  expect(latest.map((s) => s.scenarioId)).toEqual([15, 14, 13]);
   for (const s of latest) expect(s.palCardIds.length).toBeGreaterThan(0);
 });
 test("pal cards are friend or group cards, linked Uma cards are not", () => {

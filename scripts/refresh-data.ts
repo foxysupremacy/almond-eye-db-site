@@ -5,9 +5,10 @@
  *                                  in the legacy sibling workspace — skipped
  *                                  with a notice when they're absent)
  *   2. extract-mdb.ts              master.mdb -> cards.json index merge,
- *                                  affinity.json, careers.json
- *   3. crawl_gametora_characters.py  new playable characters: mdb index merge,
- *                                  GameTora merge, skill backfill into skills.json
+ *                                  affinity.json, careers.json, and characters.json
+ *                                  (new playable characters + unique/innate/awakening
+ *                                  skills, aptitude, baseStats) + skills.json backfill
+ *   3. crawl_gametora_characters.py  GameTora-only: EN name/title, urlName, event skills
  *   4. crawl_gametora_cards.py     GameTora -> English names, hints, events for
  *                                  new/uncrawled cards; recompiles skill-meta.json
  *   5. generate_inherit_skills.py  master.mdb -> skills-inherit.json,
@@ -101,11 +102,11 @@ if (full || fs.existsSync(rawSkills) || fs.existsSync(path.join(SITE_ROOT, "lib/
 // 2. master.mdb extraction (mdb path from .env / $UMAMUSUME_MDB_PATH).
 steps.push({ name: "extract-mdb", cmd: process.execPath, args: tsScript("extract-mdb.ts") });
 
-// 3. Playable characters: mdb index merge + GameTora crawl + skill backfill
-//    (must run before the card crawl, which recompiles skill-meta.json from
+// 3. Playable characters: GameTora EN names/event skills (mdb skills/roster come
+//    from extract-mdb above; must run before the card crawl, which recompiles skill-meta.json from
 //    the updated skills.json).
 steps.push({
-  name: "populate characters (mdb + gametora)",
+  name: "populate characters (gametora)",
   cmd: python,
   args: py("crawl_gametora_characters.py", full ? ["--all"] : []),
   soft: true,
