@@ -13,6 +13,7 @@ import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
 import CardChainSelector from "@/features/deck/components/card-chain-selector";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
+import { CardArtImage } from "@/app/common/ui/cards/card-art-image";
 import { findCharConflict } from "@/lib/deck/card-constraints";
 import { deckSlotTransitionName } from "@/app/common/motion/view-transition";
 import { useDeckPickerViewModel } from "@/features/deck/view-models/use-deck-picker-view-model";
@@ -103,7 +104,7 @@ function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCa
               {card ? (
                 <>
                   <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                    <img src={card.imgUrl} alt="" loading="lazy" className="block h-full w-full select-none object-cover object-top" />
+                    <CardArtImage src={card.imgUrl} fallbackSrc={card.portraitUrl} alt="" loading="lazy" className="block h-full w-full select-none object-cover object-top" />
                     <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold uppercase ${RARITY_META[card.rarity]?.chip ?? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}>
                       {RARITY_META[card.rarity]?.label ?? "R"}
                     </span>
@@ -242,7 +243,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
               {card ? (
                 <>
                   <div className="relative w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                    <img src={card.imgUrl} alt="" className="block h-auto w-full object-contain" />
+                    <CardArtImage src={card.imgUrl} fallbackSrc={card.portraitUrl} alt="" className="block h-auto w-full object-contain" />
                     <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
                     <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
                     {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}
@@ -309,8 +310,9 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                         ⚠️ Same Uma Equipped Twice
                       </div>
                     )}
-                    <img
+                    <CardArtImage
                       src={card.imgUrl}
+                      fallbackSrc={card.portraitUrl}
                       alt={cardLabel(card)}
                       className="w-full h-auto block object-contain select-none"
                       loading="lazy"
