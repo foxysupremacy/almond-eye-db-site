@@ -364,6 +364,22 @@ All loading UI goes through `app/common/ui/controls/loading-animation.tsx`: a th
 3. **Names must be unique among rendered elements.** Two visible elements with the same `view-transition-name` cancel the transition (the update still applies). Hidden duplicates (`display:none`, e.g. the mobile vs desktop slot grids) are fine. Never reuse `deck-slot-*`, `app-header` or `app-mobile-nav` elsewhere.
 4. **Nav chrome is live, not crossfaded**: `app-header` and `app-mobile-nav` skip the old snapshot so the sliding indicator stays visible during the transition.
 5. **Sliding indicator**: one absolutely positioned pill per nav, placed by `useActiveIndicator` (`app/common/hooks/use-active-indicator.ts`) on the element matching its target selector (`aria-current="page"` in the header; `data-indicator-active="true"` on the mobile icon badge). It moves with `transform`/`width` over 250ms `ease-out-expo`, and the transition is enabled only after the first placement (no slide-in from 0,0). Active items keep their text color but drop their own background.
+6. **Route navigations** (Home ↔ Supports/Characters): `AppRouterProvider` (`app/common/ui/controls/app-router-provider.tsx`, mounted in `app/layout.tsx`) routes every react-aria `Link` through the App Router.
+   - Each navigation runs in `navigateWithTransition` (`app/common/motion/route-transition.ts`). The transition holds the old view until `usePathname()` changes, capped at 1s.
+   - A link whose own `onClick` calls `preventDefault()` (home tab switches) is never handed to the router.
+   - Nav hover/focus/press prefetches the target route.
+   - `app/supports/loading.tsx` and `app/characters/loading.tsx` render `CollectionRouteLoading`: same header and nav, with `TabSkeleton` in the content area.
+   - Remaining full page loads use `@view-transition { navigation: auto; }`.
+
+### 13.8 Deck Changes & List Row Motion
+
+1. **Deck mutations animate through `runViewTransition`.** In `useDeckPickerViewModel` these commands wrap their update in `flushSync`: Compact↔Large toggle, pick, remove, clear, and copy Main→Parent. The `deck-slot-*` names make slots glide and resize; the rest crossfades.
+   - Close the picker or sheet *before* the transition starts, so the snapshot doesn't capture the popover.
+2. **List rows use `AnimatedList`** (`app/common/ui/primitives/animated-list.tsx`, powered by `@formkit/auto-animate`). Use it for skill-list `<ul>` containers whose rows are added, removed or reordered by filters, sorts or deck changes.
+   - Options come from `app/common/motion/list-motion.ts`: 200ms, `ease-out-quart`.
+   - Pass `rowCount`. Motion turns off above `LIST_MOTION_MAX_ROWS` (80) so long lists filter instantly.
+   - auto-animate already respects `prefers-reduced-motion`; don't override it.
+3. **Don't stack the two systems.** Never put an `AnimatedList` inside an element that has a `view-transition-name`, and never give list rows a transition name.
 
 ---
 
