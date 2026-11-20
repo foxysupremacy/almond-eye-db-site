@@ -28,6 +28,59 @@
   }
 }
 
+/* Tab transitions (DESIGN.md §13.7) — driven by runViewTransition() in
+   app/common/motion/view-transition.ts. The page crossfades; deck slots named
+   deck-slot-0…5 morph between Main and Parent Deck. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+  animation-timing-function: var(--ease-out-quart);
+}
+
+::view-transition-group(deck-slot-0),
+::view-transition-group(deck-slot-1),
+::view-transition-group(deck-slot-2),
+::view-transition-group(deck-slot-3),
+::view-transition-group(deck-slot-4),
+::view-transition-group(deck-slot-5) {
+  animation-duration: 260ms;
+  animation-timing-function: var(--ease-in-out-cubic);
+}
+
+::view-transition-old(deck-slot-0), ::view-transition-new(deck-slot-0),
+::view-transition-old(deck-slot-1), ::view-transition-new(deck-slot-1),
+::view-transition-old(deck-slot-2), ::view-transition-new(deck-slot-2),
+::view-transition-old(deck-slot-3), ::view-transition-new(deck-slot-3),
+::view-transition-old(deck-slot-4), ::view-transition-new(deck-slot-4),
+::view-transition-old(deck-slot-5), ::view-transition-new(deck-slot-5) {
+  /* Cards differ in aspect ratio; scale the snapshots to the group box. */
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 260ms;
+  animation-timing-function: var(--ease-in-out-cubic);
+}
+
+/* Navigation chrome is shown live (no crossfade) so the sliding active-tab
+   indicator's own transition stays visible during the page crossfade. */
+::view-transition-old(app-header),
+::view-transition-old(app-mobile-nav) {
+  display: none;
+}
+::view-transition-new(app-header),
+::view-transition-new(app-mobile-nav),
+::view-transition-group(app-header),
+::view-transition-group(app-mobile-nav) {
+  animation: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}
+
 :root {
   color-scheme: light;
   --bg-app: #f8fafc;

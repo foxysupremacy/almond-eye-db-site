@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import fs from "node:fs";
-import { characterEvolutions, characters, getCharacterEvolutions, getEvolutionSlots, skillsById } from "./registry";
+import { characters, getCharacterEvolutions, getEvolutionSlots, loadCharacterEvolutions, skillsById } from "./registry";
+const characterEvolutions = await loadCharacterEvolutions();
 import { buildRankingCandidates } from "../rankings/candidates";
 
 const getRankingCandidates = () => buildRankingCandidates(characters, (id) => getCharacterEvolutions(id));

@@ -18,12 +18,9 @@ import rawCareersJson from "./generated/careers.json";
 import rawG1CalendarJson from "./generated/g1-calendar.json";
 import rawG1RacesJson from "./generated/g1-races.json";
 import rawUniqueInheritJson from "./generated/unique-inherit-map.json";
-import rawCharacterEvolutionsJson from "./generated/character-evolutions.json";
-import rawCardEffectsJson from "./generated/card-effects.json";
 import rawGoldToWhiteJson from "./generated/gold-to-white.json";
 import rawSkillMetaJson from "./generated/skill-meta.json";
 import rawSkillRatingBenchmarksJson from "./generated/skill-rating-benchmarks.json";
-import rawPvpRecommendationsJson from "./generated/pvp-recommendations.json";
 import rawFactorsCompactJson from "./generated/factors-compact.json";
 import rawSuccessionFactorsJson from "./generated/succession-factors.json";
 import rawScenarioLinksJson from "./generated/scenario-links.json";
@@ -272,9 +269,6 @@ export const skillMetaMap: Record<string, SkillMeta> = rawSkillMetaJson as Recor
 /** Frozen normalization benchmarks used by the canonical skill-rating engine. */
 export const skillRatingBenchmarks = rawSkillRatingBenchmarksJson as import("../skill-rating/types").RatingBenchmarks;
 
-/** Game-provided race fit recommendations, normalized from the captured response. */
-export const pvpRecommendations = rawPvpRecommendationsJson as PvpRecommendationsPayload;
-
 /** Compact factor metadata used by the veteran decoder. */
 export const compactFactors = rawFactorsCompactJson as Record<string, CompactFactorEntry>;
 
@@ -365,20 +359,74 @@ export const successionEvolvedSkillByParentCardId: Map<number, SkillDetail> = ((
   return index;
 })();
 
-/** Character evolutions keyed by card id string. */
-export const characterEvolutions: Record<string, CharacterEvolutionDetail[]> = rawCharacterEvolutionsJson as Record<
-  string,
-  CharacterEvolutionDetail[]
->;
+// ---------------------------------------------------------------------------
+// Deferred datasets — split out of the startup bundle so the core tabs paint
+// first. Each loader memoizes its promise (a failed load may be retried) and
+// keeps the resolved value for the synchronous accessors below.
+// ---------------------------------------------------------------------------
 
-/** Support card effects keyed by card id string. */
-export const cardEffects: Record<string, SupportCardEffectsBlob> = rawCardEffectsJson as Record<
-  string,
-  SupportCardEffectsBlob
->;
+export interface DeferredDataset<T> {
+  /** Starts (or joins) the load; resolves with the dataset. */
+  load(): Promise<T>;
+  /** The dataset if it has finished loading, otherwise undefined. */
+  peek(): T | undefined;
+}
 
+export function createDeferredDataset<T>(importer: () => Promise<unknown>): DeferredDataset<T> {
+  let value: T | undefined;
+  let pending: Promise<T> | null = null;
+  return {
+    load() {
+      if (value !== undefined) return Promise.resolve(value);
+      if (pending) return pending;
+      const attempt = importer().then((module) => {
+        const resolved = ((module as { default?: unknown }).default ?? module) as T;
+        value = resolved;
+        return resolved;
+      });
+      pending = attempt;
+      attempt.catch(() => {
+        if (pending === attempt) pending = null;
+      });
+      return attempt;
+    },
+    peek: () => value,
+  };
+}
+
+const characterEvolutionsDataset = createDeferredDataset<Record<string, CharacterEvolutionDetail[]>>(
+  () => import("./generated/character-evolutions.json"),
+);
+const cardEffectsDataset = createDeferredDataset<Record<string, SupportCardEffectsBlob>>(
+  () => import("./generated/card-effects.json"),
+);
+const pvpRecommendationsDataset = createDeferredDataset<PvpRecommendationsPayload>(
+  () => import("./generated/pvp-recommendations.json"),
+);
+
+/** Character evolutions keyed by card id string. `initDataStore` awaits this. */
+export const loadCharacterEvolutions = (): Promise<Record<string, CharacterEvolutionDetail[]>> =>
+  characterEvolutionsDataset.load();
+
+/** True once `loadCharacterEvolutions()` has resolved. */
+export const characterEvolutionsLoaded = (): boolean => characterEvolutionsDataset.peek() !== undefined;
+
+/** Support card effects keyed by card id string — only the card detail sheet needs them. */
+export const loadCardEffects = (): Promise<Record<string, SupportCardEffectsBlob>> => cardEffectsDataset.load();
+
+/** Game-provided race fit recommendations — loaded after the deck has painted. */
+export const loadPvpRecommendations = (): Promise<PvpRecommendationsPayload> => pvpRecommendationsDataset.load();
+
+/** Synchronous view of the PvP recommendations, or undefined until loaded. */
+export const peekPvpRecommendations = (): PvpRecommendationsPayload | undefined => pvpRecommendationsDataset.peek();
+
+/**
+ * Evolutions for a costume card. Synchronous: returns [] until
+ * `loadCharacterEvolutions()` has resolved. Callers that need complete data
+ * (rankings, data store) await the loader first.
+ */
 export function getCharacterEvolutions(cardId: number): CharacterEvolutionDetail[] {
-  return characterEvolutions[String(cardId)] || [];
+  return characterEvolutionsDataset.peek()?.[String(cardId)] || [];
 }
 
 /**
@@ -391,6 +439,6 @@ export function getEvolutionSlots(cardId: number): { slot1: number[]; slot2: num
   return { slot1: ids(3), slot2: ids(5), slot3: ids(7) };
 }
 
-export function getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined {
-  return cardEffects[String(cardId)];
+export async function getCardSupportEffects(cardId: number): Promise<SupportCardEffectsBlob | undefined> {
+  return (await loadCardEffects())[String(cardId)];
 }

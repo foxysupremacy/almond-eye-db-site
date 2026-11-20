@@ -31,6 +31,7 @@ import { applyParentDeckToPreset } from "@/lib/deck/apply-parent-deck";
 import type { Course } from "@/lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
 import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
+import { usePvpRecommendations } from "./use-pvp-recommendations";
 
 // Extracted Domain Modules
 import {
@@ -111,11 +112,11 @@ export function DeckProvider({ children }: { children: ReactNode }) {
 
   const activePvpEventId = activePreset.trackInfo.pvpEventId ?? null;
   const activePvpEvent = useMemo(() => getPvpEventById(activePvpEventId), [activePvpEventId]);
+  const pvpRecommendationEvents = usePvpRecommendations();
   const masterChallengeEvents = useMemo(
-    () => dataStore?.pvpRecommendations.raceFitAssistance.filter((event) => event.eventType === 3) ?? [],
-    [dataStore],
+    () => pvpRecommendationEvents.filter((event) => event.eventType === 3),
+    [pvpRecommendationEvents],
   );
-  const pvpRecommendationEvents = dataStore?.pvpRecommendations.raceFitAssistance ?? [];
   const masterChallengeMatch = useMemo(
     () => findMasterChallengeRace(
       pvpRecommendationEvents,

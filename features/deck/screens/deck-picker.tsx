@@ -5,7 +5,8 @@
 // Supports mode="main" (default) and mode="parent" (for Parent Deck farming).
 
 import { MobileSheet } from "@/app/common/ui/controls/mobile-sheet";
-import type { CardIndexEntry } from "@/lib/api";
+import type { CardIndexEntry, CharacterIndexEntry } from "@/lib/api";
+import type { DeckSlotSize } from "@/lib/deck/slot-size-pref";
 import { DECK_SIZE } from "@/lib/deck/constants";
 import CardPickerPopover from "@/features/deck/pickers/card-picker-popover";
 import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
@@ -13,10 +14,142 @@ import CardChainSelector from "@/features/deck/components/card-chain-selector";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { findCharConflict } from "@/lib/deck/card-constraints";
+import { deckSlotTransitionName } from "@/app/common/motion/view-transition";
 import { useDeckPickerViewModel } from "@/features/deck/view-models/use-deck-picker-view-model";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
+}
+
+function isTraineeCard(card: CardIndexEntry, targetChara: CharacterIndexEntry | null): boolean {
+  return Boolean(
+    targetChara &&
+      (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp),
+  );
+}
+
+const SLOT_SIZE_OPTIONS: readonly { value: DeckSlotSize; label: string }[] = [
+  { value: "compact", label: "Compact" },
+  { value: "large", label: "Large" },
+];
+
+/** Compact / Large segmented control; the choice is shared by Main and Parent Deck. */
+function SlotSizeToggle({ value, onChange }: { value: DeckSlotSize; onChange: (size: DeckSlotSize) => void }) {
+  return (
+    <div role="group" aria-label="Card size" className="inline-flex rounded-lg border border-zinc-200 bg-white p-0.5 shadow-xs dark:border-zinc-800 dark:bg-zinc-900">
+      {SLOT_SIZE_OPTIONS.map((option) => {
+        const active = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            aria-pressed={active}
+            onClick={() => onChange(option.value)}
+            className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors duration-150 ease-out-quart ${
+              active
+                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
+                : "text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+interface CompactSlotGridProps {
+  isParent: boolean;
+  activeSlots: readonly (CardIndexEntry | null)[];
+  /** The slots used for same-uma conflict checks (the deck being edited). */
+  deckSlots: readonly (CardIndexEntry | null)[];
+  targetChara: CharacterIndexEntry | null;
+  mainCardIdSet: ReadonlySet<number>;
+  onOpenCard: (slotIndex: number) => void;
+  onPickSlot: (slotIndex: number) => void;
+}
+
+/**
+ * One row of six face-cropped tiles on desktop (3×2 on phones). Selecting a
+ * filled tile opens the slot sheet (event choices, inspect, replace, remove).
+ */
+function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCardIdSet, onOpenCard, onPickSlot }: CompactSlotGridProps) {
+  const filled = activeSlots.filter(Boolean).length;
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="grid grid-cols-3 gap-2 lg:grid-cols-6" aria-label={isParent ? "Parent support deck" : "Main support deck"}>
+        {Array.from({ length: DECK_SIZE }, (_, index) => {
+          const card = activeSlots[index];
+          const traineeConflict = Boolean(card && !isParent && isTraineeCard(card, targetChara));
+          const charConflict = card ? findCharConflict(deckSlots as CardIndexEntry[], index, card) : null;
+          const inMain = Boolean(isParent && card && mainCardIdSet.has(card.id));
+          const border = traineeConflict
+            ? "border-rose-500 ring-2 ring-rose-500/30"
+            : charConflict
+              ? "border-amber-500 ring-2 ring-amber-500/30"
+              : card
+                ? "border-zinc-200 hover:border-emerald-400 dark:border-zinc-800 dark:hover:border-emerald-600"
+                : "border-dashed border-zinc-300 hover:border-emerald-400 dark:border-zinc-700 dark:hover:border-emerald-600";
+          return (
+            <button
+              key={index}
+              type="button"
+              aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`}
+              onClick={() => (card ? onOpenCard(index) : onPickSlot(index))}
+              style={{ viewTransitionName: deckSlotTransitionName(index) }}
+              className={`group relative flex min-w-0 cursor-pointer flex-col overflow-hidden rounded-xl border bg-white text-left transition-[border-color,transform] duration-150 ease-out-quart active:scale-[0.98] dark:bg-zinc-900 ${border}`}
+            >
+              {card ? (
+                <>
+                  <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                    <img src={card.imgUrl} alt="" loading="lazy" className="block h-full w-full select-none object-cover object-top" />
+                    <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold uppercase ${RARITY_META[card.rarity]?.chip ?? "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"}`}>
+                      {RARITY_META[card.rarity]?.label ?? "R"}
+                    </span>
+                    <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 flex-none object-contain" />
+                    {inMain && !traineeConflict && !charConflict && (
+                      <span className="absolute bottom-1.5 right-1.5 rounded-md border border-amber-400/80 bg-amber-200/95 px-1.5 py-0.5 text-[9px] font-bold text-amber-950 shadow-xs dark:border-amber-700 dark:bg-amber-950/95 dark:text-amber-100">
+                        In Main
+                      </span>
+                    )}
+                    {traineeConflict && (
+                      <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white" title="The trainee's own card cannot be used in the Main Deck.">
+                        Trainee card
+                      </span>
+                    )}
+                    {!traineeConflict && charConflict && (
+                      <span
+                        className="absolute inset-x-0 bottom-0 bg-amber-500 px-1 py-0.5 text-center text-[10px] font-semibold text-white"
+                        title={`Same uma as "${charConflict.nameEn || charConflict.nameJp}" — two different cards of one uma cannot be active at once.`}
+                      >
+                        Same uma twice
+                      </span>
+                    )}
+                  </div>
+                  <div className="min-w-0 px-2 py-1.5">
+                    <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{cardLabel(card)}</p>
+                    <p className="mt-0.5 truncate text-[10px] text-zinc-400 dark:text-zinc-500">{card.nameJp}</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="flex aspect-[4/3] w-full items-center justify-center text-zinc-400 transition-colors group-hover:text-emerald-700 dark:text-zinc-500 dark:group-hover:text-emerald-400">
+                    <span className="grid h-8 w-8 place-items-center rounded-full border border-dashed border-current text-lg font-light">+</span>
+                  </span>
+                  <span className="min-w-0 px-2 py-1.5">
+                    <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">Slot {index + 1}</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-zinc-400 dark:text-zinc-500">Empty</span>
+                  </span>
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">{filled} of 6 cards · Select a card for event choices and skills</p>
+    </div>
+  );
 }
 
 export interface DeckPickerProps {
@@ -39,6 +172,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
     skillsByCard,
     parentSlots,
     mainSlots,
+    slotSize,
   } = state;
 
   return (
@@ -56,9 +190,9 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
           </p>
         </div>
 
-        {isParent && (
-          <div className="flex items-center gap-2">
-            {hasMainDeck && (
+        <div className="flex flex-wrap items-center gap-2">
+          <SlotSizeToggle value={slotSize} onChange={commands.setSlotSize} />
+          {isParent && hasMainDeck && (
               <button
                 type="button"
                 onClick={commands.copyMainToParent}
@@ -68,7 +202,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                 Copy from Main
               </button>
             )}
-            {hasParentDeck && (
+            {isParent && hasParentDeck && (
               <button
                 type="button"
                 onClick={commands.clearParent}
@@ -77,10 +211,21 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                 Clear Parent Deck
               </button>
             )}
-          </div>
-        )}
+        </div>
       </div>
 
+      {slotSize === "compact" ? (
+        <CompactSlotGrid
+          isParent={isParent}
+          activeSlots={activeSlots}
+          deckSlots={isParent ? parentSlots : mainSlots}
+          targetChara={targetChara}
+          mainCardIdSet={mainCardIdSet}
+          onOpenCard={commands.openMobileSlot}
+          onPickSlot={commands.openSlotPicker}
+        />
+      ) : (
+      <>
       <div className="grid grid-cols-3 gap-2 lg:hidden" aria-label={isParent ? "Parent support deck" : "Main support deck"}>
         {Array.from({ length: DECK_SIZE }, (_, index) => {
           const card = activeSlots[index];
@@ -91,6 +236,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
               type="button"
               aria-label={card ? `Edit slot ${index + 1}: ${cardLabel(card)}` : `Pick Slot ${index + 1}`}
               onClick={() => card ? commands.openMobileSlot(index) : commands.openSlotPicker(index)}
+              style={{ viewTransitionName: deckSlotTransitionName(index) }}
               className={`relative flex min-h-32 min-w-0 flex-col overflow-hidden rounded-xl border bg-white text-left dark:bg-zinc-900 ${conflict ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"}`}
             >
               {card ? (
@@ -137,6 +283,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
           return (
             <div
               key={slotIndex}
+              style={{ viewTransitionName: deckSlotTransitionName(slotIndex) }}
               className={`group relative flex w-full max-w-[208px] flex-col rounded-2xl bg-white dark:bg-zinc-900 shadow-xs transition-all overflow-hidden ${
                 isTraineeConflict
                   ? "border-2 border-rose-500 ring-2 ring-rose-500/30"
@@ -236,6 +383,8 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
           );
         })}
       </div>
+      </>
+      )}
 
       <MobileSheet open={mobileSlot !== null && Boolean(mobileCard)} onClose={commands.closeMobileSlot} title={mobileCard ? cardLabel(mobileCard) : "Support card"}>
         {mobileCard && (

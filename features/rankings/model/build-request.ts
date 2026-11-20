@@ -1,4 +1,4 @@
-import { characters, getCharacterEvolutions, skillsById } from "@/lib/data/registry";
+import { characterEvolutionsLoaded, characters, getCharacterEvolutions, skillsById } from "@/lib/data/registry";
 import { buildRankingCandidates, rankingCacheKey, skillIdsReferenced, type RankingCandidate, type RankingRequest } from "@/lib/rankings";
 import type { RaceImpactProfile } from "@/lib/race-impact";
 import type { Course, RaceParameters } from "@/lib/skill-engine/types";
@@ -8,8 +8,12 @@ export interface RankingsContext { course: Course; raceParams: Partial<RaceParam
 let candidatesCache: RankingCandidate[] | null = null;
 export function getRankingCandidates(): RankingCandidate[] {
   // Slots come from character-evolutions.json, kept in sync with master.mdb skill_upgrade_description.
-  candidatesCache ??= buildRankingCandidates(characters, (id) => getCharacterEvolutions(id));
-  return candidatesCache;
+  // The Rankings tab chunk awaits loadCharacterEvolutions() (app/tab-preload.ts); never cache a
+  // candidate list built before the deferred evolutions arrived.
+  if (candidatesCache) return candidatesCache;
+  const candidates = buildRankingCandidates(characters, (id) => getCharacterEvolutions(id));
+  if (characterEvolutionsLoaded()) candidatesCache = candidates;
+  return candidates;
 }
 
 export function buildRankingRequest(ctx: RankingsContext): RankingRequest {

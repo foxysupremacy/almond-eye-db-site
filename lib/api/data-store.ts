@@ -13,7 +13,8 @@ import {
   getCharacterImageUrl,
   getCharacterEvolutions,
   getCardSupportEffects,
-  pvpRecommendations,
+  loadCharacterEvolutions,
+  loadPvpRecommendations,
   loadRacetracks,
 } from "../data/registry";
 
@@ -48,6 +49,7 @@ export {
   getCharacterImageUrl,
   getCharacterEvolutions,
   getCardSupportEffects,
+  loadPvpRecommendations,
 };
 
 import type {
@@ -75,7 +77,6 @@ export interface DataStore {
   cards: CardIndexEntry[];
   characters: CharacterIndexEntry[];
   skills: SkillDetail[];
-  pvpRecommendations: PvpRecommendationsPayload;
   racetracks: RacetrackDetail[];
   cardsById: Map<number, CardIndexEntry>;
   charactersById: Map<number, CharacterIndexEntry>;
@@ -90,7 +91,7 @@ export interface DataStore {
   getCourse(id: number): CourseRow | undefined;
   getCardSkills(cardId: number): CardSkills;
   getCharacterEvolutions(cardId: number): CharacterEvolutionDetail[];
-  getCardSupportEffects(cardId: number): SupportCardEffectsBlob | undefined;
+  getCardSupportEffects(cardId: number): Promise<SupportCardEffectsBlob | undefined>;
 }
 
 let storeInstance: DataStore | null = null;
@@ -101,7 +102,9 @@ export async function initDataStore(): Promise<DataStore> {
   if (storePromise) return storePromise;
 
   const pendingStore = (async () => {
-    const racetracks = await loadRacetracks();
+    // Evolutions are a separate chunk fetched in parallel with the racetracks,
+    // so every synchronous getCharacterEvolutions() call after init sees data.
+    const [racetracks] = await Promise.all([loadRacetracks(), loadCharacterEvolutions()]);
 
     const cardsById = new Map<number, CardIndexEntry>(cards.map((c) => [c.id, c]));
     const charactersById = new Map<number, CharacterIndexEntry>(characters.map((c) => [c.id, c]));
@@ -118,7 +121,6 @@ export async function initDataStore(): Promise<DataStore> {
       cards,
       characters,
       skills,
-      pvpRecommendations,
       racetracks,
       cardsById,
       charactersById,

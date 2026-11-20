@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { pvpRecommendations, loadRacetracks } from "@/lib/data/registry";
+import { loadPvpRecommendations, loadRacetracks } from "@/lib/data/registry";
+const pvpRecommendations = await loadPvpRecommendations();
 import { PVP_EVENTS } from "./events";
 import {
   filterRecommendedSkillsByStyle,

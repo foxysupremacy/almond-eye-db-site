@@ -38,6 +38,9 @@ describe("useDeckPickerViewModel", () => {
     expect(mainVm.state.inspectCard).toBeNull();
     expect(typeof mainVm.commands.openSlotPicker).toBe("function");
     expect(typeof mainVm.commands.pickCard).toBe("function");
+    // Server/hydration render uses the default; the stored choice applies on the client.
+    expect(mainVm.state.slotSize).toBe("compact");
+    expect(typeof mainVm.commands.setSlotSize).toBe("function");
 
     let parentVm!: DeckPickerViewModel;
     renderToStaticMarkup(

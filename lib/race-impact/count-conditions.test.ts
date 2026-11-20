@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { characters, getCharacterEvolutions, loadRacetracks, skillsById } from "../data/registry";
+import { characters, getCharacterEvolutions, loadCharacterEvolutions, loadRacetracks, skillsById } from "../data/registry";
+await loadCharacterEvolutions();
 import { flattenCourse } from "../api/course-format";
 import { buildRankingCandidates, rankCharacters, skillIdsReferenced, type RankingRequest } from "../rankings";
 import { dynamicConditionKeys } from "./prior";

@@ -2,6 +2,7 @@
 
 import { Link as AriaLink } from "react-aria-components/Link";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { useActiveIndicator } from "@/app/common/hooks/use-active-indicator";
 import { BrandMark } from "@/app/common/ui/primitives/brand-mark";
 import { ChevronDownIcon, FilterIcon, MenuIcon } from "@/app/common/ui/primitives/icons";
 import { appRouteHref, isRootAppRoute, TABS, type AppShellRoute, type RootAppRoute } from "@/app/tabs";
@@ -14,6 +15,8 @@ interface AppShellHeaderProps {
   mobileTitle: string;
   onToggleControls: () => void;
   onRootRouteChange?: (route: RootAppRoute) => void;
+  /** Called on hover/focus of a nav item so the app can prefetch that tab. */
+  onRoutePreload?: (route: AppShellRoute) => void;
   onOpenBuildTools?: () => void;
 }
 
@@ -24,10 +27,13 @@ export function AppShellHeader({
   mobileTitle,
   onToggleControls,
   onRootRouteChange,
+  onRoutePreload,
   onOpenBuildTools,
 }: AppShellHeaderProps) {
+  // The active link carries aria-current="page"; one pill slides between links.
+  const indicator = useActiveIndicator<HTMLElement>(activeRoute, '[aria-current="page"]');
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md transition-colors duration-200 dark:border-zinc-800/80 dark:bg-zinc-900/85">
+    <header className="sticky top-0 z-40 [view-transition-name:app-header] border-b border-zinc-200/80 bg-white/85 backdrop-blur-md transition-colors duration-200 dark:border-zinc-800/80 dark:bg-zinc-900/85">
       <div className="flex h-14 items-center justify-between gap-3 px-4 lg:hidden">
         <div className="flex min-w-0 items-center gap-2">
           <BrandMark />
@@ -41,7 +47,12 @@ export function AppShellHeader({
 
       <div className="mx-auto hidden h-14 max-w-5xl items-center gap-3 px-3 sm:px-6 lg:flex">
         <BrandMark />
-        <nav className="flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Primary navigation">
+        <nav ref={indicator.containerRef} className="relative flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Primary navigation">
+          <span
+            aria-hidden="true"
+            style={indicator.indicatorStyle}
+            className={`pointer-events-none absolute left-0 top-0 rounded-lg bg-emerald-100 dark:bg-emerald-950 ${indicator.visible ? "opacity-100" : "opacity-0"} ${indicator.animate ? "transition-[transform,width,height,opacity] duration-[250ms] ease-out-expo" : ""}`}
+          />
           {TABS.map((item) => {
             const href = appRouteHref(item.id);
             const active = activeRoute === item.id;
@@ -50,13 +61,15 @@ export function AppShellHeader({
                 key={item.id}
                 href={href}
                 aria-current={active ? "page" : undefined}
+                onHoverStart={() => onRoutePreload?.(item.id)}
+                onFocus={() => onRoutePreload?.(item.id)}
                 onClick={(event) => {
                   if (!isRootAppRoute(item.id) || !onRootRouteChange) return;
                   event.preventDefault();
                   onRootRouteChange(item.id);
                 }}
-                className={`flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${active
-                  ? "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300"
+                className={`relative flex shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${active
+                  ? "text-emerald-800 dark:text-emerald-300"
                   : "text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"}`}
               >
                 {item.label}

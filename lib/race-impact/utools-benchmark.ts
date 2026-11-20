@@ -3,7 +3,7 @@
  * (scripts/reduce-utools-fixtures.ts) with the production rankings engine and compares the totals. Not part of the
  * race-impact barrel, so the rankings worker never reaches it.
  */
-import { characters, getCharacterEvolutions, loadRacetracks, skillsById } from "../data/registry";
+import { characters, getCharacterEvolutions, loadCharacterEvolutions, loadRacetracks, skillsById } from "../data/registry";
 import { flattenCourse } from "../api/course-format";
 import { defaultRaceImpactProfile } from "./profile";
 import { buildRankingCandidates, rankCharacters, skillIdsReferenced } from "../rankings";
@@ -56,6 +56,7 @@ let tracks: Awaited<ReturnType<typeof loadRacetracks>> | null = null;
 /** Rank the fixture's costumes, each in the style U-tools scored it in, and pair the totals. */
 export async function benchmarkPairs(fx: UtoolsFixture, profile: RaceImpactProfile = defaultRaceImpactProfile()): Promise<BenchmarkPair[]> {
   tracks ??= await loadRacetracks();
+  await loadCharacterEvolutions();
   let course: (ReturnType<typeof flattenCourse> & { trackId: number }) | undefined;
   for (const t of tracks) {
     const r = t.courses.find((c) => c.id === fx.courseId);

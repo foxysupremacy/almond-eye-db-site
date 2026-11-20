@@ -6,6 +6,8 @@
 import {
   initDataStore,
   getDataStore,
+  loadPvpRecommendations,
+  type PvpRecommendationsPayload,
   getCardImageUrl,
   getCharacterImageUrl,
   type CardEventChoice,
@@ -79,6 +81,11 @@ export const api = {
   async cardSupportEffects(cardId: number): Promise<SupportCardEffectsBlob | undefined> {
     const store = await initDataStore();
     return store.getCardSupportEffects(cardId);
+  },
+
+  /** Race fit recommendations — a deferred chunk, so the deck paints without it. */
+  async pvpRecommendations(): Promise<PvpRecommendationsPayload> {
+    return loadPvpRecommendations();
   },
 
   async listRacetracks(): Promise<Racetrack[]> {

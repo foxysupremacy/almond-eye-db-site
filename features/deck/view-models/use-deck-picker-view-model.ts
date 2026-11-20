@@ -4,6 +4,8 @@ import { useDeck } from "@/features/deck/state";
 import { useParentingSetup } from "@/features/parenting/hooks";
 import { charactersByCharId, charactersById } from "@/lib/api";
 import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
+import { useDeckSlotSize } from "@/features/deck/state/use-deck-slot-size";
+import type { DeckSlotSize } from "@/lib/deck/slot-size-pref";
 
 export interface DeckPickerViewModelState {
   readonly isParent: boolean;
@@ -19,6 +21,8 @@ export interface DeckPickerViewModelState {
   readonly hasParentDeck: boolean;
   readonly mainCardIdSet: ReadonlySet<number>;
   readonly skillsByCard: ReturnType<typeof useDeck>["skillsByCard"];
+  /** Persisted Compact/Large slot layout, shared by Main and Parent Deck. */
+  readonly slotSize: DeckSlotSize;
 }
 
 export interface DeckPickerViewModelCommands {
@@ -34,6 +38,7 @@ export interface DeckPickerViewModelCommands {
   readonly removeFromMobile: () => void;
   readonly clearParent: () => void;
   readonly copyMainToParent: () => void;
+  readonly setSlotSize: (size: DeckSlotSize) => void;
 }
 
 export interface DeckPickerViewModel {
@@ -56,6 +61,8 @@ export function useDeckPickerViewModel(mode: "main" | "parent" = "main"): DeckPi
   const targetChara = useMemo(() => {
     return resolveTargetCharacter(setup, charactersById, charactersByCharId);
   }, [setup]);
+
+  const [slotSize, setSlotSize] = useDeckSlotSize();
 
   const isParent = mode === "parent";
   const activeSlots = isParent ? parentSlots : mainSlots;
@@ -136,6 +143,7 @@ export function useDeckPickerViewModel(mode: "main" | "parent" = "main"): DeckPi
       hasParentDeck,
       mainCardIdSet,
       skillsByCard,
+      slotSize,
     },
     commands: {
       openSlotPicker,
@@ -150,6 +158,7 @@ export function useDeckPickerViewModel(mode: "main" | "parent" = "main"): DeckPi
       removeFromMobile,
       clearParent,
       copyMainToParent,
+      setSlotSize,
     },
   };
 }
