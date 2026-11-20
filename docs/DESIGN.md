@@ -55,6 +55,11 @@ Per frontend craftsmanship guidelines (`design-taste-frontend`), **unnecessary b
 5. ✅ **Unified 6-Slot Grid Across All Deck Pickers**:
    - Both **Main Deck** and **Parent Deck** must render the identical clean 6-slot grid (`features/deck/screens/deck-picker.tsx`).
    - Do NOT embed a secondary "reference strip" box containing 6 mini-boxes inside the Parent Deck surface.
+   - **Compact / Large slot size** (`deck_slot_size.v1`, shared by both decks, default Compact): a `Card size` segmented control in the deck header switches layouts.
+     - **Compact** is one grid, `grid-cols-3 lg:grid-cols-6`. Each tile is face-cropped art (`aspect-[4/3] object-cover object-top`) with the rarity chip and type icon overlaid, then the EN name with the JP name under it (§1). Conflict banners (`Trainee card` rose, `Same uma twice` amber) and `In Main` stay on the tile.
+     - Selecting a filled compact tile opens the slot sheet (event choices, Inspect skills, Replace, Remove), so no slot action is lost.
+     - **Large** keeps the full-art cards with inline chain picker and controls.
+     - Every slot in both layouts carries `viewTransitionName: deckSlotTransitionName(i)` (§13.7).
 
 ---
 
@@ -351,6 +356,14 @@ All loading UI goes through `app/common/ui/controls/loading-animation.tsx`: a th
 5. **Variants & sizing**: `block` (full loading area, `min-h-64` unless `fill={false}` for padded cards), `inline` (rows/sheets, default `size="sm"`), `overlay` (`absolute inset-0`; caller `className` — e.g. the 3D-track dark veil — applies only while loading and is dropped for the exit pass so the clip fades over clean content).
 6. **Labels are contract**: pass the exact strings the previous spinners/skeletons had (`"Loading support cards"`, `"Loading skill…"`, …). DOM tests assert them, and the sr-only + visible label pair is what screen readers get.
 7. **Determinate progress stays bars**: the rankings worker progress and the OCR progress bar keep their real `progressbar` UI — a looping clip cannot convey `X / Y`. They may pair with a loader, never be replaced by one.
+
+### 13.7 Tab Transitions & Sliding Nav Indicator
+
+1. **Tab switches go through `runViewTransition`** (`app/common/motion/view-transition.ts`), wrapping the state change in `flushSync`. It uses the native same-document View Transitions API and falls back to an instant swap when the API is missing or `prefers-reduced-motion` matches. No animation library.
+2. **Crossfade + morph**: the page crossfades (`::view-transition-*(root)`, 200ms `ease-out-quart`). Elements named `deck-slot-0`…`deck-slot-5` (via `deckSlotTransitionName(i)`) morph between Main and Parent Deck (260ms `ease-in-out-cubic`). Rules live in `app/globals.css`.
+3. **Names must be unique among rendered elements.** Two visible elements with the same `view-transition-name` cancel the transition (the update still applies). Hidden duplicates (`display:none`, e.g. the mobile vs desktop slot grids) are fine. Never reuse `deck-slot-*`, `app-header` or `app-mobile-nav` elsewhere.
+4. **Nav chrome is live, not crossfaded**: `app-header` and `app-mobile-nav` skip the old snapshot so the sliding indicator stays visible during the transition.
+5. **Sliding indicator**: one absolutely positioned pill per nav, placed by `useActiveIndicator` (`app/common/hooks/use-active-indicator.ts`) on the element matching its target selector (`aria-current="page"` in the header; `data-indicator-active="true"` on the mobile icon badge). It moves with `transform`/`width` over 250ms `ease-out-expo`, and the transition is enabled only after the first placement (no slide-in from 0,0). Active items keep their text color but drop their own background.
 
 ---
 
