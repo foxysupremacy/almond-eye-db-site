@@ -9,6 +9,7 @@ import {
   VISUALIZER_SAVE_KEY,
 } from "./constants";
 import { cleanChoices } from "./event-choices";
+import { normalizeRentalSlot } from "./rental";
 import { DEFAULT_PARENTING_SETUP, normalizeParentingSetup, type ParentingSetup } from "../parenting/state";
 
 export function createDefaultPreset(id: string, name: string): DeckPreset {
@@ -77,6 +78,8 @@ export function loadStoredPresets(): { presets: DeckPreset[]; activeId: string }
       },
       mainChainChoices: cleanChoices(p.mainChainChoices),
       parentChainChoices: cleanChoices(p.parentChainChoices),
+      mainRentalSlot: normalizeRentalSlot(p.mainRentalSlot),
+      parentRentalSlot: normalizeRentalSlot(p.parentRentalSlot),
       parentingSetup: p.parentingSetup
         ? normalizeParentingSetup(p.parentingSetup)
         : idx === 0 && legacyParenting

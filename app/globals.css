@@ -73,6 +73,14 @@
   animation: none;
 }
 
+/* Full page loads that remain (deep links, landing → app) crossfade too in
+   browsers with cross-document view transitions; others load as before. */
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition {
+    navigation: auto;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*),
   ::view-transition-old(*),

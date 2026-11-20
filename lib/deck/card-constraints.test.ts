@@ -1,5 +1,5 @@
 import { describe, it, expect } from "bun:test";
-import { cardCharacterKey, canPlaceCard, findCharConflict } from "./card-constraints";
+import { cardCharacterKey, canPlaceCard, findCharConflict, isTraineeCard } from "./card-constraints";
 import type { CardIndexEntry } from "../api";
 
 function card(id: number, charName: string, type: CardIndexEntry["type"] = "speed"): CardIndexEntry {
@@ -62,5 +62,24 @@ describe("same-uma constraint (canPlaceCard / findCharConflict)", () => {
   it("allows different umas freely", () => {
     const main: (CardIndexEntry | null)[] = [EYE_SPEED, null, null, null, null, null];
     expect(canPlaceCard(main, 0, TAJO)).toBe(true);
+  });
+});
+
+describe("isTraineeCard", () => {
+  const DARING_TACT = { nameEn: "Daring Tact", nameJp: "デアリングタクト" };
+  const tactWit: CardIndexEntry = { ...card(30248, "Daring Tact", "intelligence"), nameJp: "[無垢の白妙] デアリングタクト" };
+
+  it("flags the target uma's own support cards", () => {
+    expect(isTraineeCard(tactWit, DARING_TACT)).toBe(true);
+  });
+
+  it("matches case-insensitively and by the JP name once the [title] prefix is stripped", () => {
+    expect(isTraineeCard({ ...tactWit, nameEn: "", charName: "" }, DARING_TACT)).toBe(true);
+    expect(isTraineeCard(tactWit, { nameEn: "daring tact ", nameJp: "" })).toBe(true);
+  });
+
+  it("does not flag other umas or when no target is picked", () => {
+    expect(isTraineeCard(EYE_SPEED, DARING_TACT)).toBe(false);
+    expect(isTraineeCard(tactWit, null)).toBe(false);
   });
 });

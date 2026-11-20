@@ -28,7 +28,11 @@ export function AppMobileNavigation({ activeRoute, onRootRouteChange, onRoutePre
           const className = `flex min-h-14 min-w-0 flex-col items-center justify-center gap-1 rounded-xl text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 ${active ? "text-emerald-700 dark:text-emerald-400" : "text-zinc-500 dark:text-zinc-400"}`;
           const content = <><span data-indicator-active={active ? "true" : undefined} className="relative grid h-7 w-9 place-items-center rounded-lg"><Icon className="h-4 w-4" /></span>{label}</>;
           return id === "library" ? (
-            <button key={id} type="button" aria-haspopup="dialog" aria-expanded={libraryOpen} onClick={() => setLibraryOpen(true)} className={className}>{content}</button>
+            <button key={id} type="button" aria-haspopup="dialog" aria-expanded={libraryOpen} onClick={() => {
+              setLibraryOpen(true);
+              // Opening the sheet is intent to go there: warm Supports/Characters/Stamina.
+              for (const item of LIBRARY_ITEMS) onRoutePreload?.(item.id);
+            }} className={className}>{content}</button>
           ) : (
             <AriaLink key={id} href={appRouteHref(id)} aria-current={active ? "page" : undefined} onPressStart={() => onRoutePreload?.(id)} onFocus={() => onRoutePreload?.(id)} onClick={(event) => {
               if (!onRootRouteChange) return;

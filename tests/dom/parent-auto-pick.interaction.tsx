@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { act, cleanup, render, renderHook, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { ParentAutoPick } from "@/features/deck/components/parent-auto-pick-bar";
@@ -288,6 +288,37 @@ describe("useParentAutoPickViewModel", () => {
     });
   });
 
+  test("with the rental on, at most one pick is borrowed and Apply marks its slot", async () => {
+    seedOwned(ownedIds.slice(0, 2));
+    const { factory, respond } = fakeWorkers();
+    const { result } = renderProbe(factory);
+    await withRace(result);
+    expect(result.current.vm.state.useRental).toBe(true);
+    act(() => result.current.vm.commands.run());
+    respond();
+    const { rows } = result.current.vm.state;
+    const rentalRows = rows.filter((r) => r.rental);
+    expect(rentalRows.length).toBeLessThanOrEqual(1);
+    for (const r of rows) if (!r.rental && !r.locked) expect(ownedIds).toContain(r.card.id);
+    for (const r of rentalRows) expect(r.limitBreak).toBe(4);
+    const rentalIndex = rows.findIndex((r) => r.rental);
+    act(() => result.current.vm.commands.apply());
+    expect(result.current.slots.parentRentalSlot).toBe(rentalIndex >= 0 ? rentalIndex : null);
+  });
+
+  test("turning the rental off picks owned cards only and persists the setting", async () => {
+    seedOwned(ownedIds);
+    const { factory, respond } = fakeWorkers();
+    const { result } = renderProbe(factory);
+    await withRace(result);
+    act(() => result.current.vm.commands.toggleRental());
+    expect(result.current.vm.state.useRental).toBe(false);
+    expect(JSON.parse(localStorage.getItem(AUTO_PICK_SETTINGS_KEY) ?? "{}").useRental).toBe(false);
+    act(() => result.current.vm.commands.run());
+    respond();
+    expect(result.current.vm.state.rows.some((r) => r.rental)).toBe(false);
+  });
+
   test("the worker is terminated on unmount", async () => {
     seedOwned(ownedIds);
     const { factory, workers } = fakeWorkers();
@@ -331,8 +362,10 @@ describe("ParentAutoPick views", () => {
     const probe = renderViews(factory);
     await pickRace(probe);
     expect(screen.getByRole("button", { name: /Farming scenario/ })).toBeTruthy();
-    const toggles = screen.getAllByRole("button").filter((b) => b.hasAttribute("aria-pressed"));
+    const groupBox = screen.getByRole("group", { name: "Counted skill groups" });
+    const toggles = within(groupBox).getAllByRole("button");
     expect(toggles).toHaveLength(7);
+    expect(screen.getByRole("button", { name: "Use rental slot" }).getAttribute("aria-pressed")).toBe("true");
     const pressed = toggles.filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.textContent);
     expect(pressed).toEqual(["Target speed", "Current speed", "Acceleration"]);
     const run = screen.getByRole("button", { name: "Auto pick" });
@@ -444,6 +477,7 @@ describe("ParentAutoPick views", () => {
 
   test("fewer than six picks shows the empty-slots line", async () => {
     seedOwned([ownedIds[0]]);
+    localStorage.setItem(AUTO_PICK_SETTINGS_KEY, JSON.stringify({ useRental: false }));
     const user = userEvent.setup();
     const { factory, respond } = fakeWorkers();
     const probe = renderViews(factory);

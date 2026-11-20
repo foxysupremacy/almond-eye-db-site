@@ -42,6 +42,30 @@ export function findCharConflict(
   return null;
 }
 
+/** The trainee identity `isTraineeCard` compares against (a CharacterIndexEntry fits). */
+export interface TraineeIdentity {
+  nameEn?: string | null;
+  nameJp?: string | null;
+}
+
+/** Card JP names carry a "[Title] " prefix; character JP names do not. */
+function stripCardTitle(nameJp: string): string {
+  return nameJp.replace(/^\s*\[[^\]]*\]\s*/, "").trim();
+}
+
+/**
+ * True when `card` is one of the trainee's own support cards. The game forbids
+ * these in the trainee's career — i.e. the Main Deck. The Parent Deck trains a
+ * different uma (the parent), so callers apply this to the Main Deck only.
+ */
+export function isTraineeCard(card: CardIndexEntry, trainee: TraineeIdentity | null | undefined): boolean {
+  if (!trainee) return false;
+  const traineeEn = (trainee.nameEn ?? "").trim().toLowerCase();
+  if (traineeEn && cardCharacterKey(card) === traineeEn) return true;
+  const traineeJp = (trainee.nameJp ?? "").trim();
+  return Boolean(traineeJp && card.nameJp && stripCardTitle(card.nameJp) === traineeJp);
+}
+
 export function canPlaceCard(
   slots: DeckSlots,
   slotIndex: number,

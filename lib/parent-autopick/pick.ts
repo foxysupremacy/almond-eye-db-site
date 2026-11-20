@@ -4,6 +4,8 @@ import type { SkillValue } from "./values";
 export interface PickedSkill { skillId: number; value: number; flat: boolean; source: "hint" | "event"; eventId?: number; choiceIndex?: number }
 export interface PickedCard {
   cardId: number; locked: boolean; gain: number;
+  /** Borrowed (not owned): fills the deck's rental slot. At most `maxRental` picks are rentals. */
+  rental: boolean;
   /** Only skills with value > 0 that were not covered before this card, highest value first. */
   skills: PickedSkill[];
   /**
@@ -37,10 +39,19 @@ export function pickParentDeck(input: {
   locked: AutoPickCard | null;
   deckSize?: number;
   maxSwapPasses?: number;
+  /** Cards the user would have to borrow (not owned). Omit for owned-only picking. */
+  rentalCardIds?: ReadonlySet<number>;
+  /** Rentals allowed in the deck (the game allows one borrowed card per career). */
+  maxRental?: number;
 }): AutoPickResult {
   const { values, coveredSkillIds, locked } = input;
   const deckSize = input.deckSize ?? 6;
   const maxSwapPasses = input.maxSwapPasses ?? 20;
+  const maxRental = input.maxRental ?? 1;
+  const isRental = (c: AutoPickCard) => input.rentalCardIds?.has(c.cardId) ?? false;
+  const rentalsIn = (list: readonly AutoPickCard[], skip = -1) => list.reduce((n, c, i) => n + (i !== skip && isRental(c) ? 1 : 0), 0);
+  // On equal value an owned card beats a rental, so the rental is spent only when it adds value.
+  const prefer = (a: AutoPickCard, b: AutoPickCard) => (isRental(a) !== isRental(b) ? (isRental(a) ? 1 : -1) : tieCompare(a, b));
 
   const valueOf = (id: number) => values.get(id);
 
@@ -79,7 +90,7 @@ export function pickParentDeck(input: {
       skills.sort((a, b) => b.value - a.value || a.skillId - b.skillId);
       const gain = skills.reduce((t, s) => t + s.value, 0);
       total += gain;
-      picks.push({ cardId: card.cardId, locked: locked !== null && card.cardId === locked.cardId, gain, skills, chainChoices });
+      picks.push({ cardId: card.cardId, locked: locked !== null && card.cardId === locked.cardId, rental: isRental(card), gain, skills, chainChoices });
     }
     return { picks, total };
   }
@@ -97,12 +108,14 @@ export function pickParentDeck(input: {
   let current = evaluate(order);
   while (order.length < deckSize) {
     const keys = keysOf(order);
+    const rentalFull = rentalsIn(order) >= maxRental;
     let best: AutoPickCard | null = null;
     let bestGain = EPS;
     for (const c of candidates) {
       if (order.includes(c) || keys.has(c.characterKey)) continue;
+      if (rentalFull && isRental(c)) continue;
       const gain = evaluate([...order, c]).total - current.total;
-      if (gain > bestGain + EPS || (best !== null && Math.abs(gain - bestGain) <= EPS && tieCompare(c, best) < 0)) {
+      if (gain > bestGain + EPS || (best !== null && Math.abs(gain - bestGain) <= EPS && prefer(c, best) < 0)) {
         best = c;
         bestGain = gain;
       }
@@ -117,13 +130,15 @@ export function pickParentDeck(input: {
     let bestSwap: { pos: number; card: AutoPickCard; total: number } | null = null;
     for (let pos = fixed; pos < order.length; pos++) {
       const keys = keysOf(order, pos);
+      const rentalFull = rentalsIn(order, pos) >= maxRental;
       for (const c of candidates) {
         if (order.includes(c) || keys.has(c.characterKey)) continue;
+        if (rentalFull && isRental(c)) continue;
         const next = order.slice();
         next[pos] = c;
         const total = evaluate(next).total;
         if (total <= current.total + EPS) continue;
-        if (!bestSwap || total > bestSwap.total + EPS || (Math.abs(total - bestSwap.total) <= EPS && tieCompare(c, bestSwap.card) < 0)) {
+        if (!bestSwap || total > bestSwap.total + EPS || (Math.abs(total - bestSwap.total) <= EPS && prefer(c, bestSwap.card) < 0)) {
           bestSwap = { pos, card: c, total };
         }
       }

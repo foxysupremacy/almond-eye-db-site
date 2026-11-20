@@ -1,4 +1,5 @@
 "use client";
+import { AnimatedList } from "@/app/common/ui/primitives/animated-list";
 import { MobileFilters } from "@/app/common/ui/controls/mobile-filters";
 import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 
@@ -550,7 +551,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
             <h3 className="font-semibold text-zinc-900 dark:text-zinc-100">Hard-to-get skills on this track</h3>
             <span className="text-xs text-zinc-500 dark:text-zinc-400">{filtered.length} skills · no support card source · sources shown below</span>
           </div>
-          <ul className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900">
+          <AnimatedList rowCount={filtered.length} className="divide-y divide-zinc-100 rounded-xl border border-zinc-200 bg-white dark:divide-zinc-800/80 dark:border-zinc-800 dark:bg-zinc-900">
             {filtered.map((skill) => {
               const isBanned = isSkillBanned(skill.id, activePvpEvent);
               const sources = (skill.grants ?? []).map((grant) => ({
@@ -573,7 +574,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                 </li>
               );
             })}
-          </ul>
+          </AnimatedList>
         </div>
       ) : viewMode === "card" || viewMode === "parent" ? (
         <div className="mt-4 space-y-6">
@@ -657,7 +658,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                       {cFiltered.length === 0 ? (
                         <p className="text-xs text-zinc-400 p-3">No skills match current filter for this card.</p>
                       ) : (
-                        <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                        <AnimatedList rowCount={cFiltered.length} className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                           {cFiltered.map((s) => {
                             const isBanned = isSkillBanned(s.id, activePvpEvent);
                             const isDupeInMain = mainSkillIdSet.has(s.id);
@@ -732,7 +733,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                               </li>
                             );
                           })}
-                        </ul>
+                        </AnimatedList>
                       )}
                     </div>
                   );
@@ -876,7 +877,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                           {parentSkillsList.length === 0 ? (
                             <p className="text-xs text-zinc-400 p-3">No skills match current filter for this parent.</p>
                           ) : (
-                            <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                            <AnimatedList rowCount={parentSkillsList.length} className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                               {parentSkillsList.map((s, idx) => {
                                 const isBanned = isSkillBanned(s.id, activePvpEvent);
                                 const isDupeInMain = mainSkillIdSet.has(s.id);
@@ -976,7 +977,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
                                   </li>
                                 );
                               })}
-                            </ul>
+                            </AnimatedList>
                           )}
                         </div>
                       );
@@ -1004,7 +1005,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
           })()}
         </div>
       ) : (
-        <ul className="mt-4 space-y-2">
+        <AnimatedList rowCount={filtered.length} className="mt-4 space-y-2">
           {filtered.map((s, idx) => {
             const rStyle = getSkillRarityStyle(s.rarity);
             const isBanned = isSkillBanned(s.id, activePvpEvent);
@@ -1095,7 +1096,7 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
               </li>
             );
           })}
-        </ul>
+        </AnimatedList>
       )}
     </section>
   );

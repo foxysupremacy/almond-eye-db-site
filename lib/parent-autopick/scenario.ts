@@ -51,3 +51,13 @@ export function candidateCardIds(owned: Readonly<Record<string, number>>, cardsB
   }
   return out;
 }
+
+/** Cards the user could borrow for the rental slot: known cards they do not own, minus Main Deck ids and lockedId. */
+export function rentalCandidateIds(owned: Readonly<Record<string, number>>, cardsById: ReadonlyMap<number, CardIndexEntry>, mainDeckIds: ReadonlySet<number>, lockedId: number | null): number[] {
+  const out: number[] = [];
+  for (const id of cardsById.keys()) {
+    if (Object.prototype.hasOwnProperty.call(owned, String(id)) || mainDeckIds.has(id) || id === lockedId) continue;
+    out.push(id);
+  }
+  return out;
+}

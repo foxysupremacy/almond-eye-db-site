@@ -3,6 +3,7 @@ import {
   api,
   type CardIndexEntry,
   type SkillDetail,
+  cardsById,
   charactersById,
   charactersByCharId,
   skillsById,
@@ -15,9 +16,11 @@ import { resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { recommendCardsForParent, type CardRecommendation } from "@/lib/recommendation/engine";
 import { classifySkillEffects, type SkillEffectCategory } from "@/lib/skills/effects";
 import { getInheritableSkillForGold, GOLD_TO_WHITE_MAP } from "@/lib/skills/rarity";
+import { RENTAL_LIMIT_BREAK } from "@/lib/deck/rental";
 import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
 import { evaluateSkillActivation } from "@/lib/parenting/skill-evaluator";
 import {
+  dropTraineeRecommendations,
   filterAndSortCards,
   type CardPickerSort,
   type CardPickerType,
@@ -31,8 +34,10 @@ const PICKER_WORK_DELAY_MS = 250;
 export interface UseCardPickerViewModelOptions {
   mode?: "main" | "parent";
   slotIndex?: number | null;
-  onPick: (card: CardIndexEntry) => void;
+  onPick: (card: CardIndexEntry, options?: { readonly asRental?: boolean }) => void;
   onClose: () => void;
+  /** Opens with "Use as rental" on (the slot being filled is the deck's rental slot). */
+  initialAsRental?: boolean;
 }
 
 export interface CardPickerViewModelState {
@@ -53,6 +58,10 @@ export interface CardPickerViewModelState {
   readonly isOwned: (cardId: number | string) => boolean;
   readonly getLimitBreak: (cardId: number | string) => number | undefined;
   readonly totalOwned: number;
+  /** Picking as the rental: any card is allowed and every card counts as MLB. */
+  readonly asRental: boolean;
+  /** Owned-only filter as applied (always off while picking a rental). */
+  readonly onlyOwnedApplied: boolean;
 }
 
 export interface CardPickerViewModelCommands {
@@ -63,6 +72,7 @@ export interface CardPickerViewModelCommands {
   readonly setSort: (sort: CardPickerSort) => void;
   readonly setType: (type: CardPickerType) => void;
   readonly toggleOwnership: () => void;
+  readonly toggleRental: () => void;
   readonly clearEffects: () => void;
   readonly toggleEffect: (category: SkillEffectCategory) => void;
   readonly setSkillMatchMode: (mode: "OR" | "AND") => void;
@@ -84,6 +94,7 @@ export function useCardPickerViewModel({
   slotIndex,
   onPick,
   onClose,
+  initialAsRental = false,
 }: UseCardPickerViewModelOptions): CardPickerViewModel {
   const {
     mainSkillIdSet,
@@ -103,7 +114,14 @@ export function useCardPickerViewModel({
   const [skills, setSkills] = useState<SkillDetail[] | null>(null);
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
 
-  const { getLimitBreak, isOwned, totalOwned } = useOwnedCards();
+  const { getLimitBreak: getOwnedLimitBreak, isOwned, totalOwned } = useOwnedCards();
+  const [asRental, setAsRental] = useState(initialAsRental);
+  const onlyOwnedApplied = pickerState.onlyOwned && !asRental;
+  // A borrowed card is always MLB, so the rental view shows every card at MLB.
+  const getLimitBreak = useCallback(
+    (cardId: number | string) => (asRental ? RENTAL_LIMIT_BREAK : getOwnedLimitBreak(cardId)),
+    [asRental, getOwnedLimitBreak],
+  );
 
   // Async load card and skill catalogs
   useEffect(() => {
@@ -176,7 +194,9 @@ export function useCardPickerViewModel({
           raceParams,
           chainChoicesMap: isParent ? activePreset.parentChainChoices : activePreset.mainChainChoices,
         });
-        setRecommendationsMap(new Map(recs.map((r) => [r.cardId, r])));
+        // The trainee's own cards are banned from her career, so they never rank for the Main Deck.
+        const allowed = dropTraineeRecommendations(recs, mode, cardsById, targetChara);
+        setRecommendationsMap(new Map(allowed.map((r) => [r.cardId, r])));
       }, PICKER_WORK_DELAY_MS);
     });
     return () => {
@@ -196,6 +216,7 @@ export function useCardPickerViewModel({
     raceParams,
     activePreset.parentChainChoices,
     activePreset.mainChainChoices,
+    targetChara,
   ]);
 
   // Target skills precomputation
@@ -486,7 +507,7 @@ export function useCardPickerViewModel({
         sort: pickerState.sort,
         mode,
         recommendationsMap: recommendationsMap ?? new Map(),
-        onlyOwned: pickerState.onlyOwned,
+        onlyOwned: onlyOwnedApplied,
         isOwned,
         selectedSkillCount: pickerState.selectedSkills.length,
         skillMatchMode: pickerState.skillMatchMode,
@@ -503,7 +524,7 @@ export function useCardPickerViewModel({
       pickerState.sort,
       mode,
       recommendationsMap,
-      pickerState.onlyOwned,
+      onlyOwnedApplied,
       isOwned,
       pickerState.selectedSkills.length,
       pickerState.skillMatchMode,
@@ -512,8 +533,12 @@ export function useCardPickerViewModel({
   );
 
   const pickCard = useCallback((card: CardIndexEntry) => {
-    onPick(card);
-  }, [onPick]);
+    onPick(card, { asRental });
+  }, [onPick, asRental]);
+
+  const toggleRental = useCallback(() => {
+    setAsRental((value) => !value);
+  }, []);
 
   const openInspect = useCallback((card: CardIndexEntry) => {
     setInspectCard(card);
@@ -590,6 +615,8 @@ export function useCardPickerViewModel({
       isOwned,
       getLimitBreak,
       totalOwned,
+      asRental,
+      onlyOwnedApplied,
     },
     commands: {
       pickCard,
@@ -599,6 +626,7 @@ export function useCardPickerViewModel({
       setSort,
       setType,
       toggleOwnership,
+      toggleRental,
       clearEffects,
       toggleEffect,
       setSkillMatchMode,

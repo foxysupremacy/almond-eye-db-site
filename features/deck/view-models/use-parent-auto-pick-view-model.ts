@@ -10,6 +10,7 @@ import {
   buildAutoPickCard,
   buildValueTable,
   candidateCardIds,
+  rentalCandidateIds,
   collectSkillIds,
   defaultAutoPickSettings,
   grantedSkillIds,
@@ -30,6 +31,7 @@ import {
 } from "@/lib/parent-autopick";
 import { distanceLabel, terrainLabel } from "@/lib/api";
 import { DECK_SIZE, RUNNING_STYLE_LABELS } from "@/lib/deck/constants";
+import { RENTAL_LIMIT_BREAK } from "@/lib/deck/rental";
 import { getDefaultChoiceIndex } from "@/lib/deck/event-choices";
 import { useDeckSlots } from "../state/deck-slots-context";
 import { useDeckTrack } from "../state/deck-track-context";
@@ -39,7 +41,15 @@ export type { AutoPickWorkerMessage } from "../workers/parent-auto-pick.worker";
 
 export type AutoPickDisabledReason = "no-owned-cards" | "no-race" | "no-style" | null;
 export interface AutoPickPreviewSkill { skillId: number; nameEn: string; nameJp: string; iconId: number | null; groups: SkillGroup[]; value: number; flat: boolean; source: "hint" | "event"; choiceTextEn?: string }
-export interface AutoPickPreviewRow { card: CardIndexEntry; locked: boolean; limitBreak: number | undefined; gain: number; skills: AutoPickPreviewSkill[] }
+export interface AutoPickPreviewRow {
+  card: CardIndexEntry;
+  locked: boolean;
+  /** Borrowed for the rental slot (shown at MLB). */
+  rental: boolean;
+  limitBreak: number | undefined;
+  gain: number;
+  skills: AutoPickPreviewSkill[];
+}
 export type AutoPickStatus = "idle" | "scoring" | "ready" | "error";
 
 export interface ParentAutoPickViewModel {
@@ -49,6 +59,8 @@ export interface ParentAutoPickViewModel {
     readonly palOptions: readonly { card: CardIndexEntry; limitBreak: number | undefined }[];
     readonly palCardId: number | null;
     readonly enabledGroups: readonly SkillGroup[];
+    /** Auto Pick may borrow one unowned MLB card for the rental slot. */
+    readonly useRental: boolean;
     readonly disabledReason: AutoPickDisabledReason;
     readonly status: AutoPickStatus;
     readonly progress: { done: number; total: number } | null;
@@ -65,6 +77,7 @@ export interface ParentAutoPickViewModel {
     readonly selectScenario: (id: number) => void;
     readonly selectPalCard: (cardId: number) => void;
     readonly toggleGroup: (group: SkillGroup) => void;
+    readonly toggleRental: () => void;
     readonly run: () => void;
     readonly apply: () => void;
     readonly cancel: () => void;
@@ -129,7 +142,8 @@ export function buildPreviewRows(result: AutoPickResult, groupsOf: (id: number) 
     rows.push({
       card,
       locked: pick.locked,
-      limitBreak: owned[String(pick.cardId)],
+      rental: pick.rental,
+      limitBreak: pick.rental ? RENTAL_LIMIT_BREAK : owned[String(pick.cardId)],
       gain: pick.gain,
       skills: pick.skills.map((s) => {
         const detail = skillsById.get(s.skillId);
@@ -189,10 +203,20 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
   const mainDeckIdsKey = mainCards.map((c) => c.id).join(",");
   const lockedCard = useMemo(() => (palCard ? toAutoPickCard(palCard) : null), [palCard]);
   const palAutoCards = useMemo(() => palCards.map(toAutoPickCard), [palCards]);
-  const candidates = useMemo(() => {
+  const useRental = settings.useRental;
+  const { candidates, rentalCardIds } = useMemo(() => {
     const mainIds = new Set(mainDeckIdsKey ? mainDeckIdsKey.split(",").map(Number) : []);
-    return candidateCardIds(ownedCards, cardsById, mainIds, palCard?.id ?? null).map((id) => toAutoPickCard(cardsById.get(id)!));
-  }, [ownedCards, mainDeckIdsKey, palCard]);
+    const lockedId = palCard?.id ?? null;
+    const ownedIds = candidateCardIds(ownedCards, cardsById, mainIds, lockedId);
+    // With the rental on, every unowned card may fill the one rental slot (an unowned pal card uses it up).
+    const rentalIds = useRental ? rentalCandidateIds(ownedCards, cardsById, mainIds, lockedId) : [];
+    const rentalSet = new Set(rentalIds);
+    if (useRental && lockedId !== null && !Object.prototype.hasOwnProperty.call(ownedCards, String(lockedId))) rentalSet.add(lockedId);
+    return {
+      candidates: [...ownedIds, ...rentalIds].map((id) => toAutoPickCard(cardsById.get(id)!)),
+      rentalCardIds: rentalSet,
+    };
+  }, [ownedCards, mainDeckIdsKey, palCard, useRental]);
   // Every pal option is scored too, so switching the pal card re-picks without rescoring.
   const neededIds = useMemo(() => collectSkillIds([...palAutoCards, ...candidates]), [palAutoCards, candidates]);
 
@@ -304,9 +328,9 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
       return getChainChoice("main", cardId, eventId, fallback);
     };
     for (const id of grantedSkillIds(mainCards.map(toAutoPickCard), mainChoiceOf)) covered.add(id);
-    const result = pickParentDeck({ cards: candidates, values: table, coveredSkillIds: covered, locked: lockedCard });
+    const result = pickParentDeck({ cards: candidates, values: table, coveredSkillIds: covered, locked: lockedCard, rentalCardIds });
     return { result, groupsOf: (id) => table.get(id)?.groups ?? cachedValues[id]?.groups ?? ["other"] };
-  }, [status, cachedValues, enabledGroups, mainSkillIdSet, mainCards, candidates, lockedCard, getChainChoice]);
+  }, [status, cachedValues, enabledGroups, mainSkillIdSet, mainCards, candidates, rentalCardIds, lockedCard, getChainChoice]);
 
   const rows = useMemo(
     () => (pickResult ? buildPreviewRows(pickResult.result, pickResult.groupsOf, ownedCards) : []),
@@ -346,6 +370,11 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
     updateSettings({ ...current, enabledGroups: toggleSkillGroup(current.enabledGroups, group) });
   }, [updateSettings]);
 
+  const toggleRental = useCallback(() => {
+    const current = settingsRef.current;
+    updateSettings({ ...current, useRental: !current.useRental });
+  }, [updateSettings]);
+
   const run = useCallback(() => {
     if (disabled) return;
     setPreviewOpen(true);
@@ -359,7 +388,8 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
     if (!current) return;
     const chainChoices: Record<string, number> = {};
     for (const p of current.result.picks) Object.assign(chainChoices, p.chainChoices);
-    applyParentDeck(current.result.picks.map((p) => p.cardId), chainChoices);
+    const rentalIndex = current.result.picks.findIndex((p) => p.rental);
+    applyParentDeck(current.result.picks.map((p) => p.cardId), chainChoices, rentalIndex >= 0 ? rentalIndex : null);
     setPreviewOpen(false);
   }, [applyParentDeck]);
 
@@ -372,6 +402,7 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
       palOptions,
       palCardId: palCard?.id ?? null,
       enabledGroups,
+      useRental,
       disabledReason,
       status,
       progress,
@@ -383,6 +414,6 @@ export function useParentAutoPickViewModel(createWorker?: AutoPickWorkerFactory)
       flatValue,
       summary,
     },
-    commands: { selectScenario, selectPalCard, toggleGroup, run, apply, cancel },
+    commands: { selectScenario, selectPalCard, toggleGroup, toggleRental, run, apply, cancel },
   };
 }

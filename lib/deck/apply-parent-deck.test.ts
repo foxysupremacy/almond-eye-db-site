@@ -48,3 +48,17 @@ describe("applyParentDeckToPreset", () => {
     expect(JSON.stringify(preset)).toBe(snap);
   });
 });
+
+describe("applyParentDeckToPreset rental slot", () => {
+  test("sets the parent rental slot when given, and clears it when null", () => {
+    const marked = applyParentDeckToPreset(preset, [10, 11], {}, 1);
+    expect(marked.parentRentalSlot).toBe(1);
+    const cleared = applyParentDeckToPreset({ ...preset, parentRentalSlot: 2 }, [10], {}, null);
+    expect(cleared.parentRentalSlot).toBeNull();
+  });
+
+  test("leaves the existing rental mark alone when the argument is omitted", () => {
+    const r = applyParentDeckToPreset({ ...preset, parentRentalSlot: 2 }, [10], {});
+    expect(r.parentRentalSlot).toBe(2);
+  });
+});

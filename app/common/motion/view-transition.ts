@@ -9,13 +9,13 @@
 // prefers reduced motion, so callers never branch on support themselves.
 
 export interface ViewTransitionEnvironment {
-  startViewTransition?: (update: () => void) => unknown;
+  startViewTransition?: (update: () => void | Promise<void>) => unknown;
   prefersReducedMotion: () => boolean;
 }
 
 function browserEnvironment(): ViewTransitionEnvironment | null {
   if (typeof document === "undefined" || typeof window === "undefined") return null;
-  const doc = document as Document & { startViewTransition?: (update: () => void) => unknown };
+  const doc = document as Document & { startViewTransition?: (update: () => void | Promise<void>) => unknown };
   return {
     startViewTransition: typeof doc.startViewTransition === "function" ? doc.startViewTransition.bind(doc) : undefined,
     prefersReducedMotion: () =>
@@ -26,10 +26,11 @@ function browserEnvironment(): ViewTransitionEnvironment | null {
 /**
  * Run `update` inside a view transition when supported and motion is allowed.
  * `update` must apply the DOM change synchronously (wrap React state updates in
- * `flushSync`). Returns true when a transition was started.
+ * `flushSync`), or return a promise that settles once the new view is in the
+ * DOM (route navigations). Returns true when a transition was started.
  */
 export function runViewTransition(
-  update: () => void,
+  update: () => void | Promise<void>,
   env: ViewTransitionEnvironment | null = browserEnvironment(),
 ): boolean {
   if (!env?.startViewTransition || env.prefersReducedMotion()) {

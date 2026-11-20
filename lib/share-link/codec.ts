@@ -7,6 +7,7 @@ import { normalizeRaceConditions, type CustomRaceConditions } from "../deck/race
 // The only supported format uses a 2-bit 0b11 header followed by
 // self-describing sections {tag: 4 bits, bitLength: 16 bits, payload}.
 
+import { normalizeRentalSlot } from "../deck/rental";
 import type { DeckPreset, TrackInfo, RunningStyle } from "../deck/types";
 
 /** 2-bit discriminator emitted by the sole supported codec format (0b11). */
@@ -141,6 +142,9 @@ export interface SharedBuildData {
   trackInfo: TrackInfo;
   mainChainChoices?: Record<string, number>;
   parentChainChoices?: Record<string, number>;
+  /** Rental slot per deck (0–5); null = none. Carried in the RENTAL extension section. */
+  mainRentalSlot?: number | null;
+  parentRentalSlot?: number | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -157,7 +161,12 @@ export interface SharedBuildData {
 const SECTION_TAG = {
   CORE: 0,
   CUSTOM_CONDITIONS: 1,
+  /** Two 3-bit slot indices (main, parent); 7 = no rental. */
+  RENTAL: 2,
 } as const;
+
+const RENTAL_NONE = 7;
+const RENTAL_BITS = 3;
 
 const TAG_BITS = 4;
 const LENGTH_BITS = 16;
@@ -301,6 +310,15 @@ export function encodePresetToShareCode(preset: Partial<DeckPreset> & { trackInf
       for (const key of ["season", "weather", "groundCondition", "time"] as const) w.write(conditions[key] ?? 0, 3);
     });
   }
+
+  const mainRental = normalizeRentalSlot(preset.mainRentalSlot);
+  const parentRental = normalizeRentalSlot(preset.parentRentalSlot);
+  if (mainRental !== null || parentRental !== null) {
+    writeSection(writer, SECTION_TAG.RENTAL, (w) => {
+      w.write(mainRental ?? RENTAL_NONE, RENTAL_BITS);
+      w.write(parentRental ?? RENTAL_NONE, RENTAL_BITS);
+    });
+  }
   return writer.getEncoded();
 }
 
@@ -329,6 +347,8 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
 
   let decoded: SharedBuildData | null = null;
   let customRaceConditions = normalizeRaceConditions();
+  let mainRentalSlot: number | null = null;
+  let parentRentalSlot: number | null = null;
 
   while (reader.remainingBits >= TAG_BITS + LENGTH_BITS) {
     const tag = reader.read(TAG_BITS);
@@ -341,6 +361,10 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
       const values: Partial<CustomRaceConditions> = {};
       for (const key of ["season", "weather", "groundCondition", "time"] as const) values[key] = conditionsReader.read(3);
       customRaceConditions = normalizeRaceConditions(values);
+    } else if (tag === SECTION_TAG.RENTAL && bitLength === RENTAL_BITS * 2) {
+      const rentalReader = subReader(reader, bitLength);
+      mainRentalSlot = normalizeRentalSlot(rentalReader.read(RENTAL_BITS));
+      parentRentalSlot = normalizeRentalSlot(rentalReader.read(RENTAL_BITS));
     } else {
       // Unknown extension section — skip and keep decoding.
       for (let i = 0; i < bitLength && reader.remainingBits > 0; i++) {
@@ -349,7 +373,11 @@ function decodePresetV4(bytes: Uint8Array): SharedBuildData | null {
     }
   }
 
-  if (decoded) decoded.trackInfo.customRaceConditions = customRaceConditions;
+  if (decoded) {
+    decoded.trackInfo.customRaceConditions = customRaceConditions;
+    decoded.mainRentalSlot = mainRentalSlot;
+    decoded.parentRentalSlot = parentRentalSlot;
+  }
   return decoded;
 }
 

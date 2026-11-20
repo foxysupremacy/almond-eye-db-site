@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { DEFAULT_ENABLED_GROUPS } from "./skill-groups";
 import { defaultAutoPickSettings, normalizeAutoPickSettings } from "./settings";
 
-const defaults = () => ({ scenarioId: null, palCardByScenario: {}, enabledGroups: [...DEFAULT_ENABLED_GROUPS] });
+const defaults = () => ({ scenarioId: null, palCardByScenario: {}, enabledGroups: [...DEFAULT_ENABLED_GROUPS], useRental: true });
 
 describe("normalizeAutoPickSettings", () => {
   test("defaults", () => {
@@ -25,5 +25,13 @@ describe("normalizeAutoPickSettings", () => {
   });
   test("palCardByScenario keeps only finite numbers", () => {
     expect(normalizeAutoPickSettings({ palCardByScenario: { "14": "a", "12": 30276 } }).palCardByScenario).toEqual({ "12": 30276 });
+  });
+});
+
+describe("useRental setting", () => {
+  test("defaults on; only an explicit false turns it off", () => {
+    expect(normalizeAutoPickSettings({}).useRental).toBe(true);
+    expect(normalizeAutoPickSettings({ useRental: "no" }).useRental).toBe(true);
+    expect(normalizeAutoPickSettings({ useRental: false }).useRental).toBe(false);
   });
 });

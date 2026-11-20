@@ -166,3 +166,87 @@ describe("pickParentDeck", () => {
     expect(full1.picks.map((p) => p.cardId)).toEqual([2, 3, 4, 6, 5]);
   });
 });
+
+describe("pickParentDeck rental slot", () => {
+  test("never picks more than one rental card", () => {
+    const r = pickParentDeck({
+      cards: [card(1, [A]), card(2, [B]), card(3, [C]), card(4, [D])],
+      values: vals({ [A]: 1, [B]: 5, [C]: 4, [D]: 3 }),
+      coveredSkillIds: none, locked: null,
+      rentalCardIds: new Set([2, 3, 4]),
+    });
+    expect(r.picks.filter((p) => p.rental).map((p) => p.cardId)).toEqual([2]);
+    expect(r.picks.map((p) => p.cardId).sort()).toEqual([1, 2]);
+  });
+
+  test("a rental is chosen only when it beats every owned alternative", () => {
+    const tie = pickParentDeck({
+      cards: [card(1, [A]), card(2, [B])],
+      values: vals({ [A]: 2, [B]: 2 }),
+      coveredSkillIds: none, locked: null, deckSize: 1,
+      rentalCardIds: new Set([1]),
+    });
+    expect(tie.picks.map((p) => p.cardId)).toEqual([2]);
+    expect(tie.picks[0].rental).toBe(false);
+
+    const better = pickParentDeck({
+      cards: [card(1, [A]), card(2, [B])],
+      values: vals({ [A]: 3, [B]: 2 }),
+      coveredSkillIds: none, locked: null, deckSize: 1,
+      rentalCardIds: new Set([1]),
+    });
+    expect(better.picks.map((p) => p.cardId)).toEqual([1]);
+    expect(better.picks[0].rental).toBe(true);
+  });
+
+  test("swap passes keep the one-rental limit", () => {
+    // Greedy takes rental 1 first; the best pair (rentals 1 + 2) needs two rentals,
+    // which the limit forbids, so the second pick is the owned card 4.
+    const r = pickParentDeck({
+      cards: [card(1, [A, C]), card(2, [B, D]), card(3, [C, D]), card(4, [E])],
+      values: vals({ [A]: 3, [B]: 3, [C]: 2.5, [D]: 2.5, [E]: 0.5 }),
+      coveredSkillIds: none, locked: null, deckSize: 2,
+      rentalCardIds: new Set([1, 2, 3]),
+    });
+    expect(r.picks.filter((p) => p.rental)).toHaveLength(1);
+    expect(r.picks.some((p) => p.cardId === 4)).toBe(true);
+  });
+
+  test("an unowned locked pal card uses up the rental", () => {
+    const r = pickParentDeck({
+      cards: [card(2, [B]), card(3, [C])],
+      values: vals({ [A]: 1, [B]: 5, [C]: 1 }),
+      coveredSkillIds: none, locked: card(1, [A]),
+      rentalCardIds: new Set([1, 2]),
+    });
+    expect(r.picks.map((p) => p.cardId)).toEqual([1, 3]);
+    expect(r.picks[0].rental).toBe(true);
+  });
+
+  test("without rental cards every pick is owned (unchanged behaviour)", () => {
+    const r = pickParentDeck({
+      cards: [card(1, [A]), card(2, [B])],
+      values: vals({ [A]: 1, [B]: 2 }),
+      coveredSkillIds: none, locked: null,
+    });
+    expect(r.picks.every((p) => !p.rental)).toBe(true);
+    expect(r.total).toBeCloseTo(3);
+  });
+
+  test("a full catalogue of rental candidates stays within the worker budget", () => {
+    const cards: AutoPickCard[] = [];
+    const values: Record<number, number> = {};
+    for (let i = 1; i <= 600; i++) {
+      const skills = [i, 1000 + (i % 97), 2000 + (i % 41)];
+      for (const s of skills) values[s] = (s % 13) / 10 + 0.1;
+      cards.push(card(i, skills, { characterKey: `c${i % 150}` }));
+    }
+    const rentalCardIds = new Set(cards.filter((c) => c.cardId > 80).map((c) => c.cardId));
+    const started = performance.now();
+    const r = pickParentDeck({ cards, values: vals(values), coveredSkillIds: none, locked: null, rentalCardIds });
+    const elapsed = performance.now() - started;
+    expect(r.picks).toHaveLength(6);
+    expect(r.picks.filter((p) => p.rental).length).toBeLessThanOrEqual(1);
+    expect(elapsed).toBeLessThan(5000);
+  });
+});

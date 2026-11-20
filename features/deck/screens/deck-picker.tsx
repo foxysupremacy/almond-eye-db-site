@@ -14,19 +14,12 @@ import CardChainSelector from "@/features/deck/components/card-chain-selector";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { CardArtImage } from "@/app/common/ui/cards/card-art-image";
-import { findCharConflict } from "@/lib/deck/card-constraints";
+import { findCharConflict, isTraineeCard } from "@/lib/deck/card-constraints";
 import { deckSlotTransitionName } from "@/app/common/motion/view-transition";
 import { useDeckPickerViewModel } from "@/features/deck/view-models/use-deck-picker-view-model";
 
 function cardLabel(card: CardIndexEntry) {
   return card.nameEn || card.nameJp;
-}
-
-function isTraineeCard(card: CardIndexEntry, targetChara: CharacterIndexEntry | null): boolean {
-  return Boolean(
-    targetChara &&
-      (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp),
-  );
 }
 
 const SLOT_SIZE_OPTIONS: readonly { value: DeckSlotSize; label: string }[] = [
@@ -60,8 +53,21 @@ function SlotSizeToggle({ value, onChange }: { value: DeckSlotSize; onChange: (s
   );
 }
 
+/** Marks the deck's borrowed card; rentals are always MLB (lib/deck/rental.ts). */
+function RentalBadge({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`rounded-md border border-[#794016]/60 bg-[#794016] px-1.5 py-0.5 text-[9px] font-bold text-white shadow-xs ${className}`}
+      title="Rental slot: borrowed from another player, always MLB"
+    >
+      Rental · MLB
+    </span>
+  );
+}
+
 interface CompactSlotGridProps {
   isParent: boolean;
+  rentalSlot: number | null;
   activeSlots: readonly (CardIndexEntry | null)[];
   /** The slots used for same-uma conflict checks (the deck being edited). */
   deckSlots: readonly (CardIndexEntry | null)[];
@@ -75,7 +81,7 @@ interface CompactSlotGridProps {
  * One row of six face-cropped tiles on desktop (3×2 on phones). Selecting a
  * filled tile opens the slot sheet (event choices, inspect, replace, remove).
  */
-function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCardIdSet, onOpenCard, onPickSlot }: CompactSlotGridProps) {
+function CompactSlotGrid({ isParent, rentalSlot, activeSlots, deckSlots, targetChara, mainCardIdSet, onOpenCard, onPickSlot }: CompactSlotGridProps) {
   const filled = activeSlots.filter(Boolean).length;
   return (
     <div className="flex flex-col gap-2">
@@ -85,6 +91,7 @@ function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCa
           const traineeConflict = Boolean(card && !isParent && isTraineeCard(card, targetChara));
           const charConflict = card ? findCharConflict(deckSlots as CardIndexEntry[], index, card) : null;
           const inMain = Boolean(isParent && card && mainCardIdSet.has(card.id));
+          const isRental = rentalSlot === index;
           const border = traineeConflict
             ? "border-rose-500 ring-2 ring-rose-500/30"
             : charConflict
@@ -114,6 +121,7 @@ function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCa
                         In Main
                       </span>
                     )}
+                    {isRental && !traineeConflict && !charConflict && <RentalBadge className="absolute bottom-1.5 left-1.5" />}
                     {traineeConflict && (
                       <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white" title="The trainee's own card cannot be used in the Main Deck.">
                         Trainee card
@@ -140,7 +148,7 @@ function CompactSlotGrid({ isParent, activeSlots, deckSlots, targetChara, mainCa
                   </span>
                   <span className="min-w-0 px-2 py-1.5">
                     <span className="block truncate text-xs font-semibold text-zinc-500 dark:text-zinc-400">Slot {index + 1}</span>
-                    <span className="mt-0.5 block truncate text-[10px] text-zinc-400 dark:text-zinc-500">Empty</span>
+                    <span className="mt-0.5 block truncate text-[10px] text-zinc-400 dark:text-zinc-500">{isRental ? "Rental · any card, MLB" : "Empty"}</span>
                   </span>
                 </>
               )}
@@ -174,6 +182,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
     parentSlots,
     mainSlots,
     slotSize,
+    rentalSlot,
   } = state;
 
   return (
@@ -218,6 +227,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
       {slotSize === "compact" ? (
         <CompactSlotGrid
           isParent={isParent}
+          rentalSlot={rentalSlot}
           activeSlots={activeSlots}
           deckSlots={isParent ? parentSlots : mainSlots}
           targetChara={targetChara}
@@ -230,7 +240,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
       <div className="grid grid-cols-3 gap-2 lg:hidden" aria-label={isParent ? "Parent support deck" : "Main support deck"}>
         {Array.from({ length: DECK_SIZE }, (_, index) => {
           const card = activeSlots[index];
-          const conflict = card && (findCharConflict(activeSlots as CardIndexEntry[], index, card) || (!isParent && targetChara && (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() || card.nameJp === targetChara.nameJp)));
+          const conflict = card && (findCharConflict(activeSlots as CardIndexEntry[], index, card) || (!isParent && isTraineeCard(card, targetChara)));
           return (
             <button
               key={index}
@@ -246,6 +256,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                     <CardArtImage src={card.imgUrl} fallbackSrc={card.portraitUrl} alt="" className="block h-auto w-full object-contain" />
                     <span className={`absolute left-1.5 top-1.5 rounded px-1 py-0.5 text-[10px] font-bold ${RARITY_META[card.rarity]?.chip}`}>{RARITY_META[card.rarity]?.label}</span>
                     <CardTypeIcon type={card.type} className="absolute right-1.5 top-1.5 h-5 w-5 object-contain" />
+                    {rentalSlot === index && !conflict && <RentalBadge className="absolute bottom-1.5 left-1.5" />}
                     {conflict && <span className="absolute inset-x-0 bottom-0 bg-rose-600 px-1 py-0.5 text-center text-[10px] font-semibold text-white">Card conflict</span>}
                   </div>
                   <div className="w-full min-w-0 p-2">
@@ -256,7 +267,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
               ) : (
                 <span className="flex flex-1 flex-col items-center justify-center gap-2 self-stretch px-2 py-5 text-zinc-400">
                   <span className="grid h-9 w-9 place-items-center rounded-full border border-dashed border-zinc-300 text-xl dark:border-zinc-700">+</span>
-                  <span className="text-xs">Slot {index + 1}</span>
+                  <span className="text-xs">{rentalSlot === index ? "Rental slot" : `Slot ${index + 1}`}</span>
                 </span>
               )}
             </button>
@@ -270,13 +281,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         {Array.from({ length: DECK_SIZE }, (_, i) => i).map((slotIndex) => {
           const card = activeSlots[slotIndex];
           const isInMain = isParent && card && mainCardIdSet.has(card.id);
-          const isTraineeConflict = Boolean(
-            !isParent &&
-            card &&
-            targetChara &&
-            (card.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() ||
-             card.nameJp === targetChara.nameJp)
-          );
+          const isTraineeConflict = Boolean(!isParent && card && isTraineeCard(card, targetChara));
           const charConflict = card
             ? findCharConflict((isParent ? parentSlots : mainSlots) as CardIndexEntry[], slotIndex, card)
             : null;
@@ -322,6 +327,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                         In Main
                       </span>
                     )}
+                    {rentalSlot === slotIndex && <RentalBadge className="absolute bottom-2 left-2 z-20" />}
                   </div>
 
                   <div className="flex flex-1 flex-col justify-between p-2 sm:p-3 gap-2 sm:gap-2.5">
@@ -355,13 +361,24 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                           ? `${(skillsByCard[card.id]?.hintSkills?.length ?? 0) + (skillsByCard[card.id]?.eventSkills?.length ?? 0)} skills ↗`
                           : "Inspect skills ↗"}
                       </button>
-                      <button
-                        type="button"
-                        className="text-[10px] font-medium text-zinc-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors"
-                        onClick={() => commands.removeCard(slotIndex)}
-                      >
-                        remove
-                      </button>
+                      <span className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          aria-pressed={rentalSlot === slotIndex}
+                          className="text-[10px] font-medium text-zinc-400 hover:text-[#794016] dark:hover:text-amber-300 cursor-pointer transition-colors"
+                          onClick={() => commands.toggleRental(slotIndex)}
+                          title={rentalSlot === slotIndex ? "Stop treating this card as the borrowed rental" : "Treat this card as the borrowed rental (always MLB)"}
+                        >
+                          {rentalSlot === slotIndex ? "unmark rental" : "rental"}
+                        </button>
+                        <button
+                          type="button"
+                          className="text-[10px] font-medium text-zinc-400 hover:text-red-600 dark:hover:text-red-400 cursor-pointer transition-colors"
+                          onClick={() => commands.removeCard(slotIndex)}
+                        >
+                          remove
+                        </button>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -377,6 +394,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
                         +
                       </span>
                       <span className="text-[10px] sm:text-xs font-semibold">Pick Slot {slotIndex + 1}</span>
+                      {rentalSlot === slotIndex && <span className="text-[10px] font-medium text-[#794016] dark:text-amber-300">Rental · any card, MLB</span>}
                     </button>
                   </div>
                 </div>
@@ -421,6 +439,14 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
             </div>
             <button
               type="button"
+              aria-pressed={rentalSlot === mobileSlot}
+              className="min-h-11 w-full rounded-xl border border-zinc-200 px-3 text-sm dark:border-zinc-700 cursor-pointer"
+              onClick={() => { if (mobileSlot !== null) commands.toggleRental(mobileSlot); }}
+            >
+              {rentalSlot === mobileSlot ? "Unmark rental" : "Mark as rental (borrowed, MLB)"}
+            </button>
+            <button
+              type="button"
               className="min-h-11 w-full text-sm text-rose-600 dark:text-rose-400 cursor-pointer"
               onClick={commands.removeFromMobile}
             >
@@ -435,6 +461,7 @@ export default function DeckPicker({ mode = "main" }: DeckPickerProps) {
         <CardPickerPopover
           mode={mode}
           slotIndex={openSlot}
+          initialAsRental={openSlot === rentalSlot}
           onPick={commands.pickCard}
           onClose={commands.closeSlotPicker}
         />

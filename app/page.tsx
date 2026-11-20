@@ -10,7 +10,8 @@ import { DeckFeature, DeckProvider, ParentDeckFeature, SharedImportDialog, PvpEx
 import Footer from "@/app/components/footer";
 import GlobalControlsBar from "@/app/components/global-controls-bar";
 import { MobileBuildToolsSheet } from "@/app/components/mobile-build-tools-sheet";
-import { isRootAppRoute, type Tab } from "@/app/tabs";
+import { appRouteHref, isRootAppRoute, type AppShellRoute, type Tab } from "@/app/tabs";
+import { useRouter } from "next/navigation";
 import { ApplicationSkillInspectorProvider } from "@/app/components/application-skill-inspector-provider";
 import { AppShellHeader } from "@/app/common/ui/controls/app-shell-header";
 import { AppMobileNavigation } from "@/app/common/ui/controls/app-mobile-navigation";
@@ -41,6 +42,12 @@ const SkillScannerDialog = lazy(() =>
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("main");
+  const router = useRouter();
+  // Lazy tabs load their chunk; Supports/Characters prefetch their route for an instant client navigation.
+  const preloadRoute = (route: AppShellRoute) => {
+    preloadTab(route);
+    if (!isRootAppRoute(route)) router.prefetch(appRouteHref(route));
+  };
   const [isControlsCollapsed, setIsControlsCollapsed] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSkillScannerOpen, setIsSkillScannerOpen] = useState(false);
@@ -91,7 +98,7 @@ export default function Home() {
       <ApplicationSkillInspectorProvider>
       <div className="app-shell flex min-h-[100dvh] min-w-0 flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 transition-colors duration-200">
         <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[400] focus:rounded-lg focus:bg-emerald-700 focus:p-3 focus:text-white">Skip to content</a>
-        <AppShellHeader activeRoute={tab} onRoutePreload={preloadTab} isControlsCollapsed={isControlsCollapsed} mobileTitle={tab === "veterans" ? "Your library" : tab === "parent-deck" ? "Parent Deck" : tab === "main" ? "Main Deck" : tab === "parenting" ? "Parenting" : tab === "rankings" ? "Rankings" : tab === "stamina" ? "Stamina" : "Visualizer"} onToggleControls={toggleControls} onRootRouteChange={handleTabChange} onOpenBuildTools={() => setToolsOpen(true)} />
+        <AppShellHeader activeRoute={tab} onRoutePreload={preloadRoute} isControlsCollapsed={isControlsCollapsed} mobileTitle={tab === "veterans" ? "Your library" : tab === "parent-deck" ? "Parent Deck" : tab === "main" ? "Main Deck" : tab === "parenting" ? "Parenting" : tab === "rankings" ? "Rankings" : tab === "stamina" ? "Stamina" : "Visualizer"} onToggleControls={toggleControls} onRootRouteChange={handleTabChange} onOpenBuildTools={() => setToolsOpen(true)} />
         <GlobalControlsBar isCollapsed={isControlsCollapsed} onOpenImport={() => setIsImportModalOpen(true)} onOpenSkillScanner={() => setIsSkillScannerOpen(true)} />
 
         <main id="main-content" className={`mx-auto w-full min-w-0 ${tab === "parenting" ? "max-w-6xl xl:max-w-7xl" : "max-w-5xl"} flex-1 px-3 py-5 sm:px-6 sm:py-8 transition-all duration-200`}>
@@ -117,7 +124,7 @@ export default function Home() {
         {/* Page Footer */}
         <Footer />
 
-        <AppMobileNavigation activeRoute={tab} onRootRouteChange={handleTabChange} onRoutePreload={preloadTab} />
+        <AppMobileNavigation activeRoute={tab} onRootRouteChange={handleTabChange} onRoutePreload={preloadRoute} />
 
         <MobileBuildToolsSheet
           open={toolsOpen}

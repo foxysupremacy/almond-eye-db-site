@@ -28,6 +28,7 @@ import {
 import { customTrackInfo, normalizeRaceConditions, type CustomRaceConditions } from "@/lib/deck/race-conditions";
 import { g1TrackInfo, type G1RacePreset } from "@/lib/deck/g1-races";
 import { applyParentDeckToPreset } from "@/lib/deck/apply-parent-deck";
+import { rentalSlotOf, setRentalSlot as setPresetRentalSlot, type DeckKind } from "@/lib/deck/rental";
 import type { Course } from "@/lib/skill-engine/types";
 import { type PvpEvent, getPvpEventById, getPvpRaceParameters } from "@/lib/pvp/events";
 import { findMasterChallengeRace, raceParametersForMasterChallenge } from "@/lib/pvp/recommendations";
@@ -152,6 +153,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
     return activePreset.parentDeckIds.map((id) => (id == null ? null : index.find((c) => c.id === id) ?? null));
   }, [index, activePreset.parentDeckIds]);
 
+  const mainRentalSlot = rentalSlotOf(activePreset, "main");
+  const parentRentalSlot = rentalSlotOf(activePreset, "parent");
+
   // Derive skills synchronously from dataStore for cards in both decks
   const skillsByCard = useMemo<Record<number, CardSkills | null>>(() => {
     if (!dataStore) return {};
@@ -223,7 +227,7 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const clearMain = useCallback(() => {
     dispatch({
       type: "updateActivePreset",
-      update: (p) => ({ ...p, mainDeckIds: Array(DECK_SIZE).fill(null) }),
+      update: (p) => ({ ...p, mainDeckIds: Array(DECK_SIZE).fill(null), mainRentalSlot: null }),
     });
   }, []);
 
@@ -242,15 +246,15 @@ export function DeckProvider({ children }: { children: ReactNode }) {
   const clearParent = useCallback(() => {
     dispatch({
       type: "updateActivePreset",
-      update: (p) => ({ ...p, parentDeckIds: Array(DECK_SIZE).fill(null) }),
+      update: (p) => ({ ...p, parentDeckIds: Array(DECK_SIZE).fill(null), parentRentalSlot: null }),
     });
   }, []);
 
   const applyParentDeck = useCallback(
-    (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>) => {
+    (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>, rentalSlot?: number | null) => {
       dispatch({
         type: "updateActivePreset",
-        update: (p) => applyParentDeckToPreset(p, cardIds, chainChoices),
+        update: (p) => applyParentDeckToPreset(p, cardIds, chainChoices, rentalSlot),
       });
     },
     [],
@@ -263,8 +267,13 @@ export function DeckProvider({ children }: { children: ReactNode }) {
         ...p,
         parentDeckIds: [...p.mainDeckIds],
         parentChainChoices: p.mainChainChoices ? { ...p.mainChainChoices } : p.parentChainChoices,
+        parentRentalSlot: rentalSlotOf(p, "main"),
       }),
     });
+  }, []);
+
+  const setRentalSlot = useCallback((deck: DeckKind, slotIndex: number | null) => {
+    dispatch({ type: "updateActivePreset", update: (p) => setPresetRentalSlot(p, deck, slotIndex) });
   }, []);
 
   // Target Track & Course Actions
@@ -624,6 +633,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       applyParentDeck,
       copyMainToParent,
       parentSkills,
+      mainRentalSlot,
+      parentRentalSlot,
+      setRentalSlot,
 
       parentingSetup,
       setParentingSetup,
@@ -647,6 +659,9 @@ export function DeckProvider({ children }: { children: ReactNode }) {
       applyParentDeck,
       copyMainToParent,
       parentSkills,
+      mainRentalSlot,
+      parentRentalSlot,
+      setRentalSlot,
       parentingSetup,
       setParentingSetup,
       index,

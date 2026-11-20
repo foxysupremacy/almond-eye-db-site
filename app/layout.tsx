@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AppRouterProvider } from "@/app/common/ui/controls/app-router-provider";
 
 export const metadata: Metadata = {
   title: "Almond Eye Database",
@@ -28,7 +29,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         />
       </head>
       <body className="bg-[var(--bg-app)] text-[var(--text-primary)] antialiased transition-colors duration-200">
-        {children}
+        <AppRouterProvider>{children}</AppRouterProvider>
       </body>
     </html>
   );

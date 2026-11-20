@@ -10,6 +10,7 @@ import type {
   ParentDeckSkill,
 } from "@/lib/deck/types";
 import type { ParentingSetup } from "@/lib/parenting/state";
+import type { DeckKind } from "@/lib/deck/rental";
 
 export interface DeckSlotsContextValue {
   // Chain choices
@@ -28,9 +29,19 @@ export interface DeckSlotsContextValue {
   parentSlots: (CardIndexEntry | null)[];
   setParentCard: (index: number, card: CardIndexEntry | null) => void;
   clearParent: () => void;
-  applyParentDeck: (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>) => void;
+  /** `rentalSlot` replaces the Parent Deck rental mark; omit it to keep the current one. */
+  applyParentDeck: (
+    cardIds: readonly (number | null)[],
+    chainChoices: Readonly<Record<string, number>>,
+    rentalSlot?: number | null,
+  ) => void;
   copyMainToParent: () => void;
   parentSkills: ParentDeckSkill[];
+
+  // Rental slot (one borrowed MLB card per deck; see lib/deck/rental.ts)
+  mainRentalSlot: number | null;
+  parentRentalSlot: number | null;
+  setRentalSlot: (deck: DeckKind, slotIndex: number | null) => void;
 
   // Parenting Setup
   parentingSetup: ParentingSetup;

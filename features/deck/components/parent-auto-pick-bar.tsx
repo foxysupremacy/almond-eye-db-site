@@ -23,7 +23,7 @@ const DISABLED_REASON_TEXT: Record<Exclude<AutoPickDisabledReason, null>, string
 };
 
 export function ParentAutoPickBar({ state, commands }: ParentAutoPickViewProps) {
-  const { scenarios, scenarioId, palOptions, palCardId, enabledGroups, disabledReason } = state;
+  const { scenarios, scenarioId, palOptions, palCardId, enabledGroups, useRental, disabledReason } = state;
   const enabled = new Set(enabledGroups);
   const reasonId = useId();
 
@@ -69,6 +69,18 @@ export function ParentAutoPickBar({ state, commands }: ParentAutoPickViewProps) 
           );
         })}
       </div>
+
+      <button
+        type="button"
+        aria-pressed={useRental}
+        onClick={commands.toggleRental}
+        title="Let Auto Pick borrow one unowned card at MLB for the rental slot"
+        className={`min-h-11 md:min-h-8 rounded border px-2 py-1 text-[11px] font-medium transition-colors duration-150 ease-out-quart ${useRental
+          ? "border-[#794016]/50 bg-[#794016]/10 text-[#794016] dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200"
+          : "border-zinc-200 bg-white text-zinc-500 hover:text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-400 dark:hover:text-zinc-200"}`}
+      >
+        Use rental slot
+      </button>
 
       <div className="flex items-center gap-2">
         <AppButton

@@ -56,5 +56,8 @@ describe("useDeckPickerViewModel", () => {
 
     expect(parentVm.state.isParent).toBe(true);
     expect(parentVm.state.activeSlots).toHaveLength(6);
+    expect(parentVm.state.rentalSlot).toBeNull();
+    expect(mainVm.state.rentalSlot).toBeNull();
+    expect(typeof parentVm.commands.toggleRental).toBe("function");
   });
 });

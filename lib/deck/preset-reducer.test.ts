@@ -110,3 +110,22 @@ describe("buildImportedPreset", () => {
     expect(p.trackInfo.pvpEventId).toBeNull();
   });
 });
+
+describe("rental slots on import", () => {
+  test("importOverwrite takes the shared rental marks, defaulting to none", () => {
+    const base = state(1);
+    base.presets[0].mainRentalSlot = 3;
+    const withMarks = presetReducer(base, {
+      type: "importOverwrite",
+      presetData: { mainDeckIds: [1, null, null, null, null, null], parentRentalSlot: 4 },
+    });
+    expect(withMarks.presets[0].mainRentalSlot).toBeNull();
+    expect(withMarks.presets[0].parentRentalSlot).toBe(4);
+  });
+
+  test("buildImportedPreset carries valid rental marks", () => {
+    const p = buildImportedPreset("id", "Name", { mainRentalSlot: 1, parentRentalSlot: 9 });
+    expect(p.mainRentalSlot).toBe(1);
+    expect(p.parentRentalSlot).toBeNull();
+  });
+});

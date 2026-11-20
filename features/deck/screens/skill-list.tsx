@@ -1,4 +1,5 @@
 import { PickerSearchBar } from "@/app/common/ui/controls/picker-search-bar";
+import { AnimatedList } from "@/app/common/ui/primitives/animated-list";
 import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { Radio, RadioGroup } from "react-aria-components/RadioGroup";
 import { AppSelect } from "@/app/common/ui/controls/app-select";
@@ -319,7 +320,7 @@ export default function SkillList() {
                 {cFiltered.length === 0 ? (
                   <p className="text-xs text-zinc-400 p-3">No skills match current filter for this card.</p>
                 ) : (
-                  <ul className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                  <AnimatedList rowCount={cFiltered.length} className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
                     {cFiltered.map((s) => {
                       const isBanned = isSkillBanned(s.id, activePvpEvent);
                       const isDupe = duplicateSkillIdSet.has(s.id);
@@ -369,14 +370,14 @@ export default function SkillList() {
                         </li>
                       );
                     })}
-                  </ul>
+                  </AnimatedList>
                 )}
               </div>
             );
           })}
         </div>
       ) : (
-        <ul className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800/80">
+        <AnimatedList rowCount={filtered.length} className="mt-4 divide-y divide-zinc-100 dark:divide-zinc-800/80">
           {filtered.map((s) => {
             const rStyle = getSkillRarityStyle(s.rarity);
             const isBanned = isSkillBanned(s.id, activePvpEvent);
@@ -439,7 +440,7 @@ export default function SkillList() {
               </li>
             );
           })}
-        </ul>
+        </AnimatedList>
       )}
     </section>
   );

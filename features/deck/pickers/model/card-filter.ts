@@ -1,6 +1,26 @@
 import type { CardIndexEntry } from "@/lib/api";
 import type { CardRecommendation } from "@/lib/recommendation/engine";
 import type { SkillEffectCategory } from "@/lib/skills/effects";
+import { isTraineeCard, type TraineeIdentity } from "@/lib/deck/card-constraints";
+
+/**
+ * The trainee can't use her own support cards in her career (the Main Deck),
+ * so they never surface as Main Deck recommendations. The Parent Deck trains a
+ * different uma, so it keeps them. Returns `recs` unchanged when nothing drops.
+ */
+export function dropTraineeRecommendations<T extends Pick<CardRecommendation, "cardId">>(
+  recs: T[],
+  mode: "main" | "parent",
+  cardsById: ReadonlyMap<number, CardIndexEntry>,
+  trainee: TraineeIdentity | null | undefined,
+): T[] {
+  if (mode !== "main" || !trainee) return recs;
+  const kept = recs.filter((rec) => {
+    const card = cardsById.get(rec.cardId);
+    return !card || !isTraineeCard(card, trainee);
+  });
+  return kept.length === recs.length ? recs : kept;
+}
 
 export type CardPickerType = "all" | "speed" | "stamina" | "power" | "guts" | "intelligence" | "friend" | "group";
 export type CardPickerSort = "recommended" | "release" | "rarity" | "type" | "targetSkills";

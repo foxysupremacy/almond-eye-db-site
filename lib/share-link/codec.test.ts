@@ -202,3 +202,34 @@ describe("share-codec V4", () => {
     expect(decoded?.mainDeckIds).toEqual([30001, null, null, null, null, null]);
   });
 });
+
+describe("share-codec V4 rental section", () => {
+  const base: DeckPreset = {
+    id: "r",
+    name: "Rental",
+    mainDeckIds: [30001, null, null, null, null, null],
+    parentDeckIds: [30101, 30102, null, null, null, null],
+    trackInfo: { trackId: 10001, courseId: 10001, runningStyle: 2, racerCount: 12 },
+  };
+
+  test("round-trips both decks' rental slots", () => {
+    const decoded = decodePresetFromShareCode(encodePresetToShareCode({ ...base, mainRentalSlot: 0, parentRentalSlot: 5 }))!;
+    expect(decoded.mainRentalSlot).toBe(0);
+    expect(decoded.parentRentalSlot).toBe(5);
+  });
+
+  test("one deck marked, the other none", () => {
+    const decoded = decodePresetFromShareCode(encodePresetToShareCode({ ...base, parentRentalSlot: 1 }))!;
+    expect(decoded.mainRentalSlot).toBeNull();
+    expect(decoded.parentRentalSlot).toBe(1);
+  });
+
+  test("links without a rental carry no extra section and decode to none", () => {
+    const plain = encodePresetToShareCode(base);
+    expect(encodePresetToShareCode({ ...base, mainRentalSlot: null, parentRentalSlot: null })).toBe(plain);
+    const decoded = decodePresetFromShareCode(plain)!;
+    expect(decoded.mainRentalSlot).toBeNull();
+    expect(decoded.parentRentalSlot).toBeNull();
+    expect(decoded.mainDeckIds).toEqual(base.mainDeckIds);
+  });
+});

@@ -3,10 +3,16 @@ import { DEFAULT_ENABLED_GROUPS, SKILL_GROUPS, type SkillGroup } from "./skill-g
 
 export const AUTO_PICK_SETTINGS_KEY = "parent_autopick.v1";
 
-export interface AutoPickSettings { scenarioId: number | null; palCardByScenario: Record<string, number>; enabledGroups: SkillGroup[] }
+export interface AutoPickSettings {
+  scenarioId: number | null;
+  palCardByScenario: Record<string, number>;
+  enabledGroups: SkillGroup[];
+  /** Let Auto Pick borrow one unowned MLB card for the rental slot. */
+  useRental: boolean;
+}
 
 export function defaultAutoPickSettings(): AutoPickSettings {
-  return { scenarioId: null, palCardByScenario: {}, enabledGroups: [...DEFAULT_ENABLED_GROUPS] };
+  return { scenarioId: null, palCardByScenario: {}, enabledGroups: [...DEFAULT_ENABLED_GROUPS], useRental: true };
 }
 
 export function normalizeAutoPickSettings(value: unknown): AutoPickSettings {
@@ -25,7 +31,8 @@ export function normalizeAutoPickSettings(value: unknown): AutoPickSettings {
     for (const g of raw.enabledGroups) if ((SKILL_GROUPS as readonly unknown[]).includes(g)) groups.add(g as SkillGroup);
   }
   const enabledGroups = groups.size === 0 ? base.enabledGroups : SKILL_GROUPS.filter((g) => groups.has(g));
-  return { scenarioId, palCardByScenario, enabledGroups };
+  const useRental = raw.useRental !== false;
+  return { scenarioId, palCardByScenario, enabledGroups, useRental };
 }
 
 export function loadAutoPickSettings(): AutoPickSettings {

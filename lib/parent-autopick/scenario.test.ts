@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import type { CardIndexEntry, ScenarioLinkEntry } from "../data/types";
-import { candidateCardIds, palCardOptions, resolvePalCard, scenarioLabel } from "./scenario";
+import { candidateCardIds, palCardOptions, rentalCandidateIds, resolvePalCard, scenarioLabel } from "./scenario";
 
 function cardEntry(id: number, rarity: 1 | 2 | 3, release: string | null): CardIndexEntry {
   return { id, rarity, release } as CardIndexEntry;
@@ -51,5 +51,14 @@ describe("candidateCardIds", () => {
   test("drops unknown, Main Deck and locked ids", () => {
     const owned = { "10": 0, "20": 1, "30": 4, "999": 2 };
     expect(candidateCardIds(owned, cards, new Set([10]), 30).sort((a, b) => a - b)).toEqual([20]);
+  });
+});
+
+describe("rentalCandidateIds", () => {
+  test("every known card the user does not own, minus Main Deck and locked ids", () => {
+    const extra = cardEntry(40, 2, "2025-01-01");
+    const all = mapOf(ssrOld, rNew, ssrNew, extra);
+    const owned = { "20": 1 };
+    expect(rentalCandidateIds(owned, all, new Set([10]), 30).sort((a, b) => a - b)).toEqual([40]);
   });
 });

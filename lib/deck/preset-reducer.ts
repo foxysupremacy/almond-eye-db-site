@@ -7,6 +7,7 @@ import { normalizeRaceConditions } from "./race-conditions";
 import type { DeckPreset } from "./types";
 import { DECK_SIZE, DEFAULT_TRACK_ID, DEFAULT_COURSE_ID } from "./constants";
 import { createDefaultPreset } from "./preset-storage";
+import { normalizeRentalSlot } from "./rental";
 
 export interface PresetListState {
   presets: DeckPreset[];
@@ -138,6 +139,9 @@ export function presetReducer(state: PresetListState, action: PresetListAction):
         },
         mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : p.mainChainChoices,
         parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : p.parentChainChoices,
+        // Shared decks replace both decks, so their rental marks replace ours too.
+        mainRentalSlot: normalizeRentalSlot(presetData.mainRentalSlot),
+        parentRentalSlot: normalizeRentalSlot(presetData.parentRentalSlot),
         parentingSetup: presetData.parentingSetup
           ? {
               ...presetData.parentingSetup,
@@ -176,6 +180,8 @@ export function buildImportedPreset(
     },
     mainChainChoices: presetData.mainChainChoices ? { ...presetData.mainChainChoices } : undefined,
     parentChainChoices: presetData.parentChainChoices ? { ...presetData.parentChainChoices } : undefined,
+    mainRentalSlot: normalizeRentalSlot(presetData.mainRentalSlot),
+    parentRentalSlot: normalizeRentalSlot(presetData.parentRentalSlot),
     parentingSetup: presetData.parentingSetup
       ? {
           ...presetData.parentingSetup,

@@ -42,6 +42,10 @@ export interface DeckPreset {
   mainChainChoices?: Record<string, number>;
   parentChainChoices?: Record<string, number>;
   parentingSetup?: ParentingSetup;
+  /** Slot index (0–5) holding the borrowed MLB card in the Main Deck; null/absent = none. */
+  mainRentalSlot?: number | null;
+  /** Slot index (0–5) holding the borrowed MLB card in the Parent Deck; null/absent = none. */
+  parentRentalSlot?: number | null;
 }
 
 export interface DeckSkillGrant {
@@ -111,9 +115,18 @@ export interface DeckContextValue {
   parentSlots: (CardIndexEntry | null)[];
   setParentCard: (index: number, card: CardIndexEntry | null) => void;
   clearParent: () => void;
-  applyParentDeck: (cardIds: readonly (number | null)[], chainChoices: Readonly<Record<string, number>>) => void;
+  applyParentDeck: (
+    cardIds: readonly (number | null)[],
+    chainChoices: Readonly<Record<string, number>>,
+    rentalSlot?: number | null,
+  ) => void;
   copyMainToParent: () => void;
   parentSkills: ParentDeckSkill[];
+
+  // Rental slot (one borrowed MLB card per deck; see lib/deck/rental.ts)
+  mainRentalSlot: number | null;
+  parentRentalSlot: number | null;
+  setRentalSlot: (deck: "main" | "parent", slotIndex: number | null) => void;
 
   // Global Unified Target Race & Course
   tracks: Racetrack[] | null;

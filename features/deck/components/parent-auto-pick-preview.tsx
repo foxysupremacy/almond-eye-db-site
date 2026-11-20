@@ -63,6 +63,11 @@ function PreviewRow({ row, onInspect }: { row: AutoPickPreviewRow; onInspect: (c
                   Scenario Link
                 </span>
               )}
+              {row.rental && (
+                <span className="shrink-0 rounded border border-[#794016]/40 bg-[#794016]/10 px-1.5 text-[10px] font-bold text-[#794016] dark:border-amber-700 dark:bg-amber-950/50 dark:text-amber-200" title="Borrowed from another player for the rental slot">
+                  Rental
+                </span>
+              )}
             </div>
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="text-[11px] font-bold tabular-nums text-emerald-700 dark:text-emerald-400">+{row.gain.toFixed(2)}</span>
@@ -127,7 +132,7 @@ function PreviewRow({ row, onInspect }: { row: AutoPickPreviewRow; onInspect: (c
 
 export function ParentAutoPickPreview({ state, commands }: ParentAutoPickViewProps) {
   const [inspectCard, setInspectCard] = useState<CardIndexEntry | null>(null);
-  const { status, progress, errorMessage, rows, emptySlots, total, flatValue, summary } = state;
+  const { status, progress, errorMessage, rows, emptySlots, total, flatValue, summary, useRental } = state;
   const summaryLine = [summary.raceLabel, summary.styleLabel, summary.scenarioLabel].filter(Boolean).join(" · ");
   const ready = status === "ready";
   const determinate = progress !== null && progress.total > 0;
@@ -190,7 +195,7 @@ export function ParentAutoPickPreview({ state, commands }: ParentAutoPickViewPro
             </ul>
             {emptySlots > 0 && (
               <p className="border-t border-zinc-100 px-5 py-3 text-xs text-zinc-500 dark:border-zinc-800/80 dark:text-zinc-400">
-                No remaining owned card adds a counted skill.
+                {useRental ? "No remaining card adds a counted skill." : "No remaining owned card adds a counted skill."}
               </p>
             )}
           </>

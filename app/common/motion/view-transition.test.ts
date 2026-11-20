@@ -4,7 +4,7 @@ import { deckSlotTransitionName, runViewTransition } from "./view-transition";
 describe("runViewTransition", () => {
   test("runs the update inside startViewTransition when supported", () => {
     const calls: string[] = [];
-    const started = runViewTransition(() => calls.push("update"), {
+    const started = runViewTransition(() => { calls.push("update"); }, {
       startViewTransition: (update) => {
         calls.push("start");
         update();
@@ -17,14 +17,14 @@ describe("runViewTransition", () => {
 
   test("updates directly when the API is missing", () => {
     let updated = 0;
-    expect(runViewTransition(() => updated++, { prefersReducedMotion: () => false })).toBe(false);
+    expect(runViewTransition(() => { updated++; }, { prefersReducedMotion: () => false })).toBe(false);
     expect(updated).toBe(1);
   });
 
   test("updates directly under prefers-reduced-motion", () => {
     let started = false;
     let updated = 0;
-    const result = runViewTransition(() => updated++, {
+    const result = runViewTransition(() => { updated++; }, {
       startViewTransition: () => {
         started = true;
       },
@@ -37,7 +37,7 @@ describe("runViewTransition", () => {
 
   test("never loses the update when startViewTransition throws", () => {
     let updated = 0;
-    const result = runViewTransition(() => updated++, {
+    const result = runViewTransition(() => { updated++; }, {
       startViewTransition: () => {
         throw new Error("InvalidStateError");
       },
@@ -49,7 +49,7 @@ describe("runViewTransition", () => {
 
   test("updates directly outside the browser", () => {
     let updated = 0;
-    runViewTransition(() => updated++, null);
+    runViewTransition(() => { updated++; }, null);
     expect(updated).toBe(1);
   });
 });

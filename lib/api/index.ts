@@ -4,6 +4,7 @@ export * from "./client";
 // Synchronous lookups are needed by render-time projections. Keep these
 // registry-backed reads behind the same public boundary as the async API.
 export {
+  cardsById,
   charactersByCharId,
   charactersById,
   skillsById,

@@ -14,7 +14,7 @@ import type { CardIndexEntry } from "@/lib/api";
 import CardTypeIcon, { formatCardType } from "@/app/common/ui/cards/card-type-icon";
 import { EFFECT_CATEGORIES } from "@/app/common/ui/skills/skill-effects";
 import CardSkillsSheet from "@/features/deck/components/card-skills-sheet";
-import { cardCharacterKey } from "@/lib/deck/card-constraints";
+import { cardCharacterKey, isTraineeCard } from "@/lib/deck/card-constraints";
 import { RARITY_META } from "@/app/common/ui/skills/skill-rarity";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { TargetIcon, CheckIcon, XIcon, ChevronDownIcon } from "@/app/common/ui/primitives/icons";
@@ -73,17 +73,21 @@ export default function CardPickerPopover({
   onClose,
   mode = "main",
   slotIndex,
+  initialAsRental = false,
 }: {
-  onPick: (card: CardIndexEntry) => void;
+  onPick: (card: CardIndexEntry, options?: { readonly asRental?: boolean }) => void;
   onClose: () => void;
   mode?: "main" | "parent";
   slotIndex?: number | null;
+  /** The slot being filled is the deck's rental slot. */
+  initialAsRental?: boolean;
 }) {
   const { state, commands } = useCardPickerViewModel({
     mode,
     slotIndex,
     onPick,
     onClose,
+    initialAsRental,
   });
 
   const {
@@ -101,9 +105,11 @@ export default function CardPickerPopover({
     targetChara,
     getLimitBreak,
     totalOwned,
+    asRental,
+    onlyOwnedApplied,
   } = state;
 
-  const { query, sort, type, selectedEffects, onlyOwned, selectedSkills, skillMatchMode, skillQuery, isSkillPanelOpen } = pickerState;
+  const { query, sort, type, selectedEffects, selectedSkills, skillMatchMode, skillQuery, isSkillPanelOpen } = pickerState;
 
   const searchBoxRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -156,17 +162,33 @@ export default function CardPickerPopover({
               ]}
             />
 
-            {totalOwned > 0 && (
+            <ToggleButton
+              isSelected={asRental}
+              onChange={commands.toggleRental}
+              aria-label="Use as rental (any card, MLB)"
+              className={`rounded-md border px-2 py-1 text-[13px] font-semibold transition-colors cursor-pointer ${
+                asRental
+                  ? "bg-[#794016]/15 border-[#794016]/40 text-[#794016] dark:bg-[#794016]/30 dark:text-amber-200"
+                  : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+              }`}
+            >
+              <span className="inline-flex items-center gap-1">
+                {asRental && <CheckIcon className="h-3 w-3" />}
+                <span>Rental · MLB</span>
+              </span>
+            </ToggleButton>
+
+            {totalOwned > 0 && !asRental && (
               <ToggleButton
-                isSelected={onlyOwned}
+                isSelected={onlyOwnedApplied}
                 onChange={commands.toggleOwnership}
                 className={`rounded-md border px-2 py-1 text-[13px] font-semibold transition-colors cursor-pointer ${
-                  onlyOwned
+                  onlyOwnedApplied
                     ? "bg-amber-500/20 border-amber-500/40 text-amber-800 dark:text-amber-300"
                     : "bg-zinc-100 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
                 }`}
               >
-                {onlyOwned ? (
+                {onlyOwnedApplied ? (
                   <span className="inline-flex items-center gap-1">
                     <CheckIcon className="h-3 w-3" />
                     <span>Owned Only</span>
@@ -181,6 +203,12 @@ export default function CardPickerPopover({
               {mode === "parent" ? "Parent Deck Mode" : "Support Deck Mode"}
             </span>
           </div>
+
+          {asRental && (
+            <p className="mt-1.5 text-[11px] text-zinc-500 dark:text-zinc-400">
+              Borrowing from another player: any card works and counts as MLB. One rental per deck.
+            </p>
+          )}
 
           {/* Type Filter Pills */}
           <RadioGroup
@@ -335,12 +363,7 @@ export default function CardPickerPopover({
                   : cardTargetSkills;
                 const targetSkillsCount = displaySkills.length;
 
-                const isTraineeCard = Boolean(
-                  targetChara &&
-                  (c.nameEn?.toLowerCase() === targetChara.nameEn?.toLowerCase() ||
-                   c.nameJp === targetChara.nameJp)
-                );
-                const isTraineeBlocked = isTraineeCard && mode === "main";
+                const isTraineeBlocked = mode === "main" && isTraineeCard(c, targetChara);
                 const occupantIds = occupiedCharMap.get(cardCharacterKey(c));
                 const isCharConflict = Boolean(occupantIds && !occupantIds.has(c.id));
                 const isDisabled = isTraineeBlocked || isCharConflict;

@@ -168,3 +168,21 @@ test("custom conditions survive storage and invalid values normalize", () => {
   storage.setItem(PRESETS_STORAGE_KEY, JSON.stringify([{ ...preset, trackInfo: { ...preset.trackInfo, customRaceConditions: { season: -1, weather: "3", groundCondition: 5, time: 2 } } }]));
   expect(loadStoredPresets()?.presets[0].trackInfo.customRaceConditions).toEqual({ season: null, weather: null, groundCondition: null, time: 2 });
 });
+
+describe("loadStoredPresets rental slots", () => {
+  test("keeps valid rental indices and drops malformed ones", () => {
+    const stored = [
+      { id: "r", name: "Rental", mainRentalSlot: 0, parentRentalSlot: 5 },
+      { id: "bad", name: "Bad", mainRentalSlot: 6, parentRentalSlot: "2" },
+      { id: "old", name: "Old" },
+    ];
+    installWindow().setItem(PRESETS_STORAGE_KEY, JSON.stringify(stored));
+    const presets = loadStoredPresets()!.presets;
+    expect(presets[0].mainRentalSlot).toBe(0);
+    expect(presets[0].parentRentalSlot).toBe(5);
+    expect(presets[1].mainRentalSlot).toBeNull();
+    expect(presets[1].parentRentalSlot).toBeNull();
+    expect(presets[2].mainRentalSlot).toBeNull();
+    expect(presets[2].parentRentalSlot).toBeNull();
+  });
+});
