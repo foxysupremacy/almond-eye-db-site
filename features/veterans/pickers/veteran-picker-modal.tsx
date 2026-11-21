@@ -10,6 +10,7 @@ import { XIcon, StarIcon, AlertTriangleIcon } from "@/app/common/ui/primitives/i
 import { useState, useMemo, useEffect, useRef } from "react";
 import { type CharacterIndexEntry, getCharacterImageUrl } from "@/lib/api";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
+import { veteranRankIconSrc } from "@/lib/veterans/rank-icon";
 import {
   calculateAffinity,
   countSharedG1Wins,
@@ -799,8 +800,7 @@ export default function VeteranPickerModal({
                   const selfFactors = (vet.factor_info_array || []).map((f) => decodeFactor(f.factor_id));
                   const blueFactor = selfFactors.find((f) => f.type === "blue");
                   const pinkFactor = selfFactors.find((f) => f.type === "pink");
-                  const rankPadded = String(vet.rank || 0).padStart(2, "0");
-                  const rankIconSrc = `/assets/statusrank/utx_ico_statusrank_${rankPadded}.png`;
+                  const rankIconSrc = veteranRankIconSrc(vet.rank);
                   const isExpanded = expandedCharId === charId;
 
                   return (
@@ -953,8 +953,7 @@ export default function VeteranPickerModal({
                               const runSelfFactors = (run.factor_info_array || []).map((f) => decodeFactor(f.factor_id));
                               const runBlue = runSelfFactors.find((f) => f.type === "blue");
                               const runPink = runSelfFactors.find((f) => f.type === "pink");
-                              const runRankPadded = String(run.rank || 0).padStart(2, "0");
-                              const runRankIcon = `/assets/statusrank/utx_ico_statusrank_${runRankPadded}.png`;
+                              const runRankIcon = veteranRankIconSrc(run.rank);
                               const isPrimary = idx === 0;
 
                               return (

@@ -8,6 +8,7 @@ import { calculateAffinity, getCanonicalSaddleName, type AffinityCalculationResu
 import { ALL_PARTNER_SECTIONS, type PartnerSection } from "@/lib/veterans/share/partner-codec";
 import { localizeSpark } from "@/lib/lineage/spark-names";
 import type { KyumaruFactorInfo, KyumaruVeteranItem } from "@/lib/veterans/types";
+import { veteranRankIconSrc } from "@/lib/veterans/rank-icon";
 
 const GRADES = ["G", "F", "E", "D", "C", "B", "A", "S"] as const;
 export type AptitudeGrade = (typeof GRADES)[number];
@@ -169,7 +170,7 @@ export function buildPartnerCardModel(vet: KyumaruVeteranItem): PartnerCardModel
     titleEn: self.titleEn,
     portraitUrl: getCharacterImageUrl(self.charId, vet.card_id),
     rank,
-    rankIconSrc: `/assets/statusrank/utx_ico_statusrank_${String(rank).padStart(2, "0")}.png`,
+    rankIconSrc: veteranRankIconSrc(rank),
     rarity: vet.rarity ?? 3,
     stats: [
       { label: "Speed", value: vet.speed },

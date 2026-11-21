@@ -1,13 +1,9 @@
 // Pure Parenting setup transforms for loop-slot selection and borrowed parents.
 
+import { pinkFactorAptitude } from "../lineage/factor-decoder";
 import type { KyumaruVeteranItem } from "../veterans/types";
 import { LOOP_ANCESTOR_SLOTS, type LoopAncestorSlot } from "./loop-planner";
 import type { ParentingSetup } from "./state";
-
-const PINK_BY_CODE = {
-  11: "Turf", 12: "Dirt", 21: "Sprint", 22: "Mile", 23: "Medium", 24: "Long",
-  31: "Runner", 32: "Leader", 33: "Betweener", 34: "Chaser",
-} as const;
 
 /**
  * Select and lock a loop-planner slot. Switching a slot to a different
@@ -33,8 +29,7 @@ export function selectLoopSlotInSetup(
   if (factors) {
     const blueId = factors.find(({ factor_id }) => factor_id >= 101 && factor_id <= 503)?.factor_id;
     const pinkId = factors.find(({ factor_id }) => factor_id >= 1101 && factor_id <= 3403)?.factor_id;
-    const pinkCode = pinkId == null ? 0 : Math.floor(pinkId / 100);
-    const pink = PINK_BY_CODE[pinkCode as keyof typeof PINK_BY_CODE] ?? null;
+    const pink = pinkId == null ? null : pinkFactorAptitude(pinkId);
     factorGoals[slot] = {
       blue: blueId == null ? null : Math.floor(blueId / 100),
       blueStars: blueId == null ? 0 : blueId % 10,

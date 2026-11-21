@@ -96,7 +96,7 @@ describe("getRunBorrowState — 1 borrow per training run", () => {
 describe("normalizeParentingSetup — exact costume and legacy data", () => {
   test("migrates legacy GGGP veteran factors, preserves manual spark choices and drops terminal locks", () => {
     const value: ParentingLoopConfig = { geneGoals: {}, aptitudeGoals: {}, selectedSlots: { p1_gp1_g1_g1: "v:77:55", p1_gp1_g1_g2: "v:77:55" }, lockedSlots: { p1_gp1_g1_g1: "v:77:55" }, factorGoals: { p1_gp1_g1_g2: { pink: "Mile", pinkStars: 2 } }, includeTripleCrownAffinity: false, includeTiaraAffinity: false };
-    const veterans = [{ card_id: 103202, trained_chara_id: 77, create_time: 55, factor_info_array: [{ factor_id: 2403 }] } as unknown as KyumaruVeteranItem];
+    const veterans = [{ card_id: 103202, trained_chara_id: 77, create_time: 55, factor_info_array: [{ factor_id: 3403 }] } as unknown as KyumaruVeteranItem];
     const migrated = normalizeLoopConfig(value, veterans);
     expect(migrated.factorGoals?.p1_gp1_g1_g1).toEqual({ pink: "Long", pinkStars: 3 });
     expect(migrated.factorGoals?.p1_gp1_g1_g2).toEqual({ pink: "Mile", pinkStars: 2 });

@@ -5,6 +5,7 @@ import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import { getCharacterImageUrl, type CharacterIndexEntry } from "@/lib/api";
 import { extractSlotPrimaryFactors } from "@/lib/lineage/factor-decoder";
 import type { VeteranTargetFactorMatch } from "@/lib/lineage/parent-factor-matcher";
+import { veteranRankIconSrc } from "@/lib/veterans/rank-icon";
 
 interface TrainedUmaCardProps {
   veteran: KyumaruVeteranItem;
@@ -50,9 +51,7 @@ export function TrainedUmaCard({
   const nameEn = character?.nameEn || veteran.name || `Chara ${cardId}`;
   const titleEn = character?.titleEn || character?.titleJp || "";
 
-  // Rank icon asset path from public/assets/rank/utx_txt_rank_XX.png
-  const rankPadded = String(veteran.rank || 0).padStart(2, "0");
-  const rankIconSrc = `/assets/rank/utx_txt_rank_${rankPadded}.png`;
+  const rankIconSrc = veteranRankIconSrc(veteran.rank, "text");
 
   // Primary 3 factors: Blue, Pink, Green
   const primaryFactors = useMemo(() => {

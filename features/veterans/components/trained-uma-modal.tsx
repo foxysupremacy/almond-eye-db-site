@@ -11,6 +11,7 @@ import { getCharacterImageUrl, type CharacterIndexEntry } from "@/lib/api";
 import { skillsById, charactersById } from "@/lib/api";
 import { decodeFactor, type DecodedFactor } from "@/lib/lineage/factor-decoder";
 import { localizeSpark } from "@/lib/lineage/spark-names";
+import { veteranRankIconSrc } from "@/lib/veterans/rank-icon";
 import { getSkillRarityStyle } from "@/app/common/ui/skills/skill-rarity";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card";
@@ -215,8 +216,7 @@ export default function TrainedUmaModal({
   const nameJp = charaMeta?.nameJp || "";
   const titleEn = charaMeta?.titleEn || charaMeta?.titleJp || `Costume ${cardId}`;
 
-  const rankPadded = String(currentRun.rank || 0).padStart(2, "0");
-  const rankIconSrc = `/assets/statusrank/utx_ico_statusrank_${rankPadded}.png`;
+  const rankIconSrc = veteranRankIconSrc(currentRun.rank);
 
   const totalSkillsCount = currentRun.skill_array?.length || 0;
   const totalFactorsCount = currentRun.factor_info_array?.length || 0;

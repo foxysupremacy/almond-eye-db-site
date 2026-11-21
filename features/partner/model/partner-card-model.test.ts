@@ -57,7 +57,7 @@ describe("partner card model", () => {
     const m = buildPartnerCardModel(VET);
     expect(m.cardId).toBe(111401);
     expect(m.nameEn.length).toBeGreaterThan(0);
-    expect(m.rankIconSrc).toBe("/assets/statusrank/utx_ico_statusrank_81.png");
+    expect(m.rankIconSrc).toBe("/assets/statusrank/utx_ico_statusrank_80.png"); // rank 81 → file 80 (files start at 00 = G)
     expect(m.stats.map((s) => s.value)).toEqual([2187, 1551, 1551, 950, 1243]);
     expect(m.aptitudes.surface.map((a) => a.grade)).toEqual(["A", "D"]);
     expect(m.aptitudes.distance.map((a) => a.grade)).toEqual(["G", "A", "A", "S"]);

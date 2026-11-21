@@ -32,7 +32,7 @@ const MODEL: PartnerCardModel = {
       owner: "self",
       ownerName: "Test Uma",
       blue: [{ factorId: 203, type: "blue", name: "Stamina", stars: 3 }],
-      pink: [{ factorId: 2402, type: "pink", name: "Long", stars: 2 }],
+      pink: [{ factorId: 2402, type: "pink", name: "Chaser", stars: 2 }],
       green: [],
       white: Array.from({ length: 30 }, (_, i) => ({ factorId: 1000 + i, type: "white" as const, name: `Very long white spark ${i}`, stars: 1 })),
     },

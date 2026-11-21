@@ -23,17 +23,25 @@ const BLUE_STAT_NAMES: Record<number, string> = {
   5: "Wit",
 };
 
+// Pink spark ids are <code><stars>, e.g. 2202 = Leader 2★. Codes follow master.mdb
+// succession_factor (factor_type 2): 1x = surface, 2x = running style, 3x = distance.
+export const PINK_FACTOR_APTITUDE = {
+  11: "Turf", 12: "Dirt",
+  21: "Runner", 22: "Leader", 23: "Betweener", 24: "Chaser",
+  31: "Sprint", 32: "Mile", 33: "Medium", 34: "Long",
+} as const;
+
+export type PinkFactorAptitude = (typeof PINK_FACTOR_APTITUDE)[keyof typeof PINK_FACTOR_APTITUDE];
+
+/** The aptitude a pink spark id raises, or null when the id isn't a pink spark. */
+export function pinkFactorAptitude(factorId: number): PinkFactorAptitude | null {
+  if (factorId < 1101 || factorId > 3403) return null;
+  return PINK_FACTOR_APTITUDE[Math.floor(factorId / 100) as keyof typeof PINK_FACTOR_APTITUDE] ?? null;
+}
+
 const PINK_APTITUDE_NAMES: Record<number, string> = {
-  11: "Turf",
-  12: "Dirt",
-  21: "Sprint",
-  22: "Mile",
-  23: "Med",
-  24: "Long",
-  31: "Runner",
-  32: "Leader",
-  33: "Betweener",
-  34: "Chaser",
+  ...PINK_FACTOR_APTITUDE,
+  33: "Med",
 };
 
 import { compactFactors, successionFactors } from "../data/registry";
@@ -158,14 +166,14 @@ export const BLUE_STAT_NAMES_JA: Record<number, { full: string; short: string }>
 export const PINK_APTITUDE_NAMES_JA: Record<number, string> = {
   11: "芝",
   12: "ダート",
-  21: "短距離",
-  22: "マイル",
-  23: "中距離",
-  24: "長距離",
-  31: "逃げ",
-  32: "先行",
-  33: "差し",
-  34: "追込",
+  21: "逃げ",
+  22: "先行",
+  23: "差し",
+  24: "追込",
+  31: "短距離",
+  32: "マイル",
+  33: "中距離",
+  34: "長距離",
 };
 
 export interface SlotPrimaryFactor {

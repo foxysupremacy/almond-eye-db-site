@@ -3,7 +3,7 @@ import type { CharacterIndexEntry } from "../data/types";
 import type { CareerG1Race } from "./career-engine";
 import { characters, careersByCharId, successionFactors, uniqueInheritMap } from "../data/registry";
 import type { KyumaruVeteranItem } from "../veterans/types";
-import { decodeFactor } from "../lineage/factor-decoder";
+import { decodeFactor, pinkFactorAptitude } from "../lineage/factor-decoder";
 import { calculateLineageAffinity, getCharaIdFromCardId } from "../lineage/affinity-engine";
 import { evaluateUniqueSkill, runningStyleToNum } from "./skill-evaluator";
 import type { Course } from "../skill-engine/types";
@@ -313,11 +313,6 @@ function overlapScore(candidate: LoopCandidate, main: Set<number>): number {
   return candidate.skillIds.filter((id) => main.has(id)).length;
 }
 
-const PINK_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
-  11: "Turf", 12: "Dirt", 21: "Sprint", 22: "Mile", 23: "Medium", 24: "Long",
-  31: "Runner", 32: "Leader", 33: "Betweener", 34: "Chaser",
-};
-
 export const WHITE_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
   50001: "Turf", 50002: "Dirt", 50003: "Sprint", 50004: "Mile", 50005: "Medium", 50006: "Long",
   50007: "Runner", 50008: "Leader", 50009: "Betweener", 50010: "Chaser",
@@ -327,7 +322,7 @@ export const WHITE_FACTOR_APTITUDE: Record<number, AptitudeKey> = {
 function hasSpark(candidate: LoopCandidate, color: "blue" | "pink", goal: number | AptitudeKey, stars?: number): boolean {
   return candidate.factorIds.some((factorId) => {
     if (color === "blue") return factorId >= 101 && factorId <= 503 && Math.floor(factorId / 100) === goal && (stars == null || factorId % 10 === stars);
-    return factorId >= 1101 && factorId <= 3403 && PINK_FACTOR_APTITUDE[Math.floor(factorId / 100)] === goal && (stars == null || factorId % 10 === stars);
+    return pinkFactorAptitude(factorId) === goal && (stars == null || factorId % 10 === stars);
   });
 }
 

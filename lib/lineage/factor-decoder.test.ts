@@ -30,10 +30,25 @@ describe("factor-decoder", () => {
     expect(turf2.name).toBe("Turf");
     expect(turf2.stars).toBe(2);
 
-    const mile3 = decodeFactor(2203);
+    const mile3 = decodeFactor(3203);
     expect(mile3.type).toBe("pink");
     expect(mile3.name).toBe("Mile");
     expect(mile3.stars).toBe(3);
+  });
+
+  // master.mdb succession_factor (factor_type 2): 21xx-24xx = 逃げ/先行/差し/追込, 31xx-34xx = 短距離/マイル/中距離/長距離
+  it("decodes 2xxx pink sparks as running styles and 3xxx as distances (game ids)", () => {
+    const leader2 = decodeFactor(2202);
+    expect(leader2.name).toBe("Leader");
+    expect(leader2.nameJa).toBe("先行");
+    expect(leader2.stars).toBe(2);
+    expect(decodeFactor(2101).name).toBe("Runner");
+    expect(decodeFactor(2403).name).toBe("Chaser");
+    expect(decodeFactor(3101).name).toBe("Sprint");
+    expect(decodeFactor(3403).name).toBe("Long");
+    expect(decodeFactor(3403).nameJa).toBe("長距離");
+    const pink = extractSlotPrimaryFactors([{ factor_id: 2202 }]).pink;
+    expect([pink?.nameEn, pink?.nameJa, pink?.stars]).toEqual(["Leader", "先行", 2]);
   });
 
   it("calculates lineage blue stars accurately across self and parents", () => {

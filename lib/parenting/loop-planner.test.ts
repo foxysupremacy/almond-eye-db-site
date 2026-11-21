@@ -34,9 +34,9 @@ function makeVeteran(cardId: number, factors: number[] = []): KyumaruVeteranItem
 function fixtureRequest(): ParentingLoopRequest {
   const roster = Object.values(FIXTURE_IDS).map((id) => charactersById.get(id)).filter((entry) => entry != null);
   const factorBySlot: Partial<Record<LoopAncestorSlot, number[]>> = {
-    p1: [5000603, 103, 2403], p2: [5000703, 3403],
-    p1_gp1: [5000603, 2403], p1_gp2: [5000703, 2403],
-    p2_gp1: [5000603, 5000703, 3103], p2_gp2: [5000603, 5000703, 3103],
+    p1: [5000603, 103, 3403], p2: [5000703, 2403],
+    p1_gp1: [5000603, 3403], p1_gp2: [5000703, 3403],
+    p2_gp1: [5000603, 5000703, 2103], p2_gp2: [5000603, 5000703, 2103],
   };
   const veterans = [...new Set(Object.entries(FIXTURE_IDS).filter(([slot]) => slot !== "target").map(([, id]) => id))]
     .map((id) => {
@@ -261,7 +261,7 @@ describe("parenting loop optimizer", () => {
     delete request.config.lockedSlots.p1;
     request.config.factorGoals = { p1: { pink: "Long", pinkStars: 3 } };
     const result = planParentingLoop(request);
-    expect(result.blueprints[0].ancestors.p1.factorIds).toContain(2403);
+    expect(result.blueprints[0].ancestors.p1.factorIds).toContain(3403);
     expect(result.blueprints[0].factorGoalScore).toBeGreaterThan(0);
   });
 

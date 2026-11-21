@@ -20,7 +20,7 @@ describe("selectLoopSlotInSetup", () => {
     const next = selectLoopSlotInSetup(withLoop({}), "p2", "b:111401", [{ factor_id: 203 }, { factor_id: 2402 }]);
     expect(next.loopConfig?.selectedSlots.p2).toBe("b:111401");
     expect(next.loopConfig?.lockedSlots?.p2).toBe("b:111401");
-    expect(next.loopConfig?.factorGoals?.p2).toEqual({ blue: 2, blueStars: 3, pink: "Long", pinkStars: 2 });
+    expect(next.loopConfig?.factorGoals?.p2).toEqual({ blue: 2, blueStars: 3, pink: "Chaser", pinkStars: 2 });
   });
 
   test("clears descendants when the slot changes to a different candidate", () => {
