@@ -10,6 +10,7 @@ import type { KyumaruVeteranItem, KyumaruLearnedSkill, KyumaruFactorInfo } from 
 import { getCharacterImageUrl, type CharacterIndexEntry } from "@/lib/api";
 import { skillsById, charactersById } from "@/lib/api";
 import { decodeFactor, type DecodedFactor } from "@/lib/lineage/factor-decoder";
+import { localizeSpark } from "@/lib/lineage/spark-names";
 import { getSkillRarityStyle } from "@/app/common/ui/skills/skill-rarity";
 import SkillIcon from "@/app/common/ui/skills/skill-icon";
 import { SkillHoverCard } from "@/app/common/ui/skills/details/skill-hover-card";
@@ -21,7 +22,8 @@ import {
   evaluateVeteranTargetFactors,
 } from "@/lib/lineage/parent-factor-matcher";
 import { getInheritableSkillForGold, getInheritableSkillForUnique } from "@/lib/skills/rarity";
-import { XIcon } from "@/app/common/ui/primitives/icons";
+import { LinkIcon, XIcon } from "@/app/common/ui/primitives/icons";
+import { PartnerShareSheet, usePartnerShareViewModel } from "@/features/partner";
 import { Badge } from "@/app/common/ui/primitives/badge";
 
 interface TrainedUmaModalProps {
@@ -68,6 +70,8 @@ export default function TrainedUmaModal({
     }
     return veteran;
   }, [runs, activeRunIndex, veteran]);
+
+  const shareVm = usePartnerShareViewModel(currentRun);
 
   // Associated character metadata
   const charaMeta = useMemo(() => {
@@ -136,7 +140,7 @@ export default function TrainedUmaModal({
     } else if (lineageScope === "parent2") {
       factorArray = parent2Chara?.factors || [];
     }
-    return factorArray.map((f) => decodeFactor(f.factor_id));
+    return factorArray.map((f) => localizeSpark(decodeFactor(f.factor_id)));
   }, [currentRun, lineageScope, parent1Chara, parent2Chara]);
 
   // Group scoped factors by color
@@ -312,6 +316,13 @@ export default function TrainedUmaModal({
                     title="Assign to Parent 2 in Parenting Hub"
                   >
                     + P2
+                  </AppButton>
+                  <AppButton
+                    variant="secondary"
+                    onPress={shareVm.commands.open}
+                    title="Share this trained uma as a partner card"
+                  >
+                    <LinkIcon className="h-3.5 w-3.5" /> Share
                   </AppButton>
                 </div>
               )}
@@ -922,6 +933,7 @@ export default function TrainedUmaModal({
             </div>
           )}
         </div>
+      <PartnerShareSheet vm={shareVm} umaName={nameEn} />
     </AppDialog>
   );
 }

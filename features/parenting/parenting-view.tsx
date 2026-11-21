@@ -13,6 +13,7 @@ import { LineageAffinityHeader } from "@/features/parenting/components/lineage-a
 import { TraineeSpotlight } from "@/features/parenting/components/trainee-spotlight";
 import { PedigreeSkillsSection } from "@/features/parenting/components/pedigree-skills-section";
 import { AppButton } from "@/app/common/ui/controls/app-button";
+import { ParentShareButton } from "@/features/partner";
 import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
 import { CheckIcon, DeckIcon, LinkIcon } from "@/app/common/ui/primitives/icons";
 import { ParentingLoopOptimizer } from "./loop-optimizer";
@@ -104,6 +105,13 @@ export default function ParentingView({ onNavigateToParentDeck }: ParentingViewP
                   {copiedLink ? <CheckIcon className="h-4 w-4" /> : <LinkIcon className="h-4 w-4" />}
                   <span>{copiedLink ? "Link Copied!" : "Share Plan"}</span>
                 </AppButton>
+                <ParentShareButton
+                  parent1={setup.parent1}
+                  p1IsBorrow={setup.p1IsBorrow ?? false}
+                  parent2={setup.parent2}
+                  p2IsBorrow={setup.p2IsBorrow ?? false}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 shadow-2xs cursor-pointer transition-colors"
+                />
                 <AppButton
                   variant="quiet"
                   onPress={commands.resetParenting}

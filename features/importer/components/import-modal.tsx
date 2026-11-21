@@ -8,6 +8,7 @@ import { saveVeterans, clearVeterans } from "@/lib/IndexDB/veterans-db";
 import type { KyumaruInventoryDump } from "@/lib/veterans/import/kyumaru-types";
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import { decodeKyumaruSyncPayload } from "@/lib/veterans/import/kyumaru-decode";
+import { PartnerShareHint } from "@/features/partner";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { AppDialog } from "@/app/common/ui/controls/app-dialog";
 
@@ -22,7 +23,7 @@ export default function ImportModal({
   const { totalOwned: totalUmas, clearAll: clearUmas } = useOwnedUmas();
 
   const [isDragging, setIsDragging] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string; veterans?: boolean } | null>(null);
   const [pastedData, setPastedData] = useState("");
 
   if (!isOpen) return null;
@@ -63,6 +64,7 @@ export default function ImportModal({
         setStatusMessage({
           type: "success",
           text: `Successfully imported ${parsed.length} Hall of Fame veterans into local database!`,
+          veterans: true,
         });
         return;
       }
@@ -188,6 +190,7 @@ export default function ImportModal({
             {statusMessage.text}
           </div>
         )}
+        {statusMessage?.veterans && <PartnerShareHint onNavigate={onClose} className="mb-4" />}
 
         {/* Drag & drop file area */}
         <div

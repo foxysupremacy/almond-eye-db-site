@@ -29,7 +29,8 @@ import { type PickerRecommendations, createCharacterVeteranTemplate } from "@/fe
 import type { ParticipantSlot } from "@/lib/parenting/types";
 import { resolveGrandparentSlot, buildParticipantsList, resolveTargetCharacter } from "@/lib/parenting/pedigree-resolvers";
 import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
-import { LOOP_ANCESTOR_SLOTS, type LoopAncestorSlot } from "@/lib/parenting/loop-planner";
+import type { LoopAncestorSlot } from "@/lib/parenting/loop-planner";
+import { selectLoopSlotInSetup } from "@/lib/parenting/borrow";
 import { querySlotRecommendations } from "../workers/slot-recommendations-client";
 
 const STYLE_LABELS: Record<number, string> = {
@@ -380,38 +381,7 @@ export function useParentingViewModel({
   }, [activePickerSlot, setup.parent1, setup.parent2, selectedAncestorForPicker]);
 
   const selectLoopSlot = useCallback((slot: LoopAncestorSlot, candidateKey: string, factors?: { factor_id: number }[]) => {
-    updateSetup((prev) => {
-      const factorGoals = { ...(prev.loopConfig?.factorGoals ?? {}) };
-      const selectedSlots = { ...(prev.loopConfig?.selectedSlots ?? {}) };
-      const lockedSlots = { ...(prev.loopConfig?.lockedSlots ?? {}) };
-      if (selectedSlots[slot] && selectedSlots[slot] !== candidateKey) {
-        for (const descendant of LOOP_ANCESTOR_SLOTS.filter((key) => key.startsWith(`${slot}_`))) {
-          delete selectedSlots[descendant];
-          delete lockedSlots[descendant];
-          if (descendant.split("_").length < 4) delete factorGoals[descendant];
-        }
-      }
-      if (factors) {
-        const blueId = factors.find(({ factor_id }) => factor_id >= 101 && factor_id <= 503)?.factor_id;
-        const pinkId = factors.find(({ factor_id }) => factor_id >= 1101 && factor_id <= 3403)?.factor_id;
-        const pinkCode = pinkId == null ? 0 : Math.floor(pinkId / 100);
-        const pink = ({ 11: "Turf", 12: "Dirt", 21: "Sprint", 22: "Mile", 23: "Medium", 24: "Long", 31: "Runner", 32: "Leader", 33: "Betweener", 34: "Chaser" } as const)[pinkCode as 11 | 12 | 21 | 22 | 23 | 24 | 31 | 32 | 33 | 34] ?? null;
-        factorGoals[slot] = { blue: blueId == null ? null : Math.floor(blueId / 100), blueStars: blueId == null ? 0 : blueId % 10, pink, pinkStars: pinkId == null ? 0 : pinkId % 10 };
-      } else delete factorGoals[slot];
-      return {
-        ...prev,
-        loopConfig: {
-          ...prev.loopConfig,
-          geneGoals: prev.loopConfig?.geneGoals ?? {},
-          factorGoals,
-          selectedSlots: { ...selectedSlots, [slot]: candidateKey },
-          lockedSlots: { ...lockedSlots, [slot]: candidateKey },
-          aptitudeGoals: prev.loopConfig?.aptitudeGoals ?? {},
-          includeTripleCrownAffinity: prev.loopConfig?.includeTripleCrownAffinity ?? false,
-          includeTiaraAffinity: prev.loopConfig?.includeTiaraAffinity ?? false,
-        },
-      };
-    });
+    updateSetup((prev) => selectLoopSlotInSetup(prev, slot, candidateKey, factors));
   }, [updateSetup]);
 
   const handleSelectCandidate = useCallback((candidate: LegacyCandidate) => {

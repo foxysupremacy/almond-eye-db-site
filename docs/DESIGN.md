@@ -715,3 +715,16 @@ In `features/parenting/`, the Parenting Hub and its lineage canvas follow the sa
 3. **Farm focus toggles** (`FarmFocusToggles`, header chip beside the "Ace genetics" line):
    - Six toggle chips grouped Surface (Turf/Dirt) and Distance (Spr/Mile/Med/Long); the trigger lists disabled ones (`Farm focus: −Spr`).
    - A toggled-off aptitude drops its default floor target, its G1 races leave the calendar with the muted `excluded` status, and the spark engine spends no budget on it. Explicit per-slot C/D/E targets still win over the toggle. Persisted as `loopConfig.disabledFarmAptitudes` and round-tripped through share links.
+
+---
+
+## 24. Partner Card (`/partner#v=…`)
+
+A read-only, in-game-style card for one shared trained uma (`features/partner/`). Entry points: **Share Parent** in the Parenting toolbar (next to Share Plan; shown only when P1/P2 holds one of your own trained umas, with a Parent 1 / Parent 2 switch in the sheet), the **Share** button in the Trained Uma modal header, and the `PartnerShareHint` shown after a veterans import (`/import` and the Import modal). Trained Umas is a visible desktop tab (after Parenting) and a mobile Library destination.
+
+1. **Surface**: one flat `<article>` split by `divide-y divide-zinc-100 dark:divide-zinc-800/80` — header (portrait, EN name over JP name per §1, rank badge, 5 stats), aptitudes, then the shared sections in canonical order: Support Cards → Skills → Sparks → Affinity → G1 Wins. No nested cards (§3).
+2. **Section toggles**: a flat segmented `ToggleButtonGroup` pill row (`PartnerSectionToggles`, `bg-zinc-100 dark:bg-zinc-800 p-0.5`). The same component drives the share sheet (what goes into the link) and the viewer page (what is shown). Sections the sharer turned off are absent from the payload, so the viewer never sees a toggle for them.
+3. **Rows**: skills reuse the §11 recipe with the `border-l-4` rarity stripe and surface tint (§22); support-card tiles keep the 6-slot grid with the rarity chip and a fixed-width `w-11` LB chip (`0 LB`…`MLB`, §4.5); sparks are small tinted chips (blue/pink/green/white) with an SVG `StarIcon` count, never `★` text in the DOM (§14).
+4. **Actions**: `Copy link` / `Download PNG` (secondary) and `Use as borrowed parent` (primary) share one `AppButton` group. Borrowing writes P2 + borrow flag + loop slot through `applyBorrowedParent` (`lib/parenting/borrow.ts`) and navigates to `/#parenting` only after the setup commits.
+5. **PNG export**: `layoutPartnerCard` (pure, tested) emits draw ops in the paper palette (`#f5f2ec` / ink `#2b2b2b` / accent `#794016`); `renderPartnerCardPng` executes them on a 1080px canvas. Images without CORS grants are replaced by placeholder tiles instead of tainting the canvas.
+6. **Share sheet**: `AppDialog` at `overlayLayer="inspection"` so it stacks above the Trained Uma modal (`picker`).

@@ -7,8 +7,9 @@ import { appRouteHref, isRootAppRoute, MOBILE_TABS, TABS, type RootAppRoute } fr
 
 afterEach(cleanup);
 
-test("Rankings sits between Parenting and Visualizer", () => {
-  expect(TABS.map((t) => t.id)).toEqual(["main", "parent-deck", "parenting", "rankings", "visualizer", "stamina", "supports", "characters"]);
+test("Trained Umas follows Parenting and Rankings sits before Visualizer", () => {
+  expect(TABS.map((t) => t.id)).toEqual(["main", "parent-deck", "parenting", "veterans", "rankings", "visualizer", "stamina", "supports", "characters"]);
+  expect(TABS.find((t) => t.id === "veterans")?.label).toBe("Trained Umas");
   const rankings = TABS.find((t) => t.id === "rankings");
   expect(rankings?.label).toBe("Rankings");
 });
@@ -27,22 +28,22 @@ test("Library opens a sheet with canonical destinations and can be dismissed", a
   expect(within(library).getByRole("link", { name: "Supports" }).getAttribute("href")).toBe("/supports");
   expect(within(library).getByRole("link", { name: "Characters" }).getAttribute("href")).toBe("/characters");
   expect(within(library).getByRole("link", { name: "Stamina" }).getAttribute("href")).toBe("/#stamina");
-  expect(within(library).queryByRole("link", { name: "Trained Umas" })).toBeNull();
+  expect(within(library).getByRole("link", { name: "Trained Umas" }).getAttribute("href")).toBe("/#veterans");
   expect(within(library).getByRole("link", { name: "Supports" }).getAttribute("aria-current")).toBe("page");
   await user.click(screen.getByRole("button", { name: "Close Library" }));
   expect(screen.queryByRole("navigation", { name: "Library navigation" })).toBeNull();
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
 });
 
-test("root navigation changes Rankings while the hidden Veterans route remains hash-addressable", async () => {
+test("root navigation reaches Rankings and the Trained Umas route from the Library", async () => {
   const user = userEvent.setup();
   const selected: RootAppRoute[] = [];
   render(<AppMobileNavigation activeRoute="main" onRootRouteChange={(route) => selected.push(route)} />);
   await user.click(screen.getByRole("link", { name: "Ranks" }));
   expect(selected).toEqual(["rankings"]);
   await user.click(screen.getByRole("button", { name: "Library" }));
-  expect(screen.queryByRole("link", { name: "Trained Umas" })).toBeNull();
-  expect(selected).toEqual(["rankings"]);
+  await user.click(screen.getByRole("link", { name: "Trained Umas" }));
+  expect(selected).toEqual(["rankings", "veterans"]);
   expect(isRootAppRoute("veterans")).toBe(true);
   expect(appRouteHref("veterans")).toBe("/#veterans");
 });
@@ -59,7 +60,7 @@ test("shared desktop header exposes Rankings and retains collection page URLs", 
   const selected: RootAppRoute[] = [];
   render(<AppShellHeader activeRoute="rankings" isControlsCollapsed={false} mobileTitle="Rankings" onToggleControls={() => {}} onRootRouteChange={(route) => selected.push(route)} />);
   const nav = screen.getByRole("navigation", { name: "Primary navigation" });
-  expect(within(nav).queryByRole("link", { name: "Trained Umas" })).toBeNull();
+  expect(within(nav).getByRole("link", { name: "Trained Umas" }).getAttribute("href")).toBe("/#veterans");
   const rankings = within(nav).getByRole("link", { name: "Rankings" });
   expect(rankings.getAttribute("href")).toBe("/#rankings");
   expect(rankings.getAttribute("aria-current")).toBe("page");

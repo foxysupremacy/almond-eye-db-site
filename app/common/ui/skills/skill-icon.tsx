@@ -9,10 +9,13 @@ interface SkillIconProps {
   size?: number;
 }
 
+const PATHS = [(id: string) => `/assets/skills/${id}.png`, (id: string) => `/assets/skills/utx_ico_skill_${id}.png`];
+
 /**
  * Renders a skill type icon for a given iconId from /assets/skills/[iconId].png
  * or fallback /assets/skills/utx_ico_skill_[iconId].png.
- * Gracefully hides itself if the iconId is missing or the image fails to load.
+ * When neither file exists it renders a neutral tile of the same size, so the row
+ * keeps its alignment instead of showing a broken image.
  */
 export default function SkillIcon({
   iconId,
@@ -20,41 +23,37 @@ export default function SkillIcon({
   className = "h-5 w-5 object-contain flex-none shrink-0",
   size,
 }: SkillIconProps) {
-  const [hasError, setHasError] = useState(false);
-  const [fallbackAttempted, setFallbackAttempted] = useState(false);
+  const cleanId = iconId === null || iconId === undefined ? "" : String(iconId).trim().replace(/^utx_ico_skill_/, "").replace(/\.png$/, "");
+  // Attempt index is tracked per icon id, so a new id always starts from the first path.
+  const [attempt, setAttempt] = useState<{ id: string; index: number }>({ id: cleanId, index: 0 });
+  const index = attempt.id === cleanId ? attempt.index : 0;
 
-  if (iconId === null || iconId === undefined || iconId === "" || hasError) {
-    return null;
+  const fail = () => setAttempt({ id: cleanId, index: index + 1 });
+
+  if (!cleanId || cleanId === "0" || cleanId === "00000") return null;
+
+  if (index >= PATHS.length) {
+    return (
+      <span
+        data-skill-icon-missing=""
+        aria-hidden="true"
+        title={name}
+        style={size ? { width: size, height: size } : undefined}
+        className={`inline-block rounded-md bg-zinc-200/80 dark:bg-zinc-700/60 ${className}`}
+      />
+    );
   }
-
-  // Normalize iconId (handle numbers, strings, 'utx_ico_skill_' prefix, and '.png' extension)
-  const rawId = String(iconId).trim();
-  const cleanId = rawId.replace(/^utx_ico_skill_/, "").replace(/\.png$/, "");
-  if (!cleanId || cleanId === "0" || cleanId === "00000") {
-    return null;
-  }
-  const displayId = cleanId;
-
-  const src = fallbackAttempted
-    ? `/assets/skills/utx_ico_skill_${displayId}.png`
-    : `/assets/skills/${displayId}.png`;
 
   return (
     <img
-      key={`${displayId}-${fallbackAttempted}`}
-      src={src}
+      key={`${cleanId}-${index}`}
+      src={PATHS[index](cleanId)}
       alt={name ? `${name} icon` : "Skill icon"}
       title={name}
       width={size}
       height={size}
       loading="lazy"
-      onError={() => {
-        if (!fallbackAttempted) {
-          setFallbackAttempted(true);
-        } else {
-          setHasError(true);
-        }
-      }}
+      onError={fail}
       className={className}
     />
   );

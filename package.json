@@ -43,6 +43,7 @@
 		"data:build:pvp-recommendations": "node --experimental-strip-types scripts/build-pvp-recommendations.ts",
 		"data:refresh": "node --experimental-strip-types scripts/refresh-data.ts",
 		"fetch:gametora": "node --experimental-strip-types scripts/fetch-gametora.ts",
+		"fetch:skill-icons": "node --experimental-strip-types scripts/fetch-skill-icons.ts",
 		"dev": "vinext dev",
 		"build": "vinext build",
 		"start": "wrangler dev --config dist/server/wrangler.json",

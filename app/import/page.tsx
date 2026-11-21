@@ -9,6 +9,7 @@ import { saveVeterans, getVeteransCount } from "@/lib/IndexDB/veterans-db";
 import { FileTrigger } from "react-aria-components";
 import { AppButton } from "@/app/common/ui/controls/app-button";
 import { LoadingAnimation } from "@/app/common/ui/controls/loading-animation";
+import { PartnerShareHint } from "@/features/partner";
 
 export default function ImportPage() {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
@@ -263,6 +264,8 @@ export default function ImportPage() {
               <div className="text-[11px] text-zinc-500 dark:text-zinc-400 font-medium">Trained Veterans</div>
             </div>
           </div>
+
+          {(stats.veterans ?? 0) > 0 && <PartnerShareHint className="mb-4 border-t border-emerald-500/20 pt-4" />}
 
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-emerald-500/20">
             <div className="flex items-center gap-2">

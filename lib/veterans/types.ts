@@ -47,7 +47,7 @@ export interface KyumaruVeteranItem {
   wins?: number;
   total_skill_pt?: number;
   skill_array?: KyumaruLearnedSkill[];
-  support_card_list?: unknown[];
+  support_card_list?: KyumaruVeteranSupportCard[];
   is_saved?: number;
   race_result_list?: unknown[];
   win_saddle_id_array?: number[];
@@ -58,6 +58,15 @@ export interface KyumaruVeteranItem {
   scenario_data_array?: unknown[];
   scenario_id?: number;
   create_time?: string;
+}
+
+/** Support card used in the career that produced this veteran. */
+export interface KyumaruVeteranSupportCard {
+  position: number;
+  support_card_id: number;
+  limit_break_count: number;
+  exp?: number;
+  is_rental?: number;
 }
 
 export interface KyumaruSuccessionChara {

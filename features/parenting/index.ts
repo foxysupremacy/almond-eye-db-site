@@ -4,3 +4,4 @@ export type { ParentingViewProps } from "./parenting-view";
 export type { DisplayParentSkill } from "./skills/parent-skill-list";
 export { useParentingSetup, useLineageSkills } from "./hooks";
 export * from "./view-models";
+export { default as CharacterPickerModal } from "./components/character-picker-modal";

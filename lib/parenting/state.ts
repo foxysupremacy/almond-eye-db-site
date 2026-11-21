@@ -4,6 +4,7 @@
 import type { KyumaruVeteranItem } from "../veterans/types";
 import { APTITUDE_KEYS, DEFAULT_APTITUDE_GOALS, FARM_APTITUDES, LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, GGGP_SPARK_SLOTS, PARENT_WHITE_TARGET_SLOTS } from "./loop-planner";
 import { extractSlotPrimaryFactors } from "../lineage/factor-decoder";
+import { deflateToBase64Url, inflateFromBase64Url } from "../share-link/deflate";
 import {
   readJsonStorage,
   writeJsonStorage,
@@ -274,30 +275,16 @@ export async function serializeParentingToHash(setup: ParentingSetup): Promise<s
     lc: setup.loopConfig,
   };
 
-  const jsonStr = JSON.stringify(minimalPayload);
-  const bytes = new TextEncoder().encode(jsonStr);
-
-  const stream = new Response(
-    new Blob([bytes]).stream().pipeThrough(new CompressionStream("deflate"))
-  );
-  const compressedBuffer = await stream.arrayBuffer();
-  const binary = String.fromCharCode(...new Uint8Array(compressedBuffer));
-  const b64 = btoa(binary)
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-
+  const b64 = await deflateToBase64Url(JSON.stringify(minimalPayload), "deflate");
   return `parenting=${b64}`;
 }
 
 /** Restore current and legacy Parenting hashes. The separate deck share V4 codec is unaffected. */
 export async function deserializeParentingFromHash(hash: string, veterans: KyumaruVeteranItem[] = []): Promise<ParentingSetup> {
-  const encoded = hash.replace(/^#?parenting=/, "").replace(/-/g, "+").replace(/_/g, "/");
-  if (!encoded || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error("Invalid Parenting share hash");
-  const binary = atob(encoded + "=".repeat((4 - encoded.length % 4) % 4));
-  const compressed = Uint8Array.from(binary, (char) => char.charCodeAt(0));
-  const stream = new Response(new Blob([compressed]).stream().pipeThrough(new DecompressionStream("deflate")));
-  const payload = JSON.parse(new TextDecoder().decode(await stream.arrayBuffer())) as Record<string, unknown>;
+  const raw = hash.replace(/^#?parenting=/, "");
+  if (!raw || !/^[A-Za-z0-9+/_-]*={0,2}$/.test(raw)) throw new Error("Invalid Parenting share hash");
+  const encoded = raw.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  const payload = JSON.parse(await inflateFromBase64Url(encoded, "deflate")) as Record<string, unknown>;
   const validVet = (value: unknown): KyumaruVeteranItem | null => {
     if (!value || typeof value !== "object") return null;
     const record = value as Record<string, unknown>;
