@@ -32,9 +32,21 @@ import { matchesSkillEffectFilter } from "@/lib/skills/effects";
 import { buildHardToGetSkills, filterParentSkills, goldOriginOf, mergeParentSkills, sortParentSkillsForFarming } from "./model/parent-skill-projections";
 import GoldOriginLabel from "@/app/common/ui/skills/provenance/gold-origin-label";
 import { parentSkillPickerAdapter } from "./model/parent-skill-state";
+import { exportFileName, formatSkillExport } from "./model/parent-skill-export";
 import { usePickerController } from "@/app/common/hooks/use-picker-controller";
 
 export type { DisplayParentSkill };
+
+const FILTER_EXPORT_LABELS: Record<string, string> = {
+  inherit_only: "Inherit Only",
+  unique: "Unique Targets",
+  duplicate: "In Main Deck",
+  parent_duplicate: "Parent Dupes",
+  hint: "Card Hints",
+  event: "Card Events",
+  parent_unique: "Parent Unique",
+  factor: "Bloodline Factors",
+};
 
 
 interface ParentSkillListProps {
@@ -265,6 +277,32 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
     },
   );
 
+  const [copied, setCopied] = useState(false);
+  const exportTitle = sourceFilter === "hard_to_get"
+    ? "Hard to Get"
+    : filter === "all" ? "All Possible Skills" : (FILTER_EXPORT_LABELS[filter] ?? "Skills");
+  const buildExportText = () => formatSkillExport(exportTitle, filtered);
+  const handleCopyExport = async () => {
+    try {
+      await navigator.clipboard.writeText(buildExportText());
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch (error) {
+      console.error("Failed to copy skill list", error);
+    }
+  };
+  const handleDownloadExport = () => {
+    const blob = new Blob([buildExportText()], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = exportFileName(exportTitle);
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
   // Persist the selected view without putting browser storage in the reducer.
   useEffect(() => {
     try {
@@ -401,6 +439,28 @@ export default function ParentSkillList({ onNavigateToParenting }: ParentSkillLi
               Group by Parent
             </button>
           </div>}
+
+          {/* Export the skills currently listed (respects filter, source, rarity and search) */}
+          <div className="flex items-center gap-1.5 md:ml-auto text-xs font-medium">
+            <button
+              type="button"
+              disabled={filtered.length === 0}
+              onClick={handleCopyExport}
+              title={`Copy the ${filtered.length} listed skills as text`}
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1 text-zinc-600 dark:text-zinc-300 shadow-2xs transition-colors cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {copied ? "Copied ✓" : `Copy list (${filtered.length})`}
+            </button>
+            <button
+              type="button"
+              disabled={filtered.length === 0}
+              onClick={handleDownloadExport}
+              title={`Download the ${filtered.length} listed skills as a .txt file`}
+              className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 px-2.5 py-1 text-zinc-600 dark:text-zinc-300 shadow-2xs transition-colors cursor-pointer hover:text-zinc-900 dark:hover:text-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Download .txt
+            </button>
+          </div>
         </div>
       </div>
 
