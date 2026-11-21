@@ -5,7 +5,7 @@ import { AppButton } from "@/app/common/ui/controls/app-button";
 
 import { AppSelect } from "@/app/common/ui/controls/app-select";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDeck } from "@/features/deck/state";
 import {
   getPvpEventById,
@@ -13,12 +13,17 @@ import {
   getActivePvpEvents,
   type PvpEvent,
 } from "@/lib/pvp/events";
+import { expiredNoticeKey, loadHiddenNotices, mergeHiddenNotices, saveHiddenNotices } from "@/lib/pvp/expired-notice";
 import { AlertCircleIcon, TrashIcon, CheckIcon } from "@/app/common/ui/primitives/icons";
 
 export function PvpExpiredModal() {
   const { presets, deletePreset, importPreset } = useDeck();
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
   const [migrateSelections, setMigrateSelections] = useState<Record<string, string>>({});
+  const [hiddenNotices, setHiddenNotices] = useState<Set<string> | null>(null);
+
+  // Read persisted "don't show again" choices after mount (localStorage is client-only).
+  useEffect(() => { setHiddenNotices(new Set(loadHiddenNotices())); }, []);
 
   const activeEvents = useMemo(() => getActivePvpEvents(), []);
 
@@ -28,10 +33,11 @@ export function PvpExpiredModal() {
       if (dismissedIds.has(p.id)) return false;
       const eventId = p.trackInfo.pvpEventId;
       if (!eventId) return false;
+      if (!hiddenNotices || hiddenNotices.has(expiredNoticeKey(p.id, eventId))) return false;
       const event = getPvpEventById(eventId);
       return !event || isPvpEventEnded(event);
     });
-  }, [presets, dismissedIds]);
+  }, [presets, dismissedIds, hiddenNotices]);
 
   if (affectedPresets.length === 0) return null;
 
@@ -72,6 +78,15 @@ export function PvpExpiredModal() {
 
   const handleDelete = (presetId: string) => {
     deletePreset(presetId);
+  };
+
+  const handleHideForever = () => {
+    const keys = mergeHiddenNotices(
+      loadHiddenNotices(),
+      affectedPresets.map((p) => expiredNoticeKey(p.id, p.trackInfo.pvpEventId)),
+    );
+    saveHiddenNotices(keys);
+    setHiddenNotices(new Set(keys));
   };
 
   const handleKeepAll = () => {
@@ -173,7 +188,7 @@ export function PvpExpiredModal() {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-between gap-3 p-4 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/60">
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-zinc-100 dark:border-zinc-800/80 bg-zinc-50/60 dark:bg-zinc-900/60">
           <AppButton variant="quiet"
             type="button"
             onPress={handleKeepAll}
@@ -181,13 +196,21 @@ export function PvpExpiredModal() {
           >
             Keep courses for all presets
           </AppButton>
-          <AppButton variant="secondary"
-            type="button"
-            onPress={() => setDismissedIds(new Set(affectedPresets.map((p) => p.id)))}
-
-          >
-            Dismiss for now
-          </AppButton>
+          <div className="flex items-center gap-2">
+            <AppButton variant="quiet"
+              type="button"
+              onPress={handleHideForever}
+              title="Hide this notice for these presets permanently"
+            >
+              Don&apos;t show again
+            </AppButton>
+            <AppButton variant="secondary"
+              type="button"
+              onPress={() => setDismissedIds(new Set(affectedPresets.map((p) => p.id)))}
+            >
+              Dismiss for now
+            </AppButton>
+          </div>
         </div>
     </AppDialog>
   );

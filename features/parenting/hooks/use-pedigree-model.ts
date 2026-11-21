@@ -4,7 +4,7 @@ import { characters as allCharacters, skillsById, uniqueInheritMap } from "@/lib
 import type { KyumaruVeteranItem } from "@/lib/veterans/types";
 import { LOOP_ANCESTOR_SLOTS, LOOP_UMA_SLOTS, evaluateParentingBranch, type AptitudeKey, type BranchAssessment, type FarmAptitude, type LoopUmaSlot, type LoopAncestorSlot, type LoopCandidate, type ParentingLoopConfig, type TargetRank } from "@/lib/parenting/loop-planner";
 import type { BranchSparkAssignment } from "@/lib/parenting/spark-suggester";
-import type { ParentingSetup } from "@/lib/parenting/state";
+import { clearAncestorSlot, isAncestorSlotClearable, type ParentingSetup } from "@/lib/parenting/state";
 import { resolveMinmaxPedigree } from "@/lib/parenting/minmax-context";
 import { evaluateParentingMinmax, type ParentingMinmaxAssessment, type ParentingMinmaxContext, type SlotGeneticAssessment } from "@/lib/parenting/minmax";
 import type { Course } from "@/lib/skill-engine/types";
@@ -40,6 +40,10 @@ export interface PedigreeModel {
   geneticAssessment(slot: LoopUmaSlot): SlotGeneticAssessment | undefined;
   setFactorGoal(slot: LoopAncestorSlot, goal: EditableFactorPlan): void;
   setWhiteTargets(slot: LoopUmaSlot, targets: AptitudeKey[]): void;
+  /** Whether a P/GP slot holds a user pick that `clearSlot` can remove. */
+  canClearSlot(slot: LoopUmaSlot): boolean;
+  /** Remove just this slot's pick; the rest of the tree is kept. */
+  clearSlot(slot: LoopUmaSlot): void;
   setAptitudeGoal(slot: LoopUmaSlot, aptitude: AptitudeKey, rank: TargetRank | null): void;
   /** Single write for the whole focus set — per-aptitude writes would each
    * start from the same stale config and overwrite each other. */
@@ -106,6 +110,8 @@ export function usePedigreeModel(props: PedigreeModelProps): PedigreeModel {
   const geneticAssessment = (slot: LoopUmaSlot) => minmax.slots.find((entry) => entry.slot === slot);
   const setWhiteTargets = (slot: LoopUmaSlot, targets: AptitudeKey[]) =>
     updateConfig({ ...config, slotWhiteTargets: { ...config.slotWhiteTargets, [slot]: targets } });
+  const canClearSlot = (slot: LoopUmaSlot) => isAncestorSlotClearable(props.setup, slot);
+  const clearSlot = (slot: LoopUmaSlot) => props.updateSetup((prev) => clearAncestorSlot(prev, slot));
   const setAptitudeGoal = (slot: LoopUmaSlot, aptitude: AptitudeKey, rank: TargetRank | null) => {
     const goals = { ...config.slotAptitudeGoals?.[slot] };
     if (rank == null) delete goals[aptitude];
@@ -126,5 +132,5 @@ export function usePedigreeModel(props: PedigreeModelProps): PedigreeModel {
     updateConfig({ ...config, factorGoals });
   };
 
-  return { config, selectedCandidates, assessments, minmaxContext, minmax, factorPlan, sparkSources, uniqueSkill, whiteTargets, geneticAssessment, setFactorGoal, setWhiteTargets, setAptitudeGoal, setDisabledFarmAptitudes, applyBranchSparks };
+  return { config, selectedCandidates, assessments, minmaxContext, minmax, factorPlan, sparkSources, uniqueSkill, whiteTargets, geneticAssessment, setFactorGoal, setWhiteTargets, canClearSlot, clearSlot, setAptitudeGoal, setDisabledFarmAptitudes, applyBranchSparks };
 }

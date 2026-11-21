@@ -93,3 +93,32 @@ test("projection display grade and boost branches", () => {
   expect([isProjectionBoosted(p("B", "B")), projectionDisplayGrade(p("B", "B"))]).toEqual([false, "B"]);
   expect(projectionDisplayGrade(p("?", "A", 1))).toBe("A");
 });
+test("aptitude cells mark farmable genetics (≥6 pink stars) and selected genetic targets", () => {
+  const base = evaluateParentingBranch("target", {}, config, charactersById.get(106802)!);
+  const withStars = (stars: number) => ({
+    ...base,
+    whiteFactors: base.whiteFactors.map((factor) => factor.name === "Turf" ? { ...factor, availablePinkStars: stars } : factor),
+  });
+  const { AptitudeCell } = require("./aptitude-controls");
+  const render = (stars: number, isGeneticTarget = false) => renderToStaticMarkup(<AptitudeCell
+    aptitude="Turf" assessment={withStars(stars)} label="P1" sources={[]} compactCell isGeneticTarget={isGeneticTarget}
+  />);
+  const unfarmable = render(5);
+  expect(unfarmable).not.toContain("data-genetic-farmable");
+  expect(unfarmable).not.toContain("data-genetic-bubble");
+  expect(unfarmable).not.toContain("data-genetic-header");
+  const eligible = render(6);
+  expect(eligible).toContain('data-genetic-farmable="possible"');
+  // Hover bubble with the short gene info, and the label row recolored
+  expect(eligible).toContain("data-genetic-bubble");
+  expect(eligible).toContain("Genetic 40% ☆6");
+  expect(eligible).toContain("group-hover/apt:opacity-100");
+  expect(eligible).toContain("data-genetic-header");
+  expect(eligible).not.toContain("data-genetic-target");
+  expect(eligible).not.toContain("data-genetic-tag");
+  const guaranteed = render(12, true);
+  expect(guaranteed).toContain('data-genetic-farmable="guaranteed"');
+  expect(guaranteed).toContain("Genetic 100% ☆12");
+  expect(guaranteed).toContain("data-genetic-tag");
+  expect(guaranteed).toContain('data-genetic-target="true"');
+});

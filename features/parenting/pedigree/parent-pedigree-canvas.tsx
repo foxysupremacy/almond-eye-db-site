@@ -16,6 +16,20 @@ import { AncestorNavTarget } from "./ancestor-nav-target";
 import { SparkInput } from "./pedigree-tree";
 import { SLOT_LABEL } from "./pedigree-slots";
 import { AncestorPortrait } from "./ancestor-portrait";
+import { XIcon } from "@/app/common/ui/primitives/icons";
+
+/** Small "×" that clears one ancestor slot. Shown on hover/focus for mouse users, always on touch. */
+function ClearSlotButton({ slot, name, onClear }: { slot: LoopUmaSlot; name?: string; onClear: () => void }) {
+  return (
+    <Button
+      onPress={onClear}
+      aria-label={`Clear ${SLOT_LABEL[slot]}${name ? `: ${name}` : ""}`}
+      className="absolute left-1 top-1 z-20 flex h-5 w-5 items-center justify-center rounded-full border border-zinc-200 bg-white/95 text-zinc-500 shadow-2xs outline-none transition-[opacity,color,background-color] duration-150 hover:bg-red-50 hover:text-red-600 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-red-500 [@media(pointer:fine)]:opacity-0 [@media(pointer:fine)]:group-hover/card:opacity-100 dark:border-zinc-700 dark:bg-zinc-900/95 dark:text-zinc-400 dark:hover:bg-red-950/60 dark:hover:text-red-400"
+    >
+      <XIcon className="h-3 w-3" />
+    </Button>
+  );
+}
 import type { EditableFactorPlan, PedigreeModel } from "../hooks/use-pedigree-model";
 
 export function AncestorIdentityButton({
@@ -63,6 +77,7 @@ export function AncestorCard({
   onWhiteTargetsChange,
   onAptitudeTargetChange,
   geneticIndicator,
+  onClear,
 }: {
   slot: LoopUmaSlot;
   candidate: LoopCandidate | null;
@@ -78,12 +93,16 @@ export function AncestorCard({
   onWhiteTargetsChange: (targets: AptitudeKey[]) => void;
   onAptitudeTargetChange?: (aptitude: AptitudeKey, rank: TargetRank | null) => void;
   geneticIndicator?: ReactNode;
+  /** Present when the slot holds a user pick that can be cleared. */
+  onClear?: () => void;
 }) {
   const isPhone = tier === "phone";
+  const clearButton = onClear ? <ClearSlotButton slot={slot} name={candidate?.name} onClear={onClear} /> : null;
 
   if (density === "great-grandparent") {
     return (
-      <div data-ancestor-tile="great-grandparent" className={`relative min-w-0 ${isPhone ? "p-0.5" : "p-1"}`}>
+      <div data-ancestor-tile="great-grandparent" className={`group/card relative min-w-0 ${isPhone ? "p-0.5" : "p-1"}`}>
+        {clearButton}
         <div className={`flex flex-col items-center justify-center ${isPhone ? "px-0.5 pb-0.5 pt-1" : "px-1 pb-1 pt-2"}`}>
           <AncestorIdentityButton slot={slot} candidate={candidate} density="great-grandparent" onOpenPicker={onOpenPicker} isPhone={isPhone} />
         </div>
@@ -134,6 +153,7 @@ export function AncestorCard({
   return (
     <div className={`relative min-w-0 ${cardWidthClass} flex justify-center`}>
       <div className={`group/card relative ${cardWidthClass} flex flex-col justify-between rounded-xl sm:rounded-2xl border border-zinc-200/90 bg-white/95 shadow-sm transition-all duration-150 hover:shadow-md dark:border-zinc-700/80 dark:bg-zinc-800/95 overflow-hidden text-center`}>
+        {clearButton}
         <div className={`@container w-full min-w-0 flex flex-col ${isPhone ? "gap-1 p-1 pt-1.5" : "gap-1.5 p-1 pt-2 sm:p-1.5 sm:pt-3"}`}>
           {/* Row 1: Portrait / Avatar (col-span-2) + Surface Aptitudes (Turf & Dirt, col-span-2) */}
           <div className="grid grid-cols-4 justify-items-stretch gap-0.5 sm:gap-1 items-end w-full">
@@ -156,25 +176,25 @@ export function AncestorCard({
               </Button>
             </div>
             <div data-aptitude-group="Surface" className="col-span-2 grid grid-cols-2 gap-0.5 sm:gap-1">
-              <AptitudeCell aptitude="Turf" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-              <AptitudeCell aptitude="Dirt" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+              <AptitudeCell aptitude="Turf" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Turf")} />
+              <AptitudeCell aptitude="Dirt" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Dirt")} />
             </div>
           </div>
 
           {/* Row 2: Distance Aptitudes (Sprint, Mile, Medium, Long) */}
           <div data-aptitude-group="Distance" className="grid w-full grid-cols-4 justify-items-stretch gap-0.5 sm:gap-1">
-            <AptitudeCell aptitude="Sprint" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Mile" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Medium" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Long" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Sprint" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Sprint")} />
+            <AptitudeCell aptitude="Mile" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Mile")} />
+            <AptitudeCell aptitude="Medium" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Medium")} />
+            <AptitudeCell aptitude="Long" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Long")} />
           </div>
 
           {/* Row 3: Running Style Aptitudes (Runner, Leader, Betweener, Chaser) */}
           <div data-aptitude-group="Style" className="grid w-full grid-cols-4 justify-items-stretch gap-0.5 sm:gap-1">
-            <AptitudeCell aptitude="Runner" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Leader" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Betweener" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
-            <AptitudeCell aptitude="Chaser" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell />
+            <AptitudeCell aptitude="Runner" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Runner")} />
+            <AptitudeCell aptitude="Leader" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Leader")} />
+            <AptitudeCell aptitude="Betweener" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Betweener")} />
+            <AptitudeCell aptitude="Chaser" assessment={assessment} label={SLOT_LABEL[slot]} sources={sources} onTargetChange={onAptitudeTargetChange} allowTargetSelection compactCell isGeneticTarget={whiteTargets.includes("Chaser")} />
           </div>
 
           {/* Row 4: Pink Factor Pill */}
@@ -557,6 +577,7 @@ export function ParentPedigreeCanvas({
         onAptitudeTargetChange={(aptitude, rank) => model.setAptitudeGoal(umaSlot, aptitude, rank)}
         onFactorGoalChange={(goal) => model.setFactorGoal(slot, goal)}
         onOpenPicker={() => onOpenPicker(slot)}
+        onClear={model.canClearSlot(umaSlot) ? () => model.clearSlot(umaSlot) : undefined}
         geneticIndicator={
           geneticAssessment ? (
             <GeneticIndicator

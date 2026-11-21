@@ -232,3 +232,40 @@ test("white targets normalize valid Uma slots and aptitude keys without migratin
   const decoded = await deserializeParentingFromHash(encoded, []);
   expect(decoded?.loopConfig?.slotWhiteTargets).toEqual(config.slotWhiteTargets);
 });
+
+test("clearAncestorSlot removes only that slot's pick and keeps the rest of the tree", () => {
+  const { clearAncestorSlot, isAncestorSlotClearable, DEFAULT_PARENTING_SETUP } = require("./state");
+  const vet = (card_id: number) => ({ card_id, trained_chara_id: card_id, win_saddle_id_array: [] });
+  const setup = {
+    ...DEFAULT_PARENTING_SETUP,
+    parent1: vet(100101),
+    parent2: vet(100201),
+    gpOverrides: { p1_gp1: { card_id: 100301 }, p2_gp1: { card_id: 100401 } },
+    loopConfig: {
+      ...DEFAULT_PARENTING_SETUP.loopConfig,
+      selectedSlots: { p1: "v:100101:", p2: "v:100201:", p1_gp1: "b:100301", p2_gp1: "b:100401" },
+      lockedSlots: { p1: "v:100101:", p1_gp1: "b:100301" },
+      factorGoals: { p1: { pink: "Turf", pinkStars: 3 }, p1_gp1: { pink: "Mile", pinkStars: 2 } },
+      whiteTargets: { p1: ["Turf"] },
+    },
+  };
+  const p1Cleared = clearAncestorSlot(setup, "p1");
+  expect(p1Cleared.parent1).toBeNull();
+  expect(p1Cleared.parent2).toEqual(setup.parent2);
+  expect(p1Cleared.gpOverrides.p1_gp1).toEqual({ card_id: 100301 });
+  expect(p1Cleared.loopConfig.selectedSlots.p1).toBeUndefined();
+  expect(p1Cleared.loopConfig.lockedSlots.p1).toBeUndefined();
+  expect(p1Cleared.loopConfig.factorGoals.p1).toBeUndefined();
+  expect(p1Cleared.loopConfig.selectedSlots.p1_gp1).toBe("b:100301");
+  expect(p1Cleared.loopConfig.factorGoals.p1_gp1).toEqual({ pink: "Mile", pinkStars: 2 });
+
+  const gpCleared = clearAncestorSlot(setup, "p2_gp1");
+  expect(gpCleared.gpOverrides.p2_gp1).toBeNull();
+  expect(gpCleared.loopConfig.selectedSlots.p2_gp1).toBeUndefined();
+  expect(gpCleared.loopConfig.selectedSlots.p2).toBe("v:100201:");
+
+  expect(isAncestorSlotClearable(setup, "p1")).toBe(true);
+  expect(isAncestorSlotClearable(setup, "p2_gp1")).toBe(true);
+  expect(isAncestorSlotClearable(setup, "p1_gp2")).toBe(false);
+  expect(isAncestorSlotClearable(clearAncestorSlot(setup, "p1"), "p1")).toBe(false);
+});

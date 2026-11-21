@@ -287,7 +287,9 @@ test("AptitudeCell displays boosted grade and highlights when pink sparks are su
 
   // Mejiro McQueen base Mile is F, +4 ranks from 12★ boosts to B
   expect(mileMarkup).toContain('alt="B"');
-  expect(mileMarkup).toContain("ring-pink-500");
+  // 12★ also makes the Mile white genetic farmable (guaranteed), which takes the violet highlight
+  expect(mileMarkup).toContain("ring-violet-500");
+  expect(mileMarkup).toContain('data-genetic-farmable="guaranteed"');
   expect(mileMarkup).toContain("Mile: Base F → Boosted B (12★)");
   expect(mileMarkup).toContain("P1 GP1 Mile: base F, projected ?");
 

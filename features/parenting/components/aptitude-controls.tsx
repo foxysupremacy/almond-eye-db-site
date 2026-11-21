@@ -50,6 +50,14 @@ export function isProjectionBoosted(projection: AptitudeProjection): boolean {
   return projection.availablePinkStars > 0 || (projection.base !== "?" && projection.projected !== "?" && projection.base !== projection.projected);
 }
 
+/** White genetic (inheritance) eligibility for an aptitude: ≥6 pink stars in
+ * the 3-generation lineage unlock it (≈40% roll), 12 stars guarantee it. */
+export function geneticFarmability(assessment: BranchAssessment, aptitude: AptitudeKey): { stars: number; status: "guaranteed" | "possible" } | null {
+  const stars = assessment.whiteFactors.find((item) => item.name === aptitude)?.availablePinkStars ?? 0;
+  if (stars < 6) return null;
+  return { stars, status: stars >= 12 ? "guaranteed" : "possible" };
+}
+
 export function projectionDisplayGrade(projection: AptitudeProjection): string {
   const baseGrade = projection.base === "?" ? "-" : projection.base;
   const grade = isProjectionBoosted(projection) && projection.projected !== "?" && projection.projected !== "-" ? projection.projected : baseGrade;
@@ -65,6 +73,7 @@ export function AptitudeCell({
   isPinkFactor,
   allowTargetSelection = false,
   compactCell = false,
+  isGeneticTarget = false,
 }: {
   aptitude: AptitudeKey;
   assessment: BranchAssessment;
@@ -74,18 +83,36 @@ export function AptitudeCell({
   isPinkFactor?: boolean;
   allowTargetSelection?: boolean;
   compactCell?: boolean;
+  /** This aptitude is one of the slot's selected white genetic targets. */
+  isGeneticTarget?: boolean;
 }) {
   const projection = assessment.projections.find((item) => item.aptitude === aptitude)!;
   const result = projection.confidence === "unknown" ? "?" : projection.projected;
   const isBoosted = isProjectionBoosted(projection);
   const grade = projectionDisplayGrade(projection);
   const displayGrade = grade === "?" ? "-" : grade;
+  const genetic = geneticFarmability(assessment, aptitude);
+  const geneticShort = genetic ? `Genetic ${genetic.status === "guaranteed" ? "100%" : "40%"} ☆${genetic.stars}` : "";
+  const geneticTitle = genetic ? ` · ${geneticShort}${isGeneticTarget ? " · target" : ""}` : "";
 
   return (
+    // Wrapper is the grid item so the hover bubble can sit outside the cell's overflow clip.
+    <div className={`group/apt relative min-w-0 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"}`}>
+    {genetic && (
+      <span
+        data-genetic-bubble
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-[calc(100%-6px)] left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full bg-violet-700 px-2 py-0.5 text-[9px] font-bold leading-tight text-white opacity-0 shadow-md transition-opacity duration-150 group-hover/apt:opacity-100 group-focus-within/apt:opacity-100 motion-reduce:transition-none dark:bg-violet-600"
+      >
+        {geneticShort}{isGeneticTarget ? " · Target" : ""}
+      </span>
+    )}
     <ParentingPopover
       label={`${label} ${aptitude}: base ${projection.base}, projected ${result}`}
-      className={`parenting-aptitude-cell group flex ${compactCell ? "min-h-8" : "min-h-9"} min-w-0 flex-col overflow-hidden rounded-lg border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${compactCell ? "w-full max-w-[4rem] justify-self-center" : "w-full"} ${
-        isBoosted
+      className={`parenting-aptitude-cell relative group flex ${compactCell ? "min-h-8" : "min-h-9"} w-full min-w-0 flex-col overflow-hidden rounded-lg border text-center transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+        genetic
+          ? "border-violet-400 dark:border-violet-500 ring-2 ring-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.55)] dark:shadow-[0_0_12px_rgba(139,92,246,0.5)] z-1"
+          : isBoosted
           ? "border-pink-400 dark:border-pink-500 ring-2 ring-pink-500 shadow-[0_0_10px_rgba(236,72,153,0.6)] dark:shadow-[0_0_12px_rgba(236,72,153,0.5)] z-1"
           : isPinkFactor
           ? "border-[#e4007f] ring-1 ring-[#e4007f] shadow-xs"
@@ -93,11 +120,15 @@ export function AptitudeCell({
       }`}
       trigger={
         <div
-          className="flex flex-col w-full"
-          title={`${aptitude}: Base ${projection.base}${isBoosted ? ` → Boosted ${projection.projected} (${projection.availablePinkStars}★)` : ""}`}
+          className="relative flex flex-col w-full"
+          title={`${aptitude}: Base ${projection.base}${isBoosted ? ` → Boosted ${projection.projected} (${projection.availablePinkStars}★)` : ""}${geneticTitle}`}
+          {...(genetic ? { "data-genetic-farmable": genetic.status } : {})}
+          {...(genetic && isGeneticTarget ? { "data-genetic-target": "true" } : {})}
         >
-          <div className={`w-full border-b py-0.5 text-center ${compactCell ? "text-[8px] sm:text-[9px]" : "text-[8.5px] sm:text-[9.5px]"} font-bold ${
-            isBoosted
+          <div {...(genetic ? { "data-genetic-header": "" } : {})} className={`w-full border-b py-0.5 text-center ${compactCell ? "text-[8px] sm:text-[9px]" : "text-[8.5px] sm:text-[9.5px]"} font-bold ${
+            genetic
+              ? "border-amber-500 bg-amber-400 text-amber-950 dark:border-amber-400 dark:bg-amber-400 dark:text-amber-950"
+              : isBoosted
               ? "border-pink-300 dark:border-pink-600/80 bg-pink-50/90 dark:bg-pink-950/40 text-pink-700 dark:text-pink-300"
               : "border-zinc-200/80 bg-white/95 text-zinc-600 dark:border-zinc-700/80 dark:bg-zinc-800/95 dark:text-zinc-300"
           }`}>
@@ -130,12 +161,22 @@ export function AptitudeCell({
             ) : (
               <StatusRankIcon grade={displayGrade} className={`${compactCell ? "h-3.5 w-3.5 sm:h-4.5 sm:w-4.5" : "h-4 w-4 sm:h-5 sm:w-5"} object-contain`} />
             )}
+            {genetic && isGeneticTarget && (
+              <span
+                data-genetic-tag
+                aria-hidden="true"
+                className="pointer-events-none absolute bottom-0 right-0 rounded-tl-[4px] bg-violet-600 px-[3px] py-px text-[7px] font-extrabold leading-none text-white dark:bg-violet-500"
+              >
+                {genetic.status === "guaranteed" ? "100%" : "40%"}
+              </span>
+            )}
           </div>
         </div>
       }
     >
       <p className="text-sm font-semibold">{aptitude} · Base {projection.base} {isBoosted ? `→ Boosted ${projection.projected}` : ""}</p>
       <p className="mt-1 text-xs">{projection.availablePinkStars} pink ★ from ancestors pushing this up</p>
+      {genetic && <p className="mt-1 text-xs font-semibold text-violet-700 dark:text-violet-300">{geneticShort}{isGeneticTarget ? " · Target" : ""}</p>}
       {projection.confidence === "unknown" && projection.availablePinkStars > 0 && (
         <p className="mt-1 text-xs text-zinc-500">Some ancestors not yet set. Current projection: {projection.projected}.</p>
       )}
@@ -187,6 +228,7 @@ export function AptitudeCell({
         {sources.map((source) => <li key={source.label} className="py-1">{source.label}: {source.pink === undefined ? "Not set" : source.pink === null ? "No factor" : `${source.pink} ${source.stars ?? "?"}★`}</li>)}
       </ul>
     </ParentingPopover>
+    </div>
   );
 }
 export function AptitudeTable(props: { assessment: BranchAssessment; label: string; sources: SparkSource[]; onTargetChange?: (aptitude: AptitudeKey, rank: TargetRank | null) => void; pinkFactor?: AptitudeKey | null }) {

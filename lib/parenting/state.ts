@@ -322,3 +322,37 @@ export async function deserializeParentingFromHash(hash: string, veterans: Kyuma
   };
   return normalizeParentingSetup(setup);
 }
+
+type ClearableAncestorSlot = import("./loop-planner").LoopUmaSlot;
+const GP_OVERRIDE_SLOTS = ["p1_gp1", "p1_gp2", "p2_gp1", "p2_gp2"] as const;
+type GpOverrideSlot = typeof GP_OVERRIDE_SLOTS[number];
+const isGpOverrideSlot = (slot: string): slot is GpOverrideSlot => (GP_OVERRIDE_SLOTS as readonly string[]).includes(slot);
+
+/**
+ * True when the slot holds a user choice that can be cleared. A grandparent that
+ * only comes from a veteran parent's recorded lineage is fixed data, not a pick.
+ */
+export function isAncestorSlotClearable(setup: ParentingSetup, slot: ClearableAncestorSlot): boolean {
+  if (setup.loopConfig?.selectedSlots[slot]) return true;
+  if (slot === "p1") return setup.parent1 != null;
+  if (slot === "p2") return setup.parent2 != null;
+  return isGpOverrideSlot(slot) && setup.gpOverrides[slot] != null;
+}
+
+/** Clear a single P/GP slot: its pick and its spark plan. Other ancestors stay. */
+export function clearAncestorSlot(setup: ParentingSetup, slot: ClearableAncestorSlot): ParentingSetup {
+  const next: ParentingSetup = { ...setup, gpOverrides: { ...setup.gpOverrides } };
+  if (slot === "p1") next.parent1 = null;
+  else if (slot === "p2") next.parent2 = null;
+  else if (isGpOverrideSlot(slot)) next.gpOverrides[slot] = null;
+  if (setup.loopConfig) {
+    const selectedSlots = { ...setup.loopConfig.selectedSlots };
+    const lockedSlots = { ...setup.loopConfig.lockedSlots };
+    const factorGoals = { ...(setup.loopConfig.factorGoals ?? {}) };
+    delete selectedSlots[slot];
+    delete lockedSlots[slot];
+    delete factorGoals[slot];
+    next.loopConfig = { ...setup.loopConfig, selectedSlots, lockedSlots, factorGoals };
+  }
+  return next;
+}
