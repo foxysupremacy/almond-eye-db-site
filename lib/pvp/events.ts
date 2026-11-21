@@ -218,6 +218,27 @@ export const PVP_EVENTS: PvpEvent[] = [
     gradeNum: 100, // 100: G1
     // The December event's exact start date has not been announced yet.
   },
+  {
+    id: "cm-classic-2027-01",
+    name: "January Champions Meeting CLASSIC",
+    shortName: "Jan CM (Classic)",
+    trackId: 10006, // Tokyo
+    courseId: 10606, // 2400m Turf, Left-handed
+    racerCount: 9,
+    season: "Winter",
+    seasonIcon: "/assets/track_conditions/utx_txt_season_03.png",
+    seasonNum: 4, // 4: Winter
+    weather: "Sunny",
+    weatherIcon: "/assets/track_conditions/utx_ico_weather_00.png",
+    weatherNum: 1, // 1: Sunny
+    ground: "Good",
+    groundNum: 1, // 1: Good/Firm
+    time: "Daytime",
+    timeIcon: "/assets/track_conditions/utx_ico_timezone_00.png",
+    timeNum: 2, // 2: Daytime
+    gradeNum: 100, // 100: G1
+    // Late January 2027; the exact start date has not been announced yet.
+  },
 ];
 
 export function getPvpEventById(id: string | null | undefined): PvpEvent | null {

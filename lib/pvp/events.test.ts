@@ -2,8 +2,8 @@ import { describe, it, expect } from "bun:test";
 import { PVP_EVENTS, getPvpEventById } from "./events";
 
 describe("PvP Presets & Events", () => {
-  it("contains all 5 curated PvP events with valid parameters", () => {
-    expect(PVP_EVENTS.length).toBe(5);
+  it("contains all 6 curated PvP events with valid parameters", () => {
+    expect(PVP_EVENTS.length).toBe(6);
 
     const longchampCm = getPvpEventById("cm-classic-2026-09");
     expect(longchampCm).toBeDefined();
@@ -47,7 +47,18 @@ describe("PvP Presets & Events", () => {
     expect(decCm?.time).toBe("Daytime");
     expect(decCm?.startDate).toBeUndefined();
 
-    const novLoh = getPvpEventById("league-heroes-2026-11");
+    const janCm = getPvpEventById("cm-classic-2027-01");
+    expect(janCm).toBeDefined();
+    expect(janCm?.trackId).toBe(10006); // Tokyo
+    expect(janCm?.courseId).toBe(10606); // 2400m Turf, Left-handed
+    expect(janCm?.racerCount).toBe(9);
+    expect(janCm?.seasonNum).toBe(4);
+    expect(janCm?.weather).toBe("Sunny");
+    expect(janCm?.ground).toBe("Good");
+    expect(janCm?.time).toBe("Daytime");
+    expect(janCm?.startDate).toBeUndefined();
+
+    const novLoh =getPvpEventById("league-heroes-2026-11");
     expect(novLoh).toBeDefined();
     expect(novLoh?.trackId).toBe(10008); // Kyoto
     expect(novLoh?.courseId).toBe(10810); // 3000m Turf Outer
