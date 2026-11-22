@@ -16,10 +16,10 @@ describe("CardPickerPopover SSR", () => {
 
   it("handles gold <-> white skill equivalence mapping correctly", async () => {
     const { GOLD_TO_WHITE_MAP } = await import("@/lib/skills/rarity");
-    // Clockwise Demon (Gold 200014) -> Right Turns ◎ (White 200011)
+    // Clockwise Demon (Gold 200014) -> Right Turns ○ (White 200012), the white its spark drops
     const entry = GOLD_TO_WHITE_MAP["200014"];
     expect(entry).toBeDefined();
-    expect(entry.whiteId).toBe(200011);
+    expect(entry.whiteId).toBe(200012);
 
     // Reverse mapping check
     const whiteToGoldsMap = new Map<number, number[]>();
@@ -29,6 +29,6 @@ describe("CardPickerPopover SSR", () => {
       if (existing) existing.push(gId);
       else whiteToGoldsMap.set(mapped.whiteId, [gId]);
     }
-    expect(whiteToGoldsMap.get(200011)).toContain(200014);
+    expect(whiteToGoldsMap.get(200012)).toContain(200014);
   });
 });

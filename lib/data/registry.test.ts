@@ -64,7 +64,11 @@ describe("registry datasets", () => {
     expect(firstCareer[0]).toHaveProperty("raceId");
     expect(Object.keys(uniqueInheritMap).length).toBeGreaterThan(200);
     expect(Object.keys(goldToWhiteMap).length).toBeGreaterThan(100);
-    expect(goldToWhiteMap["200014"]?.whiteId).toBe(200011);
+    // A gold skill's spark only ever grants the ○ white (the sole succession factor of the
+    // skill group), never the ◎ that the gold upgrades from.
+    expect(goldToWhiteMap["200014"]?.whiteId).toBe(200012); // Clockwise Demon -> Right Turns ○
+    expect(goldToWhiteMap["201463"]?.whiteId).toBe(201462); // Moonlight Slash -> Chaser's Corners ○
+    expect(goldToWhiteMap["201463"]?.whiteNameJp).toBe("追込コーナー○");
     expect(Object.keys(cardMetaMap).length).toBe(cards.length);
     expect(Object.keys(skillMetaMap).length).toBeGreaterThan(1000);
   });

@@ -22,6 +22,7 @@ import { backfillMissingSkills, extractCharacters } from "./extract-characters.t
 import { extractG1Calendar } from "./extract-g1-calendar.ts";
 import { extractSkillLevelCoef, patchCharacterEvolutions } from "./extract-skill-tables.ts";
 import { patchRacetrackCourseFlags } from "./extract-course-flags.ts";
+import { extractGoldToWhite } from "./extract-gold-to-white.ts";
 
 loadEnv();
 
@@ -516,6 +517,7 @@ export function extractAffinityData() {
   extractSkillLevelCoef(db);
   patchCharacterEvolutions(db);
   backfillMissingSkills(db);
+  extractGoldToWhite(db);
   patchRacetrackCourseFlags(db);
 }
 

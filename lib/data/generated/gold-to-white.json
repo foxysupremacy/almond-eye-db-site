@@ -1,71 +1,71 @@
 {
   "200014": {
-    "whiteId": 200011,
-    "whiteNameEn": "Right Turns ◎",
-    "whiteNameJp": "右回り◎",
+    "whiteId": 200012,
+    "whiteNameEn": "Right Turns ○",
+    "whiteNameJp": "右回り○",
     "goldNameEn": "Clockwise Demon",
     "goldNameJp": "右回りの鬼"
   },
   "200024": {
-    "whiteId": 200021,
-    "whiteNameEn": "Left Turns ◎",
-    "whiteNameJp": "左回り◎",
+    "whiteId": 200022,
+    "whiteNameEn": "Left Turns ○",
+    "whiteNameJp": "左回り○",
     "goldNameEn": "Counterclockwise Demon",
     "goldNameJp": "左回りの鬼"
   },
   "200034": {
-    "whiteId": 200031,
-    "whiteNameEn": "Tokyo Racecourse ◎",
-    "whiteNameJp": "東京レース場◎",
+    "whiteId": 200032,
+    "whiteNameEn": "Tokyo Racecourse ○",
+    "whiteNameJp": "東京レース場○",
     "goldNameEn": "Child of Fuchu",
     "goldNameJp": "府中の申し子"
   },
   "200064": {
-    "whiteId": 200061,
-    "whiteNameEn": "Kyoto Racecourse ◎",
-    "whiteNameJp": "京都レース場◎",
+    "whiteId": 200062,
+    "whiteNameEn": "Kyoto Racecourse ○",
+    "whiteNameJp": "京都レース場○",
     "goldNameEn": "Child of Yodo",
     "goldNameJp": "淀の申し子"
   },
   "200154": {
-    "whiteId": 200151,
-    "whiteNameEn": "Good Track Condition ◎",
-    "whiteNameJp": "良バ場◎",
+    "whiteId": 200152,
+    "whiteNameEn": "Good Track Condition ○",
+    "whiteNameJp": "良バ場○",
     "goldNameEn": "Good Track Demon",
     "goldNameJp": "良バ場の鬼"
   },
   "200164": {
-    "whiteId": 200161,
-    "whiteNameEn": "Bad Track Condition ◎",
-    "whiteNameJp": "道悪◎",
+    "whiteId": 200162,
+    "whiteNameEn": "Bad Track Condition ○",
+    "whiteNameJp": "道悪○",
     "goldNameEn": "Bad Track Demon",
     "goldNameJp": "道悪の鬼"
   },
   "200174": {
-    "whiteId": 200171,
-    "whiteNameEn": "Spring Girl ◎",
-    "whiteNameJp": "春ウマ娘◎",
+    "whiteId": 200172,
+    "whiteNameEn": "Spring Girl ○",
+    "whiteNameJp": "春ウマ娘○",
     "goldNameEn": "Spring's First Tempest",
     "goldNameJp": "春一番"
   },
   "200184": {
-    "whiteId": 200181,
-    "whiteNameEn": "Summer Girl ◎",
-    "whiteNameJp": "夏ウマ娘◎",
+    "whiteId": 200182,
+    "whiteNameEn": "Summer Girl ○",
+    "whiteNameJp": "夏ウマ娘○",
     "goldNameEn": "Verdant Wind",
     "goldNameJp": "青嵐"
   },
   "200194": {
-    "whiteId": 200191,
-    "whiteNameEn": "Autumn Girl ◎",
-    "whiteNameJp": "秋ウマ娘◎",
+    "whiteId": 200192,
+    "whiteNameEn": "Autumn Girl ○",
+    "whiteNameJp": "秋ウマ娘○",
     "goldNameEn": "The First Storm",
     "goldNameJp": "初嵐"
   },
   "200204": {
-    "whiteId": 200201,
-    "whiteNameEn": "Winter Girl ◎",
-    "whiteNameJp": "冬ウマ娘◎",
+    "whiteId": 200202,
+    "whiteNameEn": "Winter Girl ○",
+    "whiteNameJp": "冬ウマ娘○",
     "goldNameEn": "Freezing Wind",
     "goldNameJp": "凍て風"
   },
@@ -343,16 +343,16 @@
     "goldNameJp": "見惚れるトリック"
   },
   "200963": {
-    "whiteId": 200961,
-    "whiteNameEn": "Sprint Straights ◎",
-    "whiteNameJp": "短距離直線◎",
+    "whiteId": 200962,
+    "whiteNameEn": "Sprint Straights ○",
+    "whiteNameJp": "短距離直線○",
     "goldNameEn": "Lightning Flash",
     "goldNameJp": "紫電一閃"
   },
   "200973": {
-    "whiteId": 200971,
-    "whiteNameEn": "Sprint Corners ◎",
-    "whiteNameJp": "短距離コーナー◎",
+    "whiteId": 200972,
+    "whiteNameEn": "Sprint Corners ○",
+    "whiteNameJp": "短距離コーナー○",
     "goldNameEn": "Lightning Slash",
     "goldNameJp": "紫電円刃"
   },
@@ -392,16 +392,16 @@
     "goldNameJp": "逃亡禁止令"
   },
   "201033": {
-    "whiteId": 201031,
-    "whiteNameEn": "Mile Straights ◎",
-    "whiteNameJp": "マイル直線◎",
+    "whiteId": 201032,
+    "whiteNameEn": "Mile Straights ○",
+    "whiteNameJp": "マイル直線○",
     "goldNameEn": "Tempest Flash",
     "goldNameJp": "豪風一閃"
   },
   "201043": {
-    "whiteId": 201041,
-    "whiteNameEn": "Mile Corners ◎",
-    "whiteNameJp": "マイルコーナー◎",
+    "whiteId": 201042,
+    "whiteNameEn": "Mile Corners ○",
+    "whiteNameJp": "マイルコーナー○",
     "goldNameEn": "Tempest Slash",
     "goldNameJp": "豪風円刃"
   },
@@ -441,16 +441,16 @@
     "goldNameJp": "布陣"
   },
   "201103": {
-    "whiteId": 201101,
-    "whiteNameEn": "Medium Distance Straights ◎",
-    "whiteNameJp": "中距離直線◎",
+    "whiteId": 201102,
+    "whiteNameEn": "Medium Distance Straights ○",
+    "whiteNameJp": "中距離直線○",
     "goldNameEn": "Photon Flash",
     "goldNameJp": "光芒一閃"
   },
   "201113": {
-    "whiteId": 201111,
-    "whiteNameEn": "Medium Distance Corners ◎",
-    "whiteNameJp": "中距離コーナー◎",
+    "whiteId": 201112,
+    "whiteNameEn": "Medium Distance Corners ○",
+    "whiteNameJp": "中距離コーナー○",
     "goldNameEn": "Photon Slash",
     "goldNameJp": "光芒円刃"
   },
@@ -490,16 +490,16 @@
     "goldNameJp": "魅惑のささやき"
   },
   "201173": {
-    "whiteId": 201171,
-    "whiteNameEn": "Long Distance Straights ◎",
-    "whiteNameJp": "長距離直線◎",
+    "whiteId": 201172,
+    "whiteNameEn": "Long Distance Straights ○",
+    "whiteNameJp": "長距離直線○",
     "goldNameEn": "Gale Flash",
     "goldNameJp": "烈風一閃"
   },
   "201183": {
-    "whiteId": 201181,
-    "whiteNameEn": "Long Distance Corners ◎",
-    "whiteNameJp": "長距離コーナー◎",
+    "whiteId": 201182,
+    "whiteNameEn": "Long Distance Corners ○",
+    "whiteNameJp": "長距離コーナー○",
     "goldNameEn": "Wind Slash",
     "goldNameJp": "烈風円刃"
   },
@@ -539,16 +539,16 @@
     "goldNameJp": "奇術師"
   },
   "201243": {
-    "whiteId": 201241,
-    "whiteNameEn": "Runner's Straights ◎",
-    "whiteNameJp": "逃げ直線◎",
+    "whiteId": 201242,
+    "whiteNameEn": "Runner's Straights ○",
+    "whiteNameJp": "逃げ直線○",
     "goldNameEn": "Gale Flash",
     "goldNameJp": "陣風一閃"
   },
   "201253": {
-    "whiteId": 201251,
-    "whiteNameEn": "Runner's Corners ◎",
-    "whiteNameJp": "逃げコーナー◎",
+    "whiteId": 201252,
+    "whiteNameEn": "Runner's Corners ○",
+    "whiteNameJp": "逃げコーナー○",
     "goldNameEn": "Gale Slash",
     "goldNameJp": "陣風円刃"
   },
@@ -581,16 +581,16 @@
     "goldNameJp": "再燃焼"
   },
   "201313": {
-    "whiteId": 201311,
-    "whiteNameEn": "Leader's Straights ◎",
-    "whiteNameJp": "先行直線◎",
+    "whiteId": 201312,
+    "whiteNameEn": "Leader's Straights ○",
+    "whiteNameJp": "先行直線○",
     "goldNameEn": "Valiant Flash",
     "goldNameJp": "勇迅一閃"
   },
   "201323": {
-    "whiteId": 201321,
-    "whiteNameEn": "Leader's Corners ◎",
-    "whiteNameJp": "先行コーナー◎",
+    "whiteId": 201322,
+    "whiteNameEn": "Leader's Corners ○",
+    "whiteNameJp": "先行コーナー○",
     "goldNameEn": "Bravery Slash",
     "goldNameJp": "勇迅円刃"
   },
@@ -630,16 +630,16 @@
     "goldNameJp": "幻惑のかく乱"
   },
   "201383": {
-    "whiteId": 201381,
-    "whiteNameEn": "Betweener's Straights ◎",
-    "whiteNameJp": "差し直線◎",
+    "whiteId": 201382,
+    "whiteNameEn": "Betweener's Straights ○",
+    "whiteNameJp": "差し直線○",
     "goldNameEn": "Incisive Flash",
     "goldNameJp": "鋭脚一閃"
   },
   "201393": {
-    "whiteId": 201391,
-    "whiteNameEn": "Betweener's Corners ◎",
-    "whiteNameJp": "差しコーナー◎",
+    "whiteId": 201392,
+    "whiteNameEn": "Betweener's Corners ○",
+    "whiteNameJp": "差しコーナー○",
     "goldNameEn": "Incisive Slash",
     "goldNameJp": "鋭脚円刃"
   },
@@ -679,16 +679,16 @@
     "goldNameJp": "八方にらみ"
   },
   "201453": {
-    "whiteId": 201451,
-    "whiteNameEn": "Chaser's Straights ◎",
-    "whiteNameJp": "追込直線◎",
+    "whiteId": 201452,
+    "whiteNameEn": "Chaser's Straights ○",
+    "whiteNameJp": "追込直線○",
     "goldNameEn": "Moonlight Flash",
     "goldNameJp": "月影一閃"
   },
   "201463": {
-    "whiteId": 201461,
-    "whiteNameEn": "Chaser's Corners ◎",
-    "whiteNameJp": "追込コーナー◎",
+    "whiteId": 201462,
+    "whiteNameEn": "Chaser's Corners ○",
+    "whiteNameJp": "追込コーナー○",
     "goldNameEn": "Moonlight Slash",
     "goldNameJp": "月影円刃"
   },
@@ -924,9 +924,9 @@
     "goldNameJp": "一意専心"
   },
   "202254": {
-    "whiteId": 202251,
-    "whiteNameEn": "Graded Exchange Races ◎",
-    "whiteNameJp": "交流重賞◎",
+    "whiteId": 202252,
+    "whiteNameEn": "Graded Exchange Races ○",
+    "whiteNameJp": "交流重賞○",
     "goldNameEn": "Exchange Races Demon",
     "goldNameJp": "交流重賞の鬼"
   },
@@ -987,9 +987,9 @@
     "goldNameJp": "抜群の踏み込み"
   },
   "202341": {
-    "whiteId": 202342,
-    "whiteNameEn": "Mud Play ◎",
-    "whiteNameJp": "泥遊び◎",
+    "whiteId": 202343,
+    "whiteNameEn": "Mud Play ○",
+    "whiteNameJp": "泥遊び○",
     "goldNameEn": "Mud Meister",
     "goldNameJp": "泥んこマイスター"
   },
@@ -1239,9 +1239,9 @@
     "goldNameJp": "ネバーギブアップ"
   },
   "202734": {
-    "whiteId": 202731,
-    "whiteNameEn": "Longchamp Racecourse ◎",
-    "whiteNameJp": "ロンシャンレース場◎",
+    "whiteId": 202732,
+    "whiteNameEn": "Longchamp Racecourse ○",
+    "whiteNameJp": "ロンシャンレース場○",
     "goldNameEn": "Child of Longchamp",
     "goldNameJp": "ロンシャンの申し子"
   },
@@ -1449,16 +1449,16 @@
     "goldNameJp": "踏みしめる大地"
   },
   "203091": {
-    "whiteId": 203092,
-    "whiteNameEn": "Dirt Straights ◎",
-    "whiteNameJp": "ダート直線◎",
+    "whiteId": 203093,
+    "whiteNameEn": "Dirt Straights ○",
+    "whiteNameJp": "ダート直線○",
     "goldNameEn": "Sandstorm Flash",
     "goldNameJp": "砂塵一閃"
   },
   "203101": {
-    "whiteId": 203102,
-    "whiteNameEn": "Dirt Corners ◎",
-    "whiteNameJp": "ダートコーナー◎",
+    "whiteId": 203103,
+    "whiteNameEn": "Dirt Corners ○",
+    "whiteNameJp": "ダートコーナー○",
     "goldNameEn": "Sandstorm Slash",
     "goldNameJp": "砂塵円刃"
   },

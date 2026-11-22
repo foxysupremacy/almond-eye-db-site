@@ -54,7 +54,7 @@ describe("Skill Effects & Exclusivity", () => {
       rarity: 3,
       uniqueSkillId: 100011,
       innateSkills: [200512],
-      awakeningSkills: [200014], // 200014 is Gold (Clockwise Demon) -> converts to 200011 (Right Turns ◎)
+      awakeningSkills: [200014], // 200014 is Gold (Clockwise Demon) -> converts to 200012 (Right Turns ○)
       eventSkills: [200472],
     } as any;
 
@@ -72,7 +72,7 @@ describe("Skill Effects & Exclusivity", () => {
     expect(skills.some((s: any) => s.skillId === 200512 && s.source === "innate")).toBe(true);
 
     // Awakening present and gold converted
-    const clockwiseWhite = skills.find((s: any) => s.skillId === 200011 && s.source === "awakening");
+    const clockwiseWhite = skills.find((s: any) => s.skillId === 200012 && s.source === "awakening");
     expect(clockwiseWhite).toBeDefined();
     expect(clockwiseWhite?.originalGoldNameEn).toBe("Clockwise Demon");
 

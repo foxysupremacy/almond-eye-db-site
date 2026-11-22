@@ -137,7 +137,8 @@ describe("recommendation-engine", () => {
   });
 
   it("maps Gold event skills to White skills in parent recommendations", () => {
-    // 30153 ([Gentle Moon]) has event Summer Gale (200184), which maps to Summer Girl ◎ (200181)
+    // 30153 ([Gentle Moon]) has event Summer Gale (200184). Its spark drops Summer Girl ○ (200182),
+    // not the ◎ (200181) the gold upgrades from in training.
     const recs = recommendCardsForParent({
       mainDeckSkillIds: new Set(),
       limit: 600,
@@ -149,7 +150,8 @@ describe("recommendation-engine", () => {
     expect(card!.newMatchingSkills.some((s) => s.id === 200184)).toBe(false);
 
     // Should contain the mapped white skill with originalGoldName (Hachimi: Verdant Wind)
-    const mapped = card!.newMatchingSkills.find((s) => s.id === 200181);
+    expect(card!.newMatchingSkills.some((s) => s.id === 200181)).toBe(false);
+    const mapped = card!.newMatchingSkills.find((s) => s.id === 200182);
     expect(Boolean(mapped)).toBe(true);
     expect(mapped!.originalGoldName).toBe("Verdant Wind");
     expect(mapped!.rarity).toBe(1);
@@ -160,15 +162,15 @@ describe("recommendation-engine", () => {
   });
 
   it("correctly excludes mapped Gold skills when Main Deck already has the White skill", () => {
-    // 200181 = Summer Girl ◎ (mapped from Summer Gale)
+    // 200182 = Summer Girl ○ (what the Summer Gale spark drops)
     const recsWithSummerInMain = recommendCardsForParent({
-      mainDeckSkillIds: new Set([200181]),
+      mainDeckSkillIds: new Set([200182]),
       limit: 600,
     });
 
     const card = recsWithSummerInMain.find((r) => r.cardId === 30153);
     expect(Boolean(card)).toBe(true);
-    expect(card!.newMatchingSkills.some((s) => s.id === 200181)).toBe(false);
+    expect(card!.newMatchingSkills.some((s) => s.id === 200182)).toBe(false);
     expect(card!.newMatchingSkills.some((s) => s.id === 200184)).toBe(false);
   });
 
@@ -181,21 +183,28 @@ describe("recommendation-engine", () => {
     const almondEye = recs.find((r) => r.cardId === 30308);
     expect(Boolean(almondEye)).toBe(true);
 
-    // Event 1313 has Choice 2 (200021, Left Turns ◎) which is new
-    const event1313Skills = almondEye!.newMatchingSkills.filter(
-      (s) => s.eventMeta?.eventId === 1313,
+    // Event 1314 Choice 2 grants 203172, which is new
+    const event1314Skills = almondEye!.newMatchingSkills.filter(
+      (s) => s.eventMeta?.eventId === 1314,
     );
-    expect(event1313Skills.length).toBeGreaterThan(0);
+    expect(event1314Skills.length).toBeGreaterThan(0);
 
-    const match = event1313Skills[0];
+    const match = event1314Skills[0];
     expect(Boolean(match.eventMeta)).toBe(true);
-    expect(match.eventMeta!.eventNameJp).toBe("鳴り響け！エモーション");
+    expect(match.eventMeta!.eventNameJp).toBe("そよ風と烈風のセッション");
     expect(match.eventMeta!.totalChoices).toBe(2);
     expect(match.eventMeta!.choiceIndex).toBe(2);
-    expect(match.eventMeta!.choiceTextJp).toBe("キンキンに冷えたタオルハンカチ");
+    expect(match.eventMeta!.choiceTextJp).toBe("後半の盛り上がり、すごかったな！");
     expect(match.isRecommendedChoice).toBe(true);
 
     expect(almondEye!.totalNewCount).toBe(almondEye!.newHintCount + almondEye!.newEventCount);
+
+    // Its event gold Counterclockwise Demon (200024) drops Left Turns ○ (200022), which the card
+    // already hints: one hint entry, no second event-sourced copy, no ◎.
+    const leftTurns = almondEye!.newMatchingSkills.filter((s) => s.id === 200022);
+    expect(leftTurns.length).toBe(1);
+    expect(leftTurns[0].source).toBe("hint");
+    expect(almondEye!.newMatchingSkills.some((s) => s.id === 200021)).toBe(false);
   });
 
   it("resolves mutually exclusive event choices and prevents score inflation", () => {

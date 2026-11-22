@@ -8,10 +8,10 @@ import {
   deriveSkillsForDeck,
 } from "./skill-resolver";
 
-// Gold skill 200014 ("Clockwise Demon") maps to white 200011 ("Right Turns ◎")
+// Gold skill 200014 ("Clockwise Demon") maps to white 200012 ("Right Turns ○")
 // in lib/data/generated/gold-to-white.json — see that file for the authoritative table.
 const GOLD_ID = 200014;
-const GOLD_WHITE_COUNTERPART = 200011;
+const GOLD_WHITE_COUNTERPART = 200012;
 
 function skill(overrides: Partial<SkillSummary> & { id: number }): SkillSummary {
   return {
